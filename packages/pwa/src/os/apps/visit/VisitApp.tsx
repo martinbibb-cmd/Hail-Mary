@@ -81,9 +81,14 @@ declare global {
   }
 }
 
+/** 
+ * Timeline entry representing a message in the visit conversation
+ * - 'user': A logged observation from the user (typed or spoken)
+ * - 'system': A response from the assistant service
+ */
 interface TimelineEntry {
   id: string
-  type: 'user' | 'system' | 'transcript'
+  type: 'user' | 'system'
   text: string
   timestamp: Date
 }
@@ -192,12 +197,17 @@ export const VisitApp: React.FC = () => {
   }
 
   const handleSendMessage = async (messageOverride?: string) => {
+    const isFromTranscript = !!messageOverride
     const messageText = (messageOverride || inputText).trim()
     if (!messageText || !activeSession || !selectedCustomer) return
     
     setSending(true)
-    setInputText('')
-    setTranscript('')
+    // Only clear the input source that was used
+    if (isFromTranscript) {
+      setTranscript('')
+    } else {
+      setInputText('')
+    }
     
     // Add user message to timeline immediately
     const userEntry: TimelineEntry = {
@@ -262,13 +272,18 @@ export const VisitApp: React.FC = () => {
       }
       
       if (finalTranscript) {
-        setTranscript(prev => prev + ' ' + finalTranscript)
-      } else if (interimTranscript) {
-        // Show interim results in real-time
+        // Properly join final transcripts with trimming to avoid extra spaces
         setTranscript(prev => {
-          const lastFinal = prev.lastIndexOf('.')
-          const base = lastFinal >= 0 ? prev.substring(0, lastFinal + 1) : prev
-          return base + ' ' + interimTranscript
+          const trimmedPrev = prev.trim()
+          const trimmedNew = finalTranscript.trim()
+          return trimmedPrev ? `${trimmedPrev} ${trimmedNew}` : trimmedNew
+        })
+      } else if (interimTranscript) {
+        // For interim results, append to existing final content
+        setTranscript(prev => {
+          const trimmedPrev = prev.trim()
+          const trimmedInterim = interimTranscript.trim()
+          return trimmedPrev ? `${trimmedPrev} ${trimmedInterim}` : trimmedInterim
         })
       }
     }

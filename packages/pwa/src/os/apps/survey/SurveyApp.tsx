@@ -118,7 +118,7 @@ export const SurveyApp: React.FC = () => {
           <input
             type="number"
             value={(value as number) || ''}
-            onChange={e => updateAnswer(question.id, parseInt(e.target.value) || 0)}
+            onChange={e => updateAnswer(question.id, parseInt(e.target.value, 10) || 0)}
             min={0}
           />
         )

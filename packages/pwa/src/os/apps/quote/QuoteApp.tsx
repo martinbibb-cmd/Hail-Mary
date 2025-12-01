@@ -244,7 +244,7 @@ export const QuoteApp: React.FC = () => {
                 type="number"
                 value={discount}
                 onChange={e => {
-                  setDiscount(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))
+                  setDiscount(Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0)))
                   setSaved(false)
                 }}
                 min={0}

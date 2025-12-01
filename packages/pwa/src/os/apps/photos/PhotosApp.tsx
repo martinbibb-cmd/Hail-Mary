@@ -35,7 +35,20 @@ export const PhotosApp: React.FC = () => {
       setIsStreaming(true)
     } catch (err) {
       console.error('Camera access failed:', err)
-      setError('Unable to access camera. Please ensure camera permissions are granted.')
+      // Provide specific error messages based on error type
+      if (err instanceof DOMException) {
+        if (err.name === 'NotAllowedError') {
+          setError('Camera access denied. Please grant camera permission in your browser settings.')
+        } else if (err.name === 'NotFoundError') {
+          setError('No camera found. Please connect a camera and try again.')
+        } else if (err.name === 'NotReadableError') {
+          setError('Camera is in use by another application. Please close other apps using the camera.')
+        } else {
+          setError(`Camera error: ${err.message}`)
+        }
+      } else {
+        setError('Unable to access camera. Please ensure camera permissions are granted.')
+      }
     }
   }, [facingMode])
 
@@ -90,11 +103,12 @@ export const PhotosApp: React.FC = () => {
   }, [])
 
   // Restart camera when facing mode changes
+  // Note: We only want to restart when facingMode changes, not when startCamera reference changes
   useEffect(() => {
     if (isStreaming) {
       startCamera()
     }
-  }, [facingMode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [facingMode, isStreaming, startCamera])
 
   // Cleanup on unmount
   useEffect(() => {

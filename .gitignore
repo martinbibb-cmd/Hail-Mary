@@ -10,6 +10,10 @@ build/
 # Vite generated files
 vite.config.d.ts
 vite.config.js
+# TypeScript compiled outputs in source directories
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.js
+!packages/*/src/**/*.config.js
 
 # Database files
 *.db

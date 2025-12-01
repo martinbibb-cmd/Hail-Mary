@@ -5,7 +5,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
 import { visitSessions, visitObservations } from "../db/drizzle-schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import type {
   ApiResponse,
   VisitSession,
@@ -27,16 +27,25 @@ router.get("/", async (req: Request, res: Response) => {
       ? parseInt(req.query.customerId as string)
       : undefined;
 
-    let query = db.select().from(visitSessions);
+    // Build base query for both count and data
+    let dataQuery = db.select().from(visitSessions);
+    let countQuery = db.select({ count: count() }).from(visitSessions);
 
     if (customerId) {
-      query = query.where(eq(visitSessions.customerId, customerId)) as typeof query;
+      dataQuery = dataQuery.where(eq(visitSessions.customerId, customerId)) as typeof dataQuery;
+      countQuery = countQuery.where(eq(visitSessions.customerId, customerId)) as typeof countQuery;
     }
 
-    const rows = await query
-      .orderBy(desc(visitSessions.startedAt))
-      .limit(limit)
-      .offset(offset);
+    // Execute both queries
+    const [rows, countResult] = await Promise.all([
+      dataQuery
+        .orderBy(desc(visitSessions.startedAt))
+        .limit(limit)
+        .offset(offset),
+      countQuery
+    ]);
+
+    const total = countResult[0]?.count ?? 0;
 
     const sessions: VisitSession[] = rows.map((row) => ({
       id: row.id,
@@ -53,8 +62,8 @@ router.get("/", async (req: Request, res: Response) => {
       pagination: {
         page,
         limit,
-        total: sessions.length, // TODO: Add proper count query
-        totalPages: 1,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     };
 

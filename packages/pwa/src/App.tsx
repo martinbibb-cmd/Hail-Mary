@@ -482,6 +482,7 @@ interface TimelineEntry {
 // Visit Page Component - Voice-first workflow
 function VisitPage() {
   const { customerId, visitSessionId } = useParams<{ customerId: string; visitSessionId: string }>()
+  const navigate = useNavigate()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [session, setSession] = useState<VisitSession | null>(null)
   const [timeline, setTimeline] = useState<TimelineEntry[]>([])
@@ -584,8 +585,8 @@ function VisitPage() {
         status: 'completed',
         endedAt: new Date(),
       })
-      // Navigate back to customer detail
-      window.location.href = `/customers/${customerId}`
+      // Navigate back to customer detail using React Router
+      navigate(`/customers/${customerId}`)
     } catch (error) {
       console.error('Failed to end visit:', error)
     }

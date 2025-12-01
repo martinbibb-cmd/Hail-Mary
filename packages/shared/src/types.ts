@@ -1,0 +1,232 @@
+/**
+ * Shared Types for Hail-Mary Quote Tool
+ * 
+ * These types are used across the API and PWA to ensure consistency.
+ */
+
+// ============================================
+// Base Types
+// ============================================
+
+export interface BaseEntity {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// Customer & Lead Types
+// ============================================
+
+export interface Customer extends BaseEntity {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: Address;
+  notes?: string;
+}
+
+export interface Address {
+  line1: string;
+  line2?: string;
+  city: string;
+  postcode: string;
+  country: string;
+}
+
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'quoted' | 'won' | 'lost';
+
+export interface Lead extends BaseEntity {
+  customerId?: string;
+  customer?: Customer;
+  source: string;
+  status: LeadStatus;
+  description: string;
+  propertyType?: string;
+  estimatedValue?: number;
+  notes?: string;
+}
+
+// ============================================
+// Product Types
+// ============================================
+
+export type ProductCategory = 'boiler' | 'cylinder' | 'controls' | 'radiator' | 'parts' | 'labour' | 'other';
+
+export interface Product extends BaseEntity {
+  name: string;
+  description: string;
+  category: ProductCategory;
+  manufacturer?: string;
+  model?: string;
+  sku?: string;
+  price: number;
+  costPrice?: number;
+  specifications?: ProductSpecifications;
+  isActive: boolean;
+}
+
+export interface ProductSpecifications {
+  kw?: number;
+  dimensions?: {
+    height: number;
+    width: number;
+    depth: number;
+  };
+  flowRate?: number;
+  clearances?: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+    front: number;
+  };
+  partCode?: string;
+  [key: string]: unknown;
+}
+
+// ============================================
+// Quote Types
+// ============================================
+
+export type QuoteStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
+
+export interface Quote extends BaseEntity {
+  quoteNumber: string;
+  customerId: string;
+  customer?: Customer;
+  leadId?: string;
+  lead?: Lead;
+  status: QuoteStatus;
+  title: string;
+  description?: string;
+  lines: QuoteLine[];
+  subtotal: number;
+  vatRate: number;
+  vatAmount: number;
+  total: number;
+  validUntil: Date;
+  notes?: string;
+  terms?: string;
+}
+
+export interface QuoteLine {
+  id: string;
+  productId: string;
+  product?: Product;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+  lineTotal: number;
+}
+
+// ============================================
+// Appointment Types
+// ============================================
+
+export type AppointmentType = 'survey' | 'installation' | 'service' | 'followup';
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'rescheduled';
+
+export interface Appointment extends BaseEntity {
+  customerId: string;
+  customer?: Customer;
+  quoteId?: string;
+  quote?: Quote;
+  type: AppointmentType;
+  status: AppointmentStatus;
+  scheduledAt: Date;
+  duration: number; // minutes
+  address: Address;
+  notes?: string;
+  assignedTo?: string;
+}
+
+// ============================================
+// Survey Types
+// ============================================
+
+export interface Survey extends BaseEntity {
+  appointmentId: string;
+  appointment?: Appointment;
+  customerId: string;
+  customer?: Customer;
+  propertyType: string;
+  numberOfBedrooms?: number;
+  heatingType?: string;
+  currentBoiler?: string;
+  pipeWork?: string;
+  gasMeterLocation?: string;
+  accessNotes?: string;
+  photos?: SurveyPhoto[];
+  measurements?: Record<string, unknown>;
+  notes?: string;
+}
+
+export interface SurveyPhoto {
+  id: string;
+  url: string;
+  description?: string;
+  takenAt: Date;
+}
+
+// ============================================
+// Document Types
+// ============================================
+
+export type DocumentType = 'quote_pdf' | 'proposal' | 'invoice' | 'installation_instructions' | 'handover_pack' | 'other';
+
+export interface Document extends BaseEntity {
+  type: DocumentType;
+  name: string;
+  url: string;
+  customerId?: string;
+  quoteId?: string;
+  mimeType: string;
+  size: number;
+}
+
+// ============================================
+// API Response Types
+// ============================================
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// ============================================
+// Create/Update DTOs
+// ============================================
+
+export type CreateCustomerDto = Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>;
+export type UpdateCustomerDto = Partial<CreateCustomerDto>;
+
+export type CreateLeadDto = Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'customer'>;
+export type UpdateLeadDto = Partial<CreateLeadDto>;
+
+export type CreateProductDto = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
+export type UpdateProductDto = Partial<CreateProductDto>;
+
+export type CreateQuoteDto = Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'customer' | 'lead' | 'quoteNumber' | 'subtotal' | 'vatAmount' | 'total'>;
+export type UpdateQuoteDto = Partial<CreateQuoteDto>;
+
+export type CreateAppointmentDto = Omit<Appointment, 'id' | 'createdAt' | 'updatedAt' | 'customer' | 'quote'>;
+export type UpdateAppointmentDto = Partial<CreateAppointmentDto>;
+
+export type CreateSurveyDto = Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'customer' | 'appointment'>;
+export type UpdateSurveyDto = Partial<CreateSurveyDto>;

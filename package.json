@@ -13,6 +13,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "api:dev": "npm run dev -w packages/api",
     "pwa:dev": "npm run dev -w packages/pwa",
+    "assistant:dev": "npm run dev -w packages/assistant",
     "db:migrate": "npm run migrate -w packages/api"
   },
   "keywords": [

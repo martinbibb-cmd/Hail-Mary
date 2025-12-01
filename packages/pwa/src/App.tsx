@@ -1,6 +1,15 @@
-import { Routes, Route, Link } from 'react-router-dom'
+import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import type { Customer, Quote, Lead, ApiResponse, PaginatedResponse } from '@hail-mary/shared'
+import type { 
+  Customer, 
+  Quote, 
+  Lead, 
+  ApiResponse, 
+  PaginatedResponse,
+  VisitSession,
+  VisitObservation,
+  AssistantMessageResponse,
+} from '@hail-mary/shared'
 
 // Simple API client
 const api = {
@@ -11,6 +20,14 @@ const api = {
   async post<T>(url: string, data: unknown): Promise<T> {
     const res = await fetch(url, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return res.json()
+  },
+  async put<T>(url: string, data: unknown): Promise<T> {
+    const res = await fetch(url, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
@@ -91,12 +108,15 @@ function CustomersList() {
       ) : (
         <div className="list">
           {customers.map(c => (
-            <div key={c.id} className="list-item">
-              <div>
-                <h3>{c.firstName} {c.lastName}</h3>
-                <p>{c.email} • {c.phone}</p>
+            <Link key={c.id} to={`/customers/${c.id}`} className="list-item-link">
+              <div className="list-item">
+                <div>
+                  <h3>{c.firstName} {c.lastName}</h3>
+                  <p>{c.email} • {c.phone}</p>
+                </div>
+                <span className="arrow">→</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -366,6 +386,284 @@ function NewLead() {
   )
 }
 
+// Customer Detail Component with Start Visit button
+function CustomerDetail() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [startingVisit, setStartingVisit] = useState(false)
+
+  useEffect(() => {
+    if (id) {
+      api.get<ApiResponse<Customer>>(`/api/customers/${id}`)
+        .then(res => {
+          if (res.success && res.data) {
+            setCustomer(res.data)
+          }
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    }
+  }, [id])
+
+  const handleStartVisit = async () => {
+    if (!customer) return
+    setStartingVisit(true)
+    
+    try {
+      const res = await api.post<ApiResponse<VisitSession>>('/api/visit-sessions', {
+        accountId: 1, // TODO: Get from auth context
+        customerId: customer.id,
+      })
+      
+      if (res.success && res.data) {
+        navigate(`/customers/${customer.id}/visit/${res.data.id}`)
+      } else {
+        alert('Failed to start visit: ' + (res.error || 'Unknown error'))
+      }
+    } catch (error) {
+      alert('Failed to start visit')
+    } finally {
+      setStartingVisit(false)
+    }
+  }
+
+  if (loading) return <div className="loading">Loading...</div>
+  if (!customer) return <div className="error">Customer not found</div>
+
+  return (
+    <div className="detail-page">
+      <div className="page-header">
+        <h1>{customer.firstName} {customer.lastName}</h1>
+        <button 
+          className="btn-primary btn-large"
+          onClick={handleStartVisit}
+          disabled={startingVisit}
+        >
+          {startingVisit ? '🔄 Starting...' : '🎙️ Start Visit'}
+        </button>
+      </div>
+      
+      <div className="detail-card">
+        <h3>Contact Information</h3>
+        <p><strong>Email:</strong> {customer.email || 'N/A'}</p>
+        <p><strong>Phone:</strong> {customer.phone || 'N/A'}</p>
+      </div>
+      
+      <div className="detail-card">
+        <h3>Address</h3>
+        <p>{customer.address?.line1 || 'N/A'}</p>
+        {customer.address?.line2 && <p>{customer.address.line2}</p>}
+        <p>{customer.address?.city}, {customer.address?.postcode}</p>
+        <p>{customer.address?.country}</p>
+      </div>
+      
+      {customer.notes && (
+        <div className="detail-card">
+          <h3>Notes</h3>
+          <p>{customer.notes}</p>
+        </div>
+      )}
+      
+      <Link to="/customers" className="back-link">← Back to Customers</Link>
+    </div>
+  )
+}
+
+// Timeline entry type for the visit page
+interface TimelineEntry {
+  id: string
+  type: 'user' | 'system'
+  text: string
+  timestamp: Date
+}
+
+// Visit Page Component - Voice-first workflow
+function VisitPage() {
+  const { customerId, visitSessionId } = useParams<{ customerId: string; visitSessionId: string }>()
+  const navigate = useNavigate()
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [session, setSession] = useState<VisitSession | null>(null)
+  const [timeline, setTimeline] = useState<TimelineEntry[]>([])
+  const [inputText, setInputText] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load customer and session data
+        const [customerRes, sessionRes, observationsRes] = await Promise.all([
+          api.get<ApiResponse<Customer>>(`/api/customers/${customerId}`),
+          api.get<ApiResponse<VisitSession>>(`/api/visit-sessions/${visitSessionId}`),
+          api.get<ApiResponse<VisitObservation[]>>(`/api/visit-sessions/${visitSessionId}/observations`),
+        ])
+        
+        if (customerRes.success && customerRes.data) {
+          setCustomer(customerRes.data)
+        }
+        if (sessionRes.success && sessionRes.data) {
+          setSession(sessionRes.data)
+        }
+        if (observationsRes.success && observationsRes.data) {
+          // Convert existing observations to timeline entries
+          const entries: TimelineEntry[] = observationsRes.data.map(obs => ({
+            id: `obs-${obs.id}`,
+            type: 'user' as const,
+            text: obs.text,
+            timestamp: new Date(obs.createdAt),
+          }))
+          setTimeline(entries)
+        }
+      } catch (error) {
+        console.error('Failed to load visit data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadData()
+  }, [customerId, visitSessionId])
+
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || !session || !customer) return
+    
+    setSending(true)
+    const messageText = inputText.trim()
+    setInputText('')
+    
+    // Add user message to timeline immediately
+    const userEntry: TimelineEntry = {
+      id: `user-${Date.now()}`,
+      type: 'user',
+      text: messageText,
+      timestamp: new Date(),
+    }
+    setTimeline(prev => [...prev, userEntry])
+    
+    try {
+      // Send to assistant service
+      // Note: In production, the assistant runs on a different port (3002)
+      // For now, we're using the API proxy or assuming same-origin
+      const res = await api.post<ApiResponse<AssistantMessageResponse>>('/assistant/message', {
+        sessionId: session.id,
+        customerId: Number(customer.id),
+        text: messageText,
+      })
+      
+      if (res.success && res.data) {
+        // Add system response to timeline
+        const systemEntry: TimelineEntry = {
+          id: `system-${Date.now()}`,
+          type: 'system',
+          text: res.data.assistantReply,
+          timestamp: new Date(),
+        }
+        setTimeline(prev => [...prev, systemEntry])
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      // Add error message to timeline
+      const errorEntry: TimelineEntry = {
+        id: `error-${Date.now()}`,
+        type: 'system',
+        text: '⚠️ Failed to log observation. Please try again.',
+        timestamp: new Date(),
+      }
+      setTimeline(prev => [...prev, errorEntry])
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleEndVisit = async () => {
+    if (!session) return
+    
+    try {
+      await api.put<ApiResponse<VisitSession>>(`/api/visit-sessions/${session.id}`, {
+        status: 'completed',
+        endedAt: new Date(),
+      })
+      // Navigate back to customer detail using React Router
+      navigate(`/customers/${customerId}`)
+    } catch (error) {
+      console.error('Failed to end visit:', error)
+    }
+  }
+
+  if (loading) return <div className="loading">Loading visit...</div>
+  if (!customer || !session) return <div className="error">Visit not found</div>
+
+  return (
+    <div className="visit-page">
+      <div className="visit-header">
+        <div>
+          <h1>Visit: {customer.firstName} {customer.lastName}</h1>
+          <p className="visit-status">Status: {session.status}</p>
+        </div>
+        <button className="btn-secondary" onClick={handleEndVisit}>
+          End Visit
+        </button>
+      </div>
+      
+      <div className="timeline">
+        {timeline.length === 0 ? (
+          <p className="empty-timeline">
+            No observations yet. Start recording your visit notes below!
+          </p>
+        ) : (
+          timeline.map(entry => (
+            <div key={entry.id} className={`timeline-entry timeline-${entry.type}`}>
+              <div className="entry-header">
+                <span className="entry-label">
+                  {entry.type === 'user' ? '🎤 You said:' : '🤖 System:'}
+                </span>
+                <span className="entry-time">
+                  {entry.timestamp.toLocaleTimeString()}
+                </span>
+              </div>
+              <p className="entry-text">{entry.text}</p>
+            </div>
+          ))
+        )}
+      </div>
+      
+      <div className="input-area">
+        <div className="input-row">
+          <input
+            type="text"
+            placeholder="Type your observation or use voice..."
+            value={inputText}
+            onChange={e => setInputText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSendMessage()
+              }
+            }}
+            disabled={sending}
+          />
+          <button 
+            className="btn-primary btn-record"
+            onClick={handleSendMessage}
+            disabled={sending || !inputText.trim()}
+          >
+            {sending ? '...' : '📝 Log'}
+          </button>
+        </div>
+        <p className="input-hint">
+          Press Enter to log your observation. Voice input coming soon!
+        </p>
+      </div>
+      
+      <Link to={`/customers/${customerId}`} className="back-link">
+        ← Back to Customer
+      </Link>
+    </div>
+  )
+}
+
 // Main App Component
 function App() {
   return (
@@ -386,6 +684,8 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<NewCustomer />} />
+          <Route path="/customers/:id" element={<CustomerDetail />} />
+          <Route path="/customers/:customerId/visit/:visitSessionId" element={<VisitPage />} />
           <Route path="/quotes" element={<QuotesList />} />
           <Route path="/leads" element={<LeadsList />} />
           <Route path="/leads/new" element={<NewLead />} />

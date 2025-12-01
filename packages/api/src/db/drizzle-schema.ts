@@ -2,7 +2,8 @@
  * Drizzle ORM Schema for Hail-Mary Quote Tool
  *
  * PostgreSQL database schema using Drizzle ORM.
- * Core entities: accounts, users, customers, leads, products, quotes, quote_lines
+ * Core entities: accounts, users, customers, leads, products, quotes, quote_lines,
+ * visit_sessions, media_attachments, survey_templates, survey_instances, survey_answers, visit_observations
  */
 
 import {
@@ -14,6 +15,7 @@ import {
   timestamp,
   numeric,
   boolean,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 // Accounts / tenancies (optional but useful)
@@ -120,4 +122,109 @@ export const quoteLines = pgTable("quote_lines", {
     .notNull()
     .default("0"),
   lineTotal: numeric("line_total", { precision: 10, scale: 2 }).notNull(),
+});
+
+// ============================================
+// Visit & Survey Tables (for voice-first workflow)
+// ============================================
+
+// Visit sessions - tracks a single site visit for a customer
+export const visitSessions = pgTable("visit_sessions", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id")
+    .references(() => accounts.id)
+    .notNull(),
+  customerId: integer("customer_id")
+    .references(() => customers.id)
+    .notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  status: varchar("status", { length: 50 }).default("in_progress").notNull(), // in_progress, completed, cancelled
+});
+
+// Media attachments - photos, videos, measurement screenshots
+export const mediaAttachments = pgTable("media_attachments", {
+  id: serial("id").primaryKey(),
+  visitSessionId: integer("visit_session_id")
+    .references(() => visitSessions.id)
+    .notNull(),
+  customerId: integer("customer_id")
+    .references(() => customers.id)
+    .notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // photo, video, measurement, other
+  url: text("url").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Survey templates - user-designed survey structures
+export const surveyTemplates = pgTable("survey_templates", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id")
+    .references(() => accounts.id)
+    .notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  schema: jsonb("schema").notNull(), // holds sections and questions
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Survey instances - a specific survey for a specific visit
+export const surveyInstances = pgTable("survey_instances", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id")
+    .references(() => surveyTemplates.id)
+    .notNull(),
+  visitSessionId: integer("visit_session_id")
+    .references(() => visitSessions.id)
+    .notNull(),
+  customerId: integer("customer_id")
+    .references(() => customers.id)
+    .notNull(),
+  status: varchar("status", { length: 50 }).default("in_progress").notNull(), // in_progress, complete
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Survey answers - individual answers to survey questions
+export const surveyAnswers = pgTable("survey_answers", {
+  id: serial("id").primaryKey(),
+  instanceId: integer("instance_id")
+    .references(() => surveyInstances.id)
+    .notNull(),
+  questionId: varchar("question_id", { length: 255 }).notNull(), // matches question id from template.schema
+  value: jsonb("value"), // actual answer (string/number/bool/array)
+  source: varchar("source", { length: 50 }).notNull(), // voice, manual, ai
+  rawText: text("raw_text"), // original phrasing from transcript
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Visit observations - raw observations from STT during a visit
+export const visitObservations = pgTable("visit_observations", {
+  id: serial("id").primaryKey(),
+  visitSessionId: integer("visit_session_id")
+    .references(() => visitSessions.id)
+    .notNull(),
+  customerId: integer("customer_id")
+    .references(() => customers.id)
+    .notNull(),
+  text: text("text").notNull(), // raw observation from STT
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });

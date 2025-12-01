@@ -230,3 +230,143 @@ export type UpdateAppointmentDto = Partial<CreateAppointmentDto>;
 
 export type CreateSurveyDto = Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'customer' | 'appointment'>;
 export type UpdateSurveyDto = Partial<CreateSurveyDto>;
+
+// ============================================
+// Visit Session & Voice-First Types
+// ============================================
+
+export type VisitSessionStatus = 'in_progress' | 'completed' | 'cancelled';
+
+export interface VisitSession {
+  id: number;
+  accountId: number;
+  customerId: number;
+  customer?: Customer;
+  startedAt: Date;
+  endedAt?: Date;
+  status: VisitSessionStatus;
+}
+
+export type MediaType = 'photo' | 'video' | 'measurement' | 'other';
+
+export interface MediaAttachment {
+  id: number;
+  visitSessionId: number;
+  customerId: number;
+  type: MediaType;
+  url: string;
+  description?: string;
+  createdAt: Date;
+}
+
+// ============================================
+// Survey Template Types (User-designed surveys)
+// ============================================
+
+export type SurveyQuestionType = 'single_choice' | 'multiple_choice' | 'text' | 'number' | 'boolean' | 'date';
+
+export interface SurveyQuestion {
+  id: string;
+  label: string;
+  type: SurveyQuestionType;
+  options?: string[];
+  required?: boolean;
+}
+
+export interface SurveySection {
+  id: string;
+  label: string;
+  questions: SurveyQuestion[];
+}
+
+export interface SurveyTemplateSchema {
+  sections: SurveySection[];
+}
+
+export interface SurveyTemplate {
+  id: number;
+  accountId: number;
+  name: string;
+  description?: string;
+  schema: SurveyTemplateSchema;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type SurveyInstanceStatus = 'in_progress' | 'complete';
+
+export interface SurveyInstance {
+  id: number;
+  templateId: number;
+  template?: SurveyTemplate;
+  visitSessionId: number;
+  visitSession?: VisitSession;
+  customerId: number;
+  customer?: Customer;
+  status: SurveyInstanceStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type AnswerSource = 'voice' | 'manual' | 'ai';
+
+export interface SurveyAnswer {
+  id: number;
+  instanceId: number;
+  questionId: string;
+  value: unknown; // string/number/boolean/array
+  source: AnswerSource;
+  rawText?: string;
+  createdAt: Date;
+}
+
+export interface VisitObservation {
+  id: number;
+  visitSessionId: number;
+  customerId: number;
+  text: string;
+  createdAt: Date;
+}
+
+// ============================================
+// Visit Session DTOs
+// ============================================
+
+export interface CreateVisitSessionDto {
+  accountId: number;
+  customerId: number;
+}
+
+export interface UpdateVisitSessionDto {
+  status?: VisitSessionStatus;
+  endedAt?: Date;
+}
+
+// ============================================
+// Assistant API Types
+// ============================================
+
+export interface AssistantMessageRequest {
+  sessionId: number;
+  customerId: number;
+  text: string;
+}
+
+export interface AssistantAction {
+  type: string;
+  text?: string;
+  [key: string]: unknown;
+}
+
+export interface AssistantMessageResponse {
+  assistantReply: string;
+  actions: AssistantAction[];
+}
+
+export interface STTRequest {
+  audio?: string; // base64 encoded audio or URL
+}
+
+export interface STTResponse {
+  text: string;
+}

@@ -7,6 +7,9 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+# Vite generated files
+vite.config.d.ts
+vite.config.js
 
 # Database files
 *.db

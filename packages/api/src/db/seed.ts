@@ -37,16 +37,18 @@ async function main() {
   if (!existingCustomer) {
     const [insertedCustomer] = await db.insert(customers).values({
       accountId,
-      name: "Test Customer",
+      firstName: "Test",
+      lastName: "Customer",
       email: "test@example.com",
       phone: "00000000000",
       addressLine1: "1 Test Street",
-      town: "Testville",
+      city: "Testville",
       postcode: "TE57 1NG",
+      country: "UK",
     }).returning();
     console.log(`Seeded Test Customer (id: ${insertedCustomer.id})`);
   } else {
-    console.log(`Customer already exists for account ${accountId}: ${existingCustomer.name} (id: ${existingCustomer.id}), no seed needed`);
+    console.log(`Customer already exists for account ${accountId}: ${existingCustomer.firstName} ${existingCustomer.lastName} (id: ${existingCustomer.id}), no seed needed`);
   }
 
   // Properly close the connection pool

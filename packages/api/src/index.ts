@@ -4,12 +4,15 @@
  * Main entry point for the backend API.
  */
 
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import { initializeDatabase } from './db/schema';
+import { db } from './db/drizzle-client';
+import { users } from './db/drizzle-schema';
 
 // Import routes
 import customersRouter from './routes/customers';
@@ -49,6 +52,18 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Database health check endpoint
+app.get('/health/db', async (_req, res) => {
+  try {
+    // Simple query: select users (or just an empty result if no users exist)
+    const result = await db.select().from(users).limit(1);
+    res.json({ ok: true, usersSample: result });
+  } catch (err) {
+    console.error('DB health check failed', err);
+    res.status(500).json({ ok: false, error: 'DB connection failed' });
+  }
+});
+
 // API Routes
 app.use('/api/customers', customersRouter);
 app.use('/api/products', productsRouter);
@@ -71,6 +86,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 app.listen(PORT, () => {
   console.log(`🚀 Hail-Mary API running on http://localhost:${PORT}`);
   console.log(`   Health check: http://localhost:${PORT}/health`);
+  console.log(`   DB health check: http://localhost:${PORT}/health/db`);
   console.log(`   API endpoints:`);
   console.log(`   - GET/POST /api/customers`);
   console.log(`   - GET/POST /api/products`);

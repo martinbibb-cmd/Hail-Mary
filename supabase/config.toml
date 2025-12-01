@@ -1,0 +1,37 @@
+# Supabase configuration
+[api]
+# Port to use for the API URL.
+port = 54321
+# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API endpoints.
+schemas = ["public"]
+# Extra schemas to add to the search_path of every request.
+extra_search_path = ["public", "extensions"]
+# The maximum number of rows returned from a table view, or function, limited to 1000 by default.
+max_rows = 1000
+
+[db]
+# Port to use for the local database URL.
+port = 54322
+# The database major version to use.
+major_version = 15
+
+[studio]
+# Port to use for Supabase Studio.
+port = 54323
+
+# Enable this to use email sign-in in local development
+[auth]
+# Port to use for the local auth server.
+port = 54321
+# JWT expiry time in seconds.
+jwt_expiry = 3600
+# Enable anonymous sign-ins.
+enable_anonymous_sign_ins = false
+
+# Email service configuration
+[auth.email]
+# Enable email confirmations.
+enable_confirmations = true
+
+[analytics]
+enabled = false

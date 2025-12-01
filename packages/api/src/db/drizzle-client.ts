@@ -12,7 +12,7 @@ if (!process.env.DATABASE_URL) {
   console.warn("DATABASE_URL environment variable is not set. PostgreSQL features will not work.");
 }
 
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 

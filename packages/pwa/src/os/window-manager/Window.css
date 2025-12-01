@@ -1,0 +1,176 @@
+.os-window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a2e;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 400px;
+  min-height: 300px;
+}
+
+.os-window.active {
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
+  border-color: rgba(233, 69, 96, 0.3);
+}
+
+.os-window:not(.active) {
+  opacity: 0.95;
+}
+
+/* Title Bar */
+.os-window-titlebar {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(to bottom, #222244, #1a1a2e);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.os-window-titlebar:active {
+  cursor: grabbing;
+}
+
+.os-window.maximized .os-window-titlebar,
+.os-window.left .os-window-titlebar,
+.os-window.right .os-window-titlebar {
+  cursor: default;
+}
+
+/* Window Controls (macOS-style) */
+.os-window-controls {
+  display: flex;
+  gap: 8px;
+  margin-right: 12px;
+}
+
+.os-window-control {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-size: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  transition: all 0.15s;
+}
+
+.os-window-control:hover {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.os-window-control.close {
+  background: #ff5f56;
+}
+
+.os-window-control.close:hover {
+  background: #ff3b30;
+}
+
+.os-window-control.minimize {
+  background: #ffbd2e;
+}
+
+.os-window-control.minimize:hover {
+  background: #ff9f0a;
+}
+
+.os-window-control.maximize {
+  background: #27c93f;
+}
+
+.os-window-control.maximize:hover {
+  background: #32d74b;
+}
+
+/* Inactive window controls */
+.os-window:not(.active) .os-window-control {
+  background: #555;
+}
+
+/* Title */
+.os-window-title {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Snap Controls */
+.os-window-snap-controls {
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+}
+
+.os-window-snap {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.os-window-snap:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Content Area */
+.os-window-content {
+  flex: 1;
+  overflow: auto;
+  background: #16213e;
+}
+
+/* Resize Handle */
+.os-window-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  z-index: 10;
+}
+
+.os-window-resize-handle::before {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.os-window-resize-handle:hover::before {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Window in snapped states should not show resize handle */
+.os-window.maximized .os-window-resize-handle,
+.os-window.left .os-window-resize-handle,
+.os-window.right .os-window-resize-handle {
+  display: none;
+}

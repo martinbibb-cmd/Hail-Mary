@@ -1,0 +1,14 @@
+.os-window-manager {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 70px; /* Space for dock */
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1000; /* Above sidebar and content */
+}
+
+.os-window-manager .os-window {
+  pointer-events: auto;
+}

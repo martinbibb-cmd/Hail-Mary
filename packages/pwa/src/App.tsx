@@ -10,6 +10,7 @@ import type {
   VisitObservation,
   AssistantMessageResponse,
 } from '@hail-mary/shared'
+import { Dock, WindowManager } from './os'
 
 // Simple API client
 const api = {
@@ -667,7 +668,14 @@ function VisitPage() {
 // Main App Component
 function App() {
   return (
-    <div className="app">
+    <div className="app os-desktop">
+      {/* Window Manager for OS-style windows */}
+      <WindowManager />
+      
+      {/* macOS-style Dock at bottom */}
+      <Dock />
+      
+      {/* Traditional navigation sidebar */}
       <nav className="sidebar">
         <div className="logo">
           <h2>🔥 Hail-Mary</h2>

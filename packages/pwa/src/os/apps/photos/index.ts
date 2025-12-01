@@ -1,0 +1,1 @@
+export { PhotosApp } from './PhotosApp'

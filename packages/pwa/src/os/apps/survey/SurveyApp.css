@@ -1,0 +1,288 @@
+.survey-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+}
+
+.survey-app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.survey-app-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* Templates List */
+.templates-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.template-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: all 0.15s;
+}
+
+.template-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #e94560;
+  transform: translateX(4px);
+}
+
+.template-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.template-info strong {
+  font-size: 14px;
+}
+
+.template-info span {
+  font-size: 12px;
+  color: #888;
+}
+
+.template-meta {
+  color: #666 !important;
+}
+
+.template-arrow {
+  color: #e94560;
+  font-size: 18px;
+}
+
+.templates-empty {
+  color: #888;
+  text-align: center;
+  padding: 32px;
+}
+
+/* Survey Progress */
+.survey-progress {
+  margin-bottom: 20px;
+}
+
+.progress-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #e94560;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #888;
+}
+
+/* Survey Section */
+.survey-section {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.survey-section h3 {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.survey-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.survey-question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.survey-question label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.survey-question .required {
+  color: #e94560;
+  margin-left: 4px;
+}
+
+.survey-question input,
+.survey-question textarea {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+}
+
+.survey-question input:focus,
+.survey-question textarea:focus {
+  outline: none;
+  border-color: #e94560;
+}
+
+.survey-question textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Boolean Toggle */
+.boolean-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #888;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.toggle-btn.active {
+  background: rgba(233, 69, 96, 0.2);
+  border-color: #e94560;
+  color: white;
+}
+
+.toggle-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Choice Group */
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice-btn {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #888;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.choice-btn.active {
+  background: rgba(233, 69, 96, 0.2);
+  border-color: #e94560;
+  color: white;
+}
+
+.choice-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.choice-group.multiple .choice-btn.active {
+  background: rgba(39, 201, 63, 0.2);
+  border-color: #27c93f;
+}
+
+/* Survey Navigation */
+.survey-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 20px;
+  flex-shrink: 0;
+}
+
+/* Buttons */
+.btn-back {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  margin-right: 12px;
+}
+
+.btn-back:hover {
+  color: #e94560;
+}
+
+.btn-primary {
+  background: #e94560;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover {
+  background: #d13650;
+}
+
+.btn-primary:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #e94560;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

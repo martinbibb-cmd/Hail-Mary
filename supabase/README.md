@@ -56,13 +56,21 @@ CREATE POLICY "Authenticated users can view customers"
   TO authenticated
   USING (true);
 
--- Allow authenticated users to manage their own records
-CREATE POLICY "Users can manage their own customers"
-  ON customers FOR ALL
+-- Allow authenticated users to insert new customers
+CREATE POLICY "Authenticated users can insert customers"
+  ON customers FOR INSERT
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (true);
+
+-- Allow authenticated users to update customers
+CREATE POLICY "Authenticated users can update customers"
+  ON customers FOR UPDATE
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 ```
+
+> **Note**: When implementing user-specific access control, you'll need to add a `user_id` column to tables and reference `auth.uid()` in your policies.
 
 ## Environment Variables
 

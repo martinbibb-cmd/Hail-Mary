@@ -47,14 +47,20 @@ export const customers = pgTable("customers", {
   accountId: integer("account_id")
     .references(() => accounts.id)
     .notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
+  firstName: varchar("first_name", { length: 255 }).notNull(),
+  lastName: varchar("last_name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
   addressLine1: varchar("address_line_1", { length: 255 }),
   addressLine2: varchar("address_line_2", { length: 255 }),
-  town: varchar("town", { length: 255 }),
+  city: varchar("city", { length: 255 }),
   postcode: varchar("postcode", { length: 20 }),
+  country: varchar("country", { length: 100 }).default("UK"),
+  notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });

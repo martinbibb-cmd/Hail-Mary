@@ -9,7 +9,7 @@
 // ============================================
 
 export interface BaseEntity {
-  id: string;
+  id: string | number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,13 +18,17 @@ export interface BaseEntity {
 // Customer & Lead Types
 // ============================================
 
-export interface Customer extends BaseEntity {
+export interface Customer {
+  id: number;
+  accountId?: number;
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
   address: Address;
   notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Address {
@@ -38,7 +42,7 @@ export interface Address {
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'quoted' | 'won' | 'lost';
 
 export interface Lead extends BaseEntity {
-  customerId?: string;
+  customerId?: string | number;
   customer?: Customer;
   source: string;
   status: LeadStatus;
@@ -94,9 +98,9 @@ export type QuoteStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' 
 
 export interface Quote extends BaseEntity {
   quoteNumber: string;
-  customerId: string;
+  customerId: string | number;
   customer?: Customer;
-  leadId?: string;
+  leadId?: string | number;
   lead?: Lead;
   status: QuoteStatus;
   title: string;
@@ -112,8 +116,8 @@ export interface Quote extends BaseEntity {
 }
 
 export interface QuoteLine {
-  id: string;
-  productId: string;
+  id: string | number;
+  productId: string | number;
   product?: Product;
   description: string;
   quantity: number;
@@ -130,9 +134,9 @@ export type AppointmentType = 'survey' | 'installation' | 'service' | 'followup'
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'rescheduled';
 
 export interface Appointment extends BaseEntity {
-  customerId: string;
+  customerId: string | number;
   customer?: Customer;
-  quoteId?: string;
+  quoteId?: string | number;
   quote?: Quote;
   type: AppointmentType;
   status: AppointmentStatus;
@@ -148,9 +152,9 @@ export interface Appointment extends BaseEntity {
 // ============================================
 
 export interface Survey extends BaseEntity {
-  appointmentId: string;
+  appointmentId: string | number;
   appointment?: Appointment;
-  customerId: string;
+  customerId: string | number;
   customer?: Customer;
   propertyType: string;
   numberOfBedrooms?: number;
@@ -165,7 +169,7 @@ export interface Survey extends BaseEntity {
 }
 
 export interface SurveyPhoto {
-  id: string;
+  id: string | number;
   url: string;
   description?: string;
   takenAt: Date;
@@ -181,8 +185,8 @@ export interface Document extends BaseEntity {
   type: DocumentType;
   name: string;
   url: string;
-  customerId?: string;
-  quoteId?: string;
+  customerId?: string | number;
+  quoteId?: string | number;
   mimeType: string;
   size: number;
 }

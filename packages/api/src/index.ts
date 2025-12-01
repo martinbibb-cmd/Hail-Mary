@@ -6,6 +6,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import { initializeDatabase } from './db/schema';
@@ -29,9 +30,19 @@ if (!fs.existsSync(dataDir)) {
 // Initialize database
 initializeDatabase();
 
+// Rate limiting middleware
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, please try again later.' },
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/api', limiter); // Apply rate limiting to API routes
 
 // Health check endpoint
 app.get('/health', (_req, res) => {

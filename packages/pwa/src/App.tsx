@@ -1,5 +1,6 @@
 import { Routes, Route, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import type { Customer, Quote, Lead, ApiResponse, PaginatedResponse } from '@hail-mary/shared'
 
 // Simple API client
 const api = {
@@ -15,49 +16,6 @@ const api = {
     })
     return res.json()
   },
-}
-
-// Types
-interface Customer {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-}
-
-interface Quote {
-  id: string
-  quoteNumber: string
-  title: string
-  status: string
-  total: number
-  createdAt: string
-}
-
-interface Lead {
-  id: string
-  source: string
-  status: string
-  description: string
-  createdAt: string
-}
-
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-}
-
-interface PaginatedResponse<T> {
-  success: boolean
-  data: T[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
 }
 
 // Dashboard Component

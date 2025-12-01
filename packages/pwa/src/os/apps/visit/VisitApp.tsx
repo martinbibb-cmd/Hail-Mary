@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { 
   Customer, 
   VisitSession,
@@ -32,9 +32,58 @@ const api = {
   },
 }
 
+// Type declarations for Web Speech API
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList
+  resultIndex: number
+}
+
+interface SpeechRecognitionResultList {
+  length: number
+  item(index: number): SpeechRecognitionResult
+  [index: number]: SpeechRecognitionResult
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean
+  length: number
+  item(index: number): SpeechRecognitionAlternative
+  [index: number]: SpeechRecognitionAlternative
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string
+  confidence: number
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string
+  message: string
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  start(): void
+  stop(): void
+  abort(): void
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
+  onend: (() => void) | null
+  onstart: (() => void) | null
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition
+    webkitSpeechRecognition: new () => SpeechRecognition
+  }
+}
+
 interface TimelineEntry {
   id: string
-  type: 'user' | 'system'
+  type: 'user' | 'system' | 'transcript'
   text: string
   timestamp: Date
 }
@@ -50,6 +99,31 @@ export const VisitApp: React.FC = () => {
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  
+  // STT state
+  const [isListening, setIsListening] = useState(false)
+  const [transcript, setTranscript] = useState('')
+  const [sttSupported, setSttSupported] = useState(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+
+  // Check for STT support
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    setSttSupported(!!SpeechRecognition)
+    
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition()
+      recognitionRef.current.continuous = true
+      recognitionRef.current.interimResults = true
+      recognitionRef.current.lang = 'en-GB'
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     // Load customers
@@ -117,12 +191,13 @@ export const VisitApp: React.FC = () => {
     }
   }
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || !activeSession || !selectedCustomer) return
+  const handleSendMessage = async (messageOverride?: string) => {
+    const messageText = (messageOverride || inputText).trim()
+    if (!messageText || !activeSession || !selectedCustomer) return
     
     setSending(true)
-    const messageText = inputText.trim()
     setInputText('')
+    setTranscript('')
     
     // Add user message to timeline immediately
     const userEntry: TimelineEntry = {
@@ -162,6 +237,85 @@ export const VisitApp: React.FC = () => {
       setSending(false)
     }
   }
+
+  // STT Functions
+  const startListening = useCallback(() => {
+    if (!recognitionRef.current || isListening) return
+    
+    setTranscript('')
+    
+    recognitionRef.current.onstart = () => {
+      setIsListening(true)
+    }
+    
+    recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+      let interimTranscript = ''
+      let finalTranscript = ''
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        if (result.isFinal) {
+          finalTranscript += result[0].transcript
+        } else {
+          interimTranscript += result[0].transcript
+        }
+      }
+      
+      if (finalTranscript) {
+        setTranscript(prev => prev + ' ' + finalTranscript)
+      } else if (interimTranscript) {
+        // Show interim results in real-time
+        setTranscript(prev => {
+          const lastFinal = prev.lastIndexOf('.')
+          const base = lastFinal >= 0 ? prev.substring(0, lastFinal + 1) : prev
+          return base + ' ' + interimTranscript
+        })
+      }
+    }
+    
+    recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error)
+      setIsListening(false)
+      if (event.error !== 'aborted') {
+        setTimeline(prev => [...prev, {
+          id: `error-${Date.now()}`,
+          type: 'system',
+          text: `🎤 Microphone error: ${event.error}. Please try again.`,
+          timestamp: new Date(),
+        }])
+      }
+    }
+    
+    recognitionRef.current.onend = () => {
+      setIsListening(false)
+    }
+    
+    try {
+      recognitionRef.current.start()
+    } catch (error) {
+      console.error('Failed to start speech recognition:', error)
+    }
+  }, [isListening])
+
+  const stopListening = useCallback(() => {
+    if (!recognitionRef.current) return
+    
+    recognitionRef.current.stop()
+    setIsListening(false)
+    
+    // Send the transcript if we have content
+    if (transcript.trim()) {
+      handleSendMessage(transcript.trim())
+    }
+  }, [transcript])
+
+  const cancelListening = useCallback(() => {
+    if (!recognitionRef.current) return
+    
+    recognitionRef.current.abort()
+    setIsListening(false)
+    setTranscript('')
+  }, [])
 
   const endVisit = async () => {
     if (!activeSession) return
@@ -220,10 +374,35 @@ export const VisitApp: React.FC = () => {
         </div>
 
         <div className="visit-input-area">
+          {/* Live transcript display */}
+          {isListening && (
+            <div className="visit-transcript">
+              <div className="transcript-header">
+                <span className="transcript-recording">🔴 Recording...</span>
+                <button className="btn-cancel" onClick={cancelListening}>✕ Cancel</button>
+              </div>
+              <p className="transcript-text">
+                {transcript || 'Listening... Speak now.'}
+              </p>
+            </div>
+          )}
+          
           <div className="visit-input-row">
+            {/* Mic button */}
+            {sttSupported && (
+              <button
+                className={`btn-mic ${isListening ? 'recording' : ''}`}
+                onClick={isListening ? stopListening : startListening}
+                disabled={sending}
+                title={isListening ? 'Stop & Send' : 'Start Recording'}
+              >
+                {isListening ? '⏹️' : '🎤'}
+              </button>
+            )}
+            
             <input
               type="text"
-              placeholder="Type your observation..."
+              placeholder={isListening ? 'Recording...' : 'Type your observation...'}
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               onKeyDown={e => {
@@ -232,16 +411,22 @@ export const VisitApp: React.FC = () => {
                   handleSendMessage()
                 }
               }}
-              disabled={sending}
+              disabled={sending || isListening}
             />
             <button 
               className="btn-primary"
-              onClick={handleSendMessage}
-              disabled={sending || !inputText.trim()}
+              onClick={() => handleSendMessage()}
+              disabled={sending || !inputText.trim() || isListening}
             >
               {sending ? '...' : '📝 Log'}
             </button>
           </div>
+          
+          {!sttSupported && (
+            <p className="stt-unsupported">
+              ℹ️ Voice input requires Chrome, Edge, or Safari
+            </p>
+          )}
         </div>
       </div>
     )

@@ -10,10 +10,18 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.19",
+    "@fullcalendar/daygrid": "^6.1.19",
+    "@fullcalendar/interaction": "^6.1.19",
+    "@fullcalendar/react": "^6.1.19",
+    "@fullcalendar/timegrid": "^6.1.19",
     "@hail-mary/shared": "*",
+    "date-fns": "^3.6.0",
+    "framer-motion": "^10.18.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0"
+    "react-router-dom": "^6.21.0",
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

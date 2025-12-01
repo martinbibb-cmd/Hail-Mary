@@ -1,0 +1,222 @@
+.visit-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+}
+
+.visit-app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #888;
+}
+
+.visit-app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.visit-app-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.visit-app-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.visit-app-subtitle {
+  color: #888;
+  font-size: 14px;
+  margin: 0;
+}
+
+.visit-status-badge {
+  background: rgba(233, 69, 96, 0.2);
+  color: #e94560;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+/* Customer List */
+.visit-customer-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.visit-customer-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: all 0.15s;
+}
+
+.visit-customer-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #e94560;
+  transform: translateX(4px);
+}
+
+.visit-customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.visit-customer-info strong {
+  font-size: 14px;
+}
+
+.visit-customer-info span {
+  font-size: 12px;
+  color: #888;
+}
+
+.visit-customer-arrow {
+  color: #e94560;
+  font-size: 18px;
+}
+
+/* Timeline */
+.visit-timeline {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.visit-empty {
+  color: #888;
+  text-align: center;
+  padding: 32px;
+}
+
+.visit-entry {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.visit-entry:last-child {
+  margin-bottom: 0;
+}
+
+.visit-entry-user {
+  background: rgba(233, 69, 96, 0.15);
+  border-left: 3px solid #e94560;
+}
+
+.visit-entry-system {
+  background: rgba(100, 180, 100, 0.15);
+  border-left: 3px solid #64b464;
+}
+
+.visit-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.visit-entry-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.visit-entry-time {
+  font-size: 11px;
+  color: #666;
+}
+
+.visit-entry-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Input Area */
+.visit-input-area {
+  flex-shrink: 0;
+}
+
+.visit-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.visit-input-row input {
+  flex: 1;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+}
+
+.visit-input-row input:focus {
+  outline: none;
+  border-color: #e94560;
+}
+
+.visit-input-row input::placeholder {
+  color: #666;
+}
+
+/* Buttons */
+.btn-primary {
+  background: #e94560;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover {
+  background: #d13650;
+}
+
+.btn-primary:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #e94560;
+}

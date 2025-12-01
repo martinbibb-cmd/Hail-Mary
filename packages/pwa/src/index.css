@@ -32,6 +32,20 @@ body {
   min-height: 100vh;
 }
 
+/* OS Desktop Mode */
+.app.os-desktop {
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  padding-bottom: 70px; /* Space for dock */
+}
+
+.app.os-desktop .sidebar {
+  z-index: 100;
+}
+
+.app.os-desktop .content {
+  z-index: 100;
+}
+
 /* Sidebar */
 .sidebar {
   width: 250px;

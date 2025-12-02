@@ -17,6 +17,10 @@ interface AuthGuardProps {
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const { user, loading } = useAuth();
   const openWindow = useWindowStore((state) => state.openWindow);
+  const windows = useWindowStore((state) => state.windows);
+  
+  // Check if profile window is open
+  const isProfileWindowOpen = windows.some(w => w.appId === 'profile' && w.state !== 'minimized');
 
   const handleOpenLogin = () => {
     openWindow('profile', 'Profile');
@@ -37,21 +41,23 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     );
   }
 
-  // If not logged in, show overlay
+  // If not logged in, show overlay (but hide if profile window is open)
   if (!user) {
     return (
       <>
         {children}
-        <div className="auth-guard-overlay">
-          <div className="auth-guard-content">
-            <div className="auth-guard-icon">🔐</div>
-            <h2>Please Log In</h2>
-            <p>You need to be logged in to use Hail-Mary.</p>
-            <button className="auth-guard-button" onClick={handleOpenLogin}>
-              Open Login
-            </button>
+        {!isProfileWindowOpen && (
+          <div className="auth-guard-overlay">
+            <div className="auth-guard-content">
+              <div className="auth-guard-icon">🔐</div>
+              <h2>Please Log In</h2>
+              <p>You need to be logged in to use Hail-Mary.</p>
+              <button className="auth-guard-button" onClick={handleOpenLogin}>
+                Open Login
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </>
     );
   }

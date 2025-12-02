@@ -1,3 +1,6 @@
 export { Dock } from './dock'
 export { WindowManager, useWindowStore } from './window-manager'
 export type { WindowData, WindowState } from './window-manager'
+export { useWallpaper, useWallpaperStore, builtInWallpapers } from './wallpaper'
+export type { Wallpaper } from './wallpaper'
+export { Desktop } from './desktop'

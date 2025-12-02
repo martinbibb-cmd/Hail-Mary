@@ -23,6 +23,7 @@ import quotesRouter from './routes/quotes';
 import leadsRouter from './routes/leads';
 import appointmentsRouter from './routes/appointments';
 import visitSessionsRouter from './routes/visitSessions';
+import filesRouter from './routes/files';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -79,6 +80,7 @@ app.use('/api/quotes', quotesRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
+app.use('/api/files', filesRouter);
 
 // 404 handler
 app.use((_req, res) => {
@@ -106,6 +108,7 @@ app.listen(PORT, () => {
   console.log(`   - GET/POST /api/leads`);
   console.log(`   - GET/POST /api/appointments`);
   console.log(`   - GET/POST /api/visit-sessions`);
+  console.log(`   - GET/POST/DELETE /api/files`);
 });
 
 export default app;

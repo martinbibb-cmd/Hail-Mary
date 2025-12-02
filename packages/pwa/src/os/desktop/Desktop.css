@@ -1,0 +1,33 @@
+/**
+ * Desktop Styles
+ * 
+ * Main OS desktop layout and wallpaper styling
+ */
+
+.os-desktop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+  
+  /* Default gradient background */
+  background: var(--desktop-bg);
+  
+  /* For custom image wallpapers */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  
+  /* Space for dock */
+  padding-bottom: 70px;
+}
+
+/* Desktop content area */
+.os-desktop > .sidebar,
+.os-desktop > .content {
+  z-index: 100;
+}

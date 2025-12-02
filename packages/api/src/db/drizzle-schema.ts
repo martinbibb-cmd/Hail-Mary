@@ -253,3 +253,28 @@ export const visitObservations = pgTable("visit_observations", {
     .defaultNow()
     .notNull(),
 });
+
+// ============================================
+// User File System
+// ============================================
+
+// Files - user-uploaded files (photos, documents, exports, etc.)
+export const files = pgTable("files", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  visitId: integer("visit_id")
+    .references(() => visitSessions.id), // nullable - not all files are visit-related
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  size: integer("size").notNull(), // file size in bytes
+  storagePath: text("storage_path").notNull(), // path on disk
+  category: varchar("category", { length: 50 }).default("other"), // photos, quotes, exports, other
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

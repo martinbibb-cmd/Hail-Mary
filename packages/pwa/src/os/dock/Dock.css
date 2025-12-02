@@ -16,11 +16,12 @@
   display: flex;
   gap: 4px;
   padding: 8px 16px;
-  background: rgba(22, 33, 62, 0.85);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  background: var(--dock-bg, rgba(22, 33, 62, 0.75));
+  backdrop-filter: blur(var(--dock-blur, 20px));
+  -webkit-backdrop-filter: blur(var(--dock-blur, 20px));
+  border-radius: 18px;
+  border: 1px solid var(--dock-border, rgba(255, 255, 255, 0.1));
+  box-shadow: var(--dock-shadow, 0 10px 40px rgba(0, 0, 0, 0.4));
   pointer-events: auto;
 }
 
@@ -31,19 +32,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-secondary, rgba(255, 255, 255, 0.05));
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-fast, 0.15s ease);
 }
 
 .os-dock-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-hover, rgba(255, 255, 255, 0.1));
 }
 
 .os-dock-item.active {
-  background: rgba(233, 69, 96, 0.2);
+  background: var(--accent-soft, rgba(233, 69, 96, 0.2));
 }
 
 .os-dock-icon {
@@ -59,12 +60,12 @@
   transform: translateX(-50%);
   width: 5px;
   height: 5px;
-  background: #e94560;
+  background: var(--accent, #e94560);
   border-radius: 50%;
 }
 
 .os-dock-indicator.minimized {
-  background: #888;
+  background: var(--text-muted, #888);
 }
 
 /* Minimized windows section */
@@ -80,20 +81,21 @@
 .os-dock-minimized-item {
   width: 56px;
   height: 40px;
-  background: rgba(22, 33, 62, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--dock-bg, rgba(22, 33, 62, 0.9));
+  backdrop-filter: blur(var(--blur-md, 10px));
+  -webkit-backdrop-filter: blur(var(--blur-md, 10px));
+  border: 1px solid var(--dock-border, rgba(255, 255, 255, 0.1));
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: all var(--transition-fast, 0.15s ease);
 }
 
 .os-dock-minimized-item:hover {
-  background: rgba(22, 33, 62, 1);
-  border-color: rgba(233, 69, 96, 0.5);
+  background: var(--surface-primary, rgba(22, 33, 62, 1));
+  border-color: var(--accent-soft, rgba(233, 69, 96, 0.5));
 }
 
 .os-dock-minimized-preview {

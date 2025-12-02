@@ -1,16 +1,55 @@
 /**
  * Database Schema for Hail-Mary Quote Tool
  * 
- * Using SQLite with better-sqlite3 for simplicity and portability.
- * This can be migrated to PostgreSQL later if needed.
+ * Legacy SQLite schema using better-sqlite3 - DEVELOPMENT ONLY.
+ * In production (when DATABASE_URL is set), Postgres is used via Drizzle ORM.
+ * 
+ * Note: better-sqlite3 requires native bindings that may not be available in
+ * all environments (e.g., Docker containers). In production, we skip SQLite
+ * initialization entirely since Postgres is the primary database.
  */
 
-import Database from 'better-sqlite3';
 import path from 'path';
+
+// Type alias for better-sqlite3 Database
+type BetterSqlite3 = typeof import('better-sqlite3');
+
+// Only import better-sqlite3 if explicitly enabled for dev
+// This prevents crashes in production where the native module isn't built
+let Database: BetterSqlite3 | null = null;
+const USE_SQLITE_DEV = process.env.USE_SQLITE_DEV === 'true';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const HAS_POSTGRES = !!process.env.DATABASE_URL;
+
+// Only load better-sqlite3 in development mode when explicitly enabled
+// Note: Using require() instead of dynamic import() because:
+// 1. Module loading happens at startup, before any async context
+// 2. Dynamic import() returns a Promise which would complicate synchronous getDatabase()
+// 3. This is a conditional require guarded by environment checks
+if (USE_SQLITE_DEV && !IS_PRODUCTION) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+    Database = require('better-sqlite3') as BetterSqlite3;
+  } catch {
+    console.warn('better-sqlite3 native module not available. SQLite features disabled.');
+    console.warn('This is expected in production Docker containers. Using Postgres via DATABASE_URL.');
+    Database = null;
+  }
+}
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../../data/hailmary.db');
 
-export function getDatabase(): Database.Database {
+/**
+ * Get a SQLite database connection.
+ * @throws Error if SQLite is not available (production mode or missing native module)
+ */
+export function getDatabase(): import('better-sqlite3').Database {
+  if (!Database) {
+    throw new Error(
+      'SQLite is not available. In production, use the Drizzle ORM with DATABASE_URL (Postgres). ' +
+      'To use SQLite in development, set USE_SQLITE_DEV=true.'
+    );
+  }
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
@@ -18,6 +57,22 @@ export function getDatabase(): Database.Database {
 }
 
 export function initializeDatabase(): void {
+  // Skip SQLite initialization in production or when Postgres is configured
+  if (IS_PRODUCTION || HAS_POSTGRES) {
+    console.log('Skipping SQLite initialization - using PostgreSQL via DATABASE_URL');
+    return;
+  }
+  
+  if (!USE_SQLITE_DEV) {
+    console.log('SQLite disabled. Set USE_SQLITE_DEV=true to enable local SQLite database.');
+    return;
+  }
+  
+  if (!Database) {
+    console.warn('SQLite initialization skipped - better-sqlite3 module not available');
+    return;
+  }
+
   const db = getDatabase();
 
   // Customers table

@@ -14,8 +14,10 @@ COPY package.json package-lock.json .npmrc ./
 COPY packages/pwa/package.json ./packages/pwa/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install dependencies (skip optional deps to avoid native modules like better-sqlite3)
-RUN npm ci --ignore-scripts --omit=optional
+# Install dependencies 
+# --ignore-scripts: Skip native module compilation that may fail on Alpine
+# Note: Optional deps are required for Rollup 4.x native bindings
+RUN npm ci --ignore-scripts
 
 # Copy source files
 COPY packages/shared ./packages/shared

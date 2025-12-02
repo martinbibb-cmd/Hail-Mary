@@ -17,6 +17,7 @@ import {
   getCurrentUserFromToken,
   startPasswordReset,
   completePasswordReset,
+  AuthError,
 } from '../services/auth.service';
 
 const router = Router();
@@ -47,6 +48,7 @@ router.post('/register', async (req: Request, res: Response) => {
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
+        code: 'validation_error',
         error: 'Name, email, and password are required',
       });
     }
@@ -68,11 +70,20 @@ router.post('/register', async (req: Request, res: Response) => {
       message: 'Registration successful',
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Registration failed';
-    const status = message.includes('already registered') ? 409 : 400;
-    return res.status(status).json({
+    // Handle AuthError with proper code and status
+    if (error instanceof AuthError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        code: error.code,
+        error: error.message,
+      });
+    }
+    // Generic fallback for unexpected errors
+    console.error('Unexpected registration error:', error);
+    return res.status(500).json({
       success: false,
-      error: message,
+      code: 'internal_error',
+      error: 'An unexpected error occurred.',
     });
   }
 });
@@ -88,6 +99,7 @@ router.post('/login', async (req: Request, res: Response) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
+        code: 'validation_error',
         error: 'Email and password are required',
       });
     }
@@ -109,10 +121,20 @@ router.post('/login', async (req: Request, res: Response) => {
       message: 'Login successful',
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Login failed';
-    return res.status(401).json({
+    // Handle AuthError with proper code and status
+    if (error instanceof AuthError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        code: error.code,
+        error: error.message,
+      });
+    }
+    // Generic fallback for unexpected errors
+    console.error('Unexpected login error:', error);
+    return res.status(500).json({
       success: false,
-      error: message,
+      code: 'internal_error',
+      error: 'An unexpected error occurred.',
     });
   }
 });

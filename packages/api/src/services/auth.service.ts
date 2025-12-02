@@ -52,7 +52,7 @@ const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
 /**
  * Hash a password using bcrypt
  */
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
   return bcrypt.hash(password, saltRounds);
 }
@@ -100,72 +100,118 @@ function generateResetToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// Custom error class for authentication errors
+export class AuthError extends Error {
+  code: string;
+  statusCode: number;
+
+  constructor(code: string, message: string, statusCode: number = 401) {
+    super(message);
+    this.code = code;
+    this.statusCode = statusCode;
+    this.name = 'AuthError';
+  }
+}
+
+// Constant for invalid credentials error message
+const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
+
+// Helper to detect DB errors (like missing tables)
+function isDatabaseError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      (message.includes('relation') && message.includes('does not exist')) ||
+      (message.includes('table') && message.includes('does not exist')) ||
+      message.includes('connection refused') ||
+      message.includes('econnrefused') ||
+      message.includes('getaddrinfo enotfound')
+    );
+  }
+  return false;
+}
+
 /**
  * Register a new user with email and password
  */
 export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPayload; token: string }> {
   // Validate input
   if (!dto.email || !dto.password || !dto.name) {
-    throw new Error('Name, email, and password are required');
+    throw new AuthError('validation_error', 'Name, email, and password are required', 400);
   }
 
   if (dto.password.length < 8) {
-    throw new Error('Password must be at least 8 characters');
+    throw new AuthError('validation_error', 'Password must be at least 8 characters', 400);
   }
 
   // Normalize email
   const normalizedEmail = dto.email.toLowerCase().trim();
 
-  // Check if email already exists
-  const existingUsers = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, normalizedEmail));
+  try {
+    // Check if email already exists
+    const existingUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalizedEmail));
 
-  if (existingUsers.length > 0) {
-    throw new Error('Email already registered');
-  }
+    if (existingUsers.length > 0) {
+      throw new AuthError('email_exists', 'Email already registered', 409);
+    }
 
-  // Hash password
-  const passwordHash = await hashPassword(dto.password);
+    // Hash password
+    const passwordHash = await hashPassword(dto.password);
 
-  // Create or get default account
-  let accountId: number | undefined;
-  const existingAccounts = await db.select().from(accounts).limit(1);
-  if (existingAccounts.length > 0) {
-    accountId = existingAccounts[0].id;
-  } else {
-    const [newAccount] = await db
-      .insert(accounts)
-      .values({ name: 'Default Account' })
+    // Create or get default account
+    let accountId: number | undefined;
+    const existingAccounts = await db.select().from(accounts).limit(1);
+    if (existingAccounts.length > 0) {
+      accountId = existingAccounts[0].id;
+    } else {
+      const [newAccount] = await db
+        .insert(accounts)
+        .values({ name: 'Default Account' })
+        .returning();
+      accountId = newAccount.id;
+    }
+
+    // Create user
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email: normalizedEmail,
+        name: dto.name.trim(),
+        passwordHash,
+        authProvider: 'local',
+        accountId,
+        role: 'user',
+      })
       .returning();
-    accountId = newAccount.id;
+
+    const userPayload: UserPayload = {
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name,
+      accountId: newUser.accountId ?? undefined,
+      authProvider: newUser.authProvider,
+    };
+
+    const token = generateToken(userPayload);
+
+    return { user: userPayload, token };
+  } catch (error) {
+    // Re-throw AuthErrors as-is
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    // Handle database errors (missing tables, connection issues)
+    if (isDatabaseError(error)) {
+      console.error('Database error during registration:', error);
+      throw new AuthError('database_error', 'A database error occurred. Please try again later.', 500);
+    }
+    // Log unexpected errors and re-throw
+    console.error('Unexpected error during registration:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
   }
-
-  // Create user
-  const [newUser] = await db
-    .insert(users)
-    .values({
-      email: normalizedEmail,
-      name: dto.name.trim(),
-      passwordHash,
-      authProvider: 'local',
-      accountId,
-      role: 'user',
-    })
-    .returning();
-
-  const userPayload: UserPayload = {
-    id: newUser.id,
-    email: newUser.email,
-    name: newUser.name,
-    accountId: newUser.accountId ?? undefined,
-    authProvider: newUser.authProvider,
-  };
-
-  const token = generateToken(userPayload);
-
-  return { user: userPayload, token };
 }
 
 /**
@@ -173,49 +219,64 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
  */
 export async function loginWithPassword(dto: LoginDto): Promise<{ user: UserPayload; token: string }> {
   if (!dto.email || !dto.password) {
-    throw new Error('Email and password are required');
+    throw new AuthError('validation_error', 'Email and password are required', 400);
   }
 
   const normalizedEmail = dto.email.toLowerCase().trim();
 
-  // Find user by email
-  const foundUsers = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, normalizedEmail));
+  try {
+    // Find user by email
+    const foundUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalizedEmail));
 
-  if (foundUsers.length === 0) {
-    throw new Error('Invalid email or password');
+    if (foundUsers.length === 0) {
+      throw new AuthError('invalid_credentials', INVALID_CREDENTIALS_MESSAGE, 401);
+    }
+
+    const user = foundUsers[0];
+
+    // Check if this is a local auth user
+    if (user.authProvider !== 'local') {
+      throw new AuthError('invalid_credentials', 'Please use your SSO provider to login', 401);
+    }
+
+    // Verify password
+    if (!user.passwordHash) {
+      throw new AuthError('invalid_credentials', INVALID_CREDENTIALS_MESSAGE, 401);
+    }
+
+    const isValid = await verifyPassword(dto.password, user.passwordHash);
+    if (!isValid) {
+      throw new AuthError('invalid_credentials', INVALID_CREDENTIALS_MESSAGE, 401);
+    }
+
+    const userPayload: UserPayload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      accountId: user.accountId ?? undefined,
+      authProvider: user.authProvider,
+    };
+
+    const token = generateToken(userPayload);
+
+    return { user: userPayload, token };
+  } catch (error) {
+    // Re-throw AuthErrors as-is
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    // Handle database errors (missing tables, connection issues)
+    if (isDatabaseError(error)) {
+      console.error('Database error during login:', error);
+      throw new AuthError('database_error', 'A database error occurred. Please try again later.', 500);
+    }
+    // Log unexpected errors and re-throw
+    console.error('Unexpected error during login:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
   }
-
-  const user = foundUsers[0];
-
-  // Check if this is a local auth user
-  if (user.authProvider !== 'local') {
-    throw new Error('Please use your SSO provider to login');
-  }
-
-  // Verify password
-  if (!user.passwordHash) {
-    throw new Error('Invalid email or password');
-  }
-
-  const isValid = await verifyPassword(dto.password, user.passwordHash);
-  if (!isValid) {
-    throw new Error('Invalid email or password');
-  }
-
-  const userPayload: UserPayload = {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    accountId: user.accountId ?? undefined,
-    authProvider: user.authProvider,
-  };
-
-  const token = generateToken(userPayload);
-
-  return { user: userPayload, token };
 }
 
 /**

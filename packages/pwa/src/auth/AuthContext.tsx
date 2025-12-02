@@ -23,6 +23,25 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/**
+ * Get a user-friendly error message based on the error code
+ */
+function getFriendlyErrorMessage(code?: string, fallback?: string): string {
+  switch (code) {
+    case 'invalid_credentials':
+      return "We couldn't sign you in. Check your email and password and try again.";
+    case 'email_exists':
+      return 'An account with this email already exists.';
+    case 'validation_error':
+      return fallback || 'Please check your input and try again.';
+    case 'database_error':
+    case 'internal_error':
+      return 'Something went wrong signing you in. Please try again in a moment.';
+    default:
+      return fallback || 'Something went wrong. Please try again.';
+  }
+}
+
 // API helper for auth requests
 const authApi = {
   async post<T>(url: string, data?: unknown): Promise<T> {
@@ -57,7 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUser(null);
       }
-    } catch {
+    } catch (err) {
+      console.error('Auth refresh error:', err);
       setUser(null);
     } finally {
       setLoading(false);
@@ -78,11 +98,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(res.data);
         return true;
       } else {
-        setError(res.error || 'Login failed');
+        // Log full error for debugging
+        console.error('Login failed:', { code: res.code, error: res.error });
+        // Show user-friendly message
+        setError(getFriendlyErrorMessage(res.code, res.error));
         return false;
       }
-    } catch {
-      setError('Network error. Please try again.');
+    } catch (err) {
+      console.error('Login network error:', err);
+      setError('Something went wrong signing you in. Please try again in a moment.');
       return false;
     } finally {
       setLoading(false);
@@ -99,11 +123,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(res.data);
         return true;
       } else {
-        setError(res.error || 'Registration failed');
+        // Log full error for debugging
+        console.error('Registration failed:', { code: res.code, error: res.error });
+        // Show user-friendly message
+        setError(getFriendlyErrorMessage(res.code, res.error));
         return false;
       }
-    } catch {
-      setError('Network error. Please try again.');
+    } catch (err) {
+      console.error('Registration network error:', err);
+      setError('Something went wrong creating your account. Please try again in a moment.');
       return false;
     } finally {
       setLoading(false);
@@ -115,7 +143,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authApi.post('/api/auth/logout');
       setUser(null);
-    } catch {
+    } catch (err) {
+      console.error('Logout error:', err);
       // Even if logout fails, clear local state
       setUser(null);
     } finally {
@@ -130,8 +159,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await authApi.post<AuthResponse>('/api/auth/request-password-reset', { email });
       // Always return success to not leak email existence
       return res.success;
-    } catch {
-      setError('Network error. Please try again.');
+    } catch (err) {
+      console.error('Password reset request error:', err);
+      setError('Something went wrong. Please try again in a moment.');
       return false;
     } finally {
       setLoading(false);
@@ -146,11 +176,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.success) {
         return true;
       } else {
-        setError(res.error || 'Password reset failed');
+        console.error('Password reset failed:', { code: res.code, error: res.error });
+        setError(getFriendlyErrorMessage(res.code, res.error));
         return false;
       }
-    } catch {
-      setError('Network error. Please try again.');
+    } catch (err) {
+      console.error('Password reset network error:', err);
+      setError('Something went wrong. Please try again in a moment.');
       return false;
     } finally {
       setLoading(false);

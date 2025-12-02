@@ -32,6 +32,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
       BASE_URL: ${BASE_URL:-https://hail_mary.cloudbibb.uk}
       NODE_ENV: production
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,6 +42,8 @@ services:
     # Internal only - not exposed externally
     expose:
       - "3001"
+    command: >
+      sh -c "npm run db:push && npm run db:seed && npm run start"
 
   # Hail-Mary Assistant Service
   hailmary-assistant:

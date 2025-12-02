@@ -414,4 +414,5 @@ export interface AuthResponse {
   data?: AuthUser;
   message?: string;
   error?: string;
+  code?: string;
 }

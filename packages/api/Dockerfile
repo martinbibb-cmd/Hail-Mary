@@ -35,12 +35,19 @@ COPY package.json package-lock.json .npmrc ./
 COPY packages/api/package.json ./packages/api/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install production dependencies only
-RUN npm ci --omit=dev
+# Install ALL dependencies including dev deps for drizzle-kit and ts-node
+# These are required at runtime to run database migrations and seed scripts
+# on container startup (see docker-compose.yml command)
+RUN npm ci
 
 # Copy built files from builder
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/packages/api/dist ./packages/api/dist
+
+# Copy source files needed for migrations and seeding
+COPY --from=builder /app/packages/api/src ./packages/api/src
+COPY --from=builder /app/packages/api/drizzle.config.ts ./packages/api/
+COPY --from=builder /app/packages/api/tsconfig.json ./packages/api/
 
 # Set working directory to api
 WORKDIR /app/packages/api

@@ -1,0 +1,258 @@
+.leads-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+}
+
+.leads-app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #888;
+}
+
+.leads-app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.leads-app-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* Lead List */
+.leads-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lead-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: all 0.15s;
+}
+
+.lead-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #e94560;
+  transform: translateX(4px);
+}
+
+.lead-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lead-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lead-title-row strong {
+  font-size: 14px;
+}
+
+.lead-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.lead-info span {
+  font-size: 12px;
+  color: #888;
+}
+
+.lead-property {
+  color: #e94560 !important;
+}
+
+.lead-arrow {
+  color: #e94560;
+  font-size: 18px;
+}
+
+.leads-empty {
+  color: #888;
+  text-align: center;
+  padding: 32px;
+}
+
+/* Lead Detail */
+.lead-detail {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.lead-status-header {
+  margin-bottom: 16px;
+}
+
+.lead-status-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+}
+
+.detail-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.detail-card h3 {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #e94560;
+}
+
+.detail-card p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.detail-card p:last-child {
+  margin-bottom: 0;
+}
+
+.detail-card strong {
+  color: #888;
+}
+
+.lead-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.lead-actions .btn-primary,
+.lead-actions .btn-secondary {
+  flex: 1;
+  min-width: 120px;
+  padding: 14px 16px;
+  font-size: 14px;
+}
+
+/* Form */
+.leads-form {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-row label {
+  font-size: 12px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.form-row input,
+.form-row select,
+.form-row textarea {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+}
+
+.form-row input:focus,
+.form-row select:focus,
+.form-row textarea:focus {
+  outline: none;
+  border-color: #e94560;
+}
+
+.form-row textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.leads-message {
+  padding: 12px;
+  background: rgba(233, 69, 96, 0.2);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+/* Buttons */
+.btn-back {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  margin-right: 12px;
+}
+
+.btn-back:hover {
+  color: #e94560;
+}
+
+.btn-primary {
+  background: #e94560;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover {
+  background: #d13650;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #e94560;
+}

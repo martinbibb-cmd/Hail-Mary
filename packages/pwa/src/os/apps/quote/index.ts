@@ -1,0 +1,1 @@
+export { QuoteApp } from './QuoteApp'

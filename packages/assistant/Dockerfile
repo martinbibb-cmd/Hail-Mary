@@ -6,14 +6,14 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy root package files for workspace setup
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 
 # Copy all package.json files for workspace resolution
 COPY packages/assistant/package.json ./packages/assistant/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install dependencies
-RUN npm ci --ignore-scripts
+# Install dependencies (skip optional deps to avoid native modules like better-sqlite3)
+RUN npm ci --ignore-scripts --omit=optional
 
 # Copy source files
 COPY packages/shared ./packages/shared
@@ -32,12 +32,12 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 COPY packages/assistant/package.json ./packages/assistant/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install production dependencies only
-RUN npm ci --omit=dev --ignore-scripts
+# Install production dependencies only (skip optional deps to avoid native modules)
+RUN npm ci --omit=dev --omit=optional --ignore-scripts
 
 # Copy built files from builder
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist

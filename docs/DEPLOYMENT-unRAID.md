@@ -93,9 +93,9 @@ Create a `.env` file in `/mnt/user/appdata/hailmary/` or set these variables in 
 | `GEMINI_MODEL` | Gemini model to use | `gemini-1.5-flash` |
 | `PWA_PORT` | External port for the PWA | `80` |
 | `JWT_SECRET` | Secret for JWT tokens | `development-secret-change-in-production` |
-| `BASE_URL` | Base URL for the application | `https://hail_mary.cloudbibb.uk` |
+| `BASE_URL` | Base URL for the application (change to your domain) | (see docker-compose.yml) |
 
-> **Note:** PostgreSQL is configured with trust authentication for simplicity. The database is only accessible within the Docker network and not exposed externally.
+> **Security Note:** PostgreSQL is configured with trust authentication, meaning no password is required. This is suitable for local/internal deployments where the database is only accessible within the Docker network. For production deployments exposed to the internet, consider adding proper authentication.
 
 #### Example .env file
 
@@ -109,6 +109,9 @@ Create a `.env` file in `/mnt/user/appdata/hailmary/` or set these variables in 
 
 # Security (recommended to change in production)
 # JWT_SECRET=your-secure-jwt-secret
+
+# Base URL (change to your domain if using Cloudflare Tunnel)
+# BASE_URL=https://your-domain.com
 ```
 
 ### Step 5: Deploy the Stack

@@ -26,7 +26,7 @@ export const SettingsApp: React.FC = () => {
         {user && (
           <div className="settings-user-info">
             <div className="settings-user-avatar">
-              {user.name.charAt(0).toUpperCase()}
+              {user.name?.charAt(0)?.toUpperCase() || '?'}
             </div>
             <div className="settings-user-details">
               <p className="settings-user-name">{user.name}</p>
@@ -52,5 +52,3 @@ export const SettingsApp: React.FC = () => {
     </div>
   );
 };
-
-export default SettingsApp;

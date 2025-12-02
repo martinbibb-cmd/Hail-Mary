@@ -341,5 +341,3 @@ export const AuthScreen: React.FC = () => {
     </div>
   );
 };
-
-export default AuthScreen;

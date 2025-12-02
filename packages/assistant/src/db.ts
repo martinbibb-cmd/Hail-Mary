@@ -19,12 +19,14 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
+const DEFAULT_DATABASE_URL = "postgres://postgres@hailmary-postgres:5432/hailmary";
+
 if (!process.env.DATABASE_URL) {
-  console.warn("DATABASE_URL environment variable is not set. PostgreSQL features will not work.");
+  console.warn("DATABASE_URL environment variable is not set. Using default:", DEFAULT_DATABASE_URL);
 }
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL,
 });
 
 export const db = drizzle(pool);

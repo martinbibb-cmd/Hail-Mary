@@ -62,54 +62,65 @@ The `hailmary-pwa` container runs nginx which handles all routing:
 2. Search for "Docker Compose Manager"
 3. Click **Install**
 
-### Step 2: Create the Stack
+### Step 2: Clone the Repository
+
+Clone the Hail-Mary repository to your unRAID appdata folder:
+
+```bash
+cd /mnt/user/appdata
+git clone https://github.com/martinbibb-cmd/Hail-Mary.git hailmary
+cd hailmary
+```
+
+This creates the application at `/mnt/user/appdata/hailmary`.
+
+### Step 3: Create the Stack
 
 1. Go to **Docker** → **Compose**
 2. Click **Add New Stack**
 3. Name it: `hailmary`
-4. Paste the contents of `docker-compose.yml` from this repository
+4. Set the compose file path to `/mnt/user/appdata/hailmary/docker-compose.yml`
 
-### Step 3: Configure Environment Variables
+### Step 4: Configure Environment Variables
 
-Create a `.env` file or set these variables in the Docker Compose Manager UI:
-
-#### Required Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `POSTGRES_PASSWORD` | **Required.** PostgreSQL password | `your-secure-password-here` |
+Create a `.env` file in `/mnt/user/appdata/hailmary/` or set these variables in the Docker Compose Manager UI:
 
 #### Optional Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `POSTGRES_USER` | PostgreSQL username | `hailmary` |
-| `POSTGRES_DB` | PostgreSQL database name | `hailmary` |
 | `GEMINI_API_KEY` | Gemini API key for AI assistant | (empty) |
 | `GEMINI_MODEL` | Gemini model to use | `gemini-1.5-flash` |
 | `PWA_PORT` | External port for the PWA | `80` |
+| `JWT_SECRET` | Secret for JWT tokens | `development-secret-change-in-production` |
+| `BASE_URL` | Base URL for the application (change to your domain) | (see docker-compose.yml) |
+
+> **Security Note:** PostgreSQL is configured with trust authentication, meaning no password is required. This is suitable for local/internal deployments where the database is only accessible within the Docker network. For production deployments exposed to the internet, consider adding proper authentication.
 
 #### Example .env file
 
 ```bash
-# Required
-POSTGRES_PASSWORD=your-super-secure-password-change-me
-
-# Optional - uncomment to customize
-# POSTGRES_USER=hailmary
-# POSTGRES_DB=hailmary
+# AI Assistant (optional - leave empty if not using AI features)
 # GEMINI_API_KEY=your-gemini-api-key
 # GEMINI_MODEL=gemini-1.5-flash
+
+# Port configuration (optional)
 # PWA_PORT=80
+
+# Security (recommended to change in production)
+# JWT_SECRET=your-secure-jwt-secret
+
+# Base URL (change to your domain if using Cloudflare Tunnel)
+# BASE_URL=https://your-domain.com
 ```
 
-### Step 4: Deploy the Stack
+### Step 5: Deploy the Stack
 
 1. Click **Deploy Stack** or **Compose Up**
 2. Wait for all containers to start (this may take a few minutes on first run)
 3. Check container health in the Docker tab
 
-### Step 5: Verify Deployment
+### Step 6: Verify Deployment
 
 Test the deployment locally:
 
@@ -195,11 +206,11 @@ Protect your app with Cloudflare Access:
 
 ### Database Connection Issues
 
-1. Verify `POSTGRES_PASSWORD` is set
-2. Check that the postgres container is running: `docker ps | grep postgres`
+1. Check that the postgres container is running: `docker ps | grep postgres`
+2. Verify the container is healthy: `docker inspect hailmary-postgres | grep -A5 Health`
 3. Test database connection:
    ```bash
-   docker exec -it hailmary-postgres psql -U hailmary -d hailmary -c "SELECT 1;"
+   docker exec -it hailmary-postgres psql -U postgres -d hailmary -c "SELECT 1;"
    ```
 
 ### API Not Responding
@@ -226,30 +237,45 @@ Protect your app with Cloudflare Access:
 To update to a new version:
 
 1. Pull the latest code from GitHub
-2. In Docker Compose Manager, click **Update Stack** or **Compose Pull**
-3. Click **Compose Up** to restart with new images
+2. In Docker Compose Manager, click **Compose Up** (with build option enabled)
+3. Wait for containers to rebuild and restart
 
 Or via command line:
 
 ```bash
-cd /path/to/hail-mary
+cd /mnt/user/appdata/hailmary
 git pull
-docker-compose pull
-docker-compose up -d --build
+docker compose up -d --build
 ```
+
+> **Note:** The `--build` flag is required to rebuild images when source code changes. Without it, `docker compose up -d` will only restart containers with existing (old) images.
+
+### Quick Update Script
+
+For convenience, you can create a simple update script:
+
+```bash
+#!/bin/bash
+# /mnt/user/appdata/hailmary/update.sh
+cd /mnt/user/appdata/hailmary
+git pull
+docker compose up -d --build
+```
+
+Make it executable with `chmod +x update.sh` and run with `./update.sh`.
 
 ## Backup and Restore
 
 ### Backup PostgreSQL Data
 
 ```bash
-docker exec hailmary-postgres pg_dump -U hailmary hailmary > backup.sql
+docker exec hailmary-postgres pg_dump -U postgres hailmary > backup.sql
 ```
 
 ### Restore PostgreSQL Data
 
 ```bash
-cat backup.sql | docker exec -i hailmary-postgres psql -U hailmary hailmary
+cat backup.sql | docker exec -i hailmary-postgres psql -U postgres hailmary
 ```
 
 ### Backup Docker Volume

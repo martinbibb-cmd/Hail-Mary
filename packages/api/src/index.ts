@@ -9,8 +9,6 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
-import path from 'path';
-import fs from 'fs';
 import { initializeDatabase } from './db/schema';
 import { db } from './db/drizzle-client';
 import { users } from './db/drizzle-schema';
@@ -28,13 +26,7 @@ import filesRouter from './routes/files';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Ensure data directory exists
-const dataDir = path.join(__dirname, '../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Initialize database
+// Initialize database (PostgreSQL via Drizzle ORM)
 initializeDatabase();
 
 // Rate limiting middleware

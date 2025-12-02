@@ -62,6 +62,8 @@ router.post('/register', async (req: Request, res: Response) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        accountId: user.accountId,
+        authProvider: user.authProvider,
       },
       message: 'Registration successful',
     });
@@ -101,6 +103,8 @@ router.post('/login', async (req: Request, res: Response) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        accountId: user.accountId,
+        authProvider: user.authProvider,
       },
       message: 'Login successful',
     });
@@ -159,6 +163,8 @@ router.get('/me', (req: Request, res: Response) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      accountId: user.accountId,
+      authProvider: user.authProvider,
     },
   });
 });

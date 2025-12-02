@@ -16,6 +16,7 @@
 .photos-app-header h2 {
   margin: 0;
   font-size: 18px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 /* Camera Section */
@@ -59,15 +60,15 @@
 
 .camera-error {
   padding: 32px;
-  background: rgba(255, 95, 86, 0.1);
-  border: 1px solid rgba(255, 95, 86, 0.3);
+  background: var(--error-soft, rgba(220, 53, 69, 0.1));
+  border: 1px solid rgba(220, 53, 69, 0.3);
   border-radius: 12px;
   text-align: center;
 }
 
 .camera-error p {
   margin: 0 0 16px 0;
-  color: #ff5f56;
+  color: var(--error, #dc3545);
 }
 
 .camera-controls {
@@ -85,7 +86,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #e94560;
+  background: var(--accent, #6b8e23);
   border: 4px solid white;
   cursor: pointer;
   display: flex;
@@ -96,7 +97,7 @@
 
 .btn-capture:hover {
   transform: scale(1.1);
-  background: #d13650;
+  background: var(--accent-hover, #556b2f);
 }
 
 .btn-capture:active {
@@ -119,8 +120,8 @@
 }
 
 .btn-stop:hover {
-  background: rgba(255, 95, 86, 0.3);
-  border-color: #ff5f56;
+  background: rgba(220, 53, 69, 0.3);
+  border-color: var(--error, #dc3545);
 }
 
 /* Photo Gallery */
@@ -134,11 +135,11 @@
 .photos-gallery h3 {
   margin: 0 0 12px 0;
   font-size: 14px;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
 }
 
 .photos-empty {
-  color: #666;
+  color: var(--text-disabled, rgba(60, 50, 40, 0.5));
   text-align: center;
   padding: 24px;
   font-size: 14px;
@@ -209,7 +210,7 @@
 
 .photo-timestamp {
   margin: 0;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   font-size: 14px;
 }
 
@@ -222,7 +223,7 @@
 .btn-back {
   background: transparent;
   border: none;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   cursor: pointer;
   font-size: 14px;
   padding: 0;
@@ -230,13 +231,13 @@
 }
 
 .btn-back:hover {
-  color: #e94560;
+  color: var(--accent, #6b8e23);
 }
 
 .btn-icon {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.25));
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -249,12 +250,12 @@
 }
 
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #e94560;
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
+  border-color: var(--accent, #6b8e23);
 }
 
 .btn-primary {
-  background: #e94560;
+  background: var(--accent, #6b8e23);
   color: white;
   border: none;
   padding: 12px 20px;
@@ -265,7 +266,7 @@
 }
 
 .btn-primary:hover {
-  background: #d13650;
+  background: var(--accent-hover, #556b2f);
 }
 
 .btn-primary.btn-large {
@@ -275,8 +276,8 @@
 
 .btn-danger {
   background: transparent;
-  color: #ff5f56;
-  border: 1px solid #ff5f56;
+  color: var(--error, #dc3545);
+  border: 1px solid var(--error, #dc3545);
   padding: 12px 20px;
   border-radius: 8px;
   cursor: pointer;
@@ -285,5 +286,5 @@
 }
 
 .btn-danger:hover {
-  background: rgba(255, 95, 86, 0.2);
+  background: var(--error-soft, rgba(220, 53, 69, 0.15));
 }

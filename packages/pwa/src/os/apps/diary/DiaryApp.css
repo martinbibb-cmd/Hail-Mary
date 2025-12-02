@@ -17,6 +17,7 @@
 .diary-header h2 {
   margin: 0;
   font-size: 18px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .diary-legend {
@@ -29,7 +30,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
 }
 
 .diary-legend-dot {
@@ -43,7 +44,8 @@
   flex: 1;
   overflow: hidden;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
 }
 
 /* FullCalendar Theme Overrides */
@@ -54,54 +56,55 @@
 
 .diary-calendar .fc-theme-standard td,
 .diary-calendar .fc-theme-standard th {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--window-border, rgba(139, 119, 91, 0.15));
 }
 
 .diary-calendar .fc-theme-standard .fc-scrollgrid {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--window-border, rgba(139, 119, 91, 0.15));
 }
 
 .diary-calendar .fc-col-header-cell-cushion {
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   font-weight: 500;
   font-size: 12px;
   text-transform: uppercase;
 }
 
 .diary-calendar .fc-daygrid-day-number {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary, rgba(60, 50, 40, 0.8));
   padding: 8px;
 }
 
 .diary-calendar .fc-daygrid-day.fc-day-today {
-  background: rgba(233, 69, 96, 0.1) !important;
+  background: var(--accent-soft, rgba(107, 142, 35, 0.1)) !important;
 }
 
 .diary-calendar .fc-daygrid-day:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover, rgba(139, 119, 91, 0.08));
 }
 
 .diary-calendar .fc-button {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.1)) !important;
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.2)) !important;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95)) !important;
   font-size: 13px !important;
   padding: 8px 12px !important;
   text-transform: capitalize !important;
 }
 
 .diary-calendar .fc-button:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: var(--surface-hover, rgba(139, 119, 91, 0.15)) !important;
 }
 
 .diary-calendar .fc-button-active {
-  background: #e94560 !important;
-  border-color: #e94560 !important;
+  background: var(--accent, #6b8e23) !important;
+  border-color: var(--accent, #6b8e23) !important;
+  color: white !important;
 }
 
 .diary-calendar .fc-toolbar-title {
   font-size: 18px !important;
-  color: white;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .diary-calendar .fc-event {
@@ -112,7 +115,7 @@
 }
 
 .diary-calendar .fc-highlight {
-  background: rgba(233, 69, 96, 0.2) !important;
+  background: var(--accent-soft, rgba(107, 142, 35, 0.2)) !important;
 }
 
 /* Modal */
@@ -122,7 +125,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(60, 50, 40, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -130,7 +133,7 @@
 }
 
 .diary-modal {
-  background: #1a1a2e;
+  background: var(--surface-primary, #fffcf7);
   border-radius: 12px;
   width: 400px;
   max-width: 90vw;
@@ -138,8 +141,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(100, 80, 50, 0.25);
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.2));
 }
 
 .diary-modal-header {
@@ -147,18 +150,19 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
 }
 
 .diary-modal-header h3 {
   margin: 0;
   font-size: 16px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .diary-modal-close {
   background: transparent;
   border: none;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   cursor: pointer;
   font-size: 18px;
   padding: 4px;
@@ -167,8 +171,8 @@
 }
 
 .diary-modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .diary-modal-content {
@@ -184,7 +188,7 @@
 .diary-form-row label {
   display: block;
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   margin-bottom: 6px;
   text-transform: uppercase;
 }
@@ -194,10 +198,10 @@
 .diary-form-row textarea {
   width: 100%;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-primary, #fffcf7);
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.2));
   border-radius: 6px;
-  color: white;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
   font-size: 14px;
 }
 
@@ -205,7 +209,8 @@
 .diary-form-row select:focus,
 .diary-form-row textarea:focus {
   outline: none;
-  border-color: #e94560;
+  border-color: var(--accent, #6b8e23);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(107, 142, 35, 0.15));
 }
 
 .diary-form-row textarea {
@@ -216,9 +221,10 @@
 .diary-date-display {
   display: block;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
   border-radius: 6px;
   font-size: 14px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 /* Event Details */
@@ -229,7 +235,7 @@
 .diary-event-detail label {
   display: block;
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   margin-bottom: 6px;
 }
 
@@ -237,6 +243,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .diary-event-type-badge {
@@ -254,12 +261,12 @@
   gap: 12px;
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
 }
 
 /* Buttons */
 .btn-primary {
-  background: #e94560;
+  background: var(--accent, #6b8e23);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -270,13 +277,13 @@
 }
 
 .btn-primary:hover {
-  background: #d13650;
+  background: var(--accent-hover, #556b2f);
 }
 
 .btn-secondary {
   background: transparent;
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.25));
   padding: 10px 20px;
   border-radius: 6px;
   cursor: pointer;
@@ -285,14 +292,14 @@
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
+  border-color: var(--text-muted, rgba(60, 50, 40, 0.4));
 }
 
 .btn-danger {
   background: transparent;
-  color: #ff5f56;
-  border: 1px solid #ff5f56;
+  color: var(--error, #dc3545);
+  border: 1px solid var(--error, #dc3545);
   padding: 10px 20px;
   border-radius: 6px;
   cursor: pointer;
@@ -301,5 +308,5 @@
 }
 
 .btn-danger:hover {
-  background: rgba(255, 95, 86, 0.2);
+  background: var(--error-soft, rgba(220, 53, 69, 0.15));
 }

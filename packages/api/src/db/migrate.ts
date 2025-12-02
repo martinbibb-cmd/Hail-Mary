@@ -1,17 +1,11 @@
 /**
  * Database migration script
+ * 
+ * PostgreSQL is the only database used. Migrations are handled by Drizzle Kit.
+ * Run `npm run db:migrate` to apply migrations using Drizzle Kit.
  */
 
-import { initializeDatabase } from './schema';
-import fs from 'fs';
-import path from 'path';
-
-// Ensure data directory exists
-const dataDir = path.join(__dirname, '../../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
 console.log('Running database migrations...');
-initializeDatabase();
+console.log('Using PostgreSQL via DATABASE_URL with Drizzle ORM');
+console.log('Run `npm run db:push` or `npm run db:migrate` to apply schema changes');
 console.log('Migrations complete!');

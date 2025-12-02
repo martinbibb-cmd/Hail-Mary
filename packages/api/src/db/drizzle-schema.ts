@@ -149,6 +149,35 @@ export const quoteLines = pgTable("quote_lines", {
   lineTotal: numeric("line_total", { precision: 10, scale: 2 }).notNull(),
 });
 
+// Appointments - scheduled visits, surveys, installations
+export const appointments = pgTable("appointments", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id")
+    .references(() => accounts.id)
+    .notNull(),
+  customerId: integer("customer_id")
+    .references(() => customers.id)
+    .notNull(),
+  quoteId: integer("quote_id").references(() => quotes.id),
+  type: varchar("type", { length: 50 }).notNull(), // survey, installation, follow-up
+  status: varchar("status", { length: 50 }).default("scheduled").notNull(), // scheduled, completed, cancelled
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+  duration: integer("duration").notNull().default(60), // in minutes
+  addressLine1: varchar("address_line_1", { length: 255 }),
+  addressLine2: varchar("address_line_2", { length: 255 }),
+  city: varchar("city", { length: 255 }),
+  postcode: varchar("postcode", { length: 20 }),
+  country: varchar("country", { length: 100 }).default("UK"),
+  notes: text("notes"),
+  assignedTo: varchar("assigned_to", { length: 255 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 // ============================================
 // Visit & Survey Tables (for voice-first workflow)
 // ============================================

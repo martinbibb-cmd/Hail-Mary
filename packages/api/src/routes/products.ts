@@ -1,65 +1,60 @@
 /**
- * Product Routes - CRUD operations for products
+ * Product Routes - CRUD operations for products using Postgres/Drizzle
  */
 
 import { Router, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { getDatabase } from '../db/schema';
+import { db } from '../db/drizzle-client';
+import { products } from '../db/drizzle-schema';
+import { eq, count, and } from 'drizzle-orm';
 import type { Product, CreateProductDto, UpdateProductDto, ApiResponse, PaginatedResponse } from '@hail-mary/shared';
 
 const router = Router();
 
 // Helper to map database row to Product object
-function mapRowToProduct(row: Record<string, unknown>): Product {
+function mapRowToProduct(row: typeof products.$inferSelect): Product {
   return {
-    id: row.id as string,
-    name: row.name as string,
-    description: row.description as string,
-    category: row.category as Product['category'],
-    manufacturer: row.manufacturer as string | undefined,
-    model: row.model as string | undefined,
-    sku: row.sku as string | undefined,
-    price: row.price as number,
-    costPrice: row.cost_price as number | undefined,
-    specifications: row.specifications ? JSON.parse(row.specifications as string) : undefined,
-    isActive: Boolean(row.is_active),
-    createdAt: new Date(row.created_at as string),
-    updatedAt: new Date(row.updated_at as string),
+    id: String(row.id),
+    name: row.name,
+    description: row.description || '',
+    category: 'boiler' as Product['category'], // Default, not in postgres schema
+    manufacturer: undefined, // Not in postgres schema
+    model: undefined, // Not in postgres schema
+    sku: row.sku,
+    price: parseFloat(row.basePrice),
+    costPrice: undefined, // Not in postgres schema
+    specifications: undefined, // Not in postgres schema
+    isActive: row.isActive,
+    createdAt: row.createdAt,
+    updatedAt: row.createdAt, // Use createdAt since updatedAt not in postgres schema
   };
 }
 
 // GET /products - List all products
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const db = getDatabase();
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
-    const category = req.query.category as string;
     const activeOnly = req.query.active !== 'false';
 
-    let whereClause = 'WHERE 1=1';
-    const params: unknown[] = [];
+    // Build conditions
+    const conditions = [];
+    if (activeOnly) conditions.push(eq(products.isActive, true));
 
-    if (activeOnly) {
-      whereClause += ' AND is_active = 1';
-    }
-    if (category) {
-      whereClause += ' AND category = ?';
-      params.push(category);
-    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const countResult = db.prepare(`SELECT COUNT(*) as total FROM products ${whereClause}`).get(...params) as { total: number };
-    const total = countResult.total;
+    const [rows, countResult] = await Promise.all([
+      db
+        .select()
+        .from(products)
+        .where(whereClause)
+        .orderBy(products.name)
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(products).where(whereClause),
+    ]);
 
-    const rows = db.prepare(`
-      SELECT * FROM products 
-      ${whereClause}
-      ORDER BY name ASC 
-      LIMIT ? OFFSET ?
-    `).all(...params, limit, offset) as Record<string, unknown>[];
-
-    db.close();
+    const total = countResult[0]?.count ?? 0;
 
     const response: PaginatedResponse<Product> = {
       success: true,
@@ -74,6 +69,7 @@ router.get('/', (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
+    console.error('Error listing products:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,
@@ -83,13 +79,23 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // GET /products/:id - Get single product
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const db = getDatabase();
-    const row = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id) as Record<string, unknown> | undefined;
-    db.close();
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Invalid product ID',
+      };
+      return res.status(400).json(response);
+    }
 
-    if (!row) {
+    const rows = await db
+      .select()
+      .from(products)
+      .where(eq(products.id, id));
+
+    if (rows.length === 0) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Product not found',
@@ -99,10 +105,11 @@ router.get('/:id', (req: Request, res: Response) => {
 
     const response: ApiResponse<Product> = {
       success: true,
-      data: mapRowToProduct(row),
+      data: mapRowToProduct(rows[0]),
     };
     res.json(response);
   } catch (error) {
+    console.error('Error getting product:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,
@@ -112,43 +119,30 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // POST /products - Create product
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const dto: CreateProductDto = req.body;
-    const id = uuidv4();
-    const now = new Date().toISOString();
 
-    const db = getDatabase();
-    db.prepare(`
-      INSERT INTO products (id, name, description, category, manufacturer, model, sku, 
-        price, cost_price, specifications, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      id,
-      dto.name,
-      dto.description,
-      dto.category,
-      dto.manufacturer || null,
-      dto.model || null,
-      dto.sku || null,
-      dto.price,
-      dto.costPrice || null,
-      dto.specifications ? JSON.stringify(dto.specifications) : null,
-      dto.isActive ? 1 : 0,
-      now,
-      now
-    );
-
-    const row = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as Record<string, unknown>;
-    db.close();
+    const [inserted] = await db
+      .insert(products)
+      .values({
+        accountId: 1, // TODO: Get from auth context
+        sku: dto.sku || `SKU-${Date.now()}`,
+        name: dto.name,
+        description: dto.description || null,
+        basePrice: String(dto.price),
+        isActive: dto.isActive ?? true,
+      })
+      .returning();
 
     const response: ApiResponse<Product> = {
       success: true,
-      data: mapRowToProduct(row),
+      data: mapRowToProduct(inserted),
       message: 'Product created successfully',
     };
     res.status(201).json(response);
   } catch (error) {
+    console.error('Error creating product:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,
@@ -158,13 +152,24 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // PUT /products/:id - Update product
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const db = getDatabase();
-    const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Invalid product ID',
+      };
+      return res.status(400).json(response);
+    }
 
-    if (!existing) {
-      db.close();
+    // Check if product exists
+    const existing = await db
+      .select()
+      .from(products)
+      .where(eq(products.id, id));
+
+    if (existing.length === 0) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Product not found',
@@ -173,68 +178,36 @@ router.put('/:id', (req: Request, res: Response) => {
     }
 
     const dto: UpdateProductDto = req.body;
-    const now = new Date().toISOString();
 
-    const updates: string[] = [];
-    const values: unknown[] = [];
+    // Build update object with only provided fields
+    const updateData: Partial<{
+      sku: string;
+      name: string;
+      description: string | null;
+      basePrice: string;
+      isActive: boolean;
+    }> = {};
 
-    if (dto.name !== undefined) {
-      updates.push('name = ?');
-      values.push(dto.name);
-    }
-    if (dto.description !== undefined) {
-      updates.push('description = ?');
-      values.push(dto.description);
-    }
-    if (dto.category !== undefined) {
-      updates.push('category = ?');
-      values.push(dto.category);
-    }
-    if (dto.manufacturer !== undefined) {
-      updates.push('manufacturer = ?');
-      values.push(dto.manufacturer);
-    }
-    if (dto.model !== undefined) {
-      updates.push('model = ?');
-      values.push(dto.model);
-    }
-    if (dto.sku !== undefined) {
-      updates.push('sku = ?');
-      values.push(dto.sku);
-    }
-    if (dto.price !== undefined) {
-      updates.push('price = ?');
-      values.push(dto.price);
-    }
-    if (dto.costPrice !== undefined) {
-      updates.push('cost_price = ?');
-      values.push(dto.costPrice);
-    }
-    if (dto.specifications !== undefined) {
-      updates.push('specifications = ?');
-      values.push(JSON.stringify(dto.specifications));
-    }
-    if (dto.isActive !== undefined) {
-      updates.push('is_active = ?');
-      values.push(dto.isActive ? 1 : 0);
-    }
+    if (dto.sku !== undefined) updateData.sku = dto.sku;
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.description !== undefined) updateData.description = dto.description || null;
+    if (dto.price !== undefined) updateData.basePrice = String(dto.price);
+    if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
 
-    updates.push('updated_at = ?');
-    values.push(now);
-    values.push(req.params.id);
-
-    db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...values);
-
-    const row = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id) as Record<string, unknown>;
-    db.close();
+    const [updated] = await db
+      .update(products)
+      .set(updateData)
+      .where(eq(products.id, id))
+      .returning();
 
     const response: ApiResponse<Product> = {
       success: true,
-      data: mapRowToProduct(row),
+      data: mapRowToProduct(updated),
       message: 'Product updated successfully',
     };
     res.json(response);
   } catch (error) {
+    console.error('Error updating product:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,
@@ -244,13 +217,23 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // DELETE /products/:id - Delete product
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const db = getDatabase();
-    const result = db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
-    db.close();
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Invalid product ID',
+      };
+      return res.status(400).json(response);
+    }
 
-    if (result.changes === 0) {
+    const deleted = await db
+      .delete(products)
+      .where(eq(products.id, id))
+      .returning();
+
+    if (deleted.length === 0) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Product not found',
@@ -264,6 +247,7 @@ router.delete('/:id', (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
+    console.error('Error deleting product:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,

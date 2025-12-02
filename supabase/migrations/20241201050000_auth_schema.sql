@@ -3,7 +3,21 @@
 -- 
 -- Migration to create accounts, users, password_reset_tokens,
 -- and files tables required for authentication.
+-- 
+-- NOTE: This migration runs BEFORE visit_survey_schema.sql
 -- ============================================
+
+-- ============================================
+-- Trigger function to update updated_at timestamp
+-- (copied here to ensure it exists for this migration)
+-- ============================================
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ============================================
 -- Accounts Table (tenancies)
@@ -44,11 +58,12 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 
 -- ============================================
 -- Files Table
+-- Note: visit_id FK will be added later by visit_survey_schema migration
 -- ============================================
 CREATE TABLE IF NOT EXISTS files (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id),
-  visit_id INTEGER REFERENCES visit_sessions(id),
+  visit_id INTEGER, -- FK to visit_sessions will be added in later migration
   filename VARCHAR(255) NOT NULL,
   mime_type VARCHAR(100) NOT NULL,
   size INTEGER NOT NULL,

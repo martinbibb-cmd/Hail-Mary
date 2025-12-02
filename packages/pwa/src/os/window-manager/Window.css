@@ -2,18 +2,20 @@
   position: absolute;
   display: flex;
   flex-direction: column;
-  background: #1a1a2e;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  background: var(--window-bg, rgba(22, 33, 62, 0.85));
+  backdrop-filter: blur(var(--blur-lg, 20px));
+  -webkit-backdrop-filter: blur(var(--blur-lg, 20px));
+  border-radius: var(--window-radius, 12px);
+  box-shadow: var(--window-shadow, 0 10px 40px rgba(0, 0, 0, 0.5));
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--window-border, rgba(255, 255, 255, 0.1));
   min-width: 400px;
   min-height: 300px;
 }
 
 .os-window.active {
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
-  border-color: rgba(233, 69, 96, 0.3);
+  box-shadow: var(--window-shadow-active, 0 15px 50px rgba(0, 0, 0, 0.6));
+  border-color: var(--window-border-active, rgba(233, 69, 96, 0.3));
 }
 
 .os-window:not(.active) {
@@ -25,8 +27,10 @@
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background: linear-gradient(to bottom, #222244, #1a1a2e);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--titlebar-bg, linear-gradient(to bottom, rgba(34, 34, 68, 0.95), rgba(26, 26, 46, 0.95)));
+  backdrop-filter: blur(var(--blur-sm, 8px));
+  -webkit-backdrop-filter: blur(var(--blur-sm, 8px));
+  border-bottom: 1px solid var(--titlebar-border, rgba(255, 255, 255, 0.1));
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
@@ -68,32 +72,32 @@
 }
 
 .os-window-control.close {
-  background: #ff5f56;
+  background: var(--traffic-close, #ff5f56);
 }
 
 .os-window-control.close:hover {
-  background: #ff3b30;
+  background: var(--traffic-close-hover, #ff3b30);
 }
 
 .os-window-control.minimize {
-  background: #ffbd2e;
+  background: var(--traffic-minimize, #ffbd2e);
 }
 
 .os-window-control.minimize:hover {
-  background: #ff9f0a;
+  background: var(--traffic-minimize-hover, #ff9f0a);
 }
 
 .os-window-control.maximize {
-  background: #27c93f;
+  background: var(--traffic-maximize, #27c93f);
 }
 
 .os-window-control.maximize:hover {
-  background: #32d74b;
+  background: var(--traffic-maximize-hover, #32d74b);
 }
 
 /* Inactive window controls */
 .os-window:not(.active) .os-window-control {
-  background: #555;
+  background: var(--traffic-inactive, #555);
 }
 
 /* Title */

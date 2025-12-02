@@ -10,7 +10,7 @@ import type {
   VisitObservation,
   AssistantMessageResponse,
 } from '@hail-mary/shared'
-import { Dock, WindowManager } from './os'
+import { Dock, WindowManager, Desktop } from './os'
 import { AuthProvider, AuthGuard, ResetPasswordPage } from './auth'
 
 // Simple API client
@@ -679,7 +679,7 @@ function App() {
         {/* All other routes require auth */}
         <Route path="/*" element={
           <AuthGuard>
-            <div className="app os-desktop">
+            <Desktop>
               {/* Window Manager for OS-style windows */}
               <WindowManager />
               
@@ -710,7 +710,7 @@ function App() {
                   <Route path="/leads/new" element={<NewLead />} />
                 </Routes>
               </main>
-            </div>
+            </Desktop>
           </AuthGuard>
         } />
       </Routes>

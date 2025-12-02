@@ -3,18 +3,53 @@
  * 
  * Features:
  * - User profile section with logout
+ * - Appearance & Wallpaper settings
  * - General preferences
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useAuth } from '../../../auth';
+import { useWallpaper, builtInWallpapers, Wallpaper } from '../../wallpaper';
 import './SettingsApp.css';
 
 export const SettingsApp: React.FC = () => {
   const { user, logout } = useAuth();
+  const { 
+    currentWallpaper, 
+    customWallpapers, 
+    setWallpaper, 
+    addCustomWallpaper,
+    removeCustomWallpaper 
+  } = useWallpaper();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleWallpaperSelect = (wallpaper: Wallpaper) => {
+    setWallpaper(wallpaper);
+  };
+
+  const handleCustomUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      const newWallpaper = addCustomWallpaper(objectUrl, file.name.replace(/\.[^/.]+$/, ''));
+      setWallpaper(newWallpaper);
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveCustom = (wallpaper: Wallpaper, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (wallpaper.imageUrl) {
+      URL.revokeObjectURL(wallpaper.imageUrl);
+    }
+    removeCustomWallpaper(wallpaper.id);
   };
 
   return (
@@ -40,6 +75,73 @@ export const SettingsApp: React.FC = () => {
       </div>
 
       <div className="settings-section">
+        <h3>Appearance & Wallpaper</h3>
+        <p className="settings-section-desc">Choose a wallpaper for your desktop</p>
+        
+        <div className="wallpaper-grid">
+          {builtInWallpapers.map(wallpaper => (
+            <button
+              key={wallpaper.id}
+              className={`wallpaper-tile ${currentWallpaper.id === wallpaper.id ? 'active' : ''}`}
+              onClick={() => handleWallpaperSelect(wallpaper)}
+              style={{ background: wallpaper.preview }}
+              title={wallpaper.name}
+            >
+              <span className="wallpaper-name">{wallpaper.name}</span>
+              {currentWallpaper.id === wallpaper.id && (
+                <span className="wallpaper-check">✓</span>
+              )}
+            </button>
+          ))}
+          
+          {/* Custom wallpapers */}
+          {customWallpapers.map(wallpaper => (
+            <button
+              key={wallpaper.id}
+              className={`wallpaper-tile custom ${currentWallpaper.id === wallpaper.id ? 'active' : ''}`}
+              onClick={() => handleWallpaperSelect(wallpaper)}
+              style={{ 
+                backgroundImage: wallpaper.imageUrl ? `url(${wallpaper.imageUrl})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+              title={wallpaper.name}
+            >
+              <span className="wallpaper-name">{wallpaper.name}</span>
+              {currentWallpaper.id === wallpaper.id && (
+                <span className="wallpaper-check">✓</span>
+              )}
+              <button 
+                className="wallpaper-remove"
+                onClick={(e) => handleRemoveCustom(wallpaper, e)}
+                title="Remove wallpaper"
+              >
+                ✕
+              </button>
+            </button>
+          ))}
+          
+          {/* Upload custom wallpaper button */}
+          <button 
+            className="wallpaper-tile upload-tile"
+            onClick={() => fileInputRef.current?.click()}
+            title="Upload custom wallpaper"
+          >
+            <span className="upload-icon">+</span>
+            <span className="wallpaper-name">Custom</span>
+          </button>
+        </div>
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleCustomUpload}
+          style={{ display: 'none' }}
+        />
+      </div>
+
+      <div className="settings-section">
         <h3>About</h3>
         <div className="settings-about">
           <p><strong>Hail-Mary</strong></p>
@@ -52,3 +154,4 @@ export const SettingsApp: React.FC = () => {
     </div>
   );
 };
+

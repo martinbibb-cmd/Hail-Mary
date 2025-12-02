@@ -1,0 +1,115 @@
+/**
+ * Hail-Mary OS Theme
+ * 
+ * macOS-inspired theme with CSS variables for consistent styling.
+ * Supports wallpapers, glassmorphism, and user customization.
+ */
+
+:root {
+  /* Desktop & Background */
+  --desktop-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+  
+  /* Window styling */
+  --window-bg: rgba(22, 33, 62, 0.85);
+  --window-bg-solid: #16213e;
+  --window-border: rgba(255, 255, 255, 0.1);
+  --window-border-active: rgba(233, 69, 96, 0.3);
+  --window-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  --window-shadow-active: 0 15px 50px rgba(0, 0, 0, 0.6);
+  --window-radius: 12px;
+  
+  /* Titlebar */
+  --titlebar-bg: linear-gradient(to bottom, rgba(34, 34, 68, 0.95), rgba(26, 26, 46, 0.95));
+  --titlebar-border: rgba(255, 255, 255, 0.1);
+  
+  /* Dock styling */
+  --dock-bg: rgba(22, 33, 62, 0.75);
+  --dock-border: rgba(255, 255, 255, 0.1);
+  --dock-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  --dock-blur: 20px;
+  
+  /* Accent colors */
+  --accent: #e94560;
+  --accent-hover: #d13650;
+  --accent-soft: rgba(233, 69, 96, 0.2);
+  --accent-muted: rgba(233, 69, 96, 0.15);
+  
+  /* Traffic light colors (macOS window controls) */
+  --traffic-close: #ff5f56;
+  --traffic-close-hover: #ff3b30;
+  --traffic-minimize: #ffbd2e;
+  --traffic-minimize-hover: #ff9f0a;
+  --traffic-maximize: #27c93f;
+  --traffic-maximize-hover: #32d74b;
+  --traffic-inactive: #555;
+  
+  /* Text colors */
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-disabled: rgba(255, 255, 255, 0.4);
+  
+  /* Surface colors */
+  --surface-primary: #16213e;
+  --surface-secondary: rgba(255, 255, 255, 0.05);
+  --surface-hover: rgba(255, 255, 255, 0.1);
+  
+  /* Status colors */
+  --success: #27c93f;
+  --success-soft: rgba(39, 201, 63, 0.2);
+  --warning: #ffbd2e;
+  --warning-soft: rgba(255, 189, 46, 0.2);
+  --error: #ff5f56;
+  --error-soft: rgba(255, 95, 86, 0.2);
+  
+  /* Blur & effects */
+  --blur-sm: 8px;
+  --blur-md: 12px;
+  --blur-lg: 20px;
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* Built-in wallpapers as CSS classes */
+.wallpaper-default {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+}
+
+.wallpaper-aurora {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+
+.wallpaper-sunset {
+  background: linear-gradient(135deg, #ee7752 0%, #e73c7e 50%, #23a6d5 100%);
+}
+
+.wallpaper-ocean {
+  background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%);
+}
+
+.wallpaper-forest {
+  background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
+}
+
+.wallpaper-midnight {
+  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+}
+
+.wallpaper-rose {
+  background: linear-gradient(135deg, #360033 0%, #0b8793 100%);
+}
+
+.wallpaper-ember {
+  background: linear-gradient(135deg, #200122 0%, #6f0000 100%);
+}
+
+.wallpaper-lavender {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.wallpaper-mint {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}

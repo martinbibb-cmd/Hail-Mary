@@ -8,14 +8,14 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy root package files for workspace setup
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 
 # Copy all package.json files for workspace resolution
 COPY packages/pwa/package.json ./packages/pwa/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install dependencies
-RUN npm ci --ignore-scripts
+# Install dependencies (skip optional deps to avoid native modules like better-sqlite3)
+RUN npm ci --ignore-scripts --omit=optional
 
 # Copy source files
 COPY packages/shared ./packages/shared

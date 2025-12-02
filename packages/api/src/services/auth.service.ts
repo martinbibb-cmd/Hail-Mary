@@ -52,7 +52,7 @@ const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
 /**
  * Hash a password using bcrypt
  */
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
   return bcrypt.hash(password, saltRounds);
 }
@@ -113,13 +113,16 @@ export class AuthError extends Error {
   }
 }
 
+// Constant for invalid credentials error message
+const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
+
 // Helper to detect DB errors (like missing tables)
 function isDatabaseError(error: unknown): boolean {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return (
-      message.includes('relation') && message.includes('does not exist') ||
-      message.includes('table') && message.includes('does not exist') ||
+      (message.includes('relation') && message.includes('does not exist')) ||
+      (message.includes('table') && message.includes('does not exist')) ||
       message.includes('connection refused') ||
       message.includes('econnrefused') ||
       message.includes('getaddrinfo enotfound')
@@ -229,7 +232,7 @@ export async function loginWithPassword(dto: LoginDto): Promise<{ user: UserPayl
       .where(eq(users.email, normalizedEmail));
 
     if (foundUsers.length === 0) {
-      throw new AuthError('invalid_credentials', 'Invalid email or password.', 401);
+      throw new AuthError('invalid_credentials', INVALID_CREDENTIALS_MESSAGE, 401);
     }
 
     const user = foundUsers[0];
@@ -241,12 +244,12 @@ export async function loginWithPassword(dto: LoginDto): Promise<{ user: UserPayl
 
     // Verify password
     if (!user.passwordHash) {
-      throw new AuthError('invalid_credentials', 'Invalid email or password.', 401);
+      throw new AuthError('invalid_credentials', INVALID_CREDENTIALS_MESSAGE, 401);
     }
 
     const isValid = await verifyPassword(dto.password, user.passwordHash);
     if (!isValid) {
-      throw new AuthError('invalid_credentials', 'Invalid email or password.', 401);
+      throw new AuthError('invalid_credentials', INVALID_CREDENTIALS_MESSAGE, 401);
     }
 
     const userPayload: UserPayload = {

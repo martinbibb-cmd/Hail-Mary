@@ -35,7 +35,9 @@ COPY package.json package-lock.json .npmrc ./
 COPY packages/api/package.json ./packages/api/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install ALL dependencies (we need dev deps for drizzle-kit and ts-node)
+# Install ALL dependencies including dev deps for drizzle-kit and ts-node
+# These are required at runtime to run database migrations and seed scripts
+# on container startup (see docker-compose.yml command)
 RUN npm ci
 
 # Copy built files from builder

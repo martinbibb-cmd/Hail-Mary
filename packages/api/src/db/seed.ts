@@ -10,18 +10,10 @@
  */
 
 import "dotenv/config";
-import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, pool } from "./drizzle-client";
 import { accounts, customers, users } from "./drizzle-schema";
-
-/**
- * Hash a password using bcrypt
- */
-async function hashPassword(password: string): Promise<string> {
-  const saltRounds = 12;
-  return bcrypt.hash(password, saltRounds);
-}
+import { hashPassword } from "../services/auth.service";
 
 async function main() {
   console.log("Starting database seed...");

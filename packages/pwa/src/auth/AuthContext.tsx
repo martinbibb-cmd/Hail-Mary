@@ -8,11 +8,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { AuthUser, RegisterDto, LoginDto, AuthResponse } from '@hail-mary/shared';
 
-// Extended AuthResponse with optional code field
-interface ExtendedAuthResponse extends AuthResponse {
-  code?: string;
-}
-
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
@@ -75,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Fetch current user on mount
   const refresh = useCallback(async () => {
     try {
-      const res = await authApi.get<ExtendedAuthResponse>('/api/auth/me');
+      const res = await authApi.get<AuthResponse>('/api/auth/me');
       if (res.success && res.data) {
         setUser(res.data);
       } else {
@@ -98,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const data: LoginDto = { email, password };
-      const res = await authApi.post<ExtendedAuthResponse>('/api/auth/login', data);
+      const res = await authApi.post<AuthResponse>('/api/auth/login', data);
       if (res.success && res.data) {
         setUser(res.data);
         return true;
@@ -123,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const data: RegisterDto = { name, email, password };
-      const res = await authApi.post<ExtendedAuthResponse>('/api/auth/register', data);
+      const res = await authApi.post<AuthResponse>('/api/auth/register', data);
       if (res.success && res.data) {
         setUser(res.data);
         return true;
@@ -161,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     setError(null);
     try {
-      const res = await authApi.post<ExtendedAuthResponse>('/api/auth/request-password-reset', { email });
+      const res = await authApi.post<AuthResponse>('/api/auth/request-password-reset', { email });
       // Always return success to not leak email existence
       return res.success;
     } catch (err) {
@@ -177,7 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     setError(null);
     try {
-      const res = await authApi.post<ExtendedAuthResponse>('/api/auth/reset-password', { token, newPassword });
+      const res = await authApi.post<AuthResponse>('/api/auth/reset-password', { token, newPassword });
       if (res.success) {
         return true;
       } else {

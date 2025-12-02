@@ -85,7 +85,8 @@ Create a `.env` file or set these variables in the Docker Compose Manager UI:
 |----------|-------------|---------|
 | `POSTGRES_USER` | PostgreSQL username | `hailmary` |
 | `POSTGRES_DB` | PostgreSQL database name | `hailmary` |
-| `OPENAI_API_KEY` | OpenAI API key for AI assistant | (empty) |
+| `GEMINI_API_KEY` | Gemini API key for AI assistant | (empty) |
+| `GEMINI_MODEL` | Gemini model to use | `gemini-1.5-flash` |
 | `PWA_PORT` | External port for the PWA | `80` |
 
 #### Example .env file
@@ -97,7 +98,8 @@ POSTGRES_PASSWORD=your-super-secure-password-change-me
 # Optional - uncomment to customize
 # POSTGRES_USER=hailmary
 # POSTGRES_DB=hailmary
-# OPENAI_API_KEY=sk-your-openai-api-key
+# GEMINI_API_KEY=your-gemini-api-key
+# GEMINI_MODEL=gemini-1.5-flash
 # PWA_PORT=80
 ```
 

@@ -11,19 +11,26 @@
 
 import path from 'path';
 
+// Type alias for better-sqlite3 Database
+type BetterSqlite3 = typeof import('better-sqlite3');
+
 // Only import better-sqlite3 if explicitly enabled for dev
 // This prevents crashes in production where the native module isn't built
-let Database: typeof import('better-sqlite3') | null = null;
+let Database: BetterSqlite3 | null = null;
 const USE_SQLITE_DEV = process.env.USE_SQLITE_DEV === 'true';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const HAS_POSTGRES = !!process.env.DATABASE_URL;
 
 // Only load better-sqlite3 in development mode when explicitly enabled
+// Note: Using require() instead of dynamic import() because:
+// 1. Module loading happens at startup, before any async context
+// 2. Dynamic import() returns a Promise which would complicate synchronous getDatabase()
+// 3. This is a conditional require guarded by environment checks
 if (USE_SQLITE_DEV && !IS_PRODUCTION) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    Database = require('better-sqlite3');
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+    Database = require('better-sqlite3') as BetterSqlite3;
+  } catch {
     console.warn('better-sqlite3 native module not available. SQLite features disabled.');
     console.warn('This is expected in production Docker containers. Using Postgres via DATABASE_URL.');
     Database = null;
@@ -32,6 +39,10 @@ if (USE_SQLITE_DEV && !IS_PRODUCTION) {
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../../data/hailmary.db');
 
+/**
+ * Get a SQLite database connection.
+ * @throws Error if SQLite is not available (production mode or missing native module)
+ */
 export function getDatabase(): import('better-sqlite3').Database {
   if (!Database) {
     throw new Error(

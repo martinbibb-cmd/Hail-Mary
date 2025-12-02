@@ -47,32 +47,43 @@ const storage = multer.diskStorage({
   },
 });
 
+// Allowed file types with both MIME types and extensions
+const allowedTypes: Record<string, string[]> = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/gif': ['.gif'],
+  'image/webp': ['.webp'],
+  'application/pdf': ['.pdf'],
+  'application/msword': ['.doc'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  'application/vnd.ms-excel': ['.xls'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+  'text/plain': ['.txt'],
+  'text/csv': ['.csv'],
+};
+
 const upload = multer({
   storage,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit
   },
   fileFilter: (_req, file, cb) => {
-    // Allow common file types
-    const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain',
-      'text/csv',
-    ];
-    
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
+    // Check MIME type
+    if (!allowedTypes[file.mimetype]) {
       cb(new Error(`File type ${file.mimetype} not allowed`));
+      return;
     }
+    
+    // Also validate file extension matches allowed types for this MIME
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedExts = allowedTypes[file.mimetype];
+    
+    if (!allowedExts.includes(ext)) {
+      cb(new Error(`File extension ${ext} does not match expected types for ${file.mimetype}`));
+      return;
+    }
+    
+    cb(null, true);
   },
 });
 

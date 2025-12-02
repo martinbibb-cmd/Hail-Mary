@@ -1,0 +1,87 @@
+/**
+ * Auth Guard Styles
+ */
+
+.auth-guard-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.auth-guard-loading {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.auth-guard-content {
+  text-align: center;
+  color: #fff;
+  padding: 48px;
+  max-width: 400px;
+}
+
+.auth-guard-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.auth-guard-spinner {
+  font-size: 48px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth-guard-content h2 {
+  margin: 0 0 12px 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.auth-guard-content p {
+  margin: 0 0 32px 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.auth-guard-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-guard-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+}

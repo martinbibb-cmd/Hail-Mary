@@ -2,6 +2,7 @@ import React from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useWindowStore } from './windowStore'
 import { Window } from './Window'
+import { ProfileApp } from '../apps/profile/ProfileApp'
 import { VisitApp } from '../apps/visit/VisitApp'
 import { DiaryApp } from '../apps/diary/DiaryApp'
 import { CustomersApp } from '../apps/customers/CustomersApp'
@@ -13,6 +14,7 @@ import './WindowManager.css'
 
 // Map app IDs to components
 const appComponents: Record<string, React.FC> = {
+  profile: ProfileApp,
   visit: VisitApp,
   diary: DiaryApp,
   customers: CustomersApp,

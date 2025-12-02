@@ -12,19 +12,18 @@ COPY package.json package-lock.json .npmrc ./
 COPY packages/assistant/package.json ./packages/assistant/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install dependencies (skip optional deps to avoid native modules like better-sqlite3)
-RUN npm ci --ignore-scripts --omit=optional
+# Install dependencies
+# Note: Optional deps are required for Rollup 4.x native bindings
+RUN npm ci
 
 # Copy source files
 COPY packages/shared ./packages/shared
 COPY packages/assistant ./packages/assistant
 
-# Build shared package first, then assistant
-WORKDIR /app/packages/shared
-RUN npm run build
-
-WORKDIR /app/packages/assistant
-RUN npm run build
+# Build shared package first, then assistant (using workspace commands from root)
+WORKDIR /app
+RUN npm run build -w packages/shared
+RUN npm run build -w packages/assistant
 
 # Production stage
 FROM node:20-alpine AS production
@@ -36,8 +35,8 @@ COPY package.json package-lock.json .npmrc ./
 COPY packages/assistant/package.json ./packages/assistant/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install production dependencies only (skip optional deps to avoid native modules)
-RUN npm ci --omit=dev --omit=optional --ignore-scripts
+# Install production dependencies only
+RUN npm ci --omit=dev
 
 # Copy built files from builder
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist

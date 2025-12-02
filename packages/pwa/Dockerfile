@@ -14,20 +14,20 @@ COPY package.json package-lock.json .npmrc ./
 COPY packages/pwa/package.json ./packages/pwa/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install dependencies (skip optional deps to avoid native modules like better-sqlite3)
-RUN npm ci --ignore-scripts --omit=optional
+# Install dependencies 
+# Note: Optional deps are required for Rollup 4.x native bindings
+RUN npm ci
 
 # Copy source files
 COPY packages/shared ./packages/shared
 COPY packages/pwa ./packages/pwa
 
-# Build shared package first
-WORKDIR /app/packages/shared
-RUN npm run build
+# Build shared package first (using workspace command from root)
+WORKDIR /app
+RUN npm run build -w packages/shared
 
-# Build PWA
-WORKDIR /app/packages/pwa
-RUN npm run build
+# Build PWA (using workspace command from root)
+RUN npm run build -w packages/pwa
 
 # Production stage with nginx
 FROM nginx:alpine AS production

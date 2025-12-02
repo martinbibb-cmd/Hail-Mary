@@ -7,6 +7,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
@@ -15,6 +16,7 @@ import { db } from './db/drizzle-client';
 import { users } from './db/drizzle-schema';
 
 // Import routes
+import authRouter from './routes/auth';
 import customersRouter from './routes/customers';
 import productsRouter from './routes/products';
 import quotesRouter from './routes/quotes';
@@ -44,8 +46,12 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || true,
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 app.use('/api', limiter); // Apply rate limiting to API routes
 
 // Health check endpoint
@@ -66,6 +72,7 @@ app.get('/health/db', async (_req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/quotes', quotesRouter);
@@ -90,6 +97,9 @@ app.listen(PORT, () => {
   console.log(`   Health check: http://localhost:${PORT}/health`);
   console.log(`   DB health check: http://localhost:${PORT}/health/db`);
   console.log(`   API endpoints:`);
+  console.log(`   - POST /api/auth/register, /api/auth/login, /api/auth/logout`);
+  console.log(`   - GET /api/auth/me`);
+  console.log(`   - POST /api/auth/request-password-reset, /api/auth/reset-password`);
   console.log(`   - GET/POST /api/customers`);
   console.log(`   - GET/POST /api/products`);
   console.log(`   - GET/POST /api/quotes`);

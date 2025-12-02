@@ -30,6 +30,8 @@ services:
     environment:
       PORT: 3001
       DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hailmary}
+      JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
+      BASE_URL: ${BASE_URL:-https://hail_mary.cloudbibb.uk}
       NODE_ENV: production
     depends_on:
       postgres:

@@ -10,6 +10,7 @@ export interface DockApp {
 }
 
 const dockApps: DockApp[] = [
+  { id: 'profile', name: 'Profile', icon: '👤' },
   { id: 'visit', name: 'Visit / Notes', icon: '📋' },
   { id: 'diary', name: 'Diary', icon: '🗓' },
   { id: 'photos', name: 'Photos', icon: '📸' },

@@ -31,11 +31,30 @@ export const accounts = pgTable("accounts", {
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   accountId: integer("account_id")
-    .references(() => accounts.id)
-    .notNull(),
+    .references(() => accounts.id),
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
+  passwordHash: text("password_hash"), // nullable for SSO users
+  authProvider: varchar("auth_provider", { length: 50 }).default("local").notNull(), // 'local' | 'salesforce'
+  externalId: varchar("external_id", { length: 255 }), // Salesforce user ID (nullable for local users)
   role: varchar("role", { length: 50 }).default("user").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Password reset tokens for local auth password recovery
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  token: varchar("token", { length: 255 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

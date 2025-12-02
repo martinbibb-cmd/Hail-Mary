@@ -374,3 +374,44 @@ export interface STTRequest {
 export interface STTResponse {
   text: string;
 }
+
+// ============================================
+// Auth Types
+// ============================================
+
+export type AuthProvider = 'local' | 'salesforce';
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  accountId?: number;
+  authProvider: AuthProvider;
+}
+
+export interface RegisterDto {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface PasswordResetRequestDto {
+  email: string;
+}
+
+export interface PasswordResetDto {
+  token: string;
+  newPassword: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  data?: AuthUser;
+  message?: string;
+  error?: string;
+}

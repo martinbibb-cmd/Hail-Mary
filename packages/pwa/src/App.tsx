@@ -11,17 +11,19 @@ import type {
   AssistantMessageResponse,
 } from '@hail-mary/shared'
 import { Dock, WindowManager } from './os'
+import { AuthProvider, AuthGuard, ResetPasswordPage } from './auth'
 
 // Simple API client
 const api = {
   async get<T>(url: string): Promise<T> {
-    const res = await fetch(url)
+    const res = await fetch(url, { credentials: 'include' })
     return res.json()
   },
   async post<T>(url: string, data: unknown): Promise<T> {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     })
     return res.json()
@@ -30,6 +32,7 @@ const api = {
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     })
     return res.json()
@@ -668,38 +671,50 @@ function VisitPage() {
 // Main App Component
 function App() {
   return (
-    <div className="app os-desktop">
-      {/* Window Manager for OS-style windows */}
-      <WindowManager />
-      
-      {/* macOS-style Dock at bottom */}
-      <Dock />
-      
-      {/* Traditional navigation sidebar */}
-      <nav className="sidebar">
-        <div className="logo">
-          <h2>🔥 Hail-Mary</h2>
-        </div>
-        <ul className="nav-links">
-          <li><Link to="/">Dashboard</Link></li>
-          <li><Link to="/customers">Customers</Link></li>
-          <li><Link to="/quotes">Quotes</Link></li>
-          <li><Link to="/leads">Leads</Link></li>
-        </ul>
-      </nav>
-      <main className="content">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/customers" element={<CustomersList />} />
-          <Route path="/customers/new" element={<NewCustomer />} />
-          <Route path="/customers/:id" element={<CustomerDetail />} />
-          <Route path="/customers/:customerId/visit/:visitSessionId" element={<VisitPage />} />
-          <Route path="/quotes" element={<QuotesList />} />
-          <Route path="/leads" element={<LeadsList />} />
-          <Route path="/leads/new" element={<NewLead />} />
-        </Routes>
-      </main>
-    </div>
+    <AuthProvider>
+      <Routes>
+        {/* Password reset page outside of auth guard */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        
+        {/* All other routes require auth */}
+        <Route path="/*" element={
+          <AuthGuard>
+            <div className="app os-desktop">
+              {/* Window Manager for OS-style windows */}
+              <WindowManager />
+              
+              {/* macOS-style Dock at bottom */}
+              <Dock />
+              
+              {/* Traditional navigation sidebar */}
+              <nav className="sidebar">
+                <div className="logo">
+                  <h2>🔥 Hail-Mary</h2>
+                </div>
+                <ul className="nav-links">
+                  <li><Link to="/">Dashboard</Link></li>
+                  <li><Link to="/customers">Customers</Link></li>
+                  <li><Link to="/quotes">Quotes</Link></li>
+                  <li><Link to="/leads">Leads</Link></li>
+                </ul>
+              </nav>
+              <main className="content">
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/customers" element={<CustomersList />} />
+                  <Route path="/customers/new" element={<NewCustomer />} />
+                  <Route path="/customers/:id" element={<CustomerDetail />} />
+                  <Route path="/customers/:customerId/visit/:visitSessionId" element={<VisitPage />} />
+                  <Route path="/quotes" element={<QuotesList />} />
+                  <Route path="/leads" element={<LeadsList />} />
+                  <Route path="/leads/new" element={<NewLead />} />
+                </Routes>
+              </main>
+            </div>
+          </AuthGuard>
+        } />
+      </Routes>
+    </AuthProvider>
   )
 }
 

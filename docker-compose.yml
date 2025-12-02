@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: hailmary-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hailmary}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-hailmary}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hailmary-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hailmary} -d ${POSTGRES_DB:-hailmary}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Hail-Mary API Service
+  hailmary-api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: hailmary-api
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hailmary}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hailmary-network
+    # Internal only - not exposed externally
+    expose:
+      - "3001"
+
+  # Hail-Mary Assistant Service
+  hailmary-assistant:
+    build:
+      context: .
+      dockerfile: packages/assistant/Dockerfile
+    container_name: hailmary-assistant
+    restart: unless-stopped
+    environment:
+      ASSISTANT_PORT: 3002
+      API_BASE_URL: http://hailmary-api:3001
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hailmary}
+      NODE_ENV: production
+    depends_on:
+      - hailmary-api
+    networks:
+      - hailmary-network
+    # Internal only - not exposed externally
+    expose:
+      - "3002"
+
+  # Hail-Mary PWA (Frontend + Nginx Reverse Proxy)
+  hailmary-pwa:
+    build:
+      context: .
+      dockerfile: packages/pwa/Dockerfile
+    container_name: hailmary-pwa
+    restart: unless-stopped
+    depends_on:
+      - hailmary-api
+      - hailmary-assistant
+    networks:
+      - hailmary-network
+    # Only this service is exposed externally
+    ports:
+      - "${PWA_PORT:-80}:80"
+
+networks:
+  hailmary-network:
+    driver: bridge
+    name: hailmary-network
+
+volumes:
+  postgres_data:
+    name: hailmary-postgres-data

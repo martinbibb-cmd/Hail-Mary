@@ -8,17 +8,15 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-  animation: fadeIn 0.3s ease-out;
+  z-index: 10000;
 }
 
 .auth-guard-loading {
-  background: rgba(0, 0, 0, 0.95);
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
 }
 
 @keyframes fadeIn {
@@ -35,16 +33,19 @@
   color: #fff;
   padding: 48px;
   max-width: 400px;
+  animation: fadeIn 0.3s ease-out;
 }
 
-.auth-guard-icon {
-  font-size: 64px;
-  margin-bottom: 24px;
+.auth-guard-logo {
+  font-size: 72px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 4px 20px rgba(233, 69, 96, 0.4));
 }
 
 .auth-guard-spinner {
   font-size: 48px;
   animation: spin 1s linear infinite;
+  margin-bottom: 16px;
 }
 
 @keyframes spin {
@@ -57,31 +58,14 @@
 }
 
 .auth-guard-content h2 {
-  margin: 0 0 12px 0;
-  font-size: 28px;
-  font-weight: 600;
+  margin: 0 0 24px 0;
+  font-size: 32px;
+  font-weight: 700;
 }
 
 .auth-guard-content p {
-  margin: 0 0 32px 0;
-  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 16px;
   line-height: 1.5;
-}
-
-.auth-guard-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  color: #fff;
-  padding: 14px 32px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.auth-guard-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
 }

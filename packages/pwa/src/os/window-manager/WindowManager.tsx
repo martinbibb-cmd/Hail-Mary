@@ -10,6 +10,7 @@ import { LeadsApp } from '../apps/leads/LeadsApp'
 import { PhotosApp } from '../apps/photos/PhotosApp'
 import { SurveyApp } from '../apps/survey/SurveyApp'
 import { QuoteApp } from '../apps/quote/QuoteApp'
+import { SettingsApp } from '../apps/settings/SettingsApp'
 import './WindowManager.css'
 
 // Map app IDs to components
@@ -22,6 +23,7 @@ const appComponents: Record<string, React.FC> = {
   photos: PhotosApp,
   survey: SurveyApp,
   quote: QuoteApp,
+  settings: SettingsApp,
 }
 
 export const WindowManager: React.FC = () => {

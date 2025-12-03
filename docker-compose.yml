@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
+  hailmary-postgres:
+    image: postgres:17-alpine
     container_name: hailmary-postgres
     restart: unless-stopped
     environment:
@@ -35,7 +33,7 @@ services:
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
     depends_on:
-      postgres:
+      hailmary-postgres:
         condition: service_healthy
     networks:
       - hailmary-network

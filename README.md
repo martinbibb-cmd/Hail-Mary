@@ -165,6 +165,22 @@ Deploy to a NAS with automatic sync from GitHub. See **[NAS Deployment Guide](do
 - Automatic updates via scheduled pulls or webhooks
 - Step-by-step setup instructions
 
+### unRAID Deployment
+
+For unRAID users, use the optimized configuration with host path storage:
+
+```bash
+# Clone to unRAID appdata
+cd /mnt/user/appdata
+git clone https://github.com/martinbibb-cmd/Hail-Mary.git hailmary
+
+# Deploy with unRAID-specific compose file
+cd hailmary
+docker-compose -f docker-compose.unraid.yml up -d --build
+```
+
+See **[unRAID Deployment Guide](docs/DEPLOYMENT-unRAID.md)** for detailed instructions.
+
 ## 🎯 Design Principles
 
 1. **Core app never depends on AI** - AI is a helper, not a controller

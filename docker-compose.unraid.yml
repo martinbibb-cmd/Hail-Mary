@@ -1,0 +1,114 @@
+# unRAID Docker Compose Configuration for Hail-Mary
+# Optimized for unRAID with appdata host path mappings and WebUI integration
+#
+# Usage:
+#   1. Clone repository to /mnt/user/appdata/hailmary
+#   2. Copy .env.example to .env and configure
+#   3. docker-compose -f docker-compose.unraid.yml up -d
+#
+# Environment variables (set in .env file):
+#   - APPDATA_PATH: Path to appdata folder (default: /mnt/user/appdata/hailmary)
+#   - JWT_SECRET: Secret for JWT authentication
+#   - GEMINI_API_KEY: API key for Gemini AI (optional)
+#   - PWA_PORT: Port to expose PWA (default: 8080)
+#   - BASE_URL: Your domain URL for the application
+
+services:
+  # PostgreSQL Database
+  hailmary-postgres:
+    image: postgres:17-alpine
+    container_name: hailmary-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hailmary
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      # unRAID appdata path for persistent PostgreSQL data
+      - ${APPDATA_PATH:-/mnt/user/appdata/hailmary}/postgres:/var/lib/postgresql/data
+    networks:
+      - hailmary-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hailmary"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      net.unraid.docker.managed: "composeman"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/postgres.png"
+
+  # Hail-Mary API Service
+  hailmary-api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: hailmary-api
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      NODE_ENV: production
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+    depends_on:
+      hailmary-postgres:
+        condition: service_healthy
+    networks:
+      - hailmary-network
+    expose:
+      - "3001"
+    command: >
+      sh -c "npm run db:push && npm run db:seed && npm run start"
+    labels:
+      net.unraid.docker.managed: "composeman"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/api.png"
+
+  # Hail-Mary Assistant Service
+  hailmary-assistant:
+    build:
+      context: .
+      dockerfile: packages/assistant/Dockerfile
+    container_name: hailmary-assistant
+    restart: unless-stopped
+    environment:
+      ASSISTANT_PORT: 3002
+      API_BASE_URL: http://hailmary-api:3001
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      NODE_ENV: production
+    depends_on:
+      - hailmary-api
+    networks:
+      - hailmary-network
+    expose:
+      - "3002"
+    labels:
+      net.unraid.docker.managed: "composeman"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/assistant.png"
+
+  # Hail-Mary PWA (Frontend + Nginx Reverse Proxy)
+  hailmary-pwa:
+    build:
+      context: .
+      dockerfile: packages/pwa/Dockerfile
+    container_name: hailmary-pwa
+    restart: unless-stopped
+    depends_on:
+      - hailmary-api
+      - hailmary-assistant
+    networks:
+      - hailmary-network
+    # Exposed on port 8080 by default (common unRAID port)
+    ports:
+      - "${PWA_PORT:-8080}:8080"
+    labels:
+      net.unraid.docker.managed: "composeman"
+      net.unraid.docker.webui: "http://[IP]:[PORT:8080]"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/pwa.png"
+
+networks:
+  hailmary-network:
+    driver: bridge
+    name: hailmary-network

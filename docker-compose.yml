@@ -79,7 +79,7 @@ services:
       - hailmary-network
     # Only this service is exposed externally
     ports:
-      - "${PWA_PORT:-8080}:8080"
+      - "${PWA_PORT:-3000}:8080"
 
 networks:
   hailmary-network:

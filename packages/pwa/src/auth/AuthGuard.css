@@ -1,5 +1,6 @@
 /**
  * Auth Guard Styles
+ * Light theme with smooth natural tones
  */
 
 .auth-guard-overlay {
@@ -8,7 +9,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, #f5f0e6 0%, #e8dcc8 50%, #ddd2be 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -16,7 +17,7 @@
 }
 
 .auth-guard-loading {
-  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, #f5f0e6 0%, #e8dcc8 50%, #ddd2be 100%);
 }
 
 @keyframes fadeIn {
@@ -30,7 +31,7 @@
 
 .auth-guard-content {
   text-align: center;
-  color: #fff;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
   padding: 48px;
   max-width: 400px;
   animation: fadeIn 0.3s ease-out;
@@ -39,7 +40,7 @@
 .auth-guard-logo {
   font-size: 72px;
   margin-bottom: 16px;
-  filter: drop-shadow(0 4px 20px rgba(233, 69, 96, 0.4));
+  filter: drop-shadow(0 4px 20px rgba(107, 142, 35, 0.3));
 }
 
 .auth-guard-spinner {
@@ -65,7 +66,7 @@
 
 .auth-guard-content p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   font-size: 16px;
   line-height: 1.5;
 }

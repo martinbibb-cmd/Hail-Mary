@@ -1,5 +1,6 @@
 /**
  * Settings App Styles
+ * Light theme with smooth natural tones
  */
 
 .settings-app {
@@ -7,8 +8,8 @@
   flex-direction: column;
   height: 100%;
   padding: 24px;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  color: #fff;
+  background: var(--surface-primary, #fffcf7);
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
   overflow-y: auto;
 }
 
@@ -19,17 +20,18 @@
 }
 
 .settings-section {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
 }
 
 .settings-section h3 {
   margin: 0 0 16px 0;
   font-size: 14px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -37,7 +39,7 @@
 .settings-section-desc {
   margin: 0 0 16px 0;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted, rgba(60, 50, 40, 0.5));
 }
 
 .settings-user-info {
@@ -51,12 +53,13 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #6b8e23 0%, #556b2f 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
   font-weight: 600;
+  color: white;
 }
 
 .settings-user-details {
@@ -72,16 +75,16 @@
 .settings-user-email {
   margin: 0;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
 }
 
 .settings-logout-btn {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--error-soft, rgba(220, 53, 69, 0.1));
+  border: 1px solid rgba(220, 53, 69, 0.25);
   border-radius: 8px;
-  color: #fca5a5;
+  color: var(--error, #dc3545);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -89,8 +92,8 @@
 }
 
 .settings-logout-btn:hover {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(220, 53, 69, 0.15);
+  border-color: rgba(220, 53, 69, 0.4);
 }
 
 .settings-about p {
@@ -103,12 +106,12 @@
 
 .settings-version {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted, rgba(60, 50, 40, 0.5));
 }
 
 .settings-description {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary, rgba(60, 50, 40, 0.7));
   line-height: 1.5;
 }
 
@@ -134,13 +137,13 @@
 }
 
 .wallpaper-tile:hover {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--text-muted, rgba(60, 50, 40, 0.4));
   transform: scale(1.02);
 }
 
 .wallpaper-tile.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.3);
+  border-color: var(--accent, #6b8e23);
+  box-shadow: 0 0 0 2px var(--accent-soft, rgba(107, 142, 35, 0.3));
 }
 
 .wallpaper-name {
@@ -157,7 +160,7 @@
   right: 6px;
   width: 18px;
   height: 18px;
-  background: var(--accent);
+  background: var(--accent, #6b8e23);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -173,7 +176,7 @@
   left: 6px;
   width: 18px;
   height: 18px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.5);
   border: none;
   border-radius: 50%;
   display: flex;
@@ -191,13 +194,13 @@
 }
 
 .wallpaper-remove:hover {
-  background: rgba(239, 68, 68, 0.8);
+  background: rgba(220, 53, 69, 0.8);
 }
 
 /* Upload tile */
 .upload-tile {
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px dashed rgba(255, 255, 255, 0.2);
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
+  border: 2px dashed var(--window-border, rgba(139, 119, 91, 0.25));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -206,18 +209,18 @@
 }
 
 .upload-tile:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
+  border-color: var(--text-muted, rgba(60, 50, 40, 0.4));
 }
 
 .upload-icon {
   font-size: 24px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted, rgba(60, 50, 40, 0.5));
 }
 
 .upload-tile .wallpaper-name {
   text-shadow: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted, rgba(60, 50, 40, 0.5));
 }
 
 /* Mobile adjustments */

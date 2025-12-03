@@ -141,3 +141,11 @@ CREATE POLICY "Allow all operations on survey_templates" ON survey_templates FOR
 CREATE POLICY "Allow all operations on survey_instances" ON survey_instances FOR ALL USING (true);
 CREATE POLICY "Allow all operations on survey_answers" ON survey_answers FOR ALL USING (true);
 CREATE POLICY "Allow all operations on visit_observations" ON visit_observations FOR ALL USING (true);
+
+-- ============================================
+-- Add foreign key to files table for visit_id
+-- (files table created in auth_schema migration)
+-- ============================================
+ALTER TABLE files 
+  ADD CONSTRAINT fk_files_visit_sessions 
+  FOREIGN KEY (visit_id) REFERENCES visit_sessions(id);

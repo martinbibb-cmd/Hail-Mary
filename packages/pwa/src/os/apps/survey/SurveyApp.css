@@ -16,6 +16,7 @@
 .survey-app-header h2 {
   margin: 0;
   font-size: 18px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 /* Templates List */
@@ -32,8 +33,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
@@ -42,8 +43,8 @@
 }
 
 .template-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #e94560;
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
+  border-color: var(--accent, #6b8e23);
   transform: translateX(4px);
 }
 
@@ -55,24 +56,25 @@
 
 .template-info strong {
   font-size: 14px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .template-info span {
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
 }
 
 .template-meta {
-  color: #666 !important;
+  color: var(--text-disabled, rgba(60, 50, 40, 0.5)) !important;
 }
 
 .template-arrow {
-  color: #e94560;
+  color: var(--accent, #6b8e23);
   font-size: 18px;
 }
 
 .templates-empty {
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   text-align: center;
   padding: 32px;
 }
@@ -84,7 +86,7 @@
 
 .progress-bar {
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.12));
   border-radius: 2px;
   overflow: hidden;
   margin-bottom: 8px;
@@ -92,14 +94,14 @@
 
 .progress-fill {
   height: 100%;
-  background: #e94560;
+  background: var(--accent, #6b8e23);
   border-radius: 2px;
   transition: width 0.3s ease;
 }
 
 .progress-text {
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
 }
 
 /* Survey Section */
@@ -112,7 +114,8 @@
   margin: 0 0 20px 0;
   font-size: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .survey-questions {
@@ -130,27 +133,29 @@
 .survey-question label {
   font-size: 14px;
   font-weight: 500;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .survey-question .required {
-  color: #e94560;
+  color: var(--error, #dc3545);
   margin-left: 4px;
 }
 
 .survey-question input,
 .survey-question textarea {
   padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-primary, #fffcf7);
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.2));
   border-radius: 6px;
-  color: white;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
   font-size: 14px;
 }
 
 .survey-question input:focus,
 .survey-question textarea:focus {
   outline: none;
-  border-color: #e94560;
+  border-color: var(--accent, #6b8e23);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(107, 142, 35, 0.15));
 }
 
 .survey-question textarea {
@@ -167,23 +172,23 @@
 .toggle-btn {
   flex: 1;
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
   border-radius: 6px;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   cursor: pointer;
   font-size: 14px;
   transition: all 0.15s;
 }
 
 .toggle-btn.active {
-  background: rgba(233, 69, 96, 0.2);
-  border-color: #e94560;
-  color: white;
+  background: var(--accent-soft, rgba(107, 142, 35, 0.15));
+  border-color: var(--accent, #6b8e23);
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .toggle-btn:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
 }
 
 /* Choice Group */
@@ -195,29 +200,29 @@
 
 .choice-btn {
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
   border-radius: 6px;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   cursor: pointer;
   font-size: 13px;
   transition: all 0.15s;
 }
 
 .choice-btn.active {
-  background: rgba(233, 69, 96, 0.2);
-  border-color: #e94560;
-  color: white;
+  background: var(--accent-soft, rgba(107, 142, 35, 0.15));
+  border-color: var(--accent, #6b8e23);
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .choice-btn:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
 .choice-group.multiple .choice-btn.active {
-  background: rgba(39, 201, 63, 0.2);
-  border-color: #27c93f;
+  background: var(--success-soft, rgba(39, 168, 68, 0.15));
+  border-color: var(--success, #27a844);
 }
 
 /* Survey Navigation */
@@ -226,7 +231,7 @@
   justify-content: space-between;
   gap: 12px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
   margin-top: 20px;
   flex-shrink: 0;
 }
@@ -235,7 +240,7 @@
 .btn-back {
   background: transparent;
   border: none;
-  color: #888;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
   cursor: pointer;
   font-size: 14px;
   padding: 0;
@@ -243,11 +248,11 @@
 }
 
 .btn-back:hover {
-  color: #e94560;
+  color: var(--accent, #6b8e23);
 }
 
 .btn-primary {
-  background: #e94560;
+  background: var(--accent, #6b8e23);
   color: white;
   border: none;
   padding: 12px 24px;
@@ -258,18 +263,18 @@
 }
 
 .btn-primary:hover {
-  background: #d13650;
+  background: var(--accent-hover, #556b2f);
 }
 
 .btn-primary:disabled {
-  background: #666;
+  background: #ccc;
   cursor: not-allowed;
 }
 
 .btn-secondary {
   background: transparent;
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.25));
   padding: 12px 24px;
   border-radius: 8px;
   cursor: pointer;
@@ -278,8 +283,8 @@
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #e94560;
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
+  border-color: var(--accent, #6b8e23);
 }
 
 .btn-secondary:disabled {

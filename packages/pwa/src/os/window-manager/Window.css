@@ -106,7 +106,7 @@
   text-align: center;
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary, rgba(60, 50, 40, 0.8));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -124,7 +124,7 @@
   height: 24px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted, rgba(60, 50, 40, 0.5));
   cursor: pointer;
   border-radius: 4px;
   font-size: 14px;
@@ -135,15 +135,15 @@
 }
 
 .os-window-snap:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
+  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
+  color: var(--text-secondary, rgba(60, 50, 40, 0.8));
 }
 
 /* Content Area */
 .os-window-content {
   flex: 1;
   overflow: auto;
-  background: #16213e;
+  background: var(--surface-primary, #fffcf7);
 }
 
 /* Resize Handle */
@@ -164,12 +164,12 @@
   right: 4px;
   width: 8px;
   height: 8px;
-  border-right: 2px solid rgba(255, 255, 255, 0.2);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-right: 2px solid var(--window-border, rgba(139, 119, 91, 0.3));
+  border-bottom: 2px solid var(--window-border, rgba(139, 119, 91, 0.3));
 }
 
 .os-window-resize-handle:hover::before {
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: var(--text-muted, rgba(60, 50, 40, 0.5));
 }
 
 /* Window in snapped states should not show resize handle */

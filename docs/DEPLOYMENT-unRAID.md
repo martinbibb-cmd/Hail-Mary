@@ -1,6 +1,13 @@
 # Hail-Mary unRAID Deployment Guide
 
-This guide explains how to deploy Hail-Mary on unRAID using Docker Compose.
+This guide explains how to deploy Hail-Mary on unRAID using Docker Compose with an unRAID-optimized configuration.
+
+## Features of unRAID Configuration
+
+- **Host path storage**: Uses `/mnt/user/appdata/hailmary/postgres` for database persistence (unRAID appdata pattern)
+- **WebUI integration**: Containers include unRAID labels for Docker tab WebUI links
+- **Compose Manager compatible**: Works seamlessly with the Docker Compose Manager plugin
+- **Default port 8080**: Avoids conflicts with common unRAID services
 
 ## Prerequisites
 
@@ -28,14 +35,16 @@ This guide explains how to deploy Hail-Mary on unRAID using Docker Compose.
 │  │                    ┌───────┴───────┐                        ││
 │  │                    │ hailmary-pwa  │                        ││
 │  │                    │    (nginx)    │                        ││
-│  │                    │     :80       │◄──── External Port 80  ││
+│  │                    │    :8080      │◄── External Port 8080  ││
 │  │                    └───────────────┘                        ││
 │  │                                                             ││
 │  └─────────────────────────────────────────────────────────────┘│
 │                             │                                    │
+│  /mnt/user/appdata/hailmary/postgres ◄── PostgreSQL Data        │
+│                             │                                    │
 └─────────────────────────────┼────────────────────────────────────┘
                               │
-                    Cloudflare Tunnel
+                    Cloudflare Tunnel (optional)
                               │
                               ▼
                  https://hailmary.your-domain.com
@@ -79,7 +88,9 @@ This creates the application at `/mnt/user/appdata/hailmary`.
 1. Go to **Docker** → **Compose**
 2. Click **Add New Stack**
 3. Name it: `hailmary`
-4. Set the compose file path to `/mnt/user/appdata/hailmary/docker-compose.yml`
+4. Set the compose file path to `/mnt/user/appdata/hailmary/docker-compose.unraid.yml`
+
+> **Note:** Use `docker-compose.unraid.yml` for unRAID-optimized deployment with host path storage. The standard `docker-compose.yml` uses Docker volumes instead.
 
 ### Step 4: Configure Environment Variables
 
@@ -89,23 +100,27 @@ Create a `.env` file in `/mnt/user/appdata/hailmary/` or set these variables in 
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `APPDATA_PATH` | Path to appdata folder for persistent storage | `/mnt/user/appdata/hailmary` |
 | `GEMINI_API_KEY` | Gemini API key for AI assistant | (empty) |
 | `GEMINI_MODEL` | Gemini model to use | `gemini-1.5-flash` |
-| `PWA_PORT` | External port for the PWA | `80` |
+| `PWA_PORT` | External port for the PWA | `8080` |
 | `JWT_SECRET` | Secret for JWT tokens | `development-secret-change-in-production` |
-| `BASE_URL` | Base URL for the application (change to your domain) | (see docker-compose.yml) |
+| `BASE_URL` | Base URL for the application (change to your domain) | `http://localhost:8080` |
 
 > **Security Note:** PostgreSQL is configured with trust authentication, meaning no password is required. This is suitable for local/internal deployments where the database is only accessible within the Docker network. For production deployments exposed to the internet, consider adding proper authentication.
 
 #### Example .env file
 
 ```bash
+# unRAID appdata path (default is /mnt/user/appdata/hailmary)
+# APPDATA_PATH=/mnt/user/appdata/hailmary
+
 # AI Assistant (optional - leave empty if not using AI features)
 # GEMINI_API_KEY=your-gemini-api-key
 # GEMINI_MODEL=gemini-1.5-flash
 
-# Port configuration (optional)
-# PWA_PORT=80
+# Port configuration (default: 8080)
+# PWA_PORT=8080
 
 # Security (recommended to change in production)
 # JWT_SECRET=your-secure-jwt-secret
@@ -125,15 +140,17 @@ Create a `.env` file in `/mnt/user/appdata/hailmary/` or set these variables in 
 Test the deployment locally:
 
 ```bash
-# Check PWA is running
-curl http://unraid-ip:80
+# Check PWA is running (default port 8080)
+curl http://unraid-ip:8080
 
 # Check API health
-curl http://unraid-ip:80/health/api
+curl http://unraid-ip:8080/health/api
 
 # Check Assistant health
-curl http://unraid-ip:80/health/assistant
+curl http://unraid-ip:8080/health/assistant
 ```
+
+You should also see the containers in the unRAID Docker tab with WebUI links.
 
 ## Cloudflare Tunnel Setup
 
@@ -157,7 +174,7 @@ To access Hail-Mary from anywhere, set up a Cloudflare Tunnel.
 | Subdomain | `hailmary` (or your choice) |
 | Domain | Select your domain |
 | Service Type | `HTTP` |
-| URL | `hailmary-pwa:80` |
+| URL | `hailmary-pwa:8080` |
 
 > **Note:** If using Docker's default network mode, you may need to use the container's internal IP or the host IP. The service name `hailmary-pwa` works when the cloudflared connector is on the same Docker network.
 
@@ -168,7 +185,7 @@ If the container name doesn't resolve, use your unRAID server's IP:
 | Setting | Value |
 |---------|-------|
 | Service Type | `HTTP` |
-| URL | `192.168.x.x:80` (your unRAID IP) |
+| URL | `192.168.x.x:8080` (your unRAID IP) |
 
 ### Step 4: Access Your App
 
@@ -245,7 +262,7 @@ Or via command line:
 ```bash
 cd /mnt/user/appdata/hailmary
 git pull
-docker compose up -d --build
+docker compose -f docker-compose.unraid.yml up -d --build
 ```
 
 > **Note:** The `--build` flag is required to rebuild images when source code changes. Without it, `docker compose up -d` will only restart containers with existing (old) images.
@@ -259,7 +276,7 @@ For convenience, you can create a simple update script:
 # /mnt/user/appdata/hailmary/update.sh
 cd /mnt/user/appdata/hailmary
 git pull
-docker compose up -d --build
+docker compose -f docker-compose.unraid.yml up -d --build
 ```
 
 Make it executable with `chmod +x update.sh` and run with `./update.sh`.
@@ -268,32 +285,68 @@ Make it executable with `chmod +x update.sh` and run with `./update.sh`.
 
 ### Backup PostgreSQL Data
 
+The PostgreSQL data is stored in the appdata path at `/mnt/user/appdata/hailmary/postgres`. You can:
+
+**Option 1: Use pg_dump (recommended)**
 ```bash
-docker exec hailmary-postgres pg_dump -U postgres hailmary > backup.sql
+docker exec hailmary-postgres pg_dump -U postgres hailmary > /mnt/user/backups/hailmary-backup.sql
+```
+
+**Option 2: Copy the data directory directly**
+```bash
+# Stop containers first
+docker compose -f /mnt/user/appdata/hailmary/docker-compose.unraid.yml stop
+
+# Copy the postgres data
+cp -r /mnt/user/appdata/hailmary/postgres /mnt/user/backups/hailmary-postgres-$(date +%Y%m%d)
+
+# Restart containers
+docker compose -f /mnt/user/appdata/hailmary/docker-compose.unraid.yml up -d
 ```
 
 ### Restore PostgreSQL Data
 
+**From pg_dump backup:**
 ```bash
-cat backup.sql | docker exec -i hailmary-postgres psql -U postgres hailmary
+cat /mnt/user/backups/hailmary-backup.sql | docker exec -i hailmary-postgres psql -U postgres hailmary
 ```
 
-### Backup Docker Volume
-
-The PostgreSQL data is stored in a Docker volume named `hailmary-postgres-data`. You can back it up using unRAID's built-in tools or:
-
+**From directory backup:**
 ```bash
-docker run --rm -v hailmary-postgres-data:/data -v /mnt/user/backups:/backup alpine tar cvf /backup/postgres-backup.tar /data
+# Stop containers
+docker compose -f /mnt/user/appdata/hailmary/docker-compose.unraid.yml stop
+
+# Restore the data directory
+rm -rf /mnt/user/appdata/hailmary/postgres
+cp -r /mnt/user/backups/hailmary-postgres-YYYYMMDD /mnt/user/appdata/hailmary/postgres
+
+# Restart containers
+docker compose -f /mnt/user/appdata/hailmary/docker-compose.unraid.yml up -d
 ```
+
+### Using unRAID Backup Plugins
+
+Since the PostgreSQL data is stored in the appdata folder, you can use unRAID's built-in backup solutions:
+
+1. **Appdata Backup** plugin: Will automatically include Hail-Mary data
+2. **CA Backup / Restore Appdata** from Community Applications
 
 ## Container Reference
 
-| Container | Internal Port | Purpose |
-|-----------|--------------|---------|
-| `hailmary-pwa` | 80 | Nginx serving PWA + reverse proxy |
-| `hailmary-api` | 3001 | Express.js backend API |
-| `hailmary-assistant` | 3002 | AI assistant service |
-| `hailmary-postgres` | 5432 | PostgreSQL database |
+| Container | Internal Port | External Port | Purpose |
+|-----------|--------------|---------------|---------|
+| `hailmary-pwa` | 8080 | 8080 (configurable) | Nginx serving PWA + reverse proxy |
+| `hailmary-api` | 3001 | (internal only) | Express.js backend API |
+| `hailmary-assistant` | 3002 | (internal only) | AI assistant service |
+| `hailmary-postgres` | 5432 | (internal only) | PostgreSQL database |
+
+## Data Locations
+
+| Data | Location |
+|------|----------|
+| PostgreSQL database | `/mnt/user/appdata/hailmary/postgres` |
+| Application source | `/mnt/user/appdata/hailmary` |
+| Compose file | `/mnt/user/appdata/hailmary/docker-compose.unraid.yml` |
 
 ## Support
 

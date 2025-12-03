@@ -1,0 +1,95 @@
+# Production Docker Compose for NAS Deployment
+# Uses pre-built images from GitHub Container Registry
+#
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# Environment variables (set in .env file):
+#   - GITHUB_REPOSITORY_OWNER: GitHub username/org (default: martinbibb-cmd)
+#   - IMAGE_TAG: Image tag to deploy (default: latest)
+#   - JWT_SECRET: Secret for JWT authentication
+#   - GEMINI_API_KEY: API key for Gemini AI
+#   - PWA_PORT: Port to expose PWA (default: 3000)
+
+services:
+  # PostgreSQL Database
+  hailmary-postgres:
+    image: postgres:17-alpine
+    container_name: hailmary-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hailmary
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hailmary-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hailmary"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Hail-Mary API Service
+  hailmary-api:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-martinbibb-cmd}/hail-mary-api:${IMAGE_TAG:-latest}
+    container_name: hailmary-api
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
+      BASE_URL: ${BASE_URL:-https://your-domain.com}
+      NODE_ENV: production
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+    depends_on:
+      hailmary-postgres:
+        condition: service_healthy
+    networks:
+      - hailmary-network
+    expose:
+      - "3001"
+    command: >
+      sh -c "npm run db:push && npm run db:seed && npm run start"
+
+  # Hail-Mary Assistant Service
+  hailmary-assistant:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-martinbibb-cmd}/hail-mary-assistant:${IMAGE_TAG:-latest}
+    container_name: hailmary-assistant
+    restart: unless-stopped
+    environment:
+      ASSISTANT_PORT: 3002
+      API_BASE_URL: http://hailmary-api:3001
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      NODE_ENV: production
+    depends_on:
+      - hailmary-api
+    networks:
+      - hailmary-network
+    expose:
+      - "3002"
+
+  # Hail-Mary PWA (Frontend + Nginx Reverse Proxy)
+  hailmary-pwa:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-martinbibb-cmd}/hail-mary-pwa:${IMAGE_TAG:-latest}
+    container_name: hailmary-pwa
+    restart: unless-stopped
+    depends_on:
+      - hailmary-api
+      - hailmary-assistant
+    networks:
+      - hailmary-network
+    ports:
+      - "${PWA_PORT:-3000}:8080"
+
+networks:
+  hailmary-network:
+    driver: bridge
+    name: hailmary-network
+
+volumes:
+  postgres_data:
+    name: hailmary-postgres-data

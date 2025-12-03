@@ -144,6 +144,27 @@ npm run db:migrate  # Initialize/update database schema
 
 The database file is stored at `packages/api/data/hailmary.db`.
 
+## 🐳 Docker & Deployment
+
+### Local Docker Development
+
+```bash
+# Build and run all services
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f
+```
+
+### NAS Deployment
+
+Deploy to a NAS with automatic sync from GitHub. See **[NAS Deployment Guide](docs/NAS_DEPLOYMENT.md)** for:
+
+- CI/CD pipeline with GitHub Actions
+- Pre-built images from GitHub Container Registry
+- Automatic updates via scheduled pulls or webhooks
+- Step-by-step setup instructions
+
 ## 🎯 Design Principles
 
 1. **Core app never depends on AI** - AI is a helper, not a controller

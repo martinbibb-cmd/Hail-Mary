@@ -38,12 +38,12 @@ COPY packages/pwa/nginx.conf /etc/nginx/nginx.conf
 # Copy built PWA files from builder stage
 COPY --from=builder /app/packages/pwa/dist /usr/share/nginx/html
 
-# Expose port 80
-EXPOSE 80
+# Expose port 8080
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl --fail --silent http://localhost:80/ || exit 1
+  CMD curl --fail --silent http://localhost:8080/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

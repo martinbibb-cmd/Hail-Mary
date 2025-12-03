@@ -15,7 +15,8 @@ import sttRouter from "./routes/stt";
 import assistantRouter from "./routes/assistant";
 
 const app = express();
-const PORT = process.env.ASSISTANT_PORT || 3002;
+const PORT = Number(process.env.ASSISTANT_PORT) || 3002;
+const HOST = process.env.HOST || '0.0.0.0';
 
 // Rate limiting middleware
 const limiter = rateLimit({
@@ -56,9 +57,9 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🤖 Hail-Mary Assistant running on http://localhost:${PORT}`);
-  console.log(`   Health check: http://localhost:${PORT}/health`);
+app.listen(PORT, HOST, () => {
+  console.log(`🤖 Hail-Mary Assistant running on http://${HOST}:${PORT}`);
+  console.log(`   Health check: http://${HOST}:${PORT}/health`);
   console.log(`   API endpoints:`);
   console.log(`   - POST /stt`);
   console.log(`   - POST /assistant/message`);

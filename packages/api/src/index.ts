@@ -24,7 +24,8 @@ import visitSessionsRouter from './routes/visitSessions';
 import filesRouter from './routes/files';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
+const HOST = process.env.HOST || '0.0.0.0';
 
 // Initialize database (PostgreSQL via Drizzle ORM)
 initializeDatabase();
@@ -86,10 +87,10 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Hail-Mary API running on http://localhost:${PORT}`);
-  console.log(`   Health check: http://localhost:${PORT}/health`);
-  console.log(`   DB health check: http://localhost:${PORT}/health/db`);
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Hail-Mary API running on http://${HOST}:${PORT}`);
+  console.log(`   Health check: http://${HOST}:${PORT}/health`);
+  console.log(`   DB health check: http://${HOST}:${PORT}/health/db`);
   console.log(`   API endpoints:`);
   console.log(`   - POST /api/auth/register, /api/auth/login, /api/auth/logout`);
   console.log(`   - GET /api/auth/me`);

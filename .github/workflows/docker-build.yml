@@ -20,6 +20,8 @@ env:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       api: ${{ steps.changes.outputs.api }}
       pwa: ${{ steps.changes.outputs.pwa }}

@@ -149,7 +149,7 @@ User=root
 WorkingDirectory=$WEBHOOK_DIR
 Environment=DEPLOY_DIR=$DEPLOY_DIR
 Environment=WEBHOOK_PORT=$WEBHOOK_PORT
-Environment=WEBHOOK_SECRET=your-webhook-secret-here
+Environment=WEBHOOK_SECRET=CHANGE_THIS_SECRET_BEFORE_USE
 ExecStart=/usr/bin/node $WEBHOOK_DIR/webhook-server.js
 Restart=always
 RestartSec=10

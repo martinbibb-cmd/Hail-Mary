@@ -121,6 +121,10 @@ registry_login() {
             error "GITHUB_TOKEN environment variable is required for registry login"
             exit 1
         fi
+        if [[ -z "$GITHUB_USER" ]]; then
+            error "GITHUB_USER environment variable is required for registry login"
+            exit 1
+        fi
         echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u "$GITHUB_USER" --password-stdin
         success "Registry login successful"
     fi

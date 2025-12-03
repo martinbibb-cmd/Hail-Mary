@@ -45,21 +45,31 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"
 }
 
+# Get current image ID for a container
+get_current_image_id() {
+    docker inspect --format='{{.Id}}' "hailmary-$1" 2>/dev/null || echo "none"
+}
+
+# Get new image ID after pull
+get_new_image_id() {
+    docker-compose -f "$COMPOSE_FILE" config --images | grep "$1" | xargs -I{} docker inspect --format='{{.Id}}' {} 2>/dev/null || echo "new"
+}
+
 # Pull images and check for changes
 cd "$DEPLOY_DIR"
 
 # Store current image IDs
-api_old=$(docker inspect --format='{{.Id}}' hailmary-api 2>/dev/null || echo "none")
-pwa_old=$(docker inspect --format='{{.Id}}' hailmary-pwa 2>/dev/null || echo "none")
-assistant_old=$(docker inspect --format='{{.Id}}' hailmary-assistant 2>/dev/null || echo "none")
+api_old=$(get_current_image_id api)
+pwa_old=$(get_current_image_id pwa)
+assistant_old=$(get_current_image_id assistant)
 
 # Pull latest images
 docker-compose -f "$COMPOSE_FILE" pull --quiet 2>/dev/null
 
 # Check if any images changed
-api_new=$(docker-compose -f "$COMPOSE_FILE" config --images | grep api | xargs -I{} docker inspect --format='{{.Id}}' {} 2>/dev/null || echo "new")
-pwa_new=$(docker-compose -f "$COMPOSE_FILE" config --images | grep pwa | xargs -I{} docker inspect --format='{{.Id}}' {} 2>/dev/null || echo "new")
-assistant_new=$(docker-compose -f "$COMPOSE_FILE" config --images | grep assistant | xargs -I{} docker inspect --format='{{.Id}}' {} 2>/dev/null || echo "new")
+api_new=$(get_new_image_id api)
+pwa_new=$(get_new_image_id pwa)
+assistant_new=$(get_new_image_id assistant)
 
 # Restart if any images changed
 if [[ "$api_old" != "$api_new" ]] || [[ "$pwa_old" != "$pwa_new" ]] || [[ "$assistant_old" != "$assistant_new" ]]; then

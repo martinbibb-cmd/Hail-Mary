@@ -181,6 +181,23 @@ docker-compose -f docker-compose.unraid.yml up -d --build
 
 See **[unRAID Deployment Guide](docs/DEPLOYMENT-unRAID.md)** for detailed instructions.
 
+### Fly.io Deployment
+
+Deploy to fly.io using the provided configuration files:
+
+```bash
+# Deploy API
+fly deploy -c fly.api.toml
+
+# Deploy Assistant
+fly deploy -c fly.assistant.toml
+
+# Deploy PWA
+fly deploy -c fly.pwa.toml
+```
+
+See **[Fly.io Deployment Guide](docs/DEPLOYMENT-FLY.md)** for detailed instructions.
+
 ## 🔐 Authentication & Admin Tools
 
 ### Password Reset

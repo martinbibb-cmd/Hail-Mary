@@ -27,7 +27,15 @@ DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
 REGISTRY="${REGISTRY:-ghcr.io}"
 IMAGE_PREFIX="${IMAGE_PREFIX:-martinbibb-cmd/hail-mary}"
 LOG_FILE="${LOG_FILE:-/var/log/hail-mary-deploy.log}"
-COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.prod.yml"
+
+# Auto-detect unRAID and set appropriate compose file
+if [[ -d "/mnt/user" ]] && [[ -z "$COMPOSE_FILE" ]]; then
+    # Running on unRAID
+    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
+    COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.unraid.yml"
+else
+    COMPOSE_FILE="${COMPOSE_FILE:-${DEPLOY_DIR}/docker-compose.prod.yml}"
+fi
 
 # Colors for output
 RED='\033[0;31m'

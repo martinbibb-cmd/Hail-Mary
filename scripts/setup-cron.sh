@@ -20,7 +20,12 @@
 set -e
 
 # Configuration
-DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
+# Auto-detect unRAID
+if [[ -d "/mnt/user" ]]; then
+    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
+else
+    DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
+fi
 CRON_USER="${CRON_USER:-root}"
 CHECK_INTERVAL="${1:-5}"
 
@@ -37,8 +42,14 @@ cat > "$DEPLOY_DIR/scripts/check-updates.sh" << 'SCRIPT'
 #!/bin/bash
 # Check for image updates and deploy if needed
 
-DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
-COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.prod.yml"
+# Auto-detect unRAID
+if [[ -d "/mnt/user" ]]; then
+    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
+    COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.unraid.yml"
+else
+    DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
+    COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.prod.yml"
+fi
 LOG_FILE="/var/log/hail-mary-updates.log"
 
 log() {

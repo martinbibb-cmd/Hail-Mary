@@ -38,9 +38,7 @@ services:
 
   # Hail-Mary API Service
   hailmary-api:
-    build:
-      context: .
-      dockerfile: packages/api/Dockerfile
+    image: ghcr.io/martinbibb-cmd/hail-mary-api:latest
     container_name: hailmary-api
     restart: unless-stopped
     environment:
@@ -67,9 +65,7 @@ services:
 
   # Hail-Mary Assistant Service
   hailmary-assistant:
-    build:
-      context: .
-      dockerfile: packages/assistant/Dockerfile
+    image: ghcr.io/martinbibb-cmd/hail-mary-assistant:latest
     container_name: hailmary-assistant
     restart: unless-stopped
     environment:
@@ -91,9 +87,7 @@ services:
 
   # Hail-Mary PWA (Frontend + Nginx Reverse Proxy)
   hailmary-pwa:
-    build:
-      context: .
-      dockerfile: packages/pwa/Dockerfile
+    image: ghcr.io/martinbibb-cmd/hail-mary-pwa:latest
     container_name: hailmary-pwa
     restart: unless-stopped
     depends_on:

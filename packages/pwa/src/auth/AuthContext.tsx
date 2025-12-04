@@ -51,14 +51,34 @@ const authApi = {
       credentials: 'include', // Important: include cookies
       body: data ? JSON.stringify(data) : undefined,
     });
-    return res.json();
+
+    // Always try to parse JSON, even for error responses
+    // The backend always returns JSON for both success and error cases
+    const json = await res.json();
+
+    // Check if response was successful
+    if (!res.ok) {
+      // If response has error info, it will be in json
+      console.error(`API error (${res.status}):`, json);
+    }
+
+    return json;
   },
   async get<T>(url: string): Promise<T> {
     const res = await fetch(url, {
       method: 'GET',
       credentials: 'include', // Important: include cookies
     });
-    return res.json();
+
+    // Always try to parse JSON, even for error responses
+    const json = await res.json();
+
+    // Check if response was successful
+    if (!res.ok) {
+      console.error(`API error (${res.status}):`, json);
+    }
+
+    return json;
   },
 };
 

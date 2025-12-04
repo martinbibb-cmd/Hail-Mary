@@ -339,7 +339,7 @@ export const AuthScreen: React.FC = () => {
         </div>
         <div className="auth-screen-version">
           <span>v{__APP_VERSION__}</span>
-          <span>Built: {new Date(__BUILD_TIME__).toLocaleDateString()}</span>
+          <span>Built: {new Date(__BUILD_TIME__).toLocaleString()}</span>
         </div>
       </div>
     </div>

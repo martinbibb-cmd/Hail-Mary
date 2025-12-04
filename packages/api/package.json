@@ -12,7 +12,7 @@
     "migrate": "ts-node src/db/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
+    "db:push": "drizzle-kit push --force",
     "db:seed": "ts-node src/db/seed.ts",
     "admin:reset-password": "ts-node src/scripts/reset-password.ts",
     "admin:list-users": "ts-node src/scripts/list-users.ts"

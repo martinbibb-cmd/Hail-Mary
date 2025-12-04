@@ -7,6 +7,7 @@
 # Features:
 #   - Installs to /mnt/user/appdata/hailmary
 #   - Pulls pre-built images from GitHub Container Registry
+#   - Falls back to local build if pre-built images are not available
 #   - Sets up environment configuration
 #   - Optionally configures automatic updates
 #
@@ -19,6 +20,7 @@
 # Options:
 #   --auto-update    Enable automatic updates (requires User Scripts plugin)
 #   --port <number>  Set PWA port (default: 8080)
+#   --build          Force local build instead of pulling pre-built images
 #   --help           Show this help message
 # ==============================================================================
 
@@ -36,6 +38,7 @@ INSTALL_DIR="/mnt/user/appdata/hailmary"
 REPO_URL="https://github.com/martinbibb-cmd/Hail-Mary.git"
 PWA_PORT="8080"
 AUTO_UPDATE=false
+FORCE_BUILD=false
 
 # Logging functions
 log_info() { echo -e "${BLUE}ℹ${NC} $*"; }
@@ -59,6 +62,10 @@ while [[ $# -gt 0 ]]; do
         --port)
             PWA_PORT="$2"
             shift 2
+            ;;
+        --build)
+            FORCE_BUILD=true
+            shift
             ;;
         --help)
             show_help
@@ -177,13 +184,52 @@ pull_images() {
     log_info "Pulling Docker images from GitHub Container Registry..."
     cd "$INSTALL_DIR"
 
+    local pull_success=true
     if docker compose version &> /dev/null; then
-        docker compose -f docker-compose.unraid.yml pull
+        if ! docker compose -f docker-compose.unraid.yml pull 2>&1; then
+            pull_success=false
+        fi
     else
-        docker-compose -f docker-compose.unraid.yml pull
+        if ! docker-compose -f docker-compose.unraid.yml pull 2>&1; then
+            pull_success=false
+        fi
     fi
 
-    log_success "Docker images pulled successfully"
+    if [[ "$pull_success" == "true" ]]; then
+        log_success "Docker images pulled successfully"
+        return 0
+    else
+        log_warn "Failed to pull pre-built images from GitHub Container Registry"
+        log_info "This is expected if the images haven't been published yet"
+        return 1
+    fi
+}
+
+# Build Docker images locally
+build_images() {
+    log_info "Building Docker images locally (this may take several minutes)..."
+    cd "$INSTALL_DIR"
+
+    local build_success=true
+    if docker compose version &> /dev/null; then
+        if ! docker compose -f docker-compose.unraid-build.yml build 2>&1; then
+            build_success=false
+        fi
+    else
+        if ! docker-compose -f docker-compose.unraid-build.yml build 2>&1; then
+            build_success=false
+        fi
+    fi
+
+    if [[ "$build_success" == "true" ]]; then
+        log_success "Docker images built successfully"
+        return 0
+    else
+        log_error "Failed to build Docker images locally"
+        log_info "Check the error messages above for details"
+        log_info "Common issues: missing Dockerfile, network problems, or insufficient disk space"
+        return 1
+    fi
 }
 
 # Start containers
@@ -191,10 +237,12 @@ start_containers() {
     log_info "Starting containers..."
     cd "$INSTALL_DIR"
 
+    local compose_file="$1"
+    
     if docker compose version &> /dev/null; then
-        docker compose -f docker-compose.unraid.yml up -d
+        docker compose -f "$compose_file" up -d
     else
-        docker-compose -f docker-compose.unraid.yml up -d
+        docker-compose -f "$compose_file" up -d
     fi
 
     log_success "Containers started"
@@ -277,6 +325,8 @@ USERSCRIPT
 
 # Show completion message
 show_completion() {
+    local compose_file="$1"
+    
     echo ""
     echo "╔════════════════════════════════════════════╗"
     echo "║     Installation Complete!                ║"
@@ -294,13 +344,18 @@ show_completion() {
     echo ""
     echo "Configuration:"
     echo "  • Environment: $INSTALL_DIR/.env"
-    echo "  • Compose file: $INSTALL_DIR/docker-compose.unraid.yml"
+    echo "  • Compose file: $INSTALL_DIR/$compose_file"
     echo ""
     echo "Useful commands:"
     echo "  • View logs: docker logs hailmary-pwa"
-    echo "  • Restart: docker compose -f $INSTALL_DIR/docker-compose.unraid.yml restart"
-    echo "  • Stop: docker compose -f $INSTALL_DIR/docker-compose.unraid.yml stop"
-    echo "  • Update: docker compose -f $INSTALL_DIR/docker-compose.unraid.yml pull && docker compose -f $INSTALL_DIR/docker-compose.unraid.yml up -d"
+    echo "  • Restart: docker compose -f $INSTALL_DIR/$compose_file restart"
+    echo "  • Stop: docker compose -f $INSTALL_DIR/$compose_file stop"
+    
+    if [[ "$compose_file" == "docker-compose.unraid.yml" ]]; then
+        echo "  • Update: docker compose -f $INSTALL_DIR/$compose_file pull && docker compose -f $INSTALL_DIR/$compose_file up -d"
+    else
+        echo "  • Update: cd $INSTALL_DIR && git pull && docker compose -f $compose_file build && docker compose -f $compose_file up -d"
+    fi
     echo ""
 
     if [[ "$AUTO_UPDATE" == "true" ]]; then
@@ -326,11 +381,39 @@ main() {
     check_prerequisites
     setup_repository
     setup_environment
-    pull_images
-    start_containers
+    
+    local compose_file=""
+    
+    if [[ "$FORCE_BUILD" == "true" ]]; then
+        log_info "Local build mode enabled (--build flag)"
+        if ! build_images; then
+            log_error "Installation failed: Could not build Docker images"
+            exit 1
+        fi
+        compose_file="docker-compose.unraid-build.yml"
+    else
+        # Try to pull pre-built images first
+        if pull_images; then
+            compose_file="docker-compose.unraid.yml"
+        else
+            # Fallback to local build
+            log_info ""
+            log_info "Falling back to local build mode..."
+            log_info "This builds the Docker images on your NAS instead of downloading them."
+            log_info ""
+            if ! build_images; then
+                log_error "Installation failed: Could not build Docker images"
+                log_info "Please check the error messages above and try again."
+                exit 1
+            fi
+            compose_file="docker-compose.unraid-build.yml"
+        fi
+    fi
+    
+    start_containers "$compose_file"
     wait_for_services
     setup_auto_update
-    show_completion
+    show_completion "$compose_file"
 }
 
 main

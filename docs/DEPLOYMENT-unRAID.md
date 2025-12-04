@@ -4,7 +4,9 @@ This guide explains how to deploy Hail-Mary on unRAID using Docker Compose with 
 
 ## Features of unRAID Configuration
 
-- **Automatic installation**: One-line install script
+- **Automatic installation**: One-line install script with intelligent fallback
+- **Pre-built images**: Uses GitHub Container Registry when available (fastest)
+- **Local build fallback**: Automatically builds locally if pre-built images aren't available
 - **Auto-updates**: Pulls latest Docker images automatically when you push changes
 - **Host path storage**: Uses `/mnt/user/appdata/hailmary/postgres` for database persistence (unRAID appdata pattern)
 - **WebUI integration**: Containers include unRAID labels for Docker tab WebUI links
@@ -22,11 +24,28 @@ wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/script
 This will:
 1. Clone the repository to `/mnt/user/appdata/hailmary`
 2. Create a default `.env` configuration
-3. Pull pre-built Docker images from GitHub Container Registry
-4. Start all containers
-5. Optionally configure automatic updates
+3. Try to pull pre-built Docker images from GitHub Container Registry
+4. **Automatically fall back to local build** if pre-built images aren't available
+5. Start all containers
+6. Optionally configure automatic updates
 
 After installation completes, access the app at `http://YOUR-UNRAID-IP:8080`
+
+### Installation Options
+
+```bash
+# Standard installation (auto-detects best method)
+wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash
+
+# Force local build (skips trying to pull pre-built images)
+wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash -s -- --build
+
+# Custom port
+wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash -s -- --port 9000
+
+# With auto-updates enabled
+wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash -s -- --auto-update
+```
 
 ## Manual Installation
 
@@ -112,9 +131,16 @@ This creates the application at `/mnt/user/appdata/hailmary`.
 1. Go to **Docker** → **Compose**
 2. Click **Add New Stack**
 3. Name it: `hailmary`
-4. Set the compose file path to `/mnt/user/appdata/hailmary/docker-compose.unraid.yml`
+4. Set the compose file path to one of these options:
 
-> **Note:** Use `docker-compose.unraid.yml` for unRAID-optimized deployment with host path storage. The standard `docker-compose.yml` uses Docker volumes instead.
+| Compose File | Description |
+|--------------|-------------|
+| `docker-compose.unraid.yml` | **Pre-built images** - Uses images from GitHub Container Registry (fastest startup) |
+| `docker-compose.unraid-build.yml` | **Local build** - Builds images on your NAS (works if pre-built images aren't available) |
+
+> **Recommendation:** Start with `docker-compose.unraid.yml`. If image pull fails, switch to `docker-compose.unraid-build.yml`.
+
+> **Note:** The standard `docker-compose.yml` uses Docker volumes instead of host paths and is not optimized for unRAID.
 
 ### Step 4: Configure Environment Variables
 
@@ -239,6 +265,26 @@ Protect your app with Cloudflare Access:
 
 ## Troubleshooting
 
+### Docker Image Pull Fails ("Packages: 0" Issue)
+
+If you see errors when pulling images like:
+```
+Error response from daemon: manifest for ghcr.io/martinbibb-cmd/hail-mary-api:latest not found
+```
+
+This means the pre-built images haven't been published yet. **This is normal for a fresh repository.**
+
+**Solution:** Use the local build compose file instead:
+
+```bash
+cd /mnt/user/appdata/hailmary
+
+# Switch to local build
+docker compose -f docker-compose.unraid-build.yml up -d --build
+```
+
+The install script automatically handles this - if pulling images fails, it falls back to local build.
+
 ### Containers Won't Start
 
 1. Check Docker logs: `docker logs hailmary-api`
@@ -315,10 +361,20 @@ This creates a User Script that:
 
 To manually update to the latest version:
 
+**If using pre-built images (`docker-compose.unraid.yml`):**
 ```bash
 cd /mnt/user/appdata/hailmary
 docker compose -f docker-compose.unraid.yml pull
 docker compose -f docker-compose.unraid.yml up -d
+docker image prune -f
+```
+
+**If using local build (`docker-compose.unraid-build.yml`):**
+```bash
+cd /mnt/user/appdata/hailmary
+git pull
+docker compose -f docker-compose.unraid-build.yml build
+docker compose -f docker-compose.unraid-build.yml up -d
 docker image prune -f
 ```
 
@@ -406,7 +462,8 @@ Since the PostgreSQL data is stored in the appdata folder, you can use unRAID's 
 |------|----------|
 | PostgreSQL database | `/mnt/user/appdata/hailmary/postgres` |
 | Application source | `/mnt/user/appdata/hailmary` |
-| Compose file | `/mnt/user/appdata/hailmary/docker-compose.unraid.yml` |
+| Pre-built images compose | `/mnt/user/appdata/hailmary/docker-compose.unraid.yml` |
+| Local build compose | `/mnt/user/appdata/hailmary/docker-compose.unraid-build.yml` |
 
 ## Admin Tools
 

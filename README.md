@@ -175,9 +175,16 @@ wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/script
 
 This one-liner will:
 - Install Hail-Mary to `/mnt/user/appdata/hailmary`
-- Pull pre-built Docker images from GitHub Container Registry
+- Try to pull pre-built Docker images from GitHub Container Registry
+- **Automatically fall back to local build** if pre-built images aren't available
 - Start all services on port 8080
 - Optionally configure automatic updates when you push code
+
+**Force local build (if you prefer or if image pull fails):**
+
+```bash
+wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash -s -- --build
+```
 
 **Enable auto-updates after installation:**
 

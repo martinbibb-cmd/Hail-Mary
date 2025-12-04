@@ -546,13 +546,23 @@ export async function listUsersForNasLogin(): Promise<UserPayload[]> {
 /**
  * Quick login as a user without password (NAS mode)
  * This is a TEMPORARY solution until proper authentication is established.
+ * 
  * @security WARNING: This should only be enabled on trusted local networks!
+ * 
+ * Security considerations:
+ * - Only enable via NAS_AUTH_MODE=true on trusted networks
+ * - Consider adding NAS_ALLOWED_IPS for IP-based restrictions
+ * - Tokens are short-lived (same as regular auth: 24h)
+ * - All access is logged for audit purposes
  */
 export async function nasQuickLogin(userId: number): Promise<{ user: UserPayload; token: string }> {
   // Check if NAS mode is enabled
   if (process.env.NAS_AUTH_MODE !== 'true') {
     throw new AuthError('unauthorized', 'NAS quick login is not enabled', 403);
   }
+
+  // Log NAS login attempt for security audit
+  console.log(`[NAS Auth] Quick login attempt for userId: ${userId} at ${new Date().toISOString()}`);
 
   try {
     const foundUsers = await db
@@ -561,6 +571,7 @@ export async function nasQuickLogin(userId: number): Promise<{ user: UserPayload
       .where(eq(users.id, userId));
 
     if (foundUsers.length === 0) {
+      console.warn(`[NAS Auth] Failed - user ${userId} not found`);
       throw new AuthError('not_found', 'User not found', 404);
     }
 
@@ -575,6 +586,8 @@ export async function nasQuickLogin(userId: number): Promise<{ user: UserPayload
     };
 
     const token = generateToken(userPayload);
+    
+    console.log(`[NAS Auth] Successful login for user: ${user.email}`);
     return { user: userPayload, token };
   } catch (error) {
     if (error instanceof AuthError) {

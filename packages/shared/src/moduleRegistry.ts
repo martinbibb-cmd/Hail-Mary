@@ -313,8 +313,16 @@ export function isModuleReady(id: ModuleId): boolean {
 
 /**
  * Register a new module (for third-party/plugin support)
+ * @warning This mutates the shared registry. Use with caution in production.
+ * In a real production environment, consider using a service-based registration system.
  */
 export function registerModule(module: ModuleMeta): void {
+  // Validate module has required fields
+  if (!module.id || !module.label) {
+    console.warn('registerModule: Invalid module - missing id or label');
+    return;
+  }
+  
   const existingIndex = moduleRegistry.findIndex(m => m.id === module.id);
   if (existingIndex >= 0) {
     moduleRegistry[existingIndex] = module;

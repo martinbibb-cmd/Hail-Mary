@@ -487,3 +487,281 @@ export interface TranscriptSessionWithDetails {
   chunks: TranscriptAudioChunk[];
   segments: TranscriptSegment[];
 }
+
+// ============================================
+// Survey Helper Types
+// ============================================
+
+export type ModuleName = 'core' | 'central_heating' | 'heat_pump' | 'pv' | 'ev' | 'hazards';
+
+export type Priority = 'critical' | 'important' | 'nice_to_have';
+
+export type TriggerMode = 'always' | 'topic_change' | 'on_request' | 'rare_hazard';
+
+export type TopicTag = 
+  | 'fabric' 
+  | 'lifestyle' 
+  | 'boiler' 
+  | 'emitters' 
+  | 'controls' 
+  | 'cylinder' 
+  | 'hp_overview' 
+  | 'hp_outdoor' 
+  | 'roof' 
+  | 'electrics' 
+  | 'parking' 
+  | 'hazards';
+
+export interface ChipOption {
+  label: string;
+  value: string | number | boolean | null | string[];
+}
+
+export interface SurveySlot {
+  id: string;
+  module: ModuleName;
+  topic: TopicTag;
+  path: string;
+  priority: Priority;
+  question: string;
+  chipOptions: ChipOption[];
+  allowSkip: boolean;
+  triggerMode: TriggerMode;
+  notes?: string;
+  preconditions?: SlotPrecondition[];
+}
+
+export interface SlotPrecondition {
+  path: string;
+  operator: 'equals' | 'not_equals' | 'exists' | 'not_exists' | 'in';
+  value?: unknown;
+}
+
+// ============================================
+// SystemSpecDraft Types - The main spec schema
+// ============================================
+
+// Property/Core Information
+export interface PropertyInfo {
+  propertyType?: 'house' | 'flat' | 'bungalow' | 'other';
+  buildYearApprox?: string;
+  loftInsulationDepthMm?: string;
+  glazingType?: 'single' | 'double' | 'triple' | 'mixed';
+}
+
+export interface OccupancyPattern {
+  homeAllDay?: boolean | null;
+  hotWaterProfile?: 'low' | 'medium' | 'high';
+}
+
+// Central Heating Information
+export interface ExistingHeatSource {
+  systemType?: 'combi' | 'storage_combi' | 'system' | 'regular' | 'back_boiler' | 'other';
+  boilerFuel?: 'mains_gas' | 'lpg' | 'oil' | 'electric' | 'other';
+  boilerApproxAgeYears?: string;
+  generalCondition?: 'good' | 'tired' | 'poor' | 'condemned';
+  flueCategory?: 'fanned_round' | 'fanned_square' | 'balanced' | 'open_flue' | 'back_boiler' | 'unknown';
+  flueRoute?: 'horizontal_wall' | 'vertical_pitched_roof' | 'vertical_flat_roof' | 'ridge_tile_vent' | 'into_chimney' | 'other';
+}
+
+export interface EmitterInfo {
+  microborePresence?: 'microbore' | 'mixed' | 'standard_two_pipe' | 'single_pipe_present' | 'unknown';
+  pipeworkSummary?: string;
+}
+
+export interface WaterQuality {
+  evidenceOfSludge?: boolean;
+  sludgeSeverity?: 'low' | 'medium' | 'high' | 'unknown';
+  filterFitted?: boolean | null;
+}
+
+export interface CentralHeatingSpec {
+  existingHeatSource?: ExistingHeatSource;
+  emitters?: EmitterInfo;
+  waterQuality?: WaterQuality;
+  controlsSummary?: 'basic' | 'programmable' | 'smart' | 'none';
+}
+
+// Heat Pump Information
+export interface HeatPumpProposedSystem {
+  replaceBoilerCompletely?: boolean | null;
+}
+
+export interface HeatPumpEmitterCheck {
+  designFlowTempTarget?: number | null;
+  roomsNeedingUpsize?: 'few_changes' | 'some_changes' | 'major_changes' | 'unknown';
+}
+
+export interface HeatPumpPlantArea {
+  existingCylinderReusePossible?: 'reuse' | 'replace' | 'new_location' | 'unknown';
+}
+
+export interface HeatPumpOutdoorUnit {
+  candidateLocationQuality?: 'good' | 'ok' | 'poor' | 'unknown';
+  noiseRiskLevel?: 'low' | 'medium' | 'high';
+}
+
+export interface HeatPumpElectrical {
+  mainFuseOkForHPAndRest?: 'ok' | 'borderline' | 'upgrade_required' | 'unknown';
+}
+
+export interface HeatPumpSpec {
+  proposedSystem?: HeatPumpProposedSystem;
+  emitterCheck?: HeatPumpEmitterCheck;
+  plantArea?: HeatPumpPlantArea;
+  outdoorUnit?: HeatPumpOutdoorUnit;
+  electrical?: HeatPumpElectrical;
+}
+
+// Solar PV Information
+export interface RoofUse {
+  mainPitchAspect?: 'S' | 'SE' | 'SW' | 'E' | 'W' | 'mixed';
+  shadingSummary?: 'none' | 'morning' | 'afternoon' | 'heavy' | 'unknown';
+}
+
+export interface StructuralAndAccess {
+  roofConditionSummary?: 'good' | 'tired' | 'poor' | 'unknown';
+}
+
+export interface ElectricalIntegration {
+  inverterLocationQuality?: 'good' | 'ok' | 'poor';
+  exportLimitExpected?: '3.68_ok' | 'dno_required' | 'unknown';
+}
+
+export interface StorageAndFuture {
+  batteryInterestLevel?: 'now' | 'later' | 'no';
+}
+
+export interface SolarPvSpec {
+  roofUse?: RoofUse;
+  structuralAndAccess?: StructuralAndAccess;
+  electricalIntegration?: ElectricalIntegration;
+  storageAndFuture?: StorageAndFuture;
+}
+
+// EV Charging Information
+export interface EvParking {
+  offStreet?: boolean | 'shared';
+  cableRouteComplexity?: 'simple' | 'moderate' | 'complex' | 'unknown';
+}
+
+export interface EvElectricalCapacity {
+  mainFuseOkForEV?: 'ok' | 'needs_load_management' | 'upgrade_required' | 'unknown';
+}
+
+export interface EvEarthingAndRegs {
+  earthingTypeKnown?: 'tn_c_s' | 'tn_s' | 'tt' | 'unknown';
+}
+
+export interface EvSmartIntegration {
+  PVIntegrationPlanned?: boolean | null;
+}
+
+export interface EvSpec {
+  parking?: EvParking;
+  electricalCapacity?: EvElectricalCapacity;
+  earthingAndRegs?: EvEarthingAndRegs;
+  smartIntegration?: EvSmartIntegration;
+}
+
+// Hazards Information
+export interface AsbestosInfo {
+  surveysOnFile?: boolean;
+  suspectedLocations?: string[];
+  monkeyMuckObserved?: 'confirmed' | 'suspected' | 'no' | null;
+}
+
+export interface HazardsSpec {
+  asbestos?: AsbestosInfo;
+  legacyMaterials?: string[];
+  accessRestrictions?: string[];
+}
+
+// Core Supply Information
+export interface CoreSupply {
+  mainFuseRating?: number;
+}
+
+// Main SystemSpecDraft Type
+export interface SystemSpecDraft {
+  id?: number;
+  sessionId?: number;
+  activeModules: ModuleName[];
+  property?: PropertyInfo;
+  occupancyPattern?: OccupancyPattern;
+  coreSupply?: CoreSupply;
+  centralHeating?: CentralHeatingSpec;
+  heatPump?: HeatPumpSpec;
+  solarPv?: SolarPvSpec;
+  ev?: EvSpec;
+  hazards?: HazardsSpec;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// ============================================
+// Survey Helper State & Engine Types
+// ============================================
+
+export interface HelperState {
+  specDraft: SystemSpecDraft;
+  activeModules: ModuleName[];
+  currentTopic: TopicTag;
+  askedSlotIds: string[];
+  recentSegments?: TranscriptSegment[];
+}
+
+export interface NextQuestionRequest {
+  sessionId: number;
+  currentTopic?: TopicTag;
+}
+
+export interface NextQuestionResponse {
+  slot: SurveySlot | null;
+  completeness: ModuleCompleteness[];
+  message?: string;
+}
+
+export interface AnswerRequest {
+  sessionId: number;
+  slotId: string;
+  value: unknown;
+  source?: 'chip' | 'voice' | 'manual';
+}
+
+export interface AnswerResponse {
+  success: boolean;
+  updatedPath: string;
+  message?: string;
+}
+
+export interface ModuleCompleteness {
+  module: ModuleName;
+  filledCritical: number;
+  totalCritical: number;
+  filledImportant: number;
+  totalImportant: number;
+  percentage: number;
+  warnings: string[];
+}
+
+export interface CompletenessResponse {
+  modules: ModuleCompleteness[];
+  overallPercentage: number;
+  readyToQuote: boolean;
+  warnings: string[];
+}
+
+// ============================================
+// Survey Helper DTOs
+// ============================================
+
+export interface CreateSystemSpecDraftDto {
+  sessionId: number;
+  activeModules: ModuleName[];
+}
+
+export interface UpdateSystemSpecDraftDto {
+  path: string;
+  value: unknown;
+}

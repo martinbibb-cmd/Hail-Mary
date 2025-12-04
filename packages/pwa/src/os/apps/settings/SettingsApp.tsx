@@ -145,7 +145,8 @@ export const SettingsApp: React.FC = () => {
         <h3>About</h3>
         <div className="settings-about">
           <p><strong>Hail-Mary</strong></p>
-          <p className="settings-version">Version 0.1.0</p>
+          <p className="settings-version">Version {__APP_VERSION__}</p>
+          <p className="settings-build-time">Built: {new Date(__BUILD_TIME__).toLocaleString()}</p>
           <p className="settings-description">
             Universal quote tool for boiler/heating businesses
           </p>

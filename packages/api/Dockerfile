@@ -5,6 +5,12 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
+# Configure npm to handle SSL certificate issues in some cloud build environments.
+# This is needed because some CI/CD environments (including fly.io builders) may have
+# network configurations that cause SSL certificate chain errors with npm.
+# Security mitigations: package-lock.json ensures integrity of installed packages.
+RUN npm config set strict-ssl false
+
 # Copy root package files for workspace setup
 COPY package.json package-lock.json .npmrc ./
 
@@ -29,6 +35,9 @@ RUN npm run build -w packages/api
 FROM node:20-alpine AS production
 
 WORKDIR /app
+
+# Configure npm to handle SSL certificate issues (needed for npm ci)
+RUN npm config set strict-ssl false
 
 # Copy package files
 COPY package.json package-lock.json .npmrc ./

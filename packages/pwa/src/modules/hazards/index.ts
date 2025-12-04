@@ -1,0 +1,1 @@
+export { HazardsApp } from './HazardsApp';

@@ -13,6 +13,17 @@ import { QuoteApp } from '../apps/quote/QuoteApp'
 import { SettingsApp } from '../apps/settings/SettingsApp'
 import { FilesApp } from '../apps/files/FilesApp'
 import { BrowserApp } from '../apps/browser/BrowserApp'
+// Mini app modules
+import { 
+  PropertyApp, 
+  CentralHeatingApp, 
+  HazardsApp,
+  HeatPumpApp,
+  SolarPvApp,
+  EvApp,
+  RoadmapApp,
+  OtherTradesApp,
+} from '../../modules'
 import './WindowManager.css'
 
 // Map app IDs to components
@@ -28,6 +39,15 @@ const appComponents: Record<string, React.FC> = {
   settings: SettingsApp,
   files: FilesApp,
   browser: BrowserApp,
+  // Mini app modules (survey modules)
+  property: PropertyApp,
+  central_heating: CentralHeatingApp,
+  hazards: HazardsApp,
+  heat_pump: HeatPumpApp,
+  pv: SolarPvApp,
+  ev: EvApp,
+  roadmap: RoadmapApp,
+  other_trades: OtherTradesApp,
 }
 
 export const WindowManager: React.FC = () => {

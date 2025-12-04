@@ -8,10 +8,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { AuthUser, RegisterDto, LoginDto, AuthResponse } from '@hail-mary/shared';
 
+interface NasUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
+  /** Whether NAS quick login mode is available */
+  nasMode: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -19,6 +27,10 @@ interface AuthContextValue {
   requestPasswordReset: (email: string) => Promise<boolean>;
   resetPassword: (token: string, newPassword: string) => Promise<boolean>;
   clearError: () => void;
+  /** NAS mode: Get list of users for quick selection */
+  getNasUsers: () => Promise<NasUser[]>;
+  /** NAS mode: Quick login as a user without password */
+  nasLogin: (userId: number) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -86,6 +98,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nasMode, setNasMode] = useState(false);
+
+  // Check if NAS mode is available on mount
+  useEffect(() => {
+    authApi.get<{ success: boolean }>('/api/auth/nas/users')
+      .then(res => {
+        if (res.success) {
+          setNasMode(true);
+        }
+      })
+      .catch(() => {
+        // NAS mode not available, that's fine
+      });
+  }, []);
 
   // Fetch current user on mount
   const refresh = useCallback(async () => {
@@ -213,12 +239,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
   }, []);
 
+  // NAS mode: Get list of users
+  const getNasUsers = useCallback(async (): Promise<NasUser[]> => {
+    try {
+      const res = await authApi.get<{ success: boolean; data?: NasUser[] }>('/api/auth/nas/users');
+      if (res.success && res.data) {
+        return res.data;
+      }
+      return [];
+    } catch (err) {
+      console.error('Failed to get NAS users:', err);
+      return [];
+    }
+  }, []);
+
+  // NAS mode: Quick login
+  const nasLogin = useCallback(async (userId: number): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authApi.post<AuthResponse>('/api/auth/nas/login', { userId });
+      if (res.success && res.data) {
+        setUser(res.data);
+        return true;
+      } else {
+        setError(res.error || 'Failed to login');
+        return false;
+      }
+    } catch (err) {
+      console.error('NAS login error:', err);
+      setError('Failed to login');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
         error,
+        nasMode,
         login,
         register,
         logout,
@@ -226,6 +289,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         requestPasswordReset,
         resetPassword,
         clearError,
+        getNasUsers,
+        nasLogin,
       }}
     >
       {children}

@@ -1,0 +1,1 @@
+export { SolarPvApp } from './SolarPvApp';

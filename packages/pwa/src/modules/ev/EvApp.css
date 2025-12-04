@@ -1,0 +1,169 @@
+/**
+ * EvApp Styles - Stub/Dead Leg Styling
+ */
+
+.ev-app {
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+  background: #f8f9fa;
+}
+
+.ev-app-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ev-app-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1a1a2e;
+}
+
+/* Stub Notice */
+.stub-notice.ev {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+/* Inferred Data Card */
+.inferred-data-card.ev {
+  border-left-color: #11998e;
+}
+
+.inferred-data-card.ev .data-value {
+  color: #11998e;
+}
+
+/* Shared stub styles */
+.stub-notice {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  color: white;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.stub-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.stub-notice h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.3rem;
+}
+
+.stub-notice p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.inferred-data-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid #667eea;
+}
+
+.inferred-data-card h4 {
+  margin: 0 0 8px 0;
+  color: #1a1a2e;
+}
+
+.data-hint {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0 0 16px 0;
+}
+
+.data-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.data-item:last-child {
+  border-bottom: none;
+}
+
+.data-label {
+  font-weight: 500;
+  color: #555;
+}
+
+.data-value {
+  color: #667eea;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.phase-roadmap {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.phase-roadmap h4 {
+  margin: 0 0 16px 0;
+  color: #1a1a2e;
+}
+
+.phase-roadmap ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.phase-roadmap li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+  color: #555;
+}
+
+.phase-roadmap li:last-child {
+  border-bottom: none;
+}
+
+.feature-icon {
+  font-size: 1.2rem;
+}
+
+.stub-footer {
+  background: #f0f0f0;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stub-footer p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* Module badge */
+.module-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.module-badge.stub {
+  background: #fff3cd;
+  color: #856404;
+}

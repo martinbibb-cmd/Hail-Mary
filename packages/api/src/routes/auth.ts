@@ -336,4 +336,104 @@ router.get(
   }
 );
 
+// ============================================
+// NAS Quick Login Routes (Temporary)
+// ============================================
+
+/**
+ * GET /api/auth/nas/users
+ * List all users for NAS quick login
+ * @security WARNING: Only enable on trusted networks!
+ */
+router.get('/nas/users', async (req: Request, res: Response) => {
+  // Check if NAS mode is enabled
+  if (process.env.NAS_AUTH_MODE !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'NAS quick login is not enabled. Set NAS_AUTH_MODE=true to enable.',
+    });
+  }
+
+  try {
+    const { listUsersForNasLogin } = await import('../services/auth.service');
+    const users = await listUsersForNasLogin();
+    return res.json({
+      success: true,
+      data: users,
+      message: 'Users retrieved for NAS quick login',
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        code: error.code,
+        error: error.message,
+      });
+    }
+    console.error('Error listing users:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to list users',
+    });
+  }
+});
+
+/**
+ * POST /api/auth/nas/login
+ * Quick login as a user without password (NAS mode)
+ * @security WARNING: Only enable on trusted networks!
+ */
+router.post('/nas/login', async (req: Request, res: Response) => {
+  // Check if NAS mode is enabled
+  if (process.env.NAS_AUTH_MODE !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'NAS quick login is not enabled. Set NAS_AUTH_MODE=true to enable.',
+    });
+  }
+
+  try {
+    const { userId } = req.body;
+
+    if (!userId || typeof userId !== 'number') {
+      return res.status(400).json({
+        success: false,
+        error: 'userId is required and must be a number',
+      });
+    }
+
+    const { nasQuickLogin } = await import('../services/auth.service');
+    const { user, token } = await nasQuickLogin(userId);
+
+    // Set auth cookie
+    res.cookie(COOKIE_NAME, token, getCookieOptions(req));
+
+    return res.json({
+      success: true,
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        accountId: user.accountId,
+        authProvider: user.authProvider,
+        role: user.role,
+      },
+      message: 'NAS quick login successful',
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        code: error.code,
+        error: error.message,
+      });
+    }
+    console.error('Error in NAS login:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to login',
+    });
+  }
+});
+
 export default router;

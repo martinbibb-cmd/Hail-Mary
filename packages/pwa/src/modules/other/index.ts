@@ -1,0 +1,1 @@
+export { OtherTradesApp } from './OtherTradesApp';

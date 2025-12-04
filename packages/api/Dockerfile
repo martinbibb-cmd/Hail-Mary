@@ -49,8 +49,9 @@ COPY --from=builder /app/packages/api/src ./packages/api/src
 COPY --from=builder /app/packages/api/drizzle.config.ts ./packages/api/
 COPY --from=builder /app/packages/api/tsconfig.json ./packages/api/
 
-# Set working directory to api
-WORKDIR /app/packages/api
+# Stay in /app root directory for proper workspace module resolution
+# npm workspace commands are run from root, node_modules are hoisted here
+WORKDIR /app
 
 # Expose port
 EXPOSE 3001
@@ -63,5 +64,5 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Start the application
-CMD ["npm", "run", "start"]
+# Start the application using workspace command for proper module resolution
+CMD ["npm", "run", "start", "-w", "packages/api"]

@@ -2,61 +2,41 @@
 
 # Adjust NODE_VERSION as desired
 ARG NODE_VERSION=20.18.0
-FROM node:${NODE_VERSION}-slim AS base
+FROM node:${NODE_VERSION}-slim as base
 
 LABEL fly_launch_runtime="NodeJS"
 
 # NodeJS app lives here
 WORKDIR /app
 
+# Set production environment
+ENV NODE_ENV=production
+
 
 # Throw-away build stage to reduce size of final image
-FROM base AS build
+FROM base as build
 
 # Install packages needed to build node modules
 RUN apt-get update -qq && \
-    apt-get install -y python-is-python3 pkg-config build-essential && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y python-is-python3 pkg-config build-essential 
 
-# Copy package files
-COPY --link package.json package-lock.json .npmrc ./
-COPY --link packages/api/package.json ./packages/api/
-COPY --link packages/assistant/package.json ./packages/assistant/
-COPY --link packages/pwa/package.json ./packages/pwa/
-COPY --link packages/shared/package.json ./packages/shared/
-
-# Install ALL dependencies (including devDependencies needed for build)
-RUN npm ci
+# Install node modules
+COPY --link package.json package-lock.json .
+RUN npm install
 
 # Copy application code
 COPY --link . .
 
-# Build all workspaces
+# Build application
 RUN npm run build
+
 
 
 # Final stage for app image
 FROM base
 
-# Set production environment
-ENV NODE_ENV=production
+# Copy built application
+COPY --from=build /app /app
 
-# Copy package files for production install (only API and shared needed at runtime)
-COPY --link package.json package-lock.json .npmrc ./
-COPY --link packages/api/package.json ./packages/api/
-COPY --link packages/shared/package.json ./packages/shared/
-
-# Install production dependencies only
-RUN npm ci --omit=dev
-
-# Copy built files from builder
-# Note: Shared is required by API, so both must be copied
-COPY --from=build /app/packages/shared/dist ./packages/shared/dist
-COPY --from=build /app/packages/api/dist ./packages/api/dist
-
-# Default to running the API
-EXPOSE 3001
-ENV PORT=3001
-
-# Start the API server by default
-CMD [ "npm", "run", "start", "-w", "packages/api" ]
+# Start the server by default, this can be overwritten at runtime
+CMD [ "npm", "run", "start" ]

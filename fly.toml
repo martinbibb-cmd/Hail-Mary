@@ -1,21 +1,15 @@
-# fly.toml app configuration file for hail-mary
+# fly.toml app configuration file generated for hail-mary on 2025-12-04T09:01:56Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
-# NOTE: This is a root-level deployment that builds all workspaces and runs the API by default.
-# For individual package deployments, use the package-specific toml files:
-#   - fly.api.toml (for API)
-#   - fly.pwa.toml (for PWA)  
-#   - fly.assistant.toml (for Assistant)
 
 app = 'hail-mary'
 primary_region = 'lhr'
 
 [build]
-  dockerfile = "Dockerfile"
 
 [http_service]
-  internal_port = 3001
+  internal_port = 8080
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
@@ -26,7 +20,4 @@ primary_region = 'lhr'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
-
-[env]
-  PORT = "3001"
-  NODE_ENV = "production"
+  memory_mb = 1024

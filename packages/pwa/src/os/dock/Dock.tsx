@@ -7,6 +7,8 @@ export interface DockApp {
   id: string
   name: string
   icon: string
+  /** Optional: marks survey module tabs */
+  isSurveyModule?: boolean
 }
 
 const dockApps: DockApp[] = [
@@ -24,6 +26,24 @@ const dockApps: DockApp[] = [
   // Settings must always remain last (far right)
   { id: 'settings', name: 'Settings', icon: '⚙️' },
 ]
+
+/**
+ * Survey module apps - available as tabs within the survey view
+ * These match the mini app architecture described in the spec.
+ */
+export const surveyModuleApps: DockApp[] = [
+  { id: 'property', name: 'Property', icon: '🏠', isSurveyModule: true },
+  { id: 'central_heating', name: 'Boiler / CH', icon: '🔥', isSurveyModule: true },
+  { id: 'heat_pump', name: 'Heat Pump', icon: '♨️', isSurveyModule: true },
+  { id: 'pv', name: 'Solar PV', icon: '☀️', isSurveyModule: true },
+  { id: 'ev', name: 'EV Charging', icon: '🔌', isSurveyModule: true },
+  { id: 'hazards', name: 'Hazards', icon: '⚠️', isSurveyModule: true },
+  { id: 'roadmap', name: 'Roadmap', icon: '🗺️', isSurveyModule: true },
+  { id: 'other_trades', name: 'Other', icon: '🔧', isSurveyModule: true },
+]
+
+/** Get all dock apps including survey modules */
+export const getAllDockApps = () => [...dockApps, ...surveyModuleApps]
 
 export const Dock: React.FC = () => {
   const openWindow = useWindowStore((state) => state.openWindow)
@@ -89,7 +109,7 @@ export const Dock: React.FC = () => {
                 title={`Restore ${w.title}`}
               >
                 <span className="os-dock-minimized-preview">
-                  {dockApps.find(a => a.id === w.appId)?.icon || '📄'}
+                  {getAllDockApps().find(a => a.id === w.appId)?.icon || '📄'}
                 </span>
               </motion.button>
             ))}

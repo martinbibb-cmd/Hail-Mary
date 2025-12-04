@@ -8,8 +8,47 @@
  */
 
 import React from 'react';
-import { moduleRegistry, getPlannedModules, type ModuleMeta } from '@hail-mary/shared';
 import './OtherTradesApp.css';
+
+// Planned modules inline (to avoid Vite/Rollup interop issues)
+interface PlannedModule {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  phaseIntroduced: number;
+}
+
+const plannedModules: PlannedModule[] = [
+  {
+    id: 'roofing',
+    label: 'Roofing',
+    icon: '🏗️',
+    description: 'Roofing survey and quotes',
+    phaseIntroduced: 3,
+  },
+  {
+    id: 'insulation',
+    label: 'Insulation',
+    icon: '🧱',
+    description: 'Insulation survey - cavity, solid wall, loft',
+    phaseIntroduced: 3,
+  },
+  {
+    id: 'glazing',
+    label: 'Glazing',
+    icon: '🪟',
+    description: 'Windows and doors survey',
+    phaseIntroduced: 3,
+  },
+  {
+    id: 'electrical',
+    label: 'Electrical',
+    icon: '⚡',
+    description: 'Full electrical rewire survey',
+    phaseIntroduced: 3,
+  },
+];
 
 interface OtherTradesAppProps {
   onModuleSelect?: (moduleId: string) => void;
@@ -18,9 +57,6 @@ interface OtherTradesAppProps {
 export const OtherTradesApp: React.FC<OtherTradesAppProps> = ({
   onModuleSelect,
 }) => {
-  // Get all planned (future) modules
-  const plannedModules = getPlannedModules();
-
   return (
     <div className="other-trades-app">
       <div className="other-trades-header">
@@ -43,7 +79,7 @@ export const OtherTradesApp: React.FC<OtherTradesAppProps> = ({
           <p className="empty-state">No additional modules planned yet.</p>
         ) : (
           <div className="module-cards">
-            {plannedModules.map((module: ModuleMeta) => (
+            {plannedModules.map((module) => (
               <div 
                 key={module.id}
                 className="module-card planned"

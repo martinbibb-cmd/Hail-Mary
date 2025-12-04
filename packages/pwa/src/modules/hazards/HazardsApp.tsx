@@ -11,10 +11,8 @@
 import React, { useState } from 'react';
 import type { 
   SystemSpecDraft,
-  HazardsSpec,
   SurveySlot,
 } from '@hail-mary/shared';
-import { hazardsSlots, getSlotById } from '@hail-mary/shared';
 import './HazardsApp.css';
 
 interface HazardsAppProps {
@@ -44,11 +42,9 @@ export const HazardsApp: React.FC<HazardsAppProps> = ({
     }
   };
 
-  const showHelper = (slotId: string) => {
-    const slot = getSlotById(slotId);
-    if (slot) {
-      setCurrentSlot(slot);
-    }
+  const showHelper = (_slotId: string) => {
+    // TODO: Connect to SurveyHelper service
+    console.log('Helper requested for:', _slotId);
   };
 
   const handleChipSelect = (slot: SurveySlot, value: unknown) => {

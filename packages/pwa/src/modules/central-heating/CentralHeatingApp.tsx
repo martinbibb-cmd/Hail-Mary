@@ -12,10 +12,8 @@
 import React, { useState } from 'react';
 import type { 
   SystemSpecDraft,
-  CentralHeatingSpec,
   SurveySlot,
 } from '@hail-mary/shared';
-import { centralHeatingSlots, getSlotById } from '@hail-mary/shared';
 import './CentralHeatingApp.css';
 
 interface CentralHeatingAppProps {
@@ -48,11 +46,9 @@ export const CentralHeatingApp: React.FC<CentralHeatingAppProps> = ({
     }
   };
 
-  const showHelper = (slotId: string) => {
-    const slot = getSlotById(slotId);
-    if (slot) {
-      setCurrentSlot(slot);
-    }
+  const showHelper = (_slotId: string) => {
+    // TODO: Connect to SurveyHelper service
+    console.log('Helper requested for:', _slotId);
   };
 
   const handleChipSelect = (slot: SurveySlot, value: unknown) => {

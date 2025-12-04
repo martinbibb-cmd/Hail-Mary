@@ -9,14 +9,11 @@
  * - Ask helper questions for property/fabric
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { 
   SystemSpecDraft,
-  PropertyInfo,
-  OccupancyPattern,
   SurveySlot,
 } from '@hail-mary/shared';
-import { coreSlots, getSlotById } from '@hail-mary/shared';
 import './PropertyApp.css';
 
 interface PropertyAppProps {
@@ -41,7 +38,6 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
   readOnly = false,
 }) => {
   const [currentSlot, setCurrentSlot] = useState<SurveySlot | null>(null);
-  const [editingField, setEditingField] = useState<string | null>(null);
 
   const property = specDraft.property || {};
   const occupancy = specDraft.occupancyPattern || {};
@@ -60,12 +56,10 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
     return String(value);
   };
 
-  // Show helper for a specific slot
-  const showHelper = (slotId: string) => {
-    const slot = getSlotById(slotId);
-    if (slot) {
-      setCurrentSlot(slot);
-    }
+  // Show helper for a specific slot (placeholder - to be connected to survey helper)
+  const showHelper = (_slotId: string) => {
+    // TODO: Connect to SurveyHelper service
+    console.log('Helper requested for:', _slotId);
   };
 
   // Handle chip selection

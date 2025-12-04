@@ -297,3 +297,106 @@
   color: rgba(60, 50, 40, 0.5);
   font-size: 12px;
 }
+
+/* NAS Quick Login Styles */
+.auth-btn-nas {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin-top: 12px;
+}
+
+.auth-btn-nas:hover {
+  background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+}
+
+.nas-warning {
+  background: #fff3cd;
+  color: #856404;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.nas-loading {
+  text-align: center;
+  padding: 40px;
+  color: rgba(60, 50, 40, 0.6);
+}
+
+.nas-empty {
+  text-align: center;
+  padding: 40px;
+  color: rgba(60, 50, 40, 0.6);
+  font-style: italic;
+}
+
+.nas-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.nas-user-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(139, 119, 91, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.nas-user-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #667eea;
+  transform: translateX(4px);
+}
+
+.nas-user-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nas-user-avatar {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.nas-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nas-user-name {
+  font-weight: 600;
+  color: rgba(60, 50, 40, 0.95);
+}
+
+.nas-user-email {
+  font-size: 0.85rem;
+  color: rgba(60, 50, 40, 0.6);
+}
+
+.nas-user-arrow {
+  color: rgba(60, 50, 40, 0.4);
+  font-size: 1.2rem;
+}

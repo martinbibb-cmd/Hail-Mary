@@ -501,3 +501,90 @@ export async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<{ 
     throw new AuthError('oauth_error', 'Failed to authenticate with Google', 500);
   }
 }
+
+// ============================================
+// NAS Storage User Selection (Temporary Fix)
+// ============================================
+
+/**
+ * List all users for NAS quick login
+ * This is a TEMPORARY solution until proper authentication is established.
+ * @security WARNING: This should be disabled in production!
+ */
+export async function listUsersForNasLogin(): Promise<UserPayload[]> {
+  try {
+    const allUsers = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        accountId: users.accountId,
+        authProvider: users.authProvider,
+        role: users.role,
+      })
+      .from(users)
+      .orderBy(users.name);
+
+    return allUsers.map(user => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      accountId: user.accountId ?? undefined,
+      authProvider: user.authProvider,
+      role: user.role,
+    }));
+  } catch (error) {
+    if (isDatabaseError(error)) {
+      console.error('Database error listing users:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error listing users:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
+}
+
+/**
+ * Quick login as a user without password (NAS mode)
+ * This is a TEMPORARY solution until proper authentication is established.
+ * @security WARNING: This should only be enabled on trusted local networks!
+ */
+export async function nasQuickLogin(userId: number): Promise<{ user: UserPayload; token: string }> {
+  // Check if NAS mode is enabled
+  if (process.env.NAS_AUTH_MODE !== 'true') {
+    throw new AuthError('unauthorized', 'NAS quick login is not enabled', 403);
+  }
+
+  try {
+    const foundUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (foundUsers.length === 0) {
+      throw new AuthError('not_found', 'User not found', 404);
+    }
+
+    const user = foundUsers[0];
+    const userPayload: UserPayload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      accountId: user.accountId ?? undefined,
+      authProvider: user.authProvider,
+      role: user.role,
+    };
+
+    const token = generateToken(userPayload);
+    return { user: userPayload, token };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    if (isDatabaseError(error)) {
+      console.error('Database error during NAS login:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error during NAS login:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
+}

@@ -4,16 +4,25 @@
  * Full-screen authentication UI for Hail-Mary.
  * Shows login/register forms when user is not authenticated.
  * This is the "lock screen" before accessing the OS shell.
+ * 
+ * Supports NAS mode: When NAS_AUTH_MODE is enabled, shows a user 
+ * selection list for quick login without password.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import './AuthScreen.css';
 
-type ViewMode = 'login' | 'register' | 'forgot-password' | 'reset-sent';
+type ViewMode = 'login' | 'register' | 'forgot-password' | 'reset-sent' | 'nas-select';
+
+interface NasUser {
+  id: number;
+  name: string;
+  email: string;
+}
 
 export const AuthScreen: React.FC = () => {
-  const { error, login, register, requestPasswordReset, clearError } = useAuth();
+  const { error, login, register, requestPasswordReset, clearError, nasMode, getNasUsers, nasLogin } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('login');
   const [formData, setFormData] = useState({
     name: '',
@@ -23,6 +32,18 @@ export const AuthScreen: React.FC = () => {
   });
   const [localError, setLocalError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [nasUsers, setNasUsers] = useState<NasUser[]>([]);
+  const [loadingNasUsers, setLoadingNasUsers] = useState(false);
+
+  // Load NAS users when mode changes
+  useEffect(() => {
+    if (viewMode === 'nas-select') {
+      setLoadingNasUsers(true);
+      getNasUsers()
+        .then(users => setNasUsers(users))
+        .finally(() => setLoadingNasUsers(false));
+    }
+  }, [viewMode, getNasUsers]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -40,6 +61,18 @@ export const AuthScreen: React.FC = () => {
     
     if (success) {
       setFormData({ name: '', email: '', password: '', confirmPassword: '' });
+    }
+    setFormSubmitting(false);
+  };
+
+  const handleNasUserSelect = async (userId: number) => {
+    setFormSubmitting(true);
+    setLocalError(null);
+    
+    const success = await nasLogin(userId);
+    
+    if (!success) {
+      setLocalError('Failed to login as selected user');
     }
     setFormSubmitting(false);
   };
@@ -101,6 +134,68 @@ export const AuthScreen: React.FC = () => {
     setLocalError(null);
     clearError();
   };
+
+  const switchToNasSelect = () => {
+    setViewMode('nas-select');
+    setLocalError(null);
+    clearError();
+  };
+
+  // NAS User Selection View
+  if (viewMode === 'nas-select') {
+    return (
+      <div className="auth-screen">
+        <div className="auth-screen-container">
+          <div className="auth-screen-logo">
+            <span className="auth-screen-logo-icon">🔥</span>
+            <h1>Hail-Mary</h1>
+          </div>
+          <div className="auth-screen-form">
+            <h2>👤 Select User</h2>
+            <p className="auth-screen-subtitle nas-warning">
+              ⚠️ NAS Quick Login Mode - No password required
+            </p>
+
+            {(error || localError) && (
+              <div className="auth-screen-error">{localError || error}</div>
+            )}
+
+            {loadingNasUsers ? (
+              <div className="nas-loading">Loading users...</div>
+            ) : nasUsers.length === 0 ? (
+              <div className="nas-empty">No users found. Please create a user first.</div>
+            ) : (
+              <div className="nas-user-list">
+                {nasUsers.map(user => (
+                  <button
+                    key={user.id}
+                    className="nas-user-item"
+                    onClick={() => handleNasUserSelect(user.id)}
+                    disabled={formSubmitting}
+                  >
+                    <span className="nas-user-avatar">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="nas-user-info">
+                      <span className="nas-user-name">{user.name}</span>
+                      <span className="nas-user-email">{user.email}</span>
+                    </div>
+                    <span className="nas-user-arrow">→</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="auth-screen-switch">
+              <button className="auth-btn-link" onClick={switchToLogin}>
+                ← Back to Password Login
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Reset Sent View
   if (viewMode === 'reset-sent') {
@@ -357,6 +452,16 @@ export const AuthScreen: React.FC = () => {
             </svg>
             Sign in with Google
           </a>
+
+          {/* NAS Quick Login Option */}
+          {nasMode && (
+            <button
+              className="auth-btn auth-btn-nas auth-btn-full"
+              onClick={switchToNasSelect}
+            >
+              🖥️ NAS Quick Login (Select User)
+            </button>
+          )}
 
           <div className="auth-screen-footer">
             <button className="auth-btn-link" onClick={switchToForgotPassword}>

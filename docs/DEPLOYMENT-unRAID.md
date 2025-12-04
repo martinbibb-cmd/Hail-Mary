@@ -410,6 +410,17 @@ Since the PostgreSQL data is stored in the appdata folder, you can use unRAID's 
 
 ## Admin Tools
 
+### Default Login Credentials
+
+When you first deploy Hail-Mary on unRAID, an admin user is automatically created:
+
+| Field | Value |
+|-------|-------|
+| **Email** | `admin@hailmary.local` |
+| **Password** | `HailMary2024!` |
+
+> ⚠️ **Security Warning**: Change these credentials immediately after first login!
+
 ### List All Users
 
 To see all registered users:
@@ -437,16 +448,16 @@ Requirements:
 - Password must be at least 8 characters
 - Only works for users with local authentication (not SSO)
 
-### Create Initial Admin User
+### Custom Initial Admin User
 
-To create the first admin user on a fresh install, set these environment variables in your `.env` file:
+To use custom credentials instead of the defaults, set these environment variables in your `.env` file before first deployment:
 
 ```bash
 INITIAL_ADMIN_EMAIL=admin@example.com
 INITIAL_ADMIN_PASSWORD=your-secure-password
 ```
 
-Then restart the containers:
+Then start (or restart) the containers:
 ```bash
 docker compose -f docker-compose.unraid.yml up -d
 ```

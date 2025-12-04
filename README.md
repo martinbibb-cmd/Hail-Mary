@@ -212,6 +212,17 @@ See **[Fly.io Deployment Guide](docs/DEPLOYMENT-FLY.md)** for detailed instructi
 
 ## 🔐 Authentication & Admin Tools
 
+### Default Login Credentials
+
+When you first deploy Hail-Mary, an admin user is automatically created with these credentials:
+
+| Field | Value |
+|-------|-------|
+| **Email** | `admin@hailmary.local` |
+| **Password** | `HailMary2024!` |
+
+> ⚠️ **Security Warning**: Change these credentials immediately after first login by updating the `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` environment variables in your `.env` file, then restarting the containers.
+
 ### Password Reset
 
 If you need to manually reset a user's password (useful for NAS deployments):
@@ -232,9 +243,9 @@ To see all registered users:
 docker exec -it hailmary-api npm run admin:list-users
 ```
 
-### Initial Admin User
+### Custom Initial Admin User
 
-Set environment variables before first run:
+To use custom credentials instead of the defaults, set these environment variables before first run:
 - `INITIAL_ADMIN_EMAIL`: Email for the admin user
 - `INITIAL_ADMIN_PASSWORD`: Password (minimum 8 characters)
 

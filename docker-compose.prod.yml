@@ -42,7 +42,8 @@ services:
       BASE_URL: ${BASE_URL:-https://your-domain.com}
       NODE_ENV: production
       # Default admin credentials for first-time setup
-      # Change these in your .env file for production!
+      # ⚠️  SECURITY WARNING: Change these in production via .env file!
+      # Default: admin@hailmary.local / HailMary2024!
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
     depends_on:

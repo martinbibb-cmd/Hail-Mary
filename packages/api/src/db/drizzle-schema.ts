@@ -35,7 +35,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   passwordHash: text("password_hash"), // nullable for SSO users
-  authProvider: varchar("auth_provider", { length: 50 }).default("local").notNull(), // 'local' | 'salesforce'
+  authProvider: varchar("auth_provider", { length: 50 }).default("local").notNull(), // 'local' | 'google' | 'salesforce'
   externalId: varchar("external_id", { length: 255 }), // Salesforce user ID (nullable for local users)
   role: varchar("role", { length: 50 }).default("user").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

@@ -379,7 +379,7 @@ export interface STTResponse {
 // Auth Types
 // ============================================
 
-export type AuthProvider = 'local' | 'salesforce';
+export type AuthProvider = 'local' | 'google' | 'salesforce';
 export type UserRole = 'user' | 'admin';
 
 export interface AuthUser {

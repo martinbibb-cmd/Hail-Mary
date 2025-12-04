@@ -50,8 +50,9 @@ services:
       - hailmary-network
     expose:
       - "3001"
+    # Use workspace commands for proper module resolution from /app root
     command: >
-      sh -c "npm run db:push && npm run db:seed && npm run start"
+      sh -c "npm run db:push -w packages/api && npm run db:seed -w packages/api && npm run start -w packages/api"
 
   # Hail-Mary Assistant Service
   hailmary-assistant:

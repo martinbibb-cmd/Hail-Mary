@@ -337,6 +337,10 @@ export const AuthScreen: React.FC = () => {
             </button>
           </div>
         </div>
+        <div className="auth-screen-version">
+          <span>v{__APP_VERSION__}</span>
+          <span>Built: {new Date(__BUILD_TIME__).toLocaleDateString()}</span>
+        </div>
       </div>
     </div>
   );

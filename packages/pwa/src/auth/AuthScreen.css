@@ -241,3 +241,14 @@
     font-size: 28px;
   }
 }
+
+/* Version info */
+.auth-screen-version {
+  margin-top: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: rgba(60, 50, 40, 0.5);
+  font-size: 12px;
+}

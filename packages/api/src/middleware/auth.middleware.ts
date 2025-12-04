@@ -10,12 +10,11 @@ import { getCurrentUserFromToken, UserPayload } from '../services/auth.service';
 // Cookie name for auth token
 const COOKIE_NAME = 'hm_auth_token';
 
-// Extend Express Request to include user
+// Extend Express Request to include user (compatible with Passport)
 declare global {
   namespace Express {
-    interface Request {
-      user?: UserPayload;
-    }
+    // eslint-disable-next-line @typescript-eslint/no-empty-interface
+    interface User extends UserPayload {}
   }
 }
 

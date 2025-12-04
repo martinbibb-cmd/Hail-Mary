@@ -405,3 +405,99 @@ export async function getUserById(id: number): Promise<UserPayload | null> {
     role: user.role,
   };
 }
+
+/**
+ * Google OAuth profile data
+ */
+export interface GoogleProfile {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+}
+
+/**
+ * Find or create user from Google OAuth profile
+ * Returns user payload and JWT token
+ */
+export async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<{ user: UserPayload; token: string }> {
+  const normalizedEmail = profile.email.toLowerCase().trim();
+
+  try {
+    // Check if user already exists
+    const existingUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalizedEmail));
+
+    if (existingUsers.length > 0) {
+      const user = existingUsers[0];
+
+      // If user exists with local auth, update to google
+      if (user.authProvider === 'local') {
+        await db
+          .update(users)
+          .set({
+            authProvider: 'google',
+            externalId: profile.id,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, user.id));
+      }
+
+      const userPayload: UserPayload = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        accountId: user.accountId ?? undefined,
+        authProvider: 'google',
+        role: user.role,
+      };
+
+      const token = generateToken(userPayload);
+      return { user: userPayload, token };
+    }
+
+    // Create or get default account
+    let accountId: number | undefined;
+    const existingAccounts = await db.select().from(accounts).limit(1);
+    if (existingAccounts.length > 0) {
+      accountId = existingAccounts[0].id;
+    } else {
+      const [newAccount] = await db
+        .insert(accounts)
+        .values({ name: 'Default Account' })
+        .returning();
+      accountId = newAccount.id;
+    }
+
+    // Create new user with Google auth
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email: normalizedEmail,
+        name: profile.name,
+        authProvider: 'google',
+        externalId: profile.id,
+        accountId,
+        role: 'user',
+        passwordHash: null, // No password for OAuth users
+      })
+      .returning();
+
+    const userPayload: UserPayload = {
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name,
+      accountId: newUser.accountId ?? undefined,
+      authProvider: newUser.authProvider,
+      role: newUser.role,
+    };
+
+    const token = generateToken(userPayload);
+    return { user: userPayload, token };
+  } catch (error) {
+    console.error('Error in Google OAuth user creation:', error);
+    throw new AuthError('oauth_error', 'Failed to authenticate with Google', 500);
+  }
+}

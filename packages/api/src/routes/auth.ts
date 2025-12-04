@@ -1,6 +1,6 @@
 /**
  * Auth Routes for Hail-Mary
- * 
+ *
  * Handles user authentication endpoints:
  * - POST /api/auth/register - Create new user account
  * - POST /api/auth/login - Login with email/password
@@ -8,9 +8,12 @@
  * - GET /api/auth/me - Get current user from token
  * - POST /api/auth/request-password-reset - Start password reset flow
  * - POST /api/auth/reset-password - Complete password reset
+ * - GET /api/auth/google - Initiate Google OAuth flow
+ * - GET /api/auth/google/callback - Google OAuth callback
  */
 
 import { Router, Request, Response } from 'express';
+import passport from 'passport';
 import {
   registerUser,
   loginWithPassword,
@@ -19,8 +22,13 @@ import {
   completePasswordReset,
   AuthError,
 } from '../services/auth.service';
+import { configurePassport } from '../config/passport';
 
 const router = Router();
+
+// Initialize Passport
+configurePassport();
+router.use(passport.initialize());
 
 // Cookie configuration
 const COOKIE_NAME = 'hm_auth_token';
@@ -287,5 +295,45 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     });
   }
 });
+
+/**
+ * GET /api/auth/google
+ * Initiate Google OAuth flow
+ */
+router.get(
+  '/google',
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
+);
+
+/**
+ * GET /api/auth/google/callback
+ * Google OAuth callback - handles the redirect from Google
+ */
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: '/' }),
+  (req: Request, res: Response) => {
+    try {
+      // User is attached by passport strategy, token is attached as extra property
+      const userWithToken = req.user as any;
+
+      if (!userWithToken || !userWithToken.token) {
+        console.error('Missing user or token from Google OAuth');
+        return res.redirect('/?error=auth_failed');
+      }
+
+      const token = userWithToken.token;
+
+      // Set auth cookie
+      res.cookie(COOKIE_NAME, token, getCookieOptions(req));
+
+      // Redirect to home page after successful login
+      return res.redirect('/');
+    } catch (error) {
+      console.error('Error in Google OAuth callback:', error);
+      return res.redirect('/?error=auth_failed');
+    }
+  }
+);
 
 export default router;

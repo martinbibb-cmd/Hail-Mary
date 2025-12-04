@@ -64,6 +64,17 @@ GITHUB_REPOSITORY_OWNER=martinbibb-cmd
 IMAGE_TAG=latest  # or 'main', 'staging', or specific SHA
 ```
 
+### Default Login Credentials
+
+After deployment, an admin user is automatically created:
+
+| Field | Value |
+|-------|-------|
+| **Email** | `admin@hailmary.local` |
+| **Password** | `HailMary2024!` |
+
+> ⚠️ **Change these credentials in production!** Set `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` in your `.env` file.
+
 ### 3. Start the Application
 
 **Option A: Using pre-built images (recommended)**

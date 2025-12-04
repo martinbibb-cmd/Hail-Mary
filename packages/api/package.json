@@ -13,7 +13,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:seed": "ts-node src/db/seed.ts"
+    "db:seed": "ts-node src/db/seed.ts",
+    "admin:reset-password": "ts-node src/scripts/reset-password.ts",
+    "admin:list-users": "ts-node src/scripts/list-users.ts"
   },
   "dependencies": {
     "@hail-mary/shared": "*",

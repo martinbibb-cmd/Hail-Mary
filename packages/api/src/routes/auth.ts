@@ -24,12 +24,30 @@ const router = Router();
 
 // Cookie configuration
 const COOKIE_NAME = 'hm_auth_token';
-const COOKIE_OPTIONS = {
+const BASE_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
   maxAge: 24 * 60 * 60 * 1000, // 24 hours
   path: '/',
+};
+
+/**
+ * Get cookie options with appropriate secure flag based on request protocol
+ * This allows the app to work correctly on both HTTP (local/NAS) and HTTPS (production)
+ */
+const getCookieOptions = (req: Request): typeof BASE_COOKIE_OPTIONS & { secure: boolean } => {
+  // Check if request is over HTTPS (via X-Forwarded-Proto header or direct)
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const isSecure = Boolean(
+    req.secure || 
+    forwardedProto === 'https' ||
+    (process.env.BASE_URL && process.env.BASE_URL.startsWith('https://'))
+  );
+  
+  return {
+    ...BASE_COOKIE_OPTIONS,
+    secure: isSecure,
+  };
 };
 
 // Base URL for password reset links
@@ -56,7 +74,7 @@ router.post('/register', async (req: Request, res: Response) => {
     const { user, token } = await registerUser({ name, email, password });
 
     // Set auth cookie
-    res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
+    res.cookie(COOKIE_NAME, token, getCookieOptions(req));
 
     return res.status(201).json({
       success: true,
@@ -107,7 +125,7 @@ router.post('/login', async (req: Request, res: Response) => {
     const { user, token } = await loginWithPassword({ email, password });
 
     // Set auth cookie
-    res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
+    res.cookie(COOKIE_NAME, token, getCookieOptions(req));
 
     return res.json({
       success: true,
@@ -143,9 +161,9 @@ router.post('/login', async (req: Request, res: Response) => {
  * POST /api/auth/logout
  * Clear the auth cookie
  */
-router.post('/logout', (_req: Request, res: Response) => {
+router.post('/logout', (req: Request, res: Response) => {
   res.clearCookie(COOKIE_NAME, {
-    ...COOKIE_OPTIONS,
+    ...getCookieOptions(req),
     maxAge: 0,
   });
 
@@ -172,7 +190,7 @@ router.get('/me', (req: Request, res: Response) => {
   const user = getCurrentUserFromToken(token);
 
   if (!user) {
-    res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+    res.clearCookie(COOKIE_NAME, getCookieOptions(req));
     return res.status(401).json({
       success: false,
       error: 'Invalid or expired token',

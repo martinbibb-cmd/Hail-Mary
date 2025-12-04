@@ -181,6 +181,34 @@ docker-compose -f docker-compose.unraid.yml up -d --build
 
 See **[unRAID Deployment Guide](docs/DEPLOYMENT-unRAID.md)** for detailed instructions.
 
+## 🔐 Authentication & Admin Tools
+
+### Password Reset
+
+If you need to manually reset a user's password (useful for NAS deployments):
+
+```bash
+# Via Docker
+docker exec -it hailmary-api npm run admin:reset-password -- user@example.com newpassword123
+
+# Local development
+npm run admin:reset-password -w packages/api -- user@example.com newpassword123
+```
+
+### List Users
+
+To see all registered users:
+
+```bash
+docker exec -it hailmary-api npm run admin:list-users
+```
+
+### Initial Admin User
+
+Set environment variables before first run:
+- `INITIAL_ADMIN_EMAIL`: Email for the admin user
+- `INITIAL_ADMIN_PASSWORD`: Password (minimum 8 characters)
+
 ## 🎯 Design Principles
 
 1. **Core app never depends on AI** - AI is a helper, not a controller

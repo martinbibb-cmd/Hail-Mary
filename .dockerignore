@@ -1,0 +1,12 @@
+fly.toml
+fly.*.toml
+Dockerfile
+.dockerignore
+node_modules
+.git
+.env
+.env.*
+!.env.example
+*.log
+# Exclude local dist directories - they are built fresh inside the container
+dist

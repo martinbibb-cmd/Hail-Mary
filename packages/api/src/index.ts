@@ -22,6 +22,7 @@ import leadsRouter from './routes/leads';
 import appointmentsRouter from './routes/appointments';
 import visitSessionsRouter from './routes/visitSessions';
 import filesRouter from './routes/files';
+import transcriptionRouter from './routes/transcription';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -74,6 +75,7 @@ app.use('/api/leads', leadsRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
 app.use('/api/files', filesRouter);
+app.use('/api/transcription', transcriptionRouter);
 
 // 404 handler
 app.use((_req, res) => {
@@ -102,6 +104,7 @@ app.listen(PORT, HOST, () => {
   console.log(`   - GET/POST /api/appointments`);
   console.log(`   - GET/POST /api/visit-sessions`);
   console.log(`   - GET/POST/DELETE /api/files`);
+  console.log(`   - POST/GET /api/transcription/sessions`);
 });
 
 export default app;

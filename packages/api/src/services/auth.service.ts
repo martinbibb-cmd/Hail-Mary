@@ -35,6 +35,7 @@ export interface UserPayload {
   name: string;
   accountId?: number;
   authProvider: string;
+  role: string;
 }
 
 export interface ResetPasswordDto {
@@ -75,6 +76,7 @@ function generateToken(user: UserPayload): string {
       name: user.name,
       accountId: user.accountId,
       authProvider: user.authProvider,
+      role: user.role,
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
@@ -193,6 +195,7 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
       name: newUser.name,
       accountId: newUser.accountId ?? undefined,
       authProvider: newUser.authProvider,
+      role: newUser.role,
     };
 
     const token = generateToken(userPayload);
@@ -258,6 +261,7 @@ export async function loginWithPassword(dto: LoginDto): Promise<{ user: UserPayl
       name: user.name,
       accountId: user.accountId ?? undefined,
       authProvider: user.authProvider,
+      role: user.role,
     };
 
     const token = generateToken(userPayload);
@@ -398,5 +402,6 @@ export async function getUserById(id: number): Promise<UserPayload | null> {
     name: user.name,
     accountId: user.accountId ?? undefined,
     authProvider: user.authProvider,
+    role: user.role,
   };
 }

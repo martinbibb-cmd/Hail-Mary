@@ -380,6 +380,7 @@ export interface STTResponse {
 // ============================================
 
 export type AuthProvider = 'local' | 'salesforce';
+export type UserRole = 'user' | 'admin';
 
 export interface AuthUser {
   id: number;
@@ -387,6 +388,7 @@ export interface AuthUser {
   name: string;
   accountId?: number;
   authProvider: AuthProvider;
+  role: UserRole;
 }
 
 export interface RegisterDto {

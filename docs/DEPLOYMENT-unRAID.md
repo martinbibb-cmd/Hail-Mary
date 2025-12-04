@@ -4,15 +4,39 @@ This guide explains how to deploy Hail-Mary on unRAID using Docker Compose with 
 
 ## Features of unRAID Configuration
 
+- **Automatic installation**: One-line install script
+- **Auto-updates**: Pulls latest Docker images automatically when you push changes
 - **Host path storage**: Uses `/mnt/user/appdata/hailmary/postgres` for database persistence (unRAID appdata pattern)
 - **WebUI integration**: Containers include unRAID labels for Docker tab WebUI links
 - **Compose Manager compatible**: Works seamlessly with the Docker Compose Manager plugin
 - **Default port 8080**: Avoids conflicts with common unRAID services
 
-## Prerequisites
+## Quick Start (Recommended)
+
+The fastest way to install Hail-Mary on unRAID:
+
+```bash
+wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash
+```
+
+This will:
+1. Clone the repository to `/mnt/user/appdata/hailmary`
+2. Create a default `.env` configuration
+3. Pull pre-built Docker images from GitHub Container Registry
+4. Start all containers
+5. Optionally configure automatic updates
+
+After installation completes, access the app at `http://YOUR-UNRAID-IP:8080`
+
+## Manual Installation
+
+If you prefer to install manually:
+
+### Prerequisites
 
 - unRAID 6.9+ with Docker enabled
 - Docker Compose Manager plugin installed (from Community Applications)
+- Git installed (install Nerd Tools plugin if needed)
 - Cloudflare Tunnel set up (optional, for external access)
 
 ## Architecture Overview
@@ -249,37 +273,73 @@ Protect your app with Cloudflare Access:
 3. Ensure the public hostname points to correct service
 4. Try using the host IP instead of container name
 
-## Updating the Stack
+## Automatic Updates
 
-To update to a new version:
+Hail-Mary can automatically update when you push changes to GitHub! Choose one of these methods:
 
-1. Pull the latest code from GitHub
-2. In Docker Compose Manager, click **Compose Up** (with build option enabled)
-3. Wait for containers to rebuild and restart
+### Method 1: User Scripts Plugin (Recommended for unRAID)
 
-Or via command line:
+This is the easiest way to enable automatic updates on unRAID:
 
 ```bash
 cd /mnt/user/appdata/hailmary
-git pull
-docker compose -f docker-compose.unraid.yml up -d --build
+./scripts/setup-unraid-autoupdate.sh
 ```
 
-> **Note:** The `--build` flag is required to rebuild images when source code changes. Without it, `docker compose up -d` will only restart containers with existing (old) images.
+This creates a User Script that:
+- Checks for repository updates
+- Pulls new Docker images from GitHub Container Registry
+- Restarts containers if updates are found
+- Runs on a schedule (default: hourly)
+- Sends unRAID notifications when updates are installed
 
-### Quick Update Script
+**Customize the schedule:**
+```bash
+# Check every 15 minutes (fast updates)
+./scripts/setup-unraid-autoupdate.sh --interval "*/15 * * * *"
 
-For convenience, you can create a simple update script:
+# Check every 6 hours (light usage)
+./scripts/setup-unraid-autoupdate.sh --interval "0 */6 * * *"
+
+# Check daily at 2 AM
+./scripts/setup-unraid-autoupdate.sh --interval "0 2 * * *"
+```
+
+**Manage in the Web UI:**
+- Go to Settings > User Scripts > hailmary-auto-update
+- Click "Run Now" to manually check for updates
+- Adjust the schedule as needed
+- View logs to see update history
+
+### Method 2: Manual Updates
+
+To manually update to the latest version:
 
 ```bash
-#!/bin/bash
-# /mnt/user/appdata/hailmary/update.sh
 cd /mnt/user/appdata/hailmary
-git pull
-docker compose -f docker-compose.unraid.yml up -d --build
+docker compose -f docker-compose.unraid.yml pull
+docker compose -f docker-compose.unraid.yml up -d
+docker image prune -f
 ```
 
-Make it executable with `chmod +x update.sh` and run with `./update.sh`.
+Or using the deployment script:
+
+```bash
+cd /mnt/user/appdata/hailmary
+./scripts/nas-deploy.sh
+```
+
+### How It Works
+
+When you push changes to the GitHub repository:
+
+1. **GitHub Actions** automatically builds new Docker images
+2. Images are pushed to GitHub Container Registry (ghcr.io)
+3. The auto-update script (if enabled) periodically checks for new images
+4. If new images are found, containers are automatically updated
+5. Old images are cleaned up to save space
+
+**No manual intervention needed!** Just push your changes and they'll deploy automatically.
 
 ## Backup and Restore
 

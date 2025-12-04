@@ -165,21 +165,33 @@ Deploy to a NAS with automatic sync from GitHub. See **[NAS Deployment Guide](do
 - Automatic updates via scheduled pulls or webhooks
 - Step-by-step setup instructions
 
-### unRAID Deployment
+### unRAID Deployment (Recommended for Home Servers)
 
-For unRAID users, use the optimized configuration with host path storage:
+**Quick Install with Auto-Updates:**
 
 ```bash
-# Clone to unRAID appdata
-cd /mnt/user/appdata
-git clone https://github.com/martinbibb-cmd/Hail-Mary.git hailmary
-
-# Deploy with unRAID-specific compose file
-cd hailmary
-docker-compose -f docker-compose.unraid.yml up -d --build
+wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash
 ```
 
-See **[unRAID Deployment Guide](docs/DEPLOYMENT-unRAID.md)** for detailed instructions.
+This one-liner will:
+- Install Hail-Mary to `/mnt/user/appdata/hailmary`
+- Pull pre-built Docker images from GitHub Container Registry
+- Start all services on port 8080
+- Optionally configure automatic updates when you push code
+
+**Enable auto-updates after installation:**
+
+```bash
+cd /mnt/user/appdata/hailmary
+./scripts/setup-unraid-autoupdate.sh
+```
+
+Now whenever you push changes to GitHub, your unRAID server will automatically:
+1. Pull new Docker images
+2. Update containers
+3. Send you a notification
+
+See **[unRAID Deployment Guide](docs/DEPLOYMENT-unRAID.md)** for detailed instructions and manual installation.
 
 ### Fly.io Deployment
 

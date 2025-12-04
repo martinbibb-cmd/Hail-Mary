@@ -47,9 +47,17 @@ Docker:
 
   const [email, newPassword] = args;
   const normalizedEmail = email.toLowerCase().trim();
+  const trimmedPassword = newPassword.trim();
+
+  // Validate password is not empty after trimming
+  if (!trimmedPassword || trimmedPassword.length === 0) {
+    console.error('❌ Error: Password cannot be empty or contain only whitespace.');
+    await pool.end();
+    process.exit(1);
+  }
 
   // Validate password length
-  if (newPassword.length < 8) {
+  if (trimmedPassword.length < 8) {
     console.error('❌ Error: Password must be at least 8 characters long.');
     await pool.end();
     process.exit(1);
@@ -79,7 +87,7 @@ Docker:
     }
 
     // Hash the new password
-    const passwordHash = await hashPassword(newPassword);
+    const passwordHash = await hashPassword(trimmedPassword);
 
     // Update user's password
     await db

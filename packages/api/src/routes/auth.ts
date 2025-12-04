@@ -32,8 +32,13 @@ const BASE_COOKIE_OPTIONS = {
 };
 
 /**
- * Get cookie options with appropriate secure flag based on request protocol
- * This allows the app to work correctly on both HTTP (local/NAS) and HTTPS (production)
+ * Get cookie options with appropriate secure flag based on request protocol.
+ * This allows the app to work correctly on both HTTP (local/NAS) and HTTPS (production).
+ * 
+ * Security Note: The X-Forwarded-Proto header can be spoofed by clients. When deploying
+ * behind a reverse proxy (nginx, cloudflare, etc.), ensure the proxy is configured to
+ * strip/override client-provided X-Forwarded headers. The nginx config in this project
+ * already sets X-Forwarded-Proto correctly.
  */
 const getCookieOptions = (req: Request): typeof BASE_COOKIE_OPTIONS & { secure: boolean } => {
   // Check if request is over HTTPS (via X-Forwarded-Proto header or direct)

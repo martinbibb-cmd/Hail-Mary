@@ -52,11 +52,16 @@ async function main() {
       
       for (const user of allUsers) {
         const id = String(user.id).padStart(6, ' ');
-        const name = user.name.substring(0, 24).padEnd(26, ' ');
-        const email = user.email.substring(0, 32).padEnd(34, ' ');
+        // Truncate with ellipsis if too long
+        const name = user.name.length > 24 
+          ? user.name.substring(0, 23) + '…' 
+          : user.name.padEnd(24, ' ');
+        const email = user.email.length > 32 
+          ? user.email.substring(0, 31) + '…' 
+          : user.email.padEnd(32, ' ');
         const provider = user.authProvider.padEnd(10, ' ');
         const role = user.role.padEnd(6, ' ');
-        console.log(`│ ${id} │ ${name} │ ${email} │ ${provider} │ ${role} │`);
+        console.log(`│ ${id} │ ${name.padEnd(26, ' ')} │ ${email.padEnd(34, ' ')} │ ${provider} │ ${role} │`);
       }
       
       console.log('└────────┴────────────────────────────┴────────────────────────────────────┴────────────┴────────┘\n');

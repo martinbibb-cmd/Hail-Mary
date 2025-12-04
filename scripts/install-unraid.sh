@@ -210,13 +210,26 @@ build_images() {
     log_info "Building Docker images locally (this may take several minutes)..."
     cd "$INSTALL_DIR"
 
+    local build_success=true
     if docker compose version &> /dev/null; then
-        docker compose -f docker-compose.unraid-build.yml build
+        if ! docker compose -f docker-compose.unraid-build.yml build 2>&1; then
+            build_success=false
+        fi
     else
-        docker-compose -f docker-compose.unraid-build.yml build
+        if ! docker-compose -f docker-compose.unraid-build.yml build 2>&1; then
+            build_success=false
+        fi
     fi
 
-    log_success "Docker images built successfully"
+    if [[ "$build_success" == "true" ]]; then
+        log_success "Docker images built successfully"
+        return 0
+    else
+        log_error "Failed to build Docker images locally"
+        log_info "Check the error messages above for details"
+        log_info "Common issues: missing Dockerfile, network problems, or insufficient disk space"
+        return 1
+    fi
 }
 
 # Start containers
@@ -373,7 +386,10 @@ main() {
     
     if [[ "$FORCE_BUILD" == "true" ]]; then
         log_info "Local build mode enabled (--build flag)"
-        build_images
+        if ! build_images; then
+            log_error "Installation failed: Could not build Docker images"
+            exit 1
+        fi
         compose_file="docker-compose.unraid-build.yml"
     else
         # Try to pull pre-built images first
@@ -385,7 +401,11 @@ main() {
             log_info "Falling back to local build mode..."
             log_info "This builds the Docker images on your NAS instead of downloading them."
             log_info ""
-            build_images
+            if ! build_images; then
+                log_error "Installation failed: Could not build Docker images"
+                log_info "Please check the error messages above and try again."
+                exit 1
+            fi
             compose_file="docker-compose.unraid-build.yml"
         fi
     fi

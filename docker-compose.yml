@@ -40,9 +40,9 @@ services:
     # Internal only - not exposed externally
     expose:
       - "3001"
-    # Use workspace commands for proper module resolution from /app root
-    command: >
-      sh -c "npm run db:push -w packages/api && npm run db:seed -w packages/api && npm run start -w packages/api"
+    # Note: db:push and db:seed should be run manually, not on every container restart
+    # To apply migrations: docker compose exec hailmary-api npm run db:push -w packages/api
+    # To seed database: docker compose exec hailmary-api npm run db:seed -w packages/api
 
   # Hail-Mary Assistant Service
   hailmary-assistant:

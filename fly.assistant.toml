@@ -1,0 +1,31 @@
+# fly.toml configuration for hail-mary-assistant
+#
+# DEPLOYMENT INSTRUCTIONS:
+# 1. Create the fly app first: fly apps create hail-mary-assistant
+# 2. Set required secrets:
+#    fly secrets set GEMINI_API_KEY=... DATABASE_URL=postgres://... -a hail-mary-assistant
+# 3. Deploy from repo root: fly deploy -c fly.assistant.toml
+
+app = 'hail-mary-assistant'
+primary_region = 'lhr'
+
+[build]
+  # Use the monorepo-aware Dockerfile
+  dockerfile = "packages/assistant/Dockerfile"
+
+[http_service]
+  internal_port = 3002
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[env]
+  ASSISTANT_PORT = "3002"
+  NODE_ENV = "production"

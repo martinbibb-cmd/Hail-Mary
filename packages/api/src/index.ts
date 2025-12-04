@@ -23,6 +23,7 @@ import appointmentsRouter from './routes/appointments';
 import visitSessionsRouter from './routes/visitSessions';
 import filesRouter from './routes/files';
 import transcriptionRouter from './routes/transcription';
+import surveyHelperRouter from './routes/surveyHelper';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -76,6 +77,7 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
 app.use('/api/files', filesRouter);
 app.use('/api/transcription', transcriptionRouter);
+app.use('/api/survey-helper', surveyHelperRouter);
 
 // 404 handler
 app.use((_req, res) => {
@@ -105,6 +107,7 @@ app.listen(PORT, HOST, () => {
   console.log(`   - GET/POST /api/visit-sessions`);
   console.log(`   - GET/POST/DELETE /api/files`);
   console.log(`   - POST/GET /api/transcription/sessions`);
+  console.log(`   - POST/GET /api/survey-helper/drafts, /next-question, /answer, /completeness`);
 });
 
 export default app;

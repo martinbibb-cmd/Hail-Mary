@@ -373,3 +373,26 @@ export const files = pgTable("files", {
     .defaultNow()
     .notNull(),
 });
+
+// ============================================
+// Survey Helper System - SystemSpecDraft
+// ============================================
+
+// System spec drafts - stores the evolving spec during a survey
+export const systemSpecDrafts = pgTable("system_spec_drafts", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .references(() => transcriptSessions.id)
+    .notNull()
+    .unique(),
+  activeModules: jsonb("active_modules").notNull().$type<string[]>(), // ['core', 'central_heating', 'heat_pump', etc.]
+  specData: jsonb("spec_data").notNull(), // The full SystemSpecDraft JSON
+  askedSlotIds: jsonb("asked_slot_ids").notNull().$type<string[]>(), // Slots already asked
+  currentTopic: varchar("current_topic", { length: 100 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

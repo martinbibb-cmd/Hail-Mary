@@ -284,6 +284,72 @@ export const visitObservations = pgTable("visit_observations", {
 });
 
 // ============================================
+// Transcription System
+// ============================================
+
+// Transcript sessions - one survey visit -> one primary transcript session
+export const transcriptSessions = pgTable("transcript_sessions", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").references(() => leads.id),
+  customerId: integer("customer_id").references(() => customers.id),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  status: varchar("status", { length: 50 }).default("recording").notNull(), // recording, processing, completed, error
+  durationSeconds: integer("duration_seconds"),
+  language: varchar("language", { length: 20 }).default("en-GB").notNull(),
+  notes: text("notes"),
+});
+
+// Transcript audio chunks - chunked audio files for progressive upload
+export const transcriptAudioChunks = pgTable("transcript_audio_chunks", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .references(() => transcriptSessions.id)
+    .notNull(),
+  index: integer("index").notNull(), // order of chunk
+  startOffsetSeconds: numeric("start_offset_seconds", { precision: 10, scale: 2 }).notNull(),
+  durationSeconds: numeric("duration_seconds", { precision: 10, scale: 2 }),
+  storagePath: text("storage_path").notNull(), // where the audio file lives
+  sttStatus: varchar("stt_status", { length: 50 }).default("pending").notNull(), // pending, processing, done, error
+  transcriptText: text("transcript_text"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Transcript segments - cleaned, punctuated text with timestamps
+export const transcriptSegments = pgTable("transcript_segments", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .references(() => transcriptSessions.id)
+    .notNull(),
+  chunkId: integer("chunk_id")
+    .references(() => transcriptAudioChunks.id)
+    .notNull(),
+  startSeconds: numeric("start_seconds", { precision: 10, scale: 2 }).notNull(),
+  endSeconds: numeric("end_seconds", { precision: 10, scale: 2 }).notNull(),
+  speaker: varchar("speaker", { length: 100 }).default("engineer").notNull(),
+  text: text("text").notNull(),
+  roomTag: varchar("room_tag", { length: 100 }),
+  topicTag: varchar("topic_tag", { length: 100 }),
+  confidence: numeric("confidence", { precision: 5, scale: 4 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// ============================================
 // User File System
 // ============================================
 

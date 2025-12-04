@@ -418,3 +418,72 @@ export interface AuthResponse {
   error?: string;
   code?: string;
 }
+
+// ============================================
+// Transcription Types
+// ============================================
+
+export type TranscriptSessionStatus = 'recording' | 'processing' | 'completed' | 'error';
+
+export interface TranscriptSession {
+  id: number;
+  leadId?: number;
+  customerId?: number;
+  createdAt: Date;
+  updatedAt: Date;
+  status: TranscriptSessionStatus;
+  durationSeconds?: number;
+  language: string;
+  notes?: string;
+}
+
+export type SttStatus = 'pending' | 'processing' | 'done' | 'error';
+
+export interface TranscriptAudioChunk {
+  id: number;
+  sessionId: number;
+  index: number;
+  startOffsetSeconds: number;
+  durationSeconds?: number;
+  storagePath: string;
+  sttStatus: SttStatus;
+  transcriptText?: string;
+  errorMessage?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TranscriptSegment {
+  id: number;
+  sessionId: number;
+  chunkId: number;
+  startSeconds: number;
+  endSeconds: number;
+  speaker: string;
+  text: string;
+  roomTag?: string;
+  topicTag?: string;
+  confidence?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Transcription DTOs
+export interface CreateTranscriptSessionDto {
+  leadId?: number;
+  customerId?: number;
+  language?: string;
+  notes?: string;
+}
+
+export interface ChunkUploadMetadata {
+  index: number;
+  startOffsetSeconds: number;
+  durationSeconds?: number;
+}
+
+export interface TranscriptSessionWithDetails {
+  session: TranscriptSession;
+  chunks: TranscriptAudioChunk[];
+  segments: TranscriptSegment[];
+}

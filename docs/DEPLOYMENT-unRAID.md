@@ -348,6 +348,51 @@ Since the PostgreSQL data is stored in the appdata folder, you can use unRAID's 
 | Application source | `/mnt/user/appdata/hailmary` |
 | Compose file | `/mnt/user/appdata/hailmary/docker-compose.unraid.yml` |
 
+## Admin Tools
+
+### List All Users
+
+To see all registered users:
+
+```bash
+docker exec -it hailmary-api npm run admin:list-users
+```
+
+This displays a table of all users with their ID, name, email, auth provider, and role.
+
+### Reset User Password
+
+If a user forgets their password and email-based reset isn't configured:
+
+```bash
+docker exec -it hailmary-api npm run admin:reset-password -- <email> <new-password>
+```
+
+Example:
+```bash
+docker exec -it hailmary-api npm run admin:reset-password -- admin@example.com MyNewP@ss123
+```
+
+Requirements:
+- Password must be at least 8 characters
+- Only works for users with local authentication (not SSO)
+
+### Create Initial Admin User
+
+To create the first admin user on a fresh install, set these environment variables in your `.env` file:
+
+```bash
+INITIAL_ADMIN_EMAIL=admin@example.com
+INITIAL_ADMIN_PASSWORD=your-secure-password
+```
+
+Then restart the containers:
+```bash
+docker compose -f docker-compose.unraid.yml up -d
+```
+
+The admin user will be created on startup if it doesn't already exist.
+
 ## Support
 
 If you encounter issues:

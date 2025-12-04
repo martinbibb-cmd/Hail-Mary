@@ -2,7 +2,8 @@
 # Docker entrypoint script for Hail-Mary API
 # This script runs database migrations and seeds the initial admin user on startup
 
-set -e
+# Don't use set -e globally - we want to handle errors gracefully
+# and continue with startup even if migration/seed has issues
 
 echo "🚀 Starting Hail-Mary API..."
 
@@ -33,6 +34,7 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
 fi
 
 # Run database migrations (push schema to PostgreSQL)
+# The --force flag is included in db:push script to avoid interactive prompts
 echo "📦 Running database migrations..."
 if npm run db:push -w packages/api 2>&1; then
   echo "✅ Database migrations completed successfully"

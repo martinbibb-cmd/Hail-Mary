@@ -1,0 +1,252 @@
+/**
+ * PropertyApp Styles
+ */
+
+.property-app {
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+  background: #f8f9fa;
+}
+
+.property-app-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.property-app-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1a1a2e;
+}
+
+.module-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.module-badge.live {
+  background: #d4edda;
+  color: #155724;
+}
+
+.module-badge.stub {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.module-badge.planned {
+  background: #e2e3e5;
+  color: #6c757d;
+}
+
+/* Summary Card */
+.property-summary-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  color: white;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-label {
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.summary-value {
+  font-weight: 600;
+}
+
+/* Property Sections */
+.property-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.property-field {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.field-header label {
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.helper-btn {
+  padding: 6px 12px;
+  background: #e8f0fe;
+  color: #1967d2;
+  border: none;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.helper-btn:hover:not(:disabled) {
+  background: #d2e3fc;
+}
+
+.helper-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Chip Options */
+.chip-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 8px 16px;
+  background: #f0f0f0;
+  border: 2px solid transparent;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chip:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.chip.selected {
+  background: #667eea;
+  color: white;
+  border-color: #5a6fd6;
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Helper Modal */
+.helper-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.helper-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.helper-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.helper-modal-header h3 {
+  margin: 0;
+  color: #1a1a2e;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f0f0f0;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: #e0e0e0;
+}
+
+.helper-question {
+  font-size: 1.1rem;
+  color: #333;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.helper-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.helper-chip {
+  padding: 14px 20px;
+  background: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.helper-chip:hover {
+  background: #e8f0fe;
+  border-color: #667eea;
+}
+
+.skip-btn {
+  margin-top: 16px;
+  padding: 10px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  color: #666;
+  cursor: pointer;
+}
+
+.skip-btn:hover {
+  background: #f5f5f5;
+}

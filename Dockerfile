@@ -75,4 +75,5 @@ EXPOSE 3001
 ENV PORT=3001
 
 # Start the API server by default
-CMD [ "npm", "run", "start", "-w", "packages/api" ]
+# Use direct node execution for more reliable production startup
+CMD [ "node", "packages/api/dist/index.js" ]

@@ -13,6 +13,9 @@ WORKDIR /app
 # Throw-away build stage to reduce size of final image
 FROM base AS build
 
+# Use a non-production NODE_ENV so devDependencies (like typescript) are installed
+ENV NODE_ENV=development
+
 # Install packages needed to build node modules
 RUN apt-get update -qq && \
     apt-get install -y python-is-python3 pkg-config build-essential && \

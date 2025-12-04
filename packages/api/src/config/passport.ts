@@ -9,7 +9,19 @@ import { findOrCreateGoogleUser, GoogleProfile } from '../services/auth.service'
 // Google OAuth configuration from environment variables
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3001/api/auth/google/callback';
+
+// Construct callback URL from BASE_URL if GOOGLE_CALLBACK_URL is not explicitly set
+// This ensures Google OAuth works correctly with tunnels (Cloudflare Tunnel, ngrok, etc.)
+const getGoogleCallbackUrl = (): string => {
+  if (process.env.GOOGLE_CALLBACK_URL) {
+    return process.env.GOOGLE_CALLBACK_URL;
+  }
+
+  const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
+  return `${baseUrl}/api/auth/google/callback`;
+};
+
+const GOOGLE_CALLBACK_URL = getGoogleCallbackUrl();
 
 /**
  * Configure Google OAuth Strategy

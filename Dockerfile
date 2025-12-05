@@ -62,18 +62,32 @@ COPY --link package.json package-lock.json .npmrc ./
 COPY --link packages/api/package.json ./packages/api/
 COPY --link packages/shared/package.json ./packages/shared/
 
-# Install production dependencies only
-RUN npm ci --omit=dev
+# Install ALL dependencies including dev deps for drizzle-kit and ts-node
+# These are required at runtime to run database migrations and seed scripts
+# on container startup (see docker-entrypoint.sh)
+RUN npm ci
 
 # Copy built files from builder
 # Note: Shared is required by API, so both must be copied
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/packages/api/dist ./packages/api/dist
 
+# Copy source files needed for migrations and seeding
+COPY --from=build /app/packages/api/src ./packages/api/src
+COPY --from=build /app/packages/api/drizzle.config.ts ./packages/api/
+COPY --from=build /app/packages/api/tsconfig.json ./packages/api/
+
+# Copy entrypoint script
+COPY packages/api/scripts/docker-entrypoint.sh ./packages/api/scripts/
+RUN chmod +x ./packages/api/scripts/docker-entrypoint.sh
+
 # Default to running the API
 EXPOSE 3001
 ENV PORT=3001
 
-# Start the API server by default
-# Use direct node execution for more reliable production startup
-CMD [ "node", "packages/api/dist/index.js" ]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+
+# Use entrypoint script to run migrations/seed, then start the application
+ENTRYPOINT ["./packages/api/scripts/docker-entrypoint.sh"]

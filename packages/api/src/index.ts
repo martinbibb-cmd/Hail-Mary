@@ -26,6 +26,9 @@ import filesRouter from './routes/files';
 import transcriptionRouter from './routes/transcription';
 import surveyHelperRouter from './routes/surveyHelper';
 
+// API version - kept in sync with package.json
+const API_VERSION = '0.2.0';
+
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -51,12 +54,17 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/api', limiter); // Apply rate limiting to API routes
 
+// Health check endpoints are intentionally NOT rate-limited to allow
+// monitoring systems (load balancers, container orchestrators, etc.)
+// to check service health frequently without being blocked.
+// These endpoints only expose non-sensitive status information.
+
 // Health check endpoint
 app.get('/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '0.2.0',
+    version: process.env.npm_package_version || API_VERSION,
   });
 });
 
@@ -65,7 +73,7 @@ app.get('/health/detailed', async (_req, res) => {
   const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '0.2.0',
+    version: process.env.npm_package_version || API_VERSION,
     uptime: process.uptime(),
     config: {
       googleAuth: isGoogleAuthEnabled() ? 'enabled' : 'disabled',

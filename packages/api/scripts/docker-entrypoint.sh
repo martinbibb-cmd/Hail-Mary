@@ -5,6 +5,9 @@
 # Don't use set -e globally - we want to handle errors gracefully
 # and continue with startup even if migration/seed has issues
 
+# Helper command for generating JWT secret
+JWT_GEN_CMD='node -e "console.log(require('\''crypto'\'').randomBytes(32).toString('\''hex'\''))"'
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🚀 Starting Hail-Mary API..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -24,7 +27,7 @@ if [ -z "$JWT_SECRET" ]; then
   echo "JWT_SECRET is required for authentication security."
   echo ""
   echo "Generate a secure secret with:"
-  echo "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+  echo "  $JWT_GEN_CMD"
   echo ""
   echo "Then set it in your environment:"
   echo "  JWT_SECRET=your-generated-secret-here"
@@ -42,7 +45,7 @@ if [ "$JWT_SECRET" = "development-secret-change-in-production" ]; then
   echo "is NOT secure for production use."
   echo ""
   echo "Generate a new secret with:"
-  echo "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+  echo "  $JWT_GEN_CMD"
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   exit 1

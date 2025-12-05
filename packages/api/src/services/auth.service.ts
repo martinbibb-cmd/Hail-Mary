@@ -44,8 +44,35 @@ export interface ResetPasswordDto {
 }
 
 // JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-change-in-production';
+// SECURITY: JWT_SECRET must be set and must not use the default value
+// This prevents token forgery attacks where attackers could generate valid tokens
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '24h';
+
+// Validate JWT_SECRET on module load (before any auth operations)
+if (!JWT_SECRET || JWT_SECRET === 'development-secret-change-in-production') {
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('🔴 FATAL SECURITY ERROR: JWT_SECRET is not configured correctly!');
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.error('');
+  console.error('JWT_SECRET must be set in your environment and must NOT use the default value.');
+  console.error('');
+  console.error('To fix this:');
+  console.error('  1. Generate a secure secret:');
+  console.error('     node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  console.error('');
+  console.error('  2. Set it in your .env file:');
+  console.error('     JWT_SECRET=your-generated-secret-here');
+  console.error('');
+  console.error('  3. Or set it in docker-compose environment:');
+  console.error('     JWT_SECRET=your-generated-secret-here');
+  console.error('');
+  console.error('Without a secure JWT_SECRET, attackers can forge authentication tokens');
+  console.error('and gain unauthorized access to the system, including admin accounts.');
+  console.error('');
+  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  throw new Error('FATAL: JWT_SECRET must be set and not use default value. See error above for instructions.');
+}
 
 // Password reset token expiry (1 hour)
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
@@ -507,11 +534,85 @@ export async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<{ 
 // ============================================
 
 /**
+ * IP range checking for NAS authentication
+ * Restricts NAS auth to local/private networks only
+ */
+interface IPRange {
+  network: string;
+  cidr: number;
+}
+
+function parseIPv4(ip: string): number {
+  const parts = ip.split('.').map(Number);
+  return (parts[0] << 24) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
+}
+
+function isIPv4InRange(ip: string, range: IPRange): boolean {
+  const ipNum = parseIPv4(ip);
+  const networkNum = parseIPv4(range.network);
+  const mask = (0xFFFFFFFF << (32 - range.cidr)) >>> 0;
+  return (ipNum & mask) === (networkNum & mask);
+}
+
+function isIPAllowedForNasAuth(clientIp: string): boolean {
+  // Default allowed networks: localhost + RFC1918 private networks
+  const allowedRanges: IPRange[] = [
+    { network: '127.0.0.0', cidr: 8 },      // Localhost
+    { network: '10.0.0.0', cidr: 8 },       // Private A
+    { network: '172.16.0.0', cidr: 12 },    // Private B
+    { network: '192.168.0.0', cidr: 16 },   // Private C
+  ];
+
+  // Support custom allowed IPs from environment (comma-separated CIDR notation)
+  // Example: NAS_ALLOWED_IPS=192.168.1.0/24,10.0.0.0/8
+  const customAllowed = process.env.NAS_ALLOWED_IPS;
+  if (customAllowed) {
+    const customRanges = customAllowed.split(',').map(range => {
+      const [network, cidr] = range.trim().split('/');
+      return { network, cidr: parseInt(cidr || '32', 10) };
+    });
+    allowedRanges.push(...customRanges);
+  }
+
+  // Check if IP is IPv6 localhost
+  if (clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
+    return true;
+  }
+
+  // Extract IPv4 if it's wrapped in IPv6 (::ffff:192.168.1.1)
+  let ipToCheck = clientIp;
+  if (clientIp.startsWith('::ffff:')) {
+    ipToCheck = clientIp.substring(7);
+  }
+
+  // Check against all allowed ranges
+  return allowedRanges.some(range => isIPv4InRange(ipToCheck, range));
+}
+
+/**
  * List all users for NAS quick login
  * This is a TEMPORARY solution until proper authentication is established.
  * @security WARNING: This should be disabled in production!
+ *
+ * @param clientIp - The IP address of the requesting client
  */
-export async function listUsersForNasLogin(): Promise<UserPayload[]> {
+export async function listUsersForNasLogin(clientIp: string): Promise<UserPayload[]> {
+  // Check if NAS mode is enabled
+  if (process.env.NAS_AUTH_MODE !== 'true') {
+    throw new AuthError('unauthorized', 'NAS authentication is not enabled', 403);
+  }
+
+  // SECURITY: Restrict to local/private networks only
+  if (!isIPAllowedForNasAuth(clientIp)) {
+    console.warn(`[NAS Auth] SECURITY: User list request blocked from non-local IP: ${clientIp}`);
+    throw new AuthError(
+      'forbidden',
+      'NAS authentication is only available from local network',
+      403
+    );
+  }
+
+  console.log(`[NAS Auth] User list requested from allowed IP: ${clientIp}`);
   try {
     const allUsers = await db
       .select({
@@ -546,23 +647,36 @@ export async function listUsersForNasLogin(): Promise<UserPayload[]> {
 /**
  * Quick login as a user without password (NAS mode)
  * This is a TEMPORARY solution until proper authentication is established.
- * 
+ *
  * @security WARNING: This should only be enabled on trusted local networks!
- * 
+ *
  * Security considerations:
  * - Only enable via NAS_AUTH_MODE=true on trusted networks
- * - Consider adding NAS_ALLOWED_IPS for IP-based restrictions
+ * - IP-based restrictions limit access to local/private networks
  * - Tokens are short-lived (same as regular auth: 24h)
  * - All access is logged for audit purposes
+ *
+ * @param userId - The user ID to login as
+ * @param clientIp - The IP address of the requesting client
  */
-export async function nasQuickLogin(userId: number): Promise<{ user: UserPayload; token: string }> {
+export async function nasQuickLogin(userId: number, clientIp: string): Promise<{ user: UserPayload; token: string }> {
   // Check if NAS mode is enabled
   if (process.env.NAS_AUTH_MODE !== 'true') {
     throw new AuthError('unauthorized', 'NAS quick login is not enabled', 403);
   }
 
+  // SECURITY: Restrict to local/private networks only
+  if (!isIPAllowedForNasAuth(clientIp)) {
+    console.warn(`[NAS Auth] SECURITY: Login attempt blocked from non-local IP: ${clientIp} for userId: ${userId}`);
+    throw new AuthError(
+      'forbidden',
+      'NAS authentication is only available from local network',
+      403
+    );
+  }
+
   // Log NAS login attempt for security audit
-  console.log(`[NAS Auth] Quick login attempt for userId: ${userId} at ${new Date().toISOString()}`);
+  console.log(`[NAS Auth] Quick login attempt for userId: ${userId} from allowed IP: ${clientIp} at ${new Date().toISOString()}`);
 
   try {
     const foundUsers = await db

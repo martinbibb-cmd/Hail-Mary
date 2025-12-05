@@ -44,7 +44,11 @@ services:
     environment:
       PORT: 3001
       DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
-      JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
+      # 🔴 CRITICAL SECURITY: JWT_SECRET must be set in your .env file!
+      # The application will refuse to start without a secure JWT_SECRET.
+      # Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      # Then add to .env: JWT_SECRET=your-generated-secret-here
+      JWT_SECRET: ${JWT_SECRET}
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       NODE_ENV: production
       # Default admin credentials for first-time setup
@@ -52,6 +56,10 @@ services:
       # Default: admin@hailmary.local / HailMary2024!
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
+      # NAS Authentication Mode (optional - only for trusted local networks)
+      # See .env.example for NAS_ALLOWED_IPS configuration
+      NAS_AUTH_MODE: ${NAS_AUTH_MODE:-false}
+      NAS_ALLOWED_IPS: ${NAS_ALLOWED_IPS:-}
     depends_on:
       hailmary-postgres:
         condition: service_healthy

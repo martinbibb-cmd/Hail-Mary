@@ -69,6 +69,31 @@ const getBaseUrl = (): string => {
 };
 
 /**
+ * Extract client IP address from request, considering proxies
+ * @param req Express request object
+ * @returns Client IP address
+ */
+const getClientIp = (req: Request): string => {
+  // Check X-Forwarded-For header (set by reverse proxies)
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (forwardedFor) {
+    // X-Forwarded-For can contain multiple IPs (client, proxy1, proxy2, ...)
+    // Take the first one (original client)
+    const ips = typeof forwardedFor === 'string' ? forwardedFor.split(',') : forwardedFor;
+    return ips[0].trim();
+  }
+
+  // Check X-Real-IP header (alternative header)
+  const realIp = req.headers['x-real-ip'];
+  if (realIp && typeof realIp === 'string') {
+    return realIp.trim();
+  }
+
+  // Fall back to req.ip (direct connection or Express default)
+  return req.ip || req.socket.remoteAddress || '127.0.0.1';
+};
+
+/**
  * POST /api/auth/register
  * Create a new user account with email/password
  */
@@ -344,6 +369,7 @@ router.get(
  * GET /api/auth/nas/users
  * List all users for NAS quick login
  * @security WARNING: Only enable on trusted networks!
+ * @security IP restrictions applied - only accessible from local/private networks
  */
 router.get('/nas/users', async (req: Request, res: Response) => {
   // Check if NAS mode is enabled
@@ -355,8 +381,9 @@ router.get('/nas/users', async (req: Request, res: Response) => {
   }
 
   try {
+    const clientIp = getClientIp(req);
     const { listUsersForNasLogin } = await import('../services/auth.service');
-    const users = await listUsersForNasLogin();
+    const users = await listUsersForNasLogin(clientIp);
     return res.json({
       success: true,
       data: users,
@@ -382,6 +409,7 @@ router.get('/nas/users', async (req: Request, res: Response) => {
  * POST /api/auth/nas/login
  * Quick login as a user without password (NAS mode)
  * @security WARNING: Only enable on trusted networks!
+ * @security IP restrictions applied - only accessible from local/private networks
  */
 router.post('/nas/login', async (req: Request, res: Response) => {
   // Check if NAS mode is enabled
@@ -402,8 +430,9 @@ router.post('/nas/login', async (req: Request, res: Response) => {
       });
     }
 
+    const clientIp = getClientIp(req);
     const { nasQuickLogin } = await import('../services/auth.service');
-    const { user, token } = await nasQuickLogin(userId);
+    const { user, token } = await nasQuickLogin(userId, clientIp);
 
     // Set auth cookie
     res.cookie(COOKIE_NAME, token, getCookieOptions(req));

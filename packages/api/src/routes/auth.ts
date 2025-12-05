@@ -22,7 +22,7 @@ import {
   completePasswordReset,
   AuthError,
 } from '../services/auth.service';
-import { configurePassport } from '../config/passport';
+import { configurePassport, isGoogleAuthEnabled } from '../config/passport';
 
 const router = Router();
 
@@ -324,42 +324,60 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 /**
  * GET /api/auth/google
  * Initiate Google OAuth flow
+ * Only available if Google OAuth is enabled
  */
-router.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
-);
+if (isGoogleAuthEnabled()) {
+  router.get(
+    '/google',
+    passport.authenticate('google', { scope: ['profile', 'email'], session: false })
+  );
 
-/**
- * GET /api/auth/google/callback
- * Google OAuth callback - handles the redirect from Google
- */
-router.get(
-  '/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: '/' }),
-  (req: Request, res: Response) => {
-    try {
-      // User is attached by passport strategy, token is attached as extra property
-      const userWithToken = req.user as any;
+  /**
+   * GET /api/auth/google/callback
+   * Google OAuth callback - handles the redirect from Google
+   */
+  router.get(
+    '/google/callback',
+    passport.authenticate('google', { session: false, failureRedirect: '/' }),
+    (req: Request, res: Response) => {
+      try {
+        // User is attached by passport strategy, token is attached as extra property
+        const userWithToken = req.user as any;
 
-      if (!userWithToken || !userWithToken.token) {
-        console.error('Missing user or token from Google OAuth');
+        if (!userWithToken || !userWithToken.token) {
+          console.error('Missing user or token from Google OAuth');
+          return res.redirect('/?error=auth_failed');
+        }
+
+        const token = userWithToken.token;
+
+        // Set auth cookie
+        res.cookie(COOKIE_NAME, token, getCookieOptions(req));
+
+        // Redirect to home page after successful login
+        return res.redirect('/');
+      } catch (error) {
+        console.error('Error in Google OAuth callback:', error);
         return res.redirect('/?error=auth_failed');
       }
-
-      const token = userWithToken.token;
-
-      // Set auth cookie
-      res.cookie(COOKIE_NAME, token, getCookieOptions(req));
-
-      // Redirect to home page after successful login
-      return res.redirect('/');
-    } catch (error) {
-      console.error('Error in Google OAuth callback:', error);
-      return res.redirect('/?error=auth_failed');
     }
-  }
-);
+  );
+} else {
+  // Return helpful error if Google OAuth routes are accessed but not enabled
+  router.get('/google', (_req: Request, res: Response) => {
+    return res.status(503).json({
+      success: false,
+      error: 'Google OAuth is not enabled. Set GOOGLE_AUTH_ENABLED=true and provide GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.',
+    });
+  });
+
+  router.get('/google/callback', (_req: Request, res: Response) => {
+    return res.status(503).json({
+      success: false,
+      error: 'Google OAuth is not enabled.',
+    });
+  });
+}
 
 // ============================================
 // NAS Quick Login Routes (Temporary)

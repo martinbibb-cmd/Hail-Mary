@@ -46,11 +46,11 @@ export interface ResetPasswordDto {
 // JWT configuration
 // SECURITY: JWT_SECRET must be set and must not use the default value
 // This prevents token forgery attacks where attackers could generate valid tokens
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET_ENV = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '24h';
 
 // Validate JWT_SECRET on module load (before any auth operations)
-if (!JWT_SECRET || JWT_SECRET === 'development-secret-change-in-production') {
+if (!JWT_SECRET_ENV || JWT_SECRET_ENV === 'development-secret-change-in-production') {
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.error('🔴 FATAL SECURITY ERROR: JWT_SECRET is not configured correctly!');
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -73,6 +73,9 @@ if (!JWT_SECRET || JWT_SECRET === 'development-secret-change-in-production') {
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   throw new Error('FATAL: JWT_SECRET must be set and not use default value. See error above for instructions.');
 }
+
+// After validation, JWT_SECRET is guaranteed to be a non-empty string
+const JWT_SECRET: string = JWT_SECRET_ENV;
 
 // Password reset token expiry (1 hour)
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;

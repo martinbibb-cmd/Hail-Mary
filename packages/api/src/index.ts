@@ -12,6 +12,7 @@ import rateLimit from 'express-rate-limit';
 import { initializeDatabase } from './db/schema';
 import { db } from './db/drizzle-client';
 import { users } from './db/drizzle-schema';
+import { isGoogleAuthEnabled } from './config/passport';
 
 // Import routes
 import authRouter from './routes/auth';
@@ -52,7 +53,38 @@ app.use('/api', limiter); // Apply rate limiting to API routes
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '0.2.0',
+  });
+});
+
+// Detailed health check endpoint with configuration status
+app.get('/health/detailed', async (_req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '0.2.0',
+    uptime: process.uptime(),
+    config: {
+      googleAuth: isGoogleAuthEnabled() ? 'enabled' : 'disabled',
+      nasAuthMode: process.env.NAS_AUTH_MODE === 'true' ? 'enabled' : 'disabled',
+      nodeEnv: process.env.NODE_ENV || 'development',
+    },
+    database: 'unknown',
+  };
+
+  try {
+    await db.select().from(users).limit(1);
+    health.database = 'connected';
+  } catch {
+    health.database = 'disconnected';
+    health.status = 'degraded';
+  }
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // Database health check endpoint
@@ -92,22 +124,38 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 // Start server
 app.listen(PORT, HOST, () => {
+  console.log('');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`🚀 Hail-Mary API running on http://${HOST}:${PORT}`);
-  console.log(`   Health check: http://${HOST}:${PORT}/health`);
-  console.log(`   DB health check: http://${HOST}:${PORT}/health/db`);
-  console.log(`   API endpoints:`);
-  console.log(`   - POST /api/auth/register, /api/auth/login, /api/auth/logout`);
-  console.log(`   - GET /api/auth/me`);
-  console.log(`   - POST /api/auth/request-password-reset, /api/auth/reset-password`);
-  console.log(`   - GET/POST /api/customers`);
-  console.log(`   - GET/POST /api/products`);
-  console.log(`   - GET/POST /api/quotes`);
-  console.log(`   - GET/POST /api/leads`);
-  console.log(`   - GET/POST /api/appointments`);
-  console.log(`   - GET/POST /api/visit-sessions`);
-  console.log(`   - GET/POST/DELETE /api/files`);
-  console.log(`   - POST/GET /api/transcription/sessions`);
-  console.log(`   - POST/GET /api/survey-helper/drafts, /next-question, /answer, /completeness`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('');
+  console.log('📋 Health Endpoints:');
+  console.log(`   GET /health          - Basic health check`);
+  console.log(`   GET /health/detailed - Detailed health with config status`);
+  console.log(`   GET /health/db       - Database connection check`);
+  console.log('');
+  console.log('🔐 Auth Endpoints:');
+  console.log(`   POST /api/auth/register`);
+  console.log(`   POST /api/auth/login`);
+  console.log(`   POST /api/auth/logout`);
+  console.log(`   GET  /api/auth/me`);
+  console.log(`   POST /api/auth/request-password-reset`);
+  console.log(`   POST /api/auth/reset-password`);
+  if (isGoogleAuthEnabled()) {
+    console.log(`   GET  /api/auth/google          (Google OAuth)`);
+    console.log(`   GET  /api/auth/google/callback (Google OAuth)`);
+  }
+  if (process.env.NAS_AUTH_MODE === 'true') {
+    console.log(`   GET  /api/auth/nas/users       (NAS quick login)`);
+    console.log(`   POST /api/auth/nas/login       (NAS quick login)`);
+  }
+  console.log('');
+  console.log('📊 API Endpoints:');
+  console.log(`   /api/customers, /api/products, /api/quotes`);
+  console.log(`   /api/leads, /api/appointments, /api/visit-sessions`);
+  console.log(`   /api/files, /api/transcription, /api/survey-helper`);
+  console.log('');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 });
 
 export default app;

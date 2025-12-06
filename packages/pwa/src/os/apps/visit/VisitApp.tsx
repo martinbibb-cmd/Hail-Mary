@@ -175,7 +175,7 @@ export const VisitApp: React.FC = () => {
         // Load observations
         const observationsRes = await api.get<ApiResponse<VisitObservation[]>>(`/api/visit-sessions/${session.id}/observations`)
         if (observationsRes.success && observationsRes.data) {
-          const entries: TimelineEntry[] = observationsRes.data.map(obs => ({
+          const entries: TimelineEntry[] = observationsRes.data.map((obs: VisitObservation) => ({
             id: `obs-${obs.id}`,
             type: 'user' as const,
             text: obs.text,

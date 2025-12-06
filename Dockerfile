@@ -37,6 +37,8 @@ COPY packages/api/package.json ./packages/api/
 COPY packages/assistant/package.json ./packages/assistant/
 COPY packages/pwa/package.json ./packages/pwa/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
+COPY packages/vision-engine/package.json ./packages/vision-engine/
 
 # Install ALL dependencies (including devDependencies needed for build)
 RUN npm ci
@@ -44,8 +46,13 @@ RUN npm ci
 # Copy application code
 COPY . .
 
-# Build all workspaces
-RUN npm run build
+# Build workspaces in the correct order (shared must be built before others that depend on it)
+RUN npm run build -w packages/shared && \
+    npm run build -w packages/surveyor-engine && \
+    npm run build -w packages/vision-engine && \
+    npm run build -w packages/pwa && \
+    npm run build -w packages/assistant && \
+    npm run build -w packages/api
 
 
 # Final stage for app image

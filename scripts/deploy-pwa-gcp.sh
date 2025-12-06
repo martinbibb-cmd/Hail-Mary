@@ -11,6 +11,12 @@
 
 set -e
 
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
 # Default values
 REGION="us-central1"
 SERVICE_NAME="hail-mary-pwa"
@@ -41,7 +47,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Unknown option: $1"
+      echo -e "${RED}Unknown option: $1${NC}"
       echo "Use --help for usage information"
       exit 1
       ;;
@@ -50,12 +56,12 @@ done
 
 # Validate required parameters
 if [ -z "$PROJECT_ID" ]; then
-  echo "Error: --project is required"
+  echo -e "${RED}Error: --project is required${NC}"
   echo "Use --help for usage information"
   exit 1
 fi
 
-echo "🚀 Deploying Hail-Mary PWA to Google Cloud Run"
+echo -e "${GREEN}🚀 Deploying Hail-Mary PWA to Google Cloud Run${NC}"
 echo "   Project: $PROJECT_ID"
 echo "   Region: $REGION"
 echo "   Service: $SERVICE_NAME"
@@ -66,21 +72,21 @@ gcloud config set project "$PROJECT_ID"
 
 # Build and push image if requested
 if [ "$BUILD_IMAGE" = true ]; then
-  echo "📦 Building Docker image..."
+  echo -e "${YELLOW}📦 Building Docker image...${NC}"
   IMAGE_URL="${REGION}-docker.pkg.dev/${PROJECT_ID}/hail-mary/pwa:latest"
   
   docker build -f packages/pwa/Dockerfile -t "$IMAGE_URL" .
   
-  echo "⬆️  Pushing image to Artifact Registry..."
+  echo -e "${YELLOW}⬆️  Pushing image to Artifact Registry...${NC}"
   docker push "$IMAGE_URL"
   
   IMAGE_ARG="--image=$IMAGE_URL"
 else
-  echo "ℹ️  Skipping build (use --build to build and push image)"
+  echo -e "${YELLOW}ℹ️  Skipping build (use --build to build and push image)${NC}"
   IMAGE_ARG="--source=."
 fi
 
-echo "🌐 Deploying to Cloud Run..."
+echo -e "${YELLOW}🌐 Deploying to Cloud Run...${NC}"
 gcloud run deploy "$SERVICE_NAME" \
   $IMAGE_ARG \
   --region="$REGION" \
@@ -98,7 +104,7 @@ gcloud run deploy "$SERVICE_NAME" \
 SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format='value(status.url)')
 
 echo ""
-echo "✅ Deployment complete!"
+echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo "   Service URL: $SERVICE_URL"
 echo ""
 echo "📝 Next steps:"

@@ -1,0 +1,115 @@
+name: Deploy to Google Cloud Run
+
+# This workflow deploys Hail-Mary to Google Cloud Run
+# It is triggered manually or on push to main branch (can be customized)
+
+on:
+  # Trigger manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  
+  # Optionally: Deploy on push to main branch
+  # Uncomment the following lines to enable automatic deployments
+  # push:
+  #   branches:
+  #     - main
+  #   paths-ignore:
+  #     - 'docs/**'
+  #     - '*.md'
+  #     - '.github/**'
+
+env:
+  GCP_REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+
+jobs:
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    
+    # Only run on main branch for automatic deploys
+    # Remove this condition if you want to deploy from any branch
+    # if: github.ref == 'refs/heads/main'
+    
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC authentication
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Method 1: Authenticate using Workload Identity Federation (Recommended)
+      # This is more secure than using service account keys
+      # Setup: https://github.com/google-github-actions/auth#setup
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      
+      # Method 2: Authenticate using Service Account Key (Alternative)
+      # Uncomment this and comment out the above if you prefer using a service account key
+      # - name: Authenticate to Google Cloud
+      #   id: auth
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }} --quiet
+      
+      - name: Submit build to Cloud Build
+        run: |
+          gcloud builds submit \
+            --config cloudbuild.yaml \
+            --substitutions=_REGION=${{ env.GCP_REGION }}
+      
+      - name: Get service URLs
+        id: get-urls
+        run: |
+          API_URL=$(gcloud run services describe hail-mary-api --region=${{ env.GCP_REGION }} --format='value(status.url)')
+          ASSISTANT_URL=$(gcloud run services describe hail-mary-assistant --region=${{ env.GCP_REGION }} --format='value(status.url)')
+          PWA_URL=$(gcloud run services describe hail-mary-pwa --region=${{ env.GCP_REGION }} --format='value(status.url)')
+          
+          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+          echo "assistant-url=$ASSISTANT_URL" >> $GITHUB_OUTPUT
+          echo "pwa-url=$PWA_URL" >> $GITHUB_OUTPUT
+      
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Successful! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Service URLs:" >> $GITHUB_STEP_SUMMARY
+          echo "- **API**: ${{ steps.get-urls.outputs.api-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Assistant**: ${{ steps.get-urls.outputs.assistant-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **PWA**: ${{ steps.get-urls.outputs.pwa-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Test the API: \`curl ${{ steps.get-urls.outputs.api-url }}/health\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Visit the PWA: [${{ steps.get-urls.outputs.pwa-url }}](${{ steps.get-urls.outputs.pwa-url }})" >> $GITHUB_STEP_SUMMARY
+      
+      # Optional: Run smoke tests after deployment
+      - name: Smoke test API
+        run: |
+          API_URL=${{ steps.get-urls.outputs.api-url }}
+          response=$(curl -s -o /dev/null -w "%{http_code}" $API_URL/health)
+          if [ $response -eq 200 ]; then
+            echo "✅ API health check passed"
+          else
+            echo "❌ API health check failed with status code: $response"
+            exit 1
+          fi

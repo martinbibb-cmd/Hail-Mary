@@ -70,7 +70,10 @@ echo ""
 
 # Set the active project
 echo "📝 Setting active project..."
-gcloud config set project "$PROJECT_ID"
+if ! gcloud config set project "$PROJECT_ID"; then
+  echo -e "${RED}❌ Failed to set project. Please check if the project ID is correct.${NC}"
+  exit 1
+fi
 
 # Enable required APIs
 if [ "$SKIP_APIS" = false ]; then
@@ -78,13 +81,16 @@ if [ "$SKIP_APIS" = false ]; then
   echo -e "${YELLOW}🔌 Enabling required Google Cloud APIs...${NC}"
   echo "   This may take a few minutes..."
   
-  gcloud services enable \
+  if ! gcloud services enable \
     cloudresourcemanager.googleapis.com \
     run.googleapis.com \
     cloudbuild.googleapis.com \
     artifactregistry.googleapis.com \
     secretmanager.googleapis.com \
-    sqladmin.googleapis.com
+    sqladmin.googleapis.com; then
+    echo -e "${RED}❌ Failed to enable APIs. Please check your permissions.${NC}"
+    exit 1
+  fi
   
   echo -e "${GREEN}✅ APIs enabled${NC}"
 else

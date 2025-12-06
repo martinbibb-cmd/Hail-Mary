@@ -156,7 +156,13 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         API_URL=$(gcloud run services describe ${_API_SERVICE_NAME} --region=${_REGION} --format='value(status.url)')
+        if [ -z "$API_URL" ]; then
+          echo "Error: Failed to retrieve API URL"
+          exit 1
+        fi
+        echo "API URL: $API_URL"
         gcloud run services update ${_ASSISTANT_SERVICE_NAME} \
           --region=${_REGION} \
           --set-env-vars=API_BASE_URL=$${API_URL}

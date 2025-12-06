@@ -227,7 +227,7 @@ export class SurveyEngine {
    * @returns true if condition is met
    */
   private evaluateCondition(value: number, condition: string): boolean {
-    const match = condition.match(/^([><=!]+)\s*(\d+)$/);
+    const match = condition.match(/^(>=|<=|>|<|==|=|!=)\s*(\d+)$/);
     if (!match) {
       throw new Error(`Invalid condition format: ${condition}`);
     }

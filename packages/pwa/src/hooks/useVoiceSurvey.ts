@@ -169,8 +169,7 @@ export function useVoiceSurvey(options: UseVoiceSurveyOptions): UseVoiceSurveyRe
     try {
       recognitionRef.current.start();
     } catch (err) {
-      // Recognition might already be started
-      console.warn('Recognition start error:', err);
+      // Recognition might already be started, ignore the error
     }
   }, []);
 

@@ -1,0 +1,56 @@
+# This file specifies files that are intentionally untracked by gcloud when deploying
+# See https://cloud.google.com/sdk/gcloud/reference/topic/gcloudignore
+
+# Ignore node_modules and build artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+
+# Ignore development files
+.git/
+.github/
+.gitignore
+.env
+.env.*
+*.log
+npm-debug.log*
+lerna-debug.log*
+
+# Ignore documentation
+docs/
+*.md
+!README.md
+
+# Ignore test files
+**/*.test.ts
+**/*.test.js
+**/__tests__/
+coverage/
+
+# Ignore local development configs
+docker-compose*.yml
+Dockerfile.dev
+.dockerignore
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore CI/CD configs for other platforms
+fly.toml
+fly.*.toml
+.fly/
+
+# Ignore temporary files
+tmp/
+temp/
+*.tmp
+
+# Ignore package-lock for faster builds (npm ci will use it from context)
+# package-lock.json

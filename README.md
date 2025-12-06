@@ -206,6 +206,25 @@ Now whenever you push changes to GitHub, your unRAID server will automatically:
 
 See **[unRAID Deployment Guide](docs/DEPLOYMENT-unRAID.md)** for detailed instructions and manual installation.
 
+### Google Cloud Platform Deployment
+
+Deploy to Google Cloud Run with automatic scaling and managed infrastructure:
+
+```bash
+# One-time setup
+./scripts/setup-gcp.sh --project YOUR_PROJECT_ID
+
+# Deploy all services
+gcloud builds submit --config cloudbuild.yaml
+
+# Or deploy individually
+./scripts/deploy-api-gcp.sh --project YOUR_PROJECT_ID --build
+./scripts/deploy-assistant-gcp.sh --project YOUR_PROJECT_ID --api-url API_URL --build
+./scripts/deploy-pwa-gcp.sh --project YOUR_PROJECT_ID --build
+```
+
+See **[Google Cloud Deployment Guide](docs/DEPLOYMENT-GCP.md)** for detailed instructions.
+
 ### Fly.io Deployment
 
 Deploy to fly.io using the provided configuration files:

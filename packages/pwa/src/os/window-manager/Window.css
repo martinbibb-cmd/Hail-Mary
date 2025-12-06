@@ -2,38 +2,40 @@
   position: absolute;
   display: flex;
   flex-direction: column;
-  background: var(--window-bg, rgba(22, 33, 62, 0.85));
-  backdrop-filter: blur(var(--blur-lg, 20px));
-  -webkit-backdrop-filter: blur(var(--blur-lg, 20px));
-  border-radius: var(--window-radius, 12px);
-  box-shadow: var(--window-shadow, 0 10px 40px rgba(0, 0, 0, 0.5));
+  background: var(--window-bg);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border-radius: var(--window-radius);
+  box-shadow: var(--window-shadow);
   overflow: hidden;
-  border: 1px solid var(--window-border, rgba(255, 255, 255, 0.1));
+  border: 1px solid var(--window-border);
   min-width: 400px;
   min-height: 300px;
+  transition: box-shadow var(--transition-normal), border-color var(--transition-normal);
 }
 
 .os-window.active {
-  box-shadow: var(--window-shadow-active, 0 15px 50px rgba(0, 0, 0, 0.6));
-  border-color: var(--window-border-active, rgba(233, 69, 96, 0.3));
+  box-shadow: var(--window-shadow-active);
+  border-color: var(--window-border-active);
 }
 
 .os-window:not(.active) {
-  opacity: 0.95;
+  opacity: 0.96;
 }
 
 /* Title Bar */
 .os-window-titlebar {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  background: var(--titlebar-bg, linear-gradient(to bottom, rgba(34, 34, 68, 0.95), rgba(26, 26, 46, 0.95)));
-  backdrop-filter: blur(var(--blur-sm, 8px));
-  -webkit-backdrop-filter: blur(var(--blur-sm, 8px));
-  border-bottom: 1px solid var(--titlebar-border, rgba(255, 255, 255, 0.1));
+  padding: 11px 16px;
+  background: var(--titlebar-bg);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  border-bottom: 1px solid var(--titlebar-border);
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
+  min-height: 44px;
 }
 
 .os-window-titlebar:active {
@@ -54,62 +56,63 @@
 }
 
 .os-window-control {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: transparent;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .os-window-control:hover {
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(0, 0, 0, 0.5);
 }
 
 .os-window-control.close {
-  background: var(--traffic-close, #ff5f56);
+  background: var(--traffic-close);
 }
 
 .os-window-control.close:hover {
-  background: var(--traffic-close-hover, #ff3b30);
+  background: var(--traffic-close-hover);
 }
 
 .os-window-control.minimize {
-  background: var(--traffic-minimize, #ffbd2e);
+  background: var(--traffic-minimize);
 }
 
 .os-window-control.minimize:hover {
-  background: var(--traffic-minimize-hover, #ff9f0a);
+  background: var(--traffic-minimize-hover);
 }
 
 .os-window-control.maximize {
-  background: var(--traffic-maximize, #27c93f);
+  background: var(--traffic-maximize);
 }
 
 .os-window-control.maximize:hover {
-  background: var(--traffic-maximize-hover, #32d74b);
+  background: var(--traffic-maximize-hover);
 }
 
 /* Inactive window controls */
 .os-window:not(.active) .os-window-control {
-  background: var(--traffic-inactive, #555);
+  background: var(--traffic-inactive);
 }
 
 /* Title */
 .os-window-title {
   flex: 1;
   text-align: center;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary, rgba(60, 50, 40, 0.8));
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 /* Snap Controls */
@@ -124,26 +127,26 @@
   height: 24px;
   border: none;
   background: transparent;
-  color: var(--text-muted, rgba(60, 50, 40, 0.5));
+  color: var(--text-muted);
   cursor: pointer;
   border-radius: 4px;
   font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .os-window-snap:hover {
-  background: var(--surface-hover, rgba(139, 119, 91, 0.12));
-  color: var(--text-secondary, rgba(60, 50, 40, 0.8));
+  background: var(--surface-hover);
+  color: var(--text-secondary);
 }
 
 /* Content Area */
 .os-window-content {
   flex: 1;
   overflow: auto;
-  background: var(--surface-primary, #fffcf7);
+  background: var(--surface-primary);
 }
 
 /* Resize Handle */
@@ -164,12 +167,12 @@
   right: 4px;
   width: 8px;
   height: 8px;
-  border-right: 2px solid var(--window-border, rgba(139, 119, 91, 0.3));
-  border-bottom: 2px solid var(--window-border, rgba(139, 119, 91, 0.3));
+  border-right: 2px solid var(--window-border);
+  border-bottom: 2px solid var(--window-border);
 }
 
 .os-window-resize-handle:hover::before {
-  border-color: var(--text-muted, rgba(60, 50, 40, 0.5));
+  border-color: var(--text-muted);
 }
 
 /* Window in snapped states should not show resize handle */

@@ -162,85 +162,52 @@ docker-compose up -d --build
 docker-compose logs -f
 ```
 
-### NAS Deployment
+### Production Deployment Options
 
-Deploy to a NAS with automatic sync from GitHub. See **[NAS Deployment Guide](docs/NAS_DEPLOYMENT.md)** for:
+Hail-Mary supports multiple deployment platforms with **fully persistent PostgreSQL databases**:
 
-- CI/CD pipeline with GitHub Actions
-- Pre-built images from GitHub Container Registry
-- Automatic updates via scheduled pulls or webhooks
-- Step-by-step setup instructions
+| Platform | Best For | Database | Setup Time | Guide |
+|----------|----------|----------|------------|-------|
+| **Unraid NAS** | Self-hosted, complete control | PostgreSQL on NAS storage | 5 min | [Guide](docs/DEPLOYMENT-unRAID.md) |
+| **Railway** | Fastest cloud deployment | Managed PostgreSQL | 10 min | [Guide](docs/DEPLOYMENT-RAILWAY.md) |
+| **Google Cloud** | Enterprise production | Cloud SQL PostgreSQL | 30 min | [Guide](docs/DEPLOYMENT-GCP.md) |
+| **Fly.io** | Global edge deployment | Managed PostgreSQL | 15 min | [Guide](docs/DEPLOYMENT-FLY.md) |
 
-### unRAID Deployment (Recommended for Home Servers)
+**📖 [Complete Deployment Guide & Platform Comparison →](docs/DEPLOYMENT.md)**
 
-**Quick Install with Auto-Updates:**
+### Quick Start: Unraid NAS (Self-Hosted)
+
+**One-line installation with auto-updates:**
 
 ```bash
 wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash
 ```
 
-This one-liner will:
-- Install Hail-Mary to `/mnt/user/appdata/hailmary`
-- Try to pull pre-built Docker images from GitHub Container Registry
-- **Automatically fall back to local build** if pre-built images aren't available
-- Start all services on port 8080
-- Optionally configure automatic updates when you push code
+Database persists to `/mnt/user/appdata/hailmary/postgres` on your NAS array.
 
-**Force local build (if you prefer or if image pull fails):**
+### Quick Start: Railway (Managed Cloud)
 
 ```bash
-wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash -s -- --build
+npm install -g @railway/cli
+railway login
+railway init
+railway add --database postgresql
+railway up
 ```
 
-**Enable auto-updates after installation:**
+Managed PostgreSQL with automatic daily backups included.
+
+### Quick Start: Google Cloud (Enterprise)
 
 ```bash
-cd /mnt/user/appdata/hailmary
-./scripts/setup-unraid-autoupdate.sh
-```
-
-Now whenever you push changes to GitHub, your unRAID server will automatically:
-1. Pull new Docker images
-2. Update containers
-3. Send you a notification
-
-See **[unRAID Deployment Guide](docs/DEPLOYMENT-unRAID.md)** for detailed instructions and manual installation.
-
-### Google Cloud Platform Deployment
-
-Deploy to Google Cloud Run with automatic scaling and managed infrastructure:
-
-```bash
-# One-time setup
-./scripts/setup-gcp.sh --project YOUR_PROJECT_ID
+# Create Cloud SQL PostgreSQL instance
+gcloud sql instances create hail-mary-db --database-version=POSTGRES_17
 
 # Deploy all services
 gcloud builds submit --config cloudbuild.yaml
-
-# Or deploy individually
-./scripts/deploy-api-gcp.sh --project YOUR_PROJECT_ID --build
-./scripts/deploy-assistant-gcp.sh --project YOUR_PROJECT_ID --api-url API_URL --build
-./scripts/deploy-pwa-gcp.sh --project YOUR_PROJECT_ID --build
 ```
 
-See **[Google Cloud Deployment Guide](docs/DEPLOYMENT-GCP.md)** for detailed instructions.
-
-### Fly.io Deployment
-
-Deploy to fly.io using the provided configuration files:
-
-```bash
-# Deploy API
-fly deploy -c fly.api.toml
-
-# Deploy Assistant
-fly deploy -c fly.assistant.toml
-
-# Deploy PWA
-fly deploy -c fly.pwa.toml
-```
-
-See **[Fly.io Deployment Guide](docs/DEPLOYMENT-FLY.md)** for detailed instructions.
+Cloud SQL provides automatic backups, high availability, and scaling.
 
 ## 🔐 Authentication & Admin Tools
 

@@ -1,0 +1,31 @@
+# Railway Configuration for Hail-Mary
+# This file defines how to deploy all services to Railway
+#
+# Prerequisites:
+# 1. Install Railway CLI: npm i -g @railway/cli
+# 2. Login: railway login
+# 3. Create project: railway init
+# 4. Add PostgreSQL plugin in Railway dashboard
+# 5. Set required environment variables in Railway dashboard
+#
+# Required Environment Variables (set in Railway dashboard):
+# - JWT_SECRET: Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# - GEMINI_API_KEY: Optional, for AI assistant features
+# - INITIAL_ADMIN_EMAIL: Default admin email (optional, defaults to admin@hailmary.local)
+# - INITIAL_ADMIN_PASSWORD: Default admin password (optional, defaults to HailMary2024!)
+#
+# Database:
+# - Railway automatically provides DATABASE_URL when PostgreSQL plugin is added
+# - PostgreSQL data is persisted on Railway's infrastructure
+#
+# Deployment:
+#   railway up
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = ""
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

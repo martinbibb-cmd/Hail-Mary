@@ -100,7 +100,7 @@ export class ArUcoScanner {
 
           // Check if this is the reference marker (ID 42)
           if (markerId === ID_CARD_MARKER_ID) {
-            // Calculate Euclidean distance between top-left (corner 0) and top-right (corner 1)
+            // Calculate width: Euclidean distance between top-left and top-right corners
             const topLeft = cornerPoints[0];
             const topRight = cornerPoints[1];
             const dx = topRight[0] - topLeft[0];
@@ -113,17 +113,18 @@ export class ArUcoScanner {
 
             // Calculate marker dimensions for tilt detection
             const bottomRight = cornerPoints[2];
-            const bottomLeft = cornerPoints[3];
             const rightDx = bottomRight[0] - topRight[0];
             const rightDy = bottomRight[1] - topRight[1];
             const markerHeight = Math.sqrt(rightDx * rightDx + rightDy * rightDy);
             const markerWidth = distanceInPixels;
 
-            // Calculate aspect ratio and check for tilt
-            const aspectRatio = markerWidth / markerHeight;
-            const deviation = Math.abs(aspectRatio - EXPECTED_ASPECT_RATIO) / EXPECTED_ASPECT_RATIO;
+            // Calculate aspect ratio and check for tilt (guard against division by zero)
+            if (markerHeight > 0) {
+              const aspectRatio = markerWidth / markerHeight;
+              const deviation = Math.abs(aspectRatio - EXPECTED_ASPECT_RATIO) / EXPECTED_ASPECT_RATIO;
 
-            isTilted = deviation > TILT_TOLERANCE;
+              isTilted = deviation > TILT_TOLERANCE;
+            }
           }
 
           // Clean up corner

@@ -1,11 +1,13 @@
 /**
  * Customer Routes - CRUD operations for customers using Postgres/Drizzle
+ * All routes are protected and require authentication.
  */
 
 import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
 import { customers } from "../db/drizzle-schema";
 import { eq, desc, count } from "drizzle-orm";
+import { requireAuth } from "../middleware/auth.middleware";
 import type {
   Customer,
   CreateCustomerDto,
@@ -15,6 +17,9 @@ import type {
 } from "@hail-mary/shared";
 
 const router = Router();
+
+// Apply authentication middleware to all customer routes
+router.use(requireAuth);
 
 // Helper to map database row to Customer object
 function mapRowToCustomer(

@@ -15,7 +15,8 @@
     "db:push": "drizzle-kit push --force",
     "db:seed": "ts-node src/db/seed.ts",
     "admin:reset-password": "ts-node src/scripts/reset-password.ts",
-    "admin:list-users": "ts-node src/scripts/list-users.ts"
+    "admin:list-users": "ts-node src/scripts/list-users.ts",
+    "admin:create": "ts-node src/scripts/create-admin.ts"
   },
   "dependencies": {
     "@hail-mary/shared": "*",

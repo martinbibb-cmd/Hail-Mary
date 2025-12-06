@@ -9,6 +9,7 @@ import { SurveyNode, SurveyState, InputType, ValidationRule, NextLogic, LogicCom
 
 export class SurveyEngine {
   private schema: SurveyNode[] = [];
+  private nodeMap: Map<string, SurveyNode> = new Map();
   private state: SurveyState = {
     currentNodeId: null,
     answers: {},
@@ -24,6 +25,11 @@ export class SurveyEngine {
       throw new Error('Survey schema must contain at least one node');
     }
     
+    // Build a lookup map for faster node retrieval
+    for (const node of schema) {
+      this.nodeMap.set(node.id, node);
+    }
+    
     // Validate that all nextNode IDs exist in the schema
     this.validateSchema(schema);
     
@@ -35,14 +41,12 @@ export class SurveyEngine {
    * @param schema The schema to validate
    */
   private validateSchema(schema: SurveyNode[]): void {
-    const nodeIds = new Set(schema.map(node => node.id));
-    
     for (const node of schema) {
       const nextNodeIds = this.extractNextNodeIds(node.next);
       
       for (const nextNodeId of nextNodeIds) {
-        // Allow 'finish' as a special value to end the survey
-        if (nextNodeId !== 'finish' && !nodeIds.has(nextNodeId)) {
+        // Allow 'END' as a special value to end the survey
+        if (nextNodeId !== 'END' && !this.nodeMap.has(nextNodeId)) {
           throw new Error(`Invalid schema: Node '${node.id}' references non-existent node '${nextNodeId}'`);
         }
       }
@@ -81,6 +85,7 @@ export class SurveyEngine {
   start(): SurveyNode {
     const firstNode = this.schema[0];
     this.state.currentNodeId = firstNode.id;
+    this.state.answers = {};
     this.state.isComplete = false;
     
     return firstNode;
@@ -100,28 +105,28 @@ export class SurveyEngine {
       throw new Error('Survey not started. Call start() first.');
     }
 
-    const currentNode = this.findNodeById(this.state.currentNodeId);
+    const currentNode = this.nodeMap.get(this.state.currentNodeId);
     if (!currentNode) {
       throw new Error(`Current node not found: ${this.state.currentNodeId}`);
     }
 
     // Validate the answer
-    this.validateAnswer(answer, currentNode.inputType, currentNode.validationRule);
+    this.validateAnswer(currentNode, answer);
 
     // Store the answer
     this.state.answers[currentNode.id] = answer;
 
     // Determine the next node
-    const nextNodeId = this.determineNextNode(currentNode, answer);
+    const nextNodeId = this.evaluateNextNode(currentNode, answer);
 
-    if (nextNodeId === null || nextNodeId === 'finish') {
+    if (nextNodeId === null || nextNodeId === 'END') {
       // Survey is complete
       this.state.isComplete = true;
       this.state.currentNodeId = null;
       return null;
     }
 
-    const nextNode = this.findNodeById(nextNodeId);
+    const nextNode = this.nodeMap.get(nextNodeId);
     if (!nextNode) {
       throw new Error(`Next node not found: ${nextNodeId}`);
     }
@@ -155,21 +160,14 @@ export class SurveyEngine {
   }
 
   /**
-   * Find a node by its ID
-   * @param nodeId The ID of the node to find
-   * @returns The SurveyNode or undefined
-   */
-  private findNodeById(nodeId: string): SurveyNode | undefined {
-    return this.schema.find(node => node.id === nodeId);
-  }
-
-  /**
-   * Validate an answer against input type and validation rules
+   * Validate an answer against the node's input type and validation rules
+   * @param node The SurveyNode containing validation rules
    * @param answer The answer to validate
-   * @param inputType The expected input type
-   * @param validationRule Optional validation rule
+   * @returns true if valid (throws Error if invalid)
    */
-  private validateAnswer(answer: any, inputType: InputType, validationRule?: ValidationRule): void {
+  private validateAnswer(node: SurveyNode, answer: any): boolean {
+    const { inputType, validationRule } = node;
+    
     switch (inputType) {
       case 'boolean':
         if (typeof answer !== 'boolean') {
@@ -183,10 +181,10 @@ export class SurveyEngine {
         }
         if (validationRule) {
           if (validationRule.min !== undefined && answer < validationRule.min) {
-            throw new Error(`Answer must be at least ${validationRule.min}`);
+            throw new Error(`Value ${answer} is below minimum ${validationRule.min}`);
           }
           if (validationRule.max !== undefined && answer > validationRule.max) {
-            throw new Error(`Answer must be at most ${validationRule.max}`);
+            throw new Error(`Value ${answer} exceeds maximum ${validationRule.max}`);
           }
         }
         break;
@@ -203,16 +201,18 @@ export class SurveyEngine {
         }
         break;
     }
+    
+    return true;
   }
 
   /**
-   * Determine the next node based on the current node's logic and the answer
-   * @param currentNode The current SurveyNode
+   * Evaluate the next node based on the current node's logic and the answer
+   * @param node The current SurveyNode
    * @param answer The user's answer
    * @returns The ID of the next node, or null if finished
    */
-  private determineNextNode(currentNode: SurveyNode, answer: any): string | null {
-    const next = currentNode.next;
+  private evaluateNextNode(node: SurveyNode, answer: any): string | null {
+    const next = node.next;
 
     // If next is a simple string, return it
     if (typeof next === 'string') {
@@ -222,7 +222,7 @@ export class SurveyEngine {
     const logic = next as NextLogic;
 
     // Handle boolean logic
-    if (currentNode.inputType === 'boolean') {
+    if (node.inputType === 'boolean') {
       if (answer === true && logic.if_true) {
         return logic.if_true;
       }

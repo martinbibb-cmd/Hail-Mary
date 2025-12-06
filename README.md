@@ -18,7 +18,7 @@ A rock-solid boiler CRM + quoting engine that AI and voice can plug into. Built 
 
 This is a **monorepo** containing:
 
-- `packages/api` - Backend API with Express/TypeScript + SQLite
+- `packages/api` - Backend API with Express/TypeScript + PostgreSQL (Drizzle ORM)
 - `packages/pwa` - Frontend PWA with React/TypeScript + Vite
 - `packages/shared` - Shared types and utilities
 
@@ -85,7 +85,7 @@ RESTful API endpoints:
 
 | Layer | Technology |
 |-------|------------|
-| Database | SQLite (better-sqlite3) |
+| Database | PostgreSQL 17 + Drizzle ORM |
 | API | Express.js + TypeScript |
 | Frontend | React 18 + Vite |
 | Styling | CSS (custom) |
@@ -140,9 +140,15 @@ npm run preview # Preview production build
 
 ```bash
 npm run db:migrate  # Initialize/update database schema
+npm run db:push     # Push schema changes directly (development)
+npm run db:seed     # Seed the database with initial data
 ```
 
-The database file is stored at `packages/api/data/hailmary.db`.
+The database runs in PostgreSQL (via Docker) and uses Drizzle ORM for schema management.
+
+- Schema definitions: `packages/api/src/db/drizzle-schema.ts`
+- Migrations: `packages/api/drizzle/`
+- Database connection: `packages/api/src/db/drizzle-client.ts`
 
 ## 🐳 Docker & Deployment
 

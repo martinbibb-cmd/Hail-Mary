@@ -32,17 +32,17 @@ RUN apt-get update -qq && \
 RUN npm config set strict-ssl false
 
 # Copy package files
-COPY --link package.json package-lock.json .npmrc ./
-COPY --link packages/api/package.json ./packages/api/
-COPY --link packages/assistant/package.json ./packages/assistant/
-COPY --link packages/pwa/package.json ./packages/pwa/
-COPY --link packages/shared/package.json ./packages/shared/
+COPY package.json package-lock.json .npmrc ./
+COPY packages/api/package.json ./packages/api/
+COPY packages/assistant/package.json ./packages/assistant/
+COPY packages/pwa/package.json ./packages/pwa/
+COPY packages/shared/package.json ./packages/shared/
 
 # Install ALL dependencies (including devDependencies needed for build)
 RUN npm ci
 
 # Copy application code
-COPY --link . .
+COPY . .
 
 # Build all workspaces
 RUN npm run build
@@ -58,9 +58,9 @@ ENV NODE_ENV=production
 RUN npm config set strict-ssl false
 
 # Copy package files for production install (only API and shared needed at runtime)
-COPY --link package.json package-lock.json .npmrc ./
-COPY --link packages/api/package.json ./packages/api/
-COPY --link packages/shared/package.json ./packages/shared/
+COPY package.json package-lock.json .npmrc ./
+COPY packages/api/package.json ./packages/api/
+COPY packages/shared/package.json ./packages/shared/
 
 # Install ALL dependencies including dev deps for drizzle-kit and ts-node
 # These are required at runtime to run database migrations and seed scripts

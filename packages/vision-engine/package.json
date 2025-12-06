@@ -1,0 +1,22 @@
+{
+  "name": "@hail-mary/vision-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Computer vision engine for ArUco marker detection and measurement",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "computer-vision",
+    "aruco",
+    "opencv",
+    "measurement"
+  ],
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

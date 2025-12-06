@@ -49,6 +49,8 @@ steps:
       - '${_ARTIFACT_REGISTRY}/api:latest'
       - '.'
     dir: '.'
+    env:
+      - 'DOCKER_BUILDKIT=1'
 
   # Step 2: Build Assistant Docker image
   - name: 'gcr.io/cloud-builders/docker'
@@ -63,6 +65,8 @@ steps:
       - '${_ARTIFACT_REGISTRY}/assistant:latest'
       - '.'
     dir: '.'
+    env:
+      - 'DOCKER_BUILDKIT=1'
 
   # Step 3: Build PWA Docker image
   - name: 'gcr.io/cloud-builders/docker'
@@ -77,6 +81,8 @@ steps:
       - '${_ARTIFACT_REGISTRY}/pwa:latest'
       - '.'
     dir: '.'
+    env:
+      - 'DOCKER_BUILDKIT=1'
 
   # Step 4: Push API image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import type { 
   SurveyTemplate,
   SurveyQuestion,
+  SurveySection,
 } from '@hail-mary/shared'
 import './SurveyApp.css'
 
@@ -279,7 +280,7 @@ export const SurveyApp: React.FC = () => {
                 {template.description && <span>{template.description}</span>}
                 <span className="template-meta">
                   {template.schema.sections.length} sections • 
-                  {template.schema.sections.reduce((acc: number, s: any) => acc + s.questions.length, 0)} questions
+                  {template.schema.sections.reduce((acc: number, s: SurveySection) => acc + s.questions.length, 0)} questions
                 </span>
               </div>
               <span className="template-arrow">→</span>

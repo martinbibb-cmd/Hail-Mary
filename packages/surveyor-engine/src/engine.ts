@@ -5,32 +5,73 @@
  * Receives answers and outputs the next question based on logic rules.
  */
 
-import { SurveyNode, SurveyState, InputType, ValidationRule, NextLogic } from './types';
+import { SurveyNode, SurveyState, InputType, ValidationRule, NextLogic, LogicComparison } from './types';
 
 export class SurveyEngine {
   private schema: SurveyNode[] = [];
   private state: SurveyState = {
     currentNodeId: null,
     answers: {},
-    started: false,
-    completed: false,
+    isComplete: false,
   };
 
   /**
-   * Load the survey schema (definitions)
+   * Constructor that accepts and validates a survey schema
    * @param schema Array of SurveyNode objects defining the survey flow
    */
-  loadSchema(schema: SurveyNode[]): void {
+  constructor(schema: SurveyNode[]) {
     if (!schema || schema.length === 0) {
       throw new Error('Survey schema must contain at least one node');
     }
+    
+    // Validate that all nextNode IDs exist in the schema
+    this.validateSchema(schema);
+    
     this.schema = schema;
-    this.state = {
-      currentNodeId: null,
-      answers: {},
-      started: false,
-      completed: false,
-    };
+  }
+
+  /**
+   * Validate that all nextNode references exist in the schema
+   * @param schema The schema to validate
+   */
+  private validateSchema(schema: SurveyNode[]): void {
+    const nodeIds = new Set(schema.map(node => node.id));
+    
+    for (const node of schema) {
+      const nextNodeIds = this.extractNextNodeIds(node.next);
+      
+      for (const nextNodeId of nextNodeIds) {
+        // Allow 'finish' as a special value to end the survey
+        if (nextNodeId !== 'finish' && !nodeIds.has(nextNodeId)) {
+          throw new Error(`Invalid schema: Node '${node.id}' references non-existent node '${nextNodeId}'`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Extract all possible next node IDs from a next property
+   * @param next The next property (string or NextLogic)
+   * @returns Array of node IDs
+   */
+  private extractNextNodeIds(next: NextLogic | string): string[] {
+    if (typeof next === 'string') {
+      return [next];
+    }
+
+    const ids: string[] = [];
+    
+    if (next.if_true) ids.push(next.if_true);
+    if (next.if_false) ids.push(next.if_false);
+    if (next.default) ids.push(next.default);
+    
+    if (next.conditions) {
+      for (const condition of next.conditions) {
+        ids.push(condition.nextNode);
+      }
+    }
+    
+    return ids;
   }
 
   /**
@@ -38,14 +79,9 @@ export class SurveyEngine {
    * @returns The first SurveyNode in the schema
    */
   start(): SurveyNode {
-    if (this.schema.length === 0) {
-      throw new Error('No schema loaded. Call loadSchema() first.');
-    }
-    
     const firstNode = this.schema[0];
     this.state.currentNodeId = firstNode.id;
-    this.state.started = true;
-    this.state.completed = false;
+    this.state.isComplete = false;
     
     return firstNode;
   }
@@ -56,16 +92,12 @@ export class SurveyEngine {
    * @returns The next SurveyNode, or null if the survey is complete
    */
   submitAnswer(answer: any): SurveyNode | null {
-    if (!this.state.started) {
-      throw new Error('Survey not started. Call start() first.');
-    }
-
-    if (this.state.completed) {
+    if (this.state.isComplete) {
       throw new Error('Survey already completed.');
     }
 
     if (this.state.currentNodeId === null) {
-      throw new Error('No current node.');
+      throw new Error('Survey not started. Call start() first.');
     }
 
     const currentNode = this.findNodeById(this.state.currentNodeId);
@@ -84,7 +116,7 @@ export class SurveyEngine {
 
     if (nextNodeId === null || nextNodeId === 'finish') {
       // Survey is complete
-      this.state.completed = true;
+      this.state.isComplete = true;
       this.state.currentNodeId = null;
       return null;
     }
@@ -119,7 +151,7 @@ export class SurveyEngine {
    * @returns true if the survey is completed
    */
   isComplete(): boolean {
-    return this.state.completed;
+    return this.state.isComplete;
   }
 
   /**
@@ -198,20 +230,17 @@ export class SurveyEngine {
       }
     }
 
-    // Handle conditional logic (for numbers)
-    if (currentNode.inputType === 'number') {
-      const logic = next as NextLogic;
-      if (logic.conditions) {
-        for (const cond of logic.conditions) {
-          if (this.evaluateCondition(answer, cond.condition)) {
-            return cond.nextNode;
-          }
+    // Handle conditional logic (for numbers/text)
+    const logic = next as NextLogic;
+    if (logic.conditions) {
+      for (const cond of logic.conditions) {
+        if (this.evaluateComparison(answer, cond)) {
+          return cond.nextNode;
         }
       }
     }
 
     // Return default if available
-    const logic = next as NextLogic;
     if (logic.default) {
       return logic.default;
     }
@@ -221,34 +250,27 @@ export class SurveyEngine {
   }
 
   /**
-   * Evaluate a condition against a value
+   * Evaluate a structured comparison
    * @param value The value to test
-   * @param condition The condition string (e.g., "> 15", "<= 10")
-   * @returns true if condition is met
+   * @param comparison The LogicComparison to evaluate
+   * @returns true if comparison is met
    */
-  private evaluateCondition(value: number, condition: string): boolean {
-    const match = condition.match(/^(>=|<=|>|<|==|=|!=)\s*(\d+)$/);
-    if (!match) {
-      throw new Error(`Invalid condition format: ${condition}`);
-    }
-
-    const operator = match[1];
-    const threshold = parseFloat(match[2]);
-
+  private evaluateComparison(value: any, comparison: LogicComparison): boolean {
+    const { operator, value: compareValue } = comparison;
+    
     switch (operator) {
-      case '>':
-        return value > threshold;
-      case '>=':
-        return value >= threshold;
-      case '<':
-        return value < threshold;
-      case '<=':
-        return value <= threshold;
-      case '==':
-      case '=':
-        return value === threshold;
-      case '!=':
-        return value !== threshold;
+      case 'gt':
+        return value > compareValue;
+      case 'gte':
+        return value >= compareValue;
+      case 'lt':
+        return value < compareValue;
+      case 'lte':
+        return value <= compareValue;
+      case 'eq':
+        return value === compareValue;
+      case 'neq':
+        return value !== compareValue;
       default:
         throw new Error(`Unsupported operator: ${operator}`);
     }

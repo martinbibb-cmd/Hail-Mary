@@ -10,11 +10,13 @@
     "next": {
       "conditions": [
         {
-          "condition": "> 15",
+          "operator": "gt",
+          "value": 15,
           "nextNode": "check_leaks"
         },
         {
-          "condition": "<= 15",
+          "operator": "lte",
+          "value": 15,
           "nextNode": "service_history"
         }
       ]

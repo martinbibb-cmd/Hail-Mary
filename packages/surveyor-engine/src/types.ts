@@ -10,6 +10,11 @@
 export type InputType = 'boolean' | 'number' | 'text';
 
 /**
+ * Logical operators for comparisons
+ */
+export type LogicOperator = 'gt' | 'lt' | 'eq' | 'gte' | 'lte' | 'neq';
+
+/**
  * Validation rule for question answers
  */
 export interface ValidationRule {
@@ -22,6 +27,18 @@ export interface ValidationRule {
 }
 
 /**
+ * Structured logic comparison for conditional navigation
+ */
+export interface LogicComparison {
+  /** The operator to use (e.g., 'gt' for greater than) */
+  operator: LogicOperator;
+  /** The value to compare against */
+  value: number | string | boolean;
+  /** Node ID to navigate to if condition is met */
+  nextNode: string;
+}
+
+/**
  * Logic object that determines the next node based on answer
  */
 export interface NextLogic {
@@ -29,13 +46,8 @@ export interface NextLogic {
   if_true?: string;
   /** Node ID to navigate to if boolean answer is false */
   if_false?: string;
-  /** Conditional navigation based on number ranges */
-  conditions?: {
-    /** Condition to evaluate (e.g., "> 15", "<= 15") */
-    condition: string;
-    /** Node ID to navigate to if condition is met */
-    nextNode: string;
-  }[];
+  /** Conditional navigation based on structured comparisons (processed in order) */
+  conditions?: LogicComparison[];
   /** Default node ID if no conditions match */
   default?: string;
 }
@@ -52,7 +64,7 @@ export interface SurveyNode {
   inputType: InputType;
   /** Optional validation rules for the answer */
   validationRule?: ValidationRule;
-  /** Logic object that determines the next node */
+  /** Can be a simple string (jump to X) or complex logic object */
   next: NextLogic | string;
 }
 
@@ -64,8 +76,6 @@ export interface SurveyState {
   currentNodeId: string | null;
   /** Map of all collected answers (nodeId -> answer value) */
   answers: Record<string, any>;
-  /** Whether the survey has been started */
-  started: boolean;
   /** Whether the survey has been completed */
-  completed: boolean;
+  isComplete: boolean;
 }

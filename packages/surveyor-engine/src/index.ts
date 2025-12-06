@@ -10,6 +10,8 @@ export type {
   SurveyNode, 
   SurveyState, 
   InputType, 
+  LogicOperator,
+  LogicComparison,
   ValidationRule, 
   NextLogic 
 } from './types';

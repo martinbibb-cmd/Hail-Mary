@@ -12,9 +12,8 @@ const boilerSurveySchema = boilerSurveySchemaJson as SurveyNode[];
 
 console.log('Testing SurveyEngine...\n');
 
-// Create and load the engine
-const engine = new SurveyEngine();
-engine.loadSchema(boilerSurveySchema);
+// Create the engine with schema
+const engine = new SurveyEngine(boilerSurveySchema);
 
 console.log('✓ Schema loaded successfully');
 
@@ -41,8 +40,7 @@ console.log('\nCollected Answers:', answers);
 // Test another path
 console.log('\n\n--- Testing Second Path ---\n');
 
-const engine2 = new SurveyEngine();
-engine2.loadSchema(boilerSurveySchema);
+const engine2 = new SurveyEngine(boilerSurveySchema);
 
 const q1 = engine2.start();
 console.log(`1st Question: ${q1.promptText}`);

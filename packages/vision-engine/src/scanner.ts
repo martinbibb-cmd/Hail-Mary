@@ -123,9 +123,7 @@ export class ArUcoScanner {
             const aspectRatio = markerWidth / markerHeight;
             const deviation = Math.abs(aspectRatio - EXPECTED_ASPECT_RATIO) / EXPECTED_ASPECT_RATIO;
 
-            if (deviation > TILT_TOLERANCE) {
-              isTilted = true;
-            }
+            isTilted = deviation > TILT_TOLERANCE;
           }
 
           // Clean up corner

@@ -219,9 +219,10 @@ export class SurveyEngine {
       return next;
     }
 
+    const logic = next as NextLogic;
+
     // Handle boolean logic
     if (currentNode.inputType === 'boolean') {
-      const logic = next as NextLogic;
       if (answer === true && logic.if_true) {
         return logic.if_true;
       }
@@ -230,8 +231,7 @@ export class SurveyEngine {
       }
     }
 
-    // Handle conditional logic (for numbers/text)
-    const logic = next as NextLogic;
+    // Handle conditional logic (works for any input type)
     if (logic.conditions) {
       for (const cond of logic.conditions) {
         if (this.evaluateComparison(answer, cond)) {
@@ -255,7 +255,7 @@ export class SurveyEngine {
    * @param comparison The LogicComparison to evaluate
    * @returns true if comparison is met
    */
-  private evaluateComparison(value: any, comparison: LogicComparison): boolean {
+  private evaluateComparison(value: number | string | boolean, comparison: LogicComparison): boolean {
     const { operator, value: compareValue } = comparison;
     
     switch (operator) {

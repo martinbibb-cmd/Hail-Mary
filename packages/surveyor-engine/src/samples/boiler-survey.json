@@ -1,0 +1,35 @@
+[
+  {
+    "id": "boiler_age",
+    "promptText": "How old is the boiler?",
+    "inputType": "number",
+    "validationRule": {
+      "min": 0,
+      "max": 100
+    },
+    "next": {
+      "conditions": [
+        {
+          "condition": "> 15",
+          "nextNode": "check_leaks"
+        },
+        {
+          "condition": "<= 15",
+          "nextNode": "service_history"
+        }
+      ]
+    }
+  },
+  {
+    "id": "check_leaks",
+    "promptText": "Do you see any visible corrosion or leaks?",
+    "inputType": "boolean",
+    "next": "finish"
+  },
+  {
+    "id": "service_history",
+    "promptText": "Is the service history available?",
+    "inputType": "boolean",
+    "next": "finish"
+  }
+]

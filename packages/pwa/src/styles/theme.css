@@ -1,40 +1,40 @@
 /**
  * Hail-Mary OS Theme
- * 
- * Smooth light theme with natural wood/log-inspired warm tones.
- * macOS-inspired with CSS variables for consistent styling.
- * Supports wallpapers, glassmorphism, and user customization.
+ *
+ * Modern macOS-inspired design system with smooth graphics and soft colors.
+ * Features glassmorphism, refined typography, and a neutral color palette.
+ * Optimized for light mode with subtle depth and clarity.
  */
 
 :root {
-  /* Desktop & Background - Smooth light natural tones */
-  --desktop-bg: linear-gradient(135deg, #f5f0e6 0%, #e8dcc8 50%, #ddd2be 100%);
-  
-  /* Window styling - Light with warm undertones */
-  --window-bg: rgba(255, 252, 247, 0.92);
-  --window-bg-solid: #fffcf7;
-  --window-border: rgba(139, 119, 91, 0.2);
-  --window-border-active: rgba(107, 142, 35, 0.4);
-  --window-shadow: 0 10px 40px rgba(100, 80, 50, 0.15);
-  --window-shadow-active: 0 15px 50px rgba(100, 80, 50, 0.2);
+  /* Desktop & Background - Clean, neutral grays inspired by macOS Sonoma */
+  --desktop-bg: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 50%, #d1d1d6 100%);
+
+  /* Window styling - Frosted glass with high translucency */
+  --window-bg: rgba(255, 255, 255, 0.78);
+  --window-bg-solid: #ffffff;
+  --window-border: rgba(0, 0, 0, 0.08);
+  --window-border-active: rgba(0, 122, 255, 0.3);
+  --window-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --window-shadow-active: 0 12px 48px rgba(0, 0, 0, 0.18);
   --window-radius: 12px;
-  
-  /* Titlebar - Soft warm gradient */
-  --titlebar-bg: linear-gradient(to bottom, rgba(245, 240, 230, 0.98), rgba(240, 235, 225, 0.98));
-  --titlebar-border: rgba(139, 119, 91, 0.15);
-  
-  /* Dock styling - Light with subtle warmth */
-  --dock-bg: rgba(255, 252, 247, 0.85);
-  --dock-border: rgba(139, 119, 91, 0.15);
-  --dock-shadow: 0 10px 40px rgba(100, 80, 50, 0.12);
-  --dock-blur: 20px;
-  
-  /* Accent colors - Natural olive/forest green */
-  --accent: #6b8e23;
-  --accent-hover: #556b2f;
-  --accent-soft: rgba(107, 142, 35, 0.15);
-  --accent-muted: rgba(107, 142, 35, 0.1);
-  
+
+  /* Titlebar - Subtle gradient for depth */
+  --titlebar-bg: linear-gradient(to bottom, rgba(250, 250, 252, 0.85), rgba(245, 245, 247, 0.85));
+  --titlebar-border: rgba(0, 0, 0, 0.06);
+
+  /* Dock styling - Enhanced glassmorphism */
+  --dock-bg: rgba(255, 255, 255, 0.72);
+  --dock-border: rgba(0, 0, 0, 0.1);
+  --dock-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  --dock-blur: 24px;
+
+  /* Accent colors - macOS system blue with depth */
+  --accent: #007AFF;
+  --accent-hover: #0051D5;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --accent-muted: rgba(0, 122, 255, 0.06);
+
   /* Traffic light colors (macOS window controls) */
   --traffic-close: #ff5f56;
   --traffic-close-hover: #ff3b30;
@@ -42,75 +42,76 @@
   --traffic-minimize-hover: #ff9f0a;
   --traffic-maximize: #27c93f;
   --traffic-maximize-hover: #32d74b;
-  --traffic-inactive: #ccc;
-  
-  /* Text colors - Dark warm tones for light backgrounds */
-  --text-primary: rgba(60, 50, 40, 0.95);
-  --text-secondary: rgba(60, 50, 40, 0.8);
-  --text-muted: rgba(60, 50, 40, 0.6);
-  --text-disabled: rgba(60, 50, 40, 0.4);
-  
-  /* Surface colors - Light with warm undertones */
-  --surface-primary: #fffcf7;
-  --surface-secondary: rgba(139, 119, 91, 0.08);
-  --surface-hover: rgba(139, 119, 91, 0.12);
-  
-  /* Status colors */
-  --success: #27a844;
-  --success-soft: rgba(39, 168, 68, 0.15);
-  --warning: #f0a020;
-  --warning-soft: rgba(240, 160, 32, 0.15);
-  --error: #dc3545;
-  --error-soft: rgba(220, 53, 69, 0.15);
-  
-  /* Blur & effects */
-  --blur-sm: 8px;
-  --blur-md: 12px;
-  --blur-lg: 20px;
-  
-  /* Transitions */
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.2s ease;
-  --transition-slow: 0.3s ease;
+  --traffic-inactive: #d1d1d6;
+
+  /* Text colors - True macOS text hierarchy */
+  --text-primary: rgba(0, 0, 0, 0.88);
+  --text-secondary: rgba(0, 0, 0, 0.65);
+  --text-muted: rgba(0, 0, 0, 0.45);
+  --text-disabled: rgba(0, 0, 0, 0.25);
+
+  /* Surface colors - Refined neutrals */
+  --surface-primary: #ffffff;
+  --surface-secondary: rgba(0, 0, 0, 0.04);
+  --surface-hover: rgba(0, 0, 0, 0.06);
+
+  /* Status colors - macOS system colors */
+  --success: #34C759;
+  --success-soft: rgba(52, 199, 89, 0.12);
+  --warning: #FF9500;
+  --warning-soft: rgba(255, 149, 0, 0.12);
+  --error: #FF3B30;
+  --error-soft: rgba(255, 59, 48, 0.12);
+
+  /* Blur & effects - Optimized for performance and clarity */
+  --blur-sm: 10px;
+  --blur-md: 16px;
+  --blur-lg: 24px;
+  --blur-xl: 40px;
+
+  /* Transitions - macOS timing curves */
+  --transition-fast: 0.12s cubic-bezier(0.4, 0.0, 0.2, 1);
+  --transition-normal: 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+  --transition-slow: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
-/* Built-in wallpapers as CSS classes - Light natural themes */
+/* Built-in wallpapers - Modern macOS-inspired gradients */
 .wallpaper-default {
-  background: linear-gradient(135deg, #f5f0e6 0%, #e8dcc8 50%, #ddd2be 100%);
+  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 50%, #d1d1d6 100%);
 }
 
-.wallpaper-birch {
-  background: linear-gradient(135deg, #faf8f5 0%, #e8e4dc 50%, #d8d0c4 100%);
+.wallpaper-sonoma {
+  background: linear-gradient(135deg, #e8f1ff 0%, #d1e3f5 50%, #b8d4eb 100%);
 }
 
-.wallpaper-oak {
-  background: linear-gradient(135deg, #f0e6d6 0%, #d4c4a8 50%, #c8b894 100%);
+.wallpaper-monterey {
+  background: linear-gradient(135deg, #fef4e8 0%, #f5e5d1 50%, #e8d4b8 100%);
 }
 
-.wallpaper-maple {
-  background: linear-gradient(135deg, #fdf5e6 0%, #f5deb3 50%, #deb887 100%);
+.wallpaper-ventura {
+  background: linear-gradient(135deg, #f0f0f5 0%, #e0e0eb 50%, #d0d0e0 100%);
 }
 
-.wallpaper-cedar {
-  background: linear-gradient(135deg, #f5f5dc 0%, #e6dcc8 50%, #d2c8b4 100%);
+.wallpaper-bigsur {
+  background: linear-gradient(135deg, #e5f3ff 0%, #cce5f9 50%, #b3d7f3 100%);
 }
 
-.wallpaper-pine {
-  background: linear-gradient(135deg, #f0f4e8 0%, #d8e0c8 50%, #c8d4b4 100%);
+.wallpaper-catalina {
+  background: linear-gradient(135deg, #f5e8f0 0%, #e8d1e0 50%, #d8b8d0 100%);
 }
 
-.wallpaper-willow {
-  background: linear-gradient(135deg, #f5f8f0 0%, #dce8d0 50%, #c8d8b8 100%);
+.wallpaper-mojave {
+  background: linear-gradient(135deg, #fff5e8 0%, #f9e8d1 50%, #f0d8b8 100%);
 }
 
-.wallpaper-ash {
-  background: linear-gradient(135deg, #f8f8f6 0%, #e4e4e0 50%, #d0d0c8 100%);
+.wallpaper-sierra {
+  background: linear-gradient(135deg, #f0f8ff 0%, #e0f0fa 50%, #d0e8f5 100%);
 }
 
-.wallpaper-walnut {
-  background: linear-gradient(135deg, #f0e8dc 0%, #d8c8b0 50%, #c8b498 100%);
+.wallpaper-yosemite {
+  background: linear-gradient(135deg, #e8fff5 0%, #d1f5e8 50%, #b8ebd8 100%);
 }
 
-.wallpaper-cherry {
-  background: linear-gradient(135deg, #fff5f0 0%, #f5e0d8 50%, #e8c8c0 100%);
+.wallpaper-mavericks {
+  background: linear-gradient(135deg, #fff0f5 0%, #f5e0eb 50%, #ebd0e0 100%);
 }

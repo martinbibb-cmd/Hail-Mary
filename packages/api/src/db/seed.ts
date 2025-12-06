@@ -61,6 +61,7 @@ async function main() {
   // 3. Create initial admin user if env vars are set
   const initialAdminEmail = process.env.INITIAL_ADMIN_EMAIL;
   const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  const initialAdminName = process.env.INITIAL_ADMIN_NAME || "Admin";
 
   if (initialAdminEmail && initialAdminPassword) {
     const normalizedEmail = initialAdminEmail.toLowerCase().trim();
@@ -82,13 +83,13 @@ async function main() {
         const [insertedUser] = await db.insert(users).values({
           accountId,
           email: normalizedEmail,
-          name: "Admin",
+          name: initialAdminName,
           passwordHash,
           authProvider: "local",
           role: "admin",
         }).returning();
         
-        console.log(`Seeded initial admin user: ${normalizedEmail} (id: ${insertedUser.id})`);
+        console.log(`✅ Created initial admin user: ${normalizedEmail} (id: ${insertedUser.id})`);
       }
     } else {
       console.log(`Admin user already exists: ${normalizedEmail} (id: ${existingUser.id}), no seed needed`);
@@ -97,8 +98,11 @@ async function main() {
     // Check if there are any users at all
     const [anyUser] = await db.select().from(users).limit(1);
     if (!anyUser) {
-      console.log("No INITIAL_ADMIN_EMAIL/INITIAL_ADMIN_PASSWORD set. No admin user created.");
-      console.log("You can create an account using the signup flow or set these env vars.");
+      console.log("ℹ️  No INITIAL_ADMIN_EMAIL/INITIAL_ADMIN_PASSWORD set. No admin user created.");
+      console.log("   You can create an account using:");
+      console.log("   - The signup flow");
+      console.log("   - npm run admin:create -- <email> <password> [name]");
+      console.log("   - Set INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD env vars");
     }
   }
 

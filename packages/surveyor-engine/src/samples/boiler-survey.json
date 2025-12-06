@@ -1,37 +1,42 @@
 [
   {
     "id": "boiler_age",
-    "promptText": "How old is the boiler?",
+    "promptText": "How old is the boiler in years?",
     "inputType": "number",
-    "validationRule": {
-      "min": 0,
-      "max": 100
-    },
+    "validationRule": { "min": 0, "max": 50 },
     "next": {
       "conditions": [
-        {
-          "operator": "gt",
-          "value": 15,
-          "nextNode": "check_leaks"
-        },
-        {
-          "operator": "lte",
-          "value": 15,
-          "nextNode": "service_history"
-        }
-      ]
+        { "operator": "gt", "value": 15, "nextNode": "check_leaks" },
+        { "operator": "lte", "value": 15, "nextNode": "service_history" }
+      ],
+      "default": "service_history"
     }
   },
   {
     "id": "check_leaks",
-    "promptText": "Do you see any visible corrosion or leaks?",
+    "promptText": "Because it is over 15 years old, do you see any visible corrosion?",
+    "inputType": "boolean",
+    "next": {
+      "if_true": "mark_replacement",
+      "if_false": "service_history"
+    }
+  },
+  {
+    "id": "mark_replacement",
+    "promptText": "Ok, noting that this likely needs replacement. Moving on.",
     "inputType": "boolean",
     "next": "finish"
   },
   {
     "id": "service_history",
-    "promptText": "Is the service history available?",
+    "promptText": "Is the service log available?",
     "inputType": "boolean",
     "next": "finish"
+  },
+  {
+    "id": "finish",
+    "promptText": "Survey complete.",
+    "inputType": "boolean",
+    "next": "END"
   }
 ]

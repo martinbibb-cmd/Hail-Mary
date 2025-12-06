@@ -35,8 +35,7 @@ jobs:
     name: Deploy to Cloud Run
     runs-on: ubuntu-latest
     
-    # Only run on main branch for automatic deploys
-    # Remove this condition if you want to deploy from any branch
+    # Uncomment the line below to restrict automatic deployments to main branch only
     # if: github.ref == 'refs/heads/main'
     
     permissions:

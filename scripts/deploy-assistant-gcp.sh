@@ -95,7 +95,8 @@ if [ "$BUILD_IMAGE" = true ]; then
   
   IMAGE_ARG="--image=$IMAGE_URL"
 else
-  echo -e "${YELLOW}ℹ️  Skipping build (use --build to build and push image)${NC}"
+  echo -e "${YELLOW}ℹ️  Using Cloud Build to build from source...${NC}"
+  echo "   (Use --build to build locally and push to Artifact Registry)"
   IMAGE_ARG="--source=."
 fi
 

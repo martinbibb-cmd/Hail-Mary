@@ -132,7 +132,17 @@ if [ "$SKIP_SECRETS" = false ]; then
   echo -e "${YELLOW}🔒 Creating secrets in Secret Manager...${NC}"
   
   # Generate JWT secret
-  JWT_SECRET=$(openssl rand -hex 32)
+  if command -v openssl &> /dev/null; then
+    JWT_SECRET=$(openssl rand -hex 32)
+  elif command -v head &> /dev/null && [ -f /dev/urandom ]; then
+    # Alternative method using /dev/urandom
+    JWT_SECRET=$(head -c 32 /dev/urandom | xxd -p -c 64)
+  else
+    echo -e "${YELLOW}⚠️  Could not generate JWT secret automatically (openssl not found)${NC}"
+    echo "Please generate a random 64-character hex string for JWT_SECRET"
+    echo "You can use: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    read -p "JWT_SECRET: " JWT_SECRET
+  fi
   
   # Create DATABASE_URL secret
   echo ""

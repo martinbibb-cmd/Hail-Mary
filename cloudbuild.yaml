@@ -163,6 +163,8 @@ steps:
           exit 1
         fi
         echo "API URL: $API_URL"
+        # Note: Double dollar sign ($$) is required for Cloud Build variable escaping
+        # This ensures the API_URL value is passed correctly to the gcloud command
         gcloud run services update ${_ASSISTANT_SERVICE_NAME} \
           --region=${_REGION} \
           --set-env-vars=API_BASE_URL=$${API_URL}

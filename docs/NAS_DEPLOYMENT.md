@@ -100,6 +100,147 @@ docker-compose -f docker-compose.prod.yml logs -f
 curl http://localhost:3000
 ```
 
+## Database Migrations
+
+The database schema is managed using [Drizzle ORM](https://orm.drizzle.team/) with PostgreSQL. Migrations ensure your database structure is always up-to-date without manual SQL work.
+
+### Migration Methods
+
+There are three ways to apply database migrations:
+
+#### Method 1: Automatic (Recommended for Docker)
+
+When using Docker Compose, migrations are automatically applied via `db:push` during container startup. **No manual intervention needed.**
+
+```bash
+# Start containers - migrations run automatically
+docker-compose -f docker-compose.prod.yml up -d
+
+# View migration logs
+docker-compose -f docker-compose.prod.yml logs hailmary-api | grep -i "migration\|schema"
+```
+
+#### Method 2: Drizzle Kit Push (Development/Quick Apply)
+
+Use `db:push` to push schema changes directly to the database without generating migration files:
+
+```bash
+# From packages/api directory
+npm run db:push
+
+# Or from root with Docker
+docker exec -it hailmary-api npm run db:push
+```
+
+This is idempotent - safe to run multiple times.
+
+#### Method 3: Drizzle Kit Migrate (Production/Versioned)
+
+Use `db:migrate` for versioned migrations with tracking:
+
+```bash
+# Generate new migration files from schema changes
+npm run db:generate
+
+# Apply pending migrations
+npm run db:migrate
+
+# Or use the programmatic migration runner
+npm run migrate
+```
+
+### Database Schema Overview
+
+The application uses the following core tables:
+
+| Table | Purpose |
+|-------|---------|
+| `accounts` | Multi-tenant organization/company data |
+| `users` | System users with authentication data |
+| `password_reset_tokens` | Password recovery tokens |
+| `customers` | Customer/household contact information |
+| `leads` | Sales lead tracking |
+| `products` | Product catalog |
+| `quotes` / `quote_lines` | Quote documents and line items |
+| `appointments` | Scheduled visits and installations |
+| `visit_sessions` | Field visit tracking |
+| `survey_*` | Survey templates and responses |
+| `transcript_*` | Voice transcription data |
+| `files` | File attachments |
+
+### Users Table Structure
+
+The `users` table includes all fields required for authentication:
+
+```sql
+CREATE TABLE IF NOT EXISTS "users" (
+  "id" SERIAL PRIMARY KEY,
+  "account_id" INTEGER REFERENCES "accounts"("id"),
+  "email" VARCHAR(255) NOT NULL UNIQUE,      -- Login identifier
+  "name" VARCHAR(255) NOT NULL,               -- Display name
+  "password_hash" TEXT,                       -- Bcrypt hash (null for OAuth)
+  "auth_provider" VARCHAR(50) DEFAULT 'local' NOT NULL,  -- local|google|salesforce
+  "external_id" VARCHAR(255),                 -- OAuth provider user ID
+  "role" VARCHAR(50) DEFAULT 'user' NOT NULL, -- user|admin
+  "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+```
+
+### Seeding Initial Data
+
+After migrations, seed the database with initial data including the admin user:
+
+```bash
+# Seed database (idempotent - safe to run multiple times)
+npm run db:seed
+
+# Or via Docker
+docker exec -it hailmary-api npm run db:seed
+```
+
+The seed script:
+- Creates a default account if none exists
+- Creates a test customer if none exists
+- Creates an initial admin user using `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` environment variables
+
+### Admin User Management
+
+Create or manage admin users without direct database access:
+
+```bash
+# Create a new admin user
+docker exec -it hailmary-api npm run admin:create -- admin@example.com password123 "Admin Name"
+
+# List all users
+docker exec -it hailmary-api npm run admin:list-users
+
+# Reset a user's password
+docker exec -it hailmary-api npm run admin:reset-password -- admin@example.com newpassword123
+```
+
+### Troubleshooting Migrations
+
+If you encounter migration issues:
+
+```bash
+# 1. Check database connectivity
+docker exec hailmary-postgres pg_isready -U postgres -d hailmary
+
+# 2. View current tables
+docker exec -it hailmary-postgres psql -U postgres -d hailmary -c "\dt"
+
+# 3. Check users table structure
+docker exec -it hailmary-postgres psql -U postgres -d hailmary -c "\d users"
+
+# 4. View migration history (if using db:migrate)
+docker exec -it hailmary-postgres psql -U postgres -d hailmary -c "SELECT * FROM drizzle.__drizzle_migrations"
+
+# 5. Reset and re-apply (DESTROYS DATA - development only!)
+docker-compose -f docker-compose.prod.yml down -v
+docker-compose -f docker-compose.prod.yml up -d
+```
+
 ## Automatic Updates
 
 Choose one of these methods to keep your NAS deployment in sync:

@@ -14,7 +14,7 @@ import { useVoiceSurvey } from './useVoiceSurvey';
 import type { SurveyNode } from '@hail-mary/surveyor-engine';
 
 // Import the sample schema
-import boilerSurveySchemaJson from '@hail-mary/surveyor-engine/dist/../src/samples/boiler-survey.json';
+import boilerSurveySchemaJson from '../../../surveyor-engine/src/samples/boiler-survey.json';
 const boilerSurveySchema = boilerSurveySchemaJson as SurveyNode[];
 
 export function VoiceSurveyExample() {

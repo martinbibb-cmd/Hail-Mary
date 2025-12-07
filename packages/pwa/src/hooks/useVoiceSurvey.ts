@@ -62,9 +62,8 @@ export function useVoiceSurvey(options: UseVoiceSurveyOptions): UseVoiceSurveyRe
 
   // Initialize the survey engine
   useEffect(() => {
-    const engine = new SurveyEngine();
     try {
-      engine.loadSchema(schema);
+      const engine = new SurveyEngine(schema);
       engineRef.current = engine;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load survey schema');
@@ -320,8 +319,8 @@ export function useVoiceSurvey(options: UseVoiceSurveyOptions): UseVoiceSurveyRe
     manualSubmit,
     stopListening,
     surveyState: {
-      started: engineRef.current?.getState().started ?? false,
-      completed: engineRef.current?.getState().completed ?? false,
+      started: engineRef.current?.getState().currentNodeId !== null || engineRef.current?.getState().isComplete === true,
+      completed: engineRef.current?.getState().isComplete ?? false,
       answers: engineRef.current?.getAnswers() ?? {},
     },
     error,

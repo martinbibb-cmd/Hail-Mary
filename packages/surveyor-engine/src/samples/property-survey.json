@@ -1,0 +1,160 @@
+[
+  {
+    "id": "property_type",
+    "promptText": "What type of property is this?",
+    "inputType": "text",
+    "validationRule": {
+      "regex": "^(house|flat|bungalow|commercial)$"
+    },
+    "next": "bedrooms"
+  },
+  {
+    "id": "bedrooms",
+    "promptText": "How many bedrooms?",
+    "inputType": "number",
+    "validationRule": {
+      "min": 0,
+      "max": 20
+    },
+    "next": "bathrooms"
+  },
+  {
+    "id": "bathrooms",
+    "promptText": "How many bathrooms?",
+    "inputType": "number",
+    "validationRule": {
+      "min": 0,
+      "max": 10
+    },
+    "next": "floors"
+  },
+  {
+    "id": "floors",
+    "promptText": "How many floors including the ground floor?",
+    "inputType": "number",
+    "validationRule": {
+      "min": 1,
+      "max": 10
+    },
+    "next": "year_built"
+  },
+  {
+    "id": "year_built",
+    "promptText": "What year was the property built, approximately?",
+    "inputType": "number",
+    "validationRule": {
+      "min": 1800,
+      "max": 2025
+    },
+    "next": "current_boiler_type"
+  },
+  {
+    "id": "current_boiler_type",
+    "promptText": "What type of boiler do you currently have? Say combi, system, heat only, back boiler, or none.",
+    "inputType": "text",
+    "next": "boiler_age"
+  },
+  {
+    "id": "boiler_age",
+    "promptText": "How old is the boiler in years?",
+    "inputType": "number",
+    "validationRule": {
+      "min": 0,
+      "max": 50
+    },
+    "next": {
+      "conditions": [
+        { "condition": "> 15", "nextNode": "boiler_replacement_priority" },
+        { "condition": "> 10", "nextNode": "boiler_issues" },
+        { "condition": "<= 10", "nextNode": "service_history" }
+      ]
+    }
+  },
+  {
+    "id": "boiler_replacement_priority",
+    "promptText": "The boiler is over 15 years old. Are there any current issues with it?",
+    "inputType": "text",
+    "next": "fuel_type"
+  },
+  {
+    "id": "boiler_issues",
+    "promptText": "Are there any issues with the boiler such as noise, leaks, or inefficiency?",
+    "inputType": "text",
+    "next": "fuel_type"
+  },
+  {
+    "id": "service_history",
+    "promptText": "Is there a service history available for the boiler?",
+    "inputType": "boolean",
+    "next": "fuel_type"
+  },
+  {
+    "id": "fuel_type",
+    "promptText": "What fuel type does the boiler use? Say gas, oil, electric, or other.",
+    "inputType": "text",
+    "next": "boiler_location"
+  },
+  {
+    "id": "boiler_location",
+    "promptText": "Where is the boiler located? For example, kitchen, utility room, garage, or loft.",
+    "inputType": "text",
+    "next": "radiator_count"
+  },
+  {
+    "id": "radiator_count",
+    "promptText": "How many radiators are there in total?",
+    "inputType": "number",
+    "validationRule": {
+      "min": 0,
+      "max": 50
+    },
+    "next": {
+      "conditions": [
+        { "condition": "> 0", "nextNode": "thermostatic_valves" },
+        { "condition": "== 0", "nextNode": "heating_alternative" }
+      ]
+    }
+  },
+  {
+    "id": "thermostatic_valves",
+    "promptText": "Do the radiators have thermostatic radiator valves or TRVs?",
+    "inputType": "boolean",
+    "next": "smart_controls"
+  },
+  {
+    "id": "heating_alternative",
+    "promptText": "What heating system is currently in place if there are no radiators?",
+    "inputType": "text",
+    "next": "smart_controls"
+  },
+  {
+    "id": "smart_controls",
+    "promptText": "Are there currently any smart heating controls installed?",
+    "inputType": "boolean",
+    "next": "customer_priority"
+  },
+  {
+    "id": "customer_priority",
+    "promptText": "What is the main priority for this work? For example, replace boiler, improve efficiency, add smart controls, or other.",
+    "inputType": "text",
+    "next": "budget_range"
+  },
+  {
+    "id": "budget_range",
+    "promptText": "Is there a budget range for this work? You can say a number or say flexible.",
+    "inputType": "text",
+    "next": "timeline"
+  },
+  {
+    "id": "timeline",
+    "promptText": "What is the desired timeline for the work? For example, urgent, within one month, within three months, or flexible.",
+    "inputType": "text",
+    "next": "additional_notes"
+  },
+  {
+    "id": "additional_notes",
+    "promptText": "Are there any additional notes or specific requirements?",
+    "inputType": "text",
+    "next": "finish"
+  }
+]

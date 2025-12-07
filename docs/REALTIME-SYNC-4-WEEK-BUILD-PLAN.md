@@ -227,8 +227,16 @@ ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (
   bucket_id = 'survey-photos' AND
+  -- Validate path format: sessionId/filename
+  array_length(storage.foldername(name), 1) >= 1 AND
+  -- Verify user owns the session (add session ownership check in production)
   auth.uid()::text = (storage.foldername(name))[1]
 );
+
+-- Note: In production, add additional validation:
+-- 1. Verify sessionId format (UUID)
+-- 2. Check user owns the session via JOIN with survey_sessions table
+-- 3. Limit file sizes and types
 
 -- Allow public read access to photos
 CREATE POLICY "Public can view photos"
@@ -447,9 +455,10 @@ export function AudioDeviceSelector({ onDeviceChange }: { onDeviceChange: (devic
       const audioInputs = deviceList.filter((d) => d.kind === 'audioinput');
       setDevices(audioInputs);
       
-      // Auto-select Hollyland if available
+      // Auto-select Hollyland if available (with multiple identifiers)
+      const HOLLYLAND_IDENTIFIERS = ['hollyland', 'lark', 'wireless mic'];
       const hollyland = audioInputs.find((d) => 
-        d.label.toLowerCase().includes('hollyland')
+        HOLLYLAND_IDENTIFIERS.some(id => d.label.toLowerCase().includes(id))
       );
       if (hollyland) {
         setSelectedDevice(hollyland.deviceId);
@@ -782,6 +791,10 @@ export const offlineQueue = new OfflineQueue();
 import { supabase } from './supabase/client';
 import { offlineQueue } from './offline-queue';
 
+// Configuration
+const MAX_RETRY_ATTEMPTS = 5; // Configurable retry limit
+const RETRY_DELAY_MS = 2000; // Delay between retries
+
 export async function processOfflineQueue() {
   const items = await offlineQueue.getAll();
   
@@ -798,8 +811,9 @@ export async function processOfflineQueue() {
       console.error(`Failed to upload queued item ${item.id}:`, error);
       await offlineQueue.incrementRetry(item.id);
       
-      // Remove after 5 failed attempts
-      if (item.retryCount >= 5) {
+      // Remove after max retry attempts
+      if (item.retryCount >= MAX_RETRY_ATTEMPTS) {
+        console.warn(`Removing item ${item.id} after ${MAX_RETRY_ATTEMPTS} failed attempts`);
         await offlineQueue.remove(item.id);
       }
     }
@@ -1098,6 +1112,18 @@ interface DiagramDisplayProps {
   sessionId: string;
 }
 
+/**
+ * Sanitize SVG content to prevent XSS attacks
+ * In production, use a library like DOMPurify for robust sanitization
+ */
+function sanitizeSVG(svg: string): string {
+  // Basic sanitization - remove script tags and event handlers
+  return svg
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/javascript:/gi, '');
+}
+
 export function DiagramDisplay({ sessionId }: DiagramDisplayProps) {
   const [diagrams, setDiagrams] = useState<SurveyDiagram[]>([]);
 
@@ -1145,8 +1171,13 @@ export function DiagramDisplay({ sessionId }: DiagramDisplayProps) {
         <div key={diagram.id} className="diagram-item">
           <h3>{diagram.diagram_type.replace('_', ' ')}</h3>
           {diagram.svg_data && (
-            <div dangerouslySetInnerHTML={{ __html: diagram.svg_data }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizeSVG(diagram.svg_data) }} />
           )}
+          {/* Production recommendation: Use DOMPurify for better sanitization
+              npm install dompurify @types/dompurify
+              import DOMPurify from 'dompurify';
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(diagram.svg_data) }}
+          */}
         </div>
       ))}
     </div>
@@ -1182,11 +1213,25 @@ export async function printWithWebPrint(pdfBlob: Blob) {
     document.body.appendChild(iframe);
     
     iframe.onload = () => {
-      iframe.contentWindow?.print();
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-        URL.revokeObjectURL(blobUrl);
-      }, 1000);
+      const contentWindow = iframe.contentWindow;
+      if (contentWindow) {
+        contentWindow.print();
+        
+        // Use afterprint event for reliable cleanup
+        contentWindow.addEventListener('afterprint', () => {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(blobUrl);
+        });
+        
+        // Fallback timeout in case afterprint doesn't fire (e.g., user cancels)
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+            URL.revokeObjectURL(blobUrl);
+          }
+        }, 5000);
+      }
+    };
     };
   }
 }

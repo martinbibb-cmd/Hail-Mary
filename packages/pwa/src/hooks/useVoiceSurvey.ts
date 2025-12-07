@@ -321,7 +321,7 @@ export function useVoiceSurvey(options: UseVoiceSurveyOptions): UseVoiceSurveyRe
     manualSubmit,
     stopListening,
     surveyState: {
-      started: state?.currentNodeId !== null || state?.isComplete === true,
+      started: (state?.currentNodeId !== null || state?.isComplete === true) ?? false,
       completed: state?.isComplete ?? false,
       answers: engineRef.current?.getAnswers() ?? {},
     },

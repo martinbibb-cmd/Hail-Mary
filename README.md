@@ -25,16 +25,28 @@ This is a **monorepo** containing:
 - `packages/pwa` - Frontend PWA with React/TypeScript + Vite (Next.js migration planned)
 - `packages/shared` - Shared types and utilities
 
-## 📋 4-Week Build Plan
+## 📋 4-Week Build Plans
 
-**[View the complete 4-Week Rapid Build Plan →](docs/PRE-CONTRACT-SALES-SURVEY-TOOL-4-WEEK-BUILD-PLAN.md)**
+We have two comprehensive build plans available:
 
-This plan focuses on three core priorities:
-1. **Voice Input** - Capture technical details hands-free during surveys
-2. **Visualization Layer** - Show customers diagrams of flue, boiler, and system layout
-3. **Presentation Output** - Generate professional PDF reports to leave with customers
+### **[Next.js PWA Build Plan →](docs/NEXTJS-PWA-4-WEEK-BUILD-PLAN.md)** ⭐ RECOMMENDED
 
-Each week is broken down into focused sprints with clear deliverables.
+A focused 4-week plan to build a **Sales Enablement Pack** (physical + digital) using:
+- **Next.js** with App Router
+- **Voice-to-Text** for hands-free data capture
+- **@react-pdf/renderer** for client-side PDF generation
+- **Customer Microsite** with QR codes
+- **Offline-first** with localStorage
+
+**Weekly Breakdown:**
+1. **Week 1:** Voice Logic & Future-Proof Data Structure
+2. **Week 2:** Visualization Layer (Diagrams & Floor Plans)
+3. **Week 3:** PDF Generator (Brochure-Style A4 Output)
+4. **Week 4:** Customer Microsite (Shareable Links & QR Codes)
+
+### [Alternative: Pre-Contract Sales Survey Tool Build Plan →](docs/PRE-CONTRACT-SALES-SURVEY-TOOL-4-WEEK-BUILD-PLAN.md)
+
+The original build plan focusing on voice input, visualization, and presentation output with broader feature set.
 
 ## 🚀 Quick Start
 

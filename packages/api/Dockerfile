@@ -58,6 +58,9 @@ COPY --from=builder /app/packages/api/src ./packages/api/src
 COPY --from=builder /app/packages/api/drizzle.config.ts ./packages/api/
 COPY --from=builder /app/packages/api/tsconfig.json ./packages/api/
 
+# Copy drizzle migrations folder (contains SQL migrations)
+COPY --from=builder /app/packages/api/drizzle ./packages/api/drizzle
+
 # Copy entrypoint script
 COPY packages/api/scripts/docker-entrypoint.sh ./packages/api/scripts/
 RUN chmod +x ./packages/api/scripts/docker-entrypoint.sh

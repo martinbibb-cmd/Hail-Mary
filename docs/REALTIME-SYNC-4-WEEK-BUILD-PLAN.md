@@ -83,11 +83,13 @@ Set up the cloud infrastructure with real-time database, storage buckets, and au
    - Anon/Public Key: `eyJ...`
    - Service Role Key: `eyJ...` (keep secret!)
 
-**Step 2: Install Supabase Client**
+**Step 2: Install Dependencies**
 
 ```bash
-npm install @supabase/supabase-js
+npm install @supabase/supabase-js idb
 ```
+
+> **Note:** `idb` is a wrapper for IndexedDB, used for the offline queue system in Week 2.
 
 **Step 3: Environment Variables**
 
@@ -488,6 +490,7 @@ export function AudioDeviceSelector({ onDeviceChange }: { onDeviceChange: (devic
 
 import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { offlineQueue } from '@/lib/offline-queue';
 
 interface VoiceRecorderProps {
   sessionId: string;
@@ -565,7 +568,12 @@ export function VoiceRecorder({ sessionId, audioDeviceId }: VoiceRecorderProps) 
       console.log('Recording uploaded successfully');
     } catch (error) {
       console.error('Failed to upload recording:', error);
-      // TODO: Queue for offline retry
+      // Queue for offline retry (implemented in section 2.3)
+      await offlineQueue.add({
+        type: 'audio',
+        sessionId,
+        data: audioBlob,
+      });
     } finally {
       setIsUploading(false);
     }
@@ -600,6 +608,7 @@ export function VoiceRecorder({ sessionId, audioDeviceId }: VoiceRecorderProps) 
 
 import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { offlineQueue } from '@/lib/offline-queue';
 
 interface CameraCaptureProps {
   sessionId: string;
@@ -649,7 +658,12 @@ export function CameraCapture({ sessionId }: CameraCaptureProps) {
       setPreview(null);
     } catch (error) {
       console.error('Failed to upload photo:', error);
-      // TODO: Queue for offline retry
+      // Queue for offline retry (implemented in section 2.3)
+      await offlineQueue.add({
+        type: 'photo',
+        sessionId,
+        data: file,
+      });
     } finally {
       setIsUploading(false);
     }

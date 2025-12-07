@@ -24,11 +24,19 @@ We **ARE** building:
 - ✅ Visual presentation layer (show the customer what they're getting)
 - ✅ Professional output (better than a WhatsApp message)
 
-### Three Core Priorities
+### The Complete Workflow
 
-1. **Voice Input** - Capture technical details hands-free during the survey
-2. **Visualization Layer** - Show customers a diagram/overlay of flue, boiler, and system
-3. **Presentation Output** - Generate a clean, professional PDF pack to leave behind
+1. **Surveyor Input**: Uses Voice-to-Text to capture technical details (flue runs, boiler location, materials)
+2. **The Engine**: The app processes this into structured data and generates a visual diagram/plan
+3. **Output A (Print)**: The app generates a professional, brochure-style A4 PDF. The surveyor prints this immediately on a portable printer
+4. **Output B (Digital)**: The app creates a unique "Microsite" link for the customer to view the visuals on their phone
+
+### Four Core Priorities
+
+1. **Voice Input** - Capture technical details hands-free during the survey (Week 1)
+2. **Visualization Layer** - Show customers a diagram/overlay of flue, boiler, and system (Week 2)
+3. **PDF Generation** - Generate a clean, professional PDF pack to print immediately (Week 3)
+4. **Customer Microsite** - Create shareable link for digital viewing (Week 4)
 
 ---
 
@@ -36,8 +44,8 @@ We **ARE** building:
 
 1. [Week 1: Voice Input Foundation](#week-1-voice-input-foundation)
 2. [Week 2: Visualization Layer](#week-2-visualization-layer)
-3. [Week 3: Presentation Output (PDF Generation)](#week-3-presentation-output-pdf-generation)
-4. [Week 4: Integration & Polish](#week-4-integration--polish)
+3. [Week 3: PDF Generation (Print Output)](#week-3-pdf-generation-print-output)
+4. [Week 4: Customer Microsite (Digital Output)](#week-4-customer-microsite-digital-output)
 5. [Technical Architecture](#technical-architecture)
 6. [Success Criteria](#success-criteria)
 7. [Post-Launch Roadmap](#post-launch-roadmap)
@@ -48,6 +56,12 @@ We **ARE** building:
 
 ### Goal
 Enable surveyors to capture technical details via voice during the site visit, hands-free.
+
+### Libraries & Technologies
+- **Web Speech API** - Native browser API for voice recognition (no external dependencies)
+- **Zustand** - Lightweight state management for voice segments and session data
+- **IndexedDB (via idb)** - Offline storage for voice transcripts
+- **React Hooks** - `useState`, `useEffect`, `useRef` for voice recorder component
 
 ### Core Features
 
@@ -225,6 +239,13 @@ interface SurveySession {
 
 ### Goal
 Provide visual diagrams and overlays to show the customer exactly what they're getting (boiler position, flue route, system layout).
+
+### Libraries & Technologies
+- **HTML5 Canvas API** - For photo annotation and drawing
+- **Fabric.js** or **Konva.js** - Canvas manipulation library for easier annotation tools
+- **React Flow** or **Reaflow** - For system schematic diagrams (node-based layouts)
+- **D3.js** (optional) - For measurement visualizations and compliance diagrams
+- **react-image-crop** - For photo cropping before annotation
 
 ### Core Features
 
@@ -407,18 +428,63 @@ function checkFlueCompliance(flue: FlueDetails): ComplianceReport {
 
 ---
 
-## Week 3: Presentation Output (PDF Generation)
+## Week 3: PDF Generation (Print Output)
 
 ### Goal
-Generate a clean, professional PDF "pack" that the surveyor can leave with the customer or email after the visit.
+Generate a clean, professional PDF "pack" that the surveyor can print immediately on a portable printer or email to the customer.
+
+### Libraries & Technologies
+- **@react-pdf/renderer** - React components for PDF generation (recommended for complex layouts)
+  - OR **jsPDF** - Lower-level PDF generation library (simpler, smaller bundle)
+- **html2canvas** (if using jsPDF) - Convert HTML to images for embedding in PDF
+- **pdfmake** (alternative) - Declarative PDF generation with good table support
+- **All generation happens CLIENT-SIDE** - No server processing required for privacy and speed
+
+### Why Client-Side PDF Generation?
+1. **Privacy** - Survey data never leaves the device until explicitly sent
+2. **Speed** - No server round-trip, instant generation
+3. **Offline** - Works without internet connection
+4. **Cost** - No server processing costs
+
+### Recommended Choice: @react-pdf/renderer
+```bash
+npm install @react-pdf/renderer
+```
+
+**Pros:**
+- React component syntax (familiar to developers)
+- Good documentation and active maintenance
+- Built-in styling with CSS-like syntax
+- Supports images, fonts, and complex layouts
+- ~150KB gzipped
+
+**Example:**
+```typescript
+import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
+
+const styles = StyleSheet.create({
+  page: { padding: 30 },
+  header: { fontSize: 24, marginBottom: 20 },
+  // ... more styles
+});
+
+const SurveyPDF = ({ session }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.header}>Survey Report</Text>
+      {/* ... more content */}
+    </Page>
+  </Document>
+);
+```
 
 ### Core Features
 
 #### 3.1 PDF Template Engine
-**User Story:** As a surveyor, I want to generate a professional-looking PDF report with my company branding, property details, and survey findings.
+**User Story:** As a surveyor, I want to generate a professional-looking PDF report with my company branding, property details, and survey findings - all processed locally on my device.
 
 **Tasks:**
-- [ ] Implement PDF generation library (jsPDF or React-PDF)
+- [ ] Install and configure @react-pdf/renderer (or jsPDF as alternative)
 - [ ] Create branded PDF templates:
   - Cover page (company logo, property address, date)
   - Executive summary (1-page overview)
@@ -426,54 +492,133 @@ Generate a clean, professional PDF "pack" that the surveyor can leave with the c
   - Visualizations (annotated photos, schematic)
   - Next steps (what happens after survey)
 - [ ] Allow template customization (logo, colors, company name)
+- [ ] Ensure all processing happens client-side (no server calls)
 
-**Technical Implementation:**
+**Technical Implementation with @react-pdf/renderer:**
 ```typescript
 // /packages/pwa/src/modules/pdf/PdfGenerator.tsx
-import { jsPDF } from 'jspdf';
+import { 
+  Document, 
+  Page, 
+  Text, 
+  View, 
+  Image, 
+  StyleSheet,
+  pdf 
+} from '@react-pdf/renderer';
 
 interface PdfTemplate {
   id: string;
   name: string;
-  sections: PdfSection[];
   branding: {
-    logo?: string; // Base64 or URL
+    logo?: string; // Base64 encoded
     companyName: string;
     primaryColor: string;
     secondaryColor: string;
   };
 }
 
-interface PdfSection {
-  type: 'cover' | 'summary' | 'technical' | 'visualizations' | 'next_steps';
-  title: string;
-  content: any; // Section-specific data
+// Define styles
+const createStyles = (branding: PdfTemplate['branding']) => StyleSheet.create({
+  page: {
+    padding: 30,
+    fontSize: 11,
+    fontFamily: 'Helvetica',
+  },
+  header: {
+    fontSize: 24,
+    marginBottom: 10,
+    color: branding.primaryColor,
+  },
+  section: {
+    marginBottom: 15,
+  },
+  // ... more styles
+});
+
+// React component for PDF
+const SurveyPDF = ({ session, template }: { session: SurveySession; template: PdfTemplate }) => {
+  const styles = createStyles(template.branding);
+  
+  return (
+    <Document>
+      {/* Cover Page */}
+      <Page size="A4" style={styles.page}>
+        {template.branding.logo && (
+          <Image src={template.branding.logo} style={{ width: 150, marginBottom: 20 }} />
+        )}
+        <Text style={styles.header}>Pre-Installation Survey Report</Text>
+        <Text>{session.propertyAddress}</Text>
+        <Text>Survey Date: {new Date(session.startedAt).toLocaleDateString()}</Text>
+      </Page>
+      
+      {/* Executive Summary */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.header}>Executive Summary</Text>
+        <View style={styles.section}>
+          <Text>Current System: {session.extractedData.boiler?.model || 'Unknown'}</Text>
+          <Text>Proposed Upgrade: {/* ... */}</Text>
+        </View>
+      </Page>
+      
+      {/* ... more pages */}
+    </Document>
+  );
+};
+
+// Client-side PDF generation
+async function generateSurveyPdf(
+  session: SurveySession,
+  template: PdfTemplate
+): Promise<Blob> {
+  const blob = await pdf(<SurveyPDF session={session} template={template} />).toBlob();
+  return blob;
 }
 
-async function generateSurveyPdf(
+// Trigger download or print
+async function downloadPdf(session: SurveySession, template: PdfTemplate) {
+  const blob = await generateSurveyPdf(session, template);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `survey-${session.id}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+// For printing
+async function printPdf(session: SurveySession, template: PdfTemplate) {
+  const blob = await generateSurveyPdf(session, template);
+  const url = URL.createObjectURL(blob);
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  iframe.contentWindow?.print();
+}
+```
+
+**Alternative: jsPDF for simpler cases**
+```typescript
+import { jsPDF } from 'jspdf';
+
+async function generateSurveyPdfWithJsPDF(
   session: SurveySession,
   template: PdfTemplate
 ): Promise<Blob> {
   const pdf = new jsPDF();
   
   // Cover page
-  addCoverPage(pdf, session, template.branding);
+  pdf.setFontSize(24);
+  pdf.text('Survey Report', 20, 30);
+  pdf.setFontSize(12);
+  pdf.text(session.propertyAddress, 20, 50);
   
-  // Executive summary
-  pdf.addPage();
-  addExecutiveSummary(pdf, session);
-  
-  // Technical findings
-  pdf.addPage();
-  addTechnicalFindings(pdf, session);
-  
-  // Visualizations (photos + schematics)
-  pdf.addPage();
-  addVisualizations(pdf, session);
-  
-  // Next steps
-  pdf.addPage();
-  addNextSteps(pdf, session);
+  // Add images (annotated photos)
+  if (session.photos.length > 0) {
+    pdf.addPage();
+    pdf.addImage(session.photos[0].photoUrl, 'JPEG', 20, 20, 170, 127);
+  }
   
   return pdf.output('blob');
 }
@@ -648,260 +793,609 @@ async function uploadPdfToCloudStorage(pdfBlob: Blob): Promise<string> {
 ---
 
 ### Week 3 Deliverables
-- ✅ PDF generation with branded templates
+- ✅ Client-side PDF generation with @react-pdf/renderer or jsPDF
+- ✅ Branded PDF templates (cover, summary, technical, visualizations, next steps)
 - ✅ PDF preview and customization UI
-- ✅ Email delivery with professional template
-- ✅ (Stretch) WhatsApp sharing
+- ✅ Download and print functionality
+- ✅ Optional email delivery with professional template
 
 ### Week 3 Success Metrics
-- PDF generated and looks professional
-- Customer can receive PDF via email within minutes of survey
-- PDF file size <5MB
-- Surveyor can customize PDF before sending
+- PDF generated client-side in <10 seconds
+- PDF looks professional and matches company branding
+- PDF file size <5MB (optimized images)
+- Surveyor can customize PDF before finalizing
+- PDF can be printed immediately on portable printer
+- No server processing required (privacy & speed)
 
 ---
 
-## Week 4: Integration & Polish
+## Week 4: Customer Microsite (Digital Output)
 
 ### Goal
-Connect all the pieces, add offline support, optimize performance, and prepare for real-world use.
+Create a unique, shareable microsite link for each survey that customers can view on their phone to see all the visuals, diagrams, and survey details.
+
+### Libraries & Technologies
+- **Next.js Dynamic Routes** - `/survey/[id]` for unique survey pages
+- **Next.js API Routes** - `/api/survey/[id]` for fetching survey data
+- **QR Code Generation** - `qrcode.react` or `qrcode` library
+- **Unique ID Generation** - `nanoid` or `uuid` for shareable links
+- **Short URL Service** (optional) - `bitly-api` or custom URL shortener
+- **Progressive Web App** - Allow customers to "Add to Home Screen"
+
+### Why a Microsite Instead of Email?
+1. **Mobile-First** - Customers can view on their phone anytime
+2. **Always Updated** - Can update survey details after sending link
+3. **Rich Media** - Better image quality and interactive diagrams
+4. **Shareable** - Customer can forward to family/decision-makers
+5. **Professional** - Branded experience on a custom domain
 
 ### Core Features
 
-#### 4.1 End-to-End Workflow Testing
-**User Story:** As a surveyor, I want to complete a survey from start to finish without any hitches.
+#### 4.1 Unique Survey Links
+**User Story:** As a surveyor, I want to generate a unique link for each survey that I can text or email to the customer.
 
 **Tasks:**
-- [ ] Test complete workflow:
-  1. Start new survey session
-  2. Capture property details via voice
-  3. Take and annotate photos
-  4. Generate system schematic
-  5. Review and edit findings
-  6. Generate PDF
-  7. Email to customer
-- [ ] Identify and fix workflow bottlenecks
-- [ ] Add progress indicators (surveyor knows where they are in process)
-- [ ] Add "quick complete" flow for simple surveys
+- [ ] Generate unique, short survey IDs (e.g., `abc123xyz`)
+- [ ] Create Next.js dynamic route: `/survey/[surveyId]`
+- [ ] Implement URL shortening (optional: `hail.to/abc123`)
+- [ ] Add QR code generation for easy mobile access
+- [ ] Store survey data in database with public access flag
 
-**Workflow States:**
+**Technical Implementation:**
 ```typescript
-enum SurveyWorkflowState {
-  NOT_STARTED = 'not_started',
-  PROPERTY_DETAILS = 'property_details',
-  VOICE_CAPTURE = 'voice_capture',
-  PHOTO_ANNOTATION = 'photo_annotation',
-  REVIEW_FINDINGS = 'review_findings',
-  GENERATE_PDF = 'generate_pdf',
-  DELIVERY = 'delivery',
-  COMPLETED = 'completed',
+// Generate unique survey ID
+import { nanoid } from 'nanoid';
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+async function createSurveyLink(sessionId: string): Promise<string> {
+  const shortId = nanoid(10); // e.g., "V1StGXR8_z" (10 random URL-safe characters)
+  
+  // Save mapping in database
+  await db.surveyLinks.create({
+    shortId,
+    sessionId,
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + THIRTY_DAYS_MS),
+    viewCount: 0,
+  });
+  
+  return `${process.env.NEXT_PUBLIC_BASE_URL}/survey/${shortId}`;
 }
-```
 
-**Acceptance Criteria:**
-- ✅ Complete survey workflow works without errors
-- ✅ Progress bar shows completion percentage
-- ✅ Can skip optional steps (e.g., photos if not needed)
-- ✅ Can save and resume at any step
-
----
-
-#### 4.2 Offline Support
-**User Story:** As a surveyor, I want the app to work in properties with poor mobile signal.
-
-**Tasks:**
-- [ ] Implement Service Worker for offline caching
-- [ ] Cache static assets (icons, templates, UI)
-- [ ] Store survey sessions in IndexedDB
-- [ ] Queue PDFs and emails for sending when back online
-- [ ] Add offline indicator in UI
-
-**Offline Strategy:**
-```typescript
-// /packages/pwa/src/service-worker.ts
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open('hail-mary-v1').then((cache) => {
-      return cache.addAll([
-        '/',
-        '/index.html',
-        '/styles.css',
-        '/bundle.js',
-        '/icons/boiler.svg',
-        '/icons/flue.svg',
-        '/templates/pdf-template.json',
-      ]);
-    })
+// /app/survey/[surveyId]/page.tsx
+export default async function SurveyPage({ params }: { params: { surveyId: string } }) {
+  const surveyLink = await db.surveyLinks.findOne({ shortId: params.surveyId });
+  
+  if (!surveyLink || new Date() > surveyLink.expiresAt) {
+    return <SurveyExpired />;
+  }
+  
+  const session = await db.sessions.findOne({ id: surveyLink.sessionId });
+  
+  // Increment view count
+  await db.surveyLinks.update(
+    { shortId: params.surveyId },
+    { viewCount: surveyLink.viewCount + 1 }
   );
-});
-
-// IndexedDB for session storage
-const db = await openDB('hail-mary-sessions', 1, {
-  upgrade(db) {
-    db.createObjectStore('sessions', { keyPath: 'id' });
-    db.createObjectStore('pending-emails', { keyPath: 'id' });
-  },
-});
-
-async function saveSurveyOffline(session: SurveySession) {
-  await db.put('sessions', session);
-}
-
-async function queueEmailForLater(email: EmailPayload) {
-  await db.put('pending-emails', email);
+  
+  return <SurveyMicrosite session={session} />;
 }
 ```
 
-**Acceptance Criteria:**
-- ✅ App loads and functions without internet
-- ✅ Voice transcription works offline (on-device recognition)
-- ✅ Photos saved locally until sync
-- ✅ PDFs generated offline
-- ✅ Emails queued and sent when online
-
----
-
-#### 4.3 Performance Optimization
-**User Story:** As a surveyor, I want the app to be fast and responsive, even on older devices.
-
-**Tasks:**
-- [ ] Optimize bundle size (code splitting, lazy loading)
-- [ ] Compress images before upload
-- [ ] Minimize PDF generation time (<5 seconds)
-- [ ] Add loading states for long operations
-- [ ] Test on mid-range Android device (target: smooth 60fps)
-
-**Performance Targets:**
-- Initial load: <3 seconds
-- Voice transcription delay: <2 seconds
-- Photo annotation: 60fps
-- PDF generation: <10 seconds
-- Offline startup: <1 second
-
-**Acceptance Criteria:**
-- ✅ App loads in <3 seconds on 4G
-- ✅ No UI lag when annotating photos
-- ✅ PDF generated in <10 seconds
-- ✅ Works smoothly on 2-year-old devices
-
----
-
-#### 4.4 User Onboarding & Help
-**User Story:** As a new surveyor using the app, I want quick tips to get started without reading a manual.
-
-**Tasks:**
-- [ ] Add first-time user tutorial (walkthrough)
-- [ ] Create contextual help tooltips
-- [ ] Add example survey (demo data)
-- [ ] Create quick reference card (printable PDF)
-
-**Tutorial Flow:**
-```
-1. Welcome screen: "Capture surveys with voice, photos, and professional PDFs"
-2. Voice demo: "Try saying: 'Current boiler is a Worcester Bosch Greenstar'"
-3. Photo demo: "Take a photo and annotate the boiler location"
-4. PDF demo: "Generate a professional report in seconds"
-5. Done: "You're ready to start your first survey!"
-```
-
-**Acceptance Criteria:**
-- ✅ Tutorial shown on first launch
-- ✅ Can skip tutorial if experienced
-- ✅ Help tooltips visible on hover/tap
-- ✅ Demo survey pre-loaded for testing
-
----
-
-#### 4.5 Settings & Customization
-**User Story:** As a surveyor, I want to customize the app with my company branding and preferences.
-
-**Tasks:**
-- [ ] Add Settings screen:
-  - Company name and logo
-  - PDF template colors
-  - Email signature
-  - Voice recognition language
-  - Default measurements (metric/imperial)
-  - Auto-save interval
-- [ ] Save settings to local storage
-- [ ] Sync settings across devices (optional)
-
-**Settings Schema:**
+**QR Code Generation:**
 ```typescript
-interface AppSettings {
-  company: {
-    name: string;
-    logo?: string; // Base64 or URL
-    phone: string;
-    email: string;
-    website?: string;
+import QRCode from 'qrcode';
+
+async function generateSurveyQRCode(surveyUrl: string): Promise<string> {
+  const qrCodeDataUrl = await QRCode.toDataURL(surveyUrl, {
+    width: 300,
+    margin: 2,
+    color: {
+      dark: '#000000',
+      light: '#FFFFFF',
+    },
+  });
+  return qrCodeDataUrl;
+}
+
+// Display QR code for surveyor to show customer
+<img src={qrCodeDataUrl} alt="Scan to view survey" />
+```
+
+**Acceptance Criteria:**
+- ✅ Each survey gets a unique, short link (e.g., `/survey/abc123`)
+- ✅ QR code generated for easy mobile scanning
+- ✅ Links expire after 30 days (configurable)
+- ✅ View count tracked for analytics
+
+---
+
+#### 4.2 Customer-Facing Microsite UI
+**User Story:** As a customer, I want to view my survey results on my phone with a clean, professional interface.
+
+**Tasks:**
+- [ ] Design mobile-first microsite layout
+- [ ] Display survey information:
+  - Property address
+  - Survey date and surveyor name
+  - Current system details
+  - Proposed upgrade overview
+  - Key benefits
+- [ ] Show visualizations:
+  - Annotated photos (swipeable gallery)
+  - System schematic diagram
+  - Flue clearance visualization
+- [ ] Add interactive elements:
+  - Zoom/pan on images
+  - Expandable sections
+  - "Request Quote" call-to-action button
+- [ ] Company branding (logo, colors, contact info)
+
+**Microsite Sections:**
+```typescript
+interface MicrositeContent {
+  hero: {
+    propertyAddress: string;
+    surveyDate: Date;
+    surveyorName: string;
+    companyLogo: string;
   };
   
-  branding: {
-    primaryColor: string; // Hex color
-    secondaryColor: string;
-    fontFamily: string;
+  currentSystem: {
+    boilerModel: string;
+    boilerAge: number;
+    condition: string;
+    issues: string[];
   };
   
-  preferences: {
-    voiceLang: 'en-GB' | 'en-US';
-    measurements: 'metric' | 'imperial';
-    autoSaveInterval: number; // seconds
-    offlineMode: boolean;
+  proposedUpgrade: {
+    newBoilerModel: string;
+    keyBenefits: string[];
+    estimatedTimeline: string;
   };
   
-  email: {
-    signature: string;
-    defaultSubject: string;
+  visualizations: {
+    photos: AnnotatedPhoto[];
+    schematic: SystemSchematic;
+    flueVisualization: FlueVisualization;
+  };
+  
+  callToAction: {
+    primaryButton: 'Request Formal Quote';
+    secondaryButton: 'Ask a Question';
+    contactInfo: CompanyContact;
+  };
+}
+```
+
+**UI Component Structure:**
+```tsx
+// /app/survey/[surveyId]/components/SurveyMicrosite.tsx
+export function SurveyMicrosite({ session }: { session: SurveySession }) {
+  return (
+    <div className="microsite">
+      {/* Hero Section */}
+      <HeroSection 
+        address={session.propertyAddress}
+        date={session.startedAt}
+        surveyor={session.surveyorName}
+      />
+      
+      {/* Current System */}
+      <CurrentSystemSection data={session.extractedData} />
+      
+      {/* Proposed Upgrade */}
+      <ProposedUpgradeSection data={session.extractedData} />
+      
+      {/* Photo Gallery */}
+      <PhotoGallery photos={session.photos} />
+      
+      {/* System Schematic */}
+      <SchematicSection schematic={session.schematic} />
+      
+      {/* Next Steps / CTA */}
+      <CallToActionSection 
+        onRequestQuote={() => window.location.href = 'mailto:...'}
+      />
+      
+      {/* Footer */}
+      <Footer companyInfo={session.companyInfo} />
+    </div>
+  );
+}
+```
+
+**Acceptance Criteria:**
+- ✅ Mobile-responsive design (optimized for phones)
+- ✅ Fast loading (<2 seconds on 4G)
+- ✅ All images optimized and lazy-loaded
+- ✅ Professional appearance matching company branding
+- ✅ Clear call-to-action for next steps
+
+---
+
+#### 4.3 Sharing & Notifications
+**User Story:** As a surveyor, I want to easily send the microsite link to the customer via SMS, email, or WhatsApp.
+
+**Tasks:**
+- [ ] Implement multiple sharing methods:
+  - SMS (using Twilio or similar)
+  - Email (with link and QR code)
+  - WhatsApp Web Share
+  - Copy link to clipboard
+- [ ] Send notification to customer when survey is ready
+- [ ] Track when customer views the microsite
+- [ ] Optional: Notify surveyor when customer requests quote
+
+**Sharing Implementation:**
+```typescript
+// SMS via Twilio
+import twilio from 'twilio';
+
+async function sendSurveySMS(customerPhone: string, surveyUrl: string, surveyorName: string) {
+  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  
+  await client.messages.create({
+    to: customerPhone,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    body: `Hi! ${surveyorName} from [Company] here. Your heating survey is ready to view: ${surveyUrl}`,
+  });
+}
+
+// Email with link + QR code
+async function sendSurveyEmail(customerEmail: string, surveyUrl: string, qrCodeDataUrl: string) {
+  const emailTemplate = `
+    <h2>Your Heating Survey is Ready</h2>
+    <p>Thank you for your time today. You can view your survey online:</p>
+    <p><a href="${surveyUrl}">${surveyUrl}</a></p>
+    <p>Or scan this QR code on your phone:</p>
+    <img src="${qrCodeDataUrl}" alt="QR Code" />
+  `;
+  
+  await sendEmail({
+    to: customerEmail,
+    subject: 'Your Heating Survey Results',
+    html: emailTemplate,
+  });
+}
+
+// WhatsApp Web Share
+function shareViaWhatsApp(customerPhone: string, surveyUrl: string) {
+  const message = encodeURIComponent(
+    `Your heating survey is ready! View it here: ${surveyUrl}`
+  );
+  window.open(`https://wa.me/${customerPhone}?text=${message}`);
+}
+
+// Native Web Share API (mobile)
+async function shareViaNative(surveyUrl: string) {
+  if (navigator.share) {
+    await navigator.share({
+      title: 'Heating Survey Results',
+      text: 'View your heating survey online',
+      url: surveyUrl,
+    });
+  } else {
+    // Fallback: Copy to clipboard
+    await navigator.clipboard.writeText(surveyUrl);
+    alert('Link copied to clipboard!');
+  }
+}
+```
+
+**Sharing UI:**
+```tsx
+function SharingOptions({ surveyUrl, customer }: { surveyUrl: string; customer: Customer }) {
+  return (
+    <div className="sharing-options">
+      <h3>Send Survey to Customer</h3>
+      
+      <button onClick={() => sendSurveySMS(customer.phone, surveyUrl)}>
+        📱 Send via SMS
+      </button>
+      
+      <button onClick={() => sendSurveyEmail(customer.email, surveyUrl)}>
+        📧 Send via Email
+      </button>
+      
+      <button onClick={() => shareViaWhatsApp(customer.phone, surveyUrl)}>
+        💬 Send via WhatsApp
+      </button>
+      
+      <button onClick={() => shareViaNative(surveyUrl)}>
+        🔗 Share Link
+      </button>
+      
+      <div className="qr-code">
+        <h4>Or show this QR code:</h4>
+        <QRCodeDisplay url={surveyUrl} />
+      </div>
+    </div>
+  );
+}
+```
+
+**Acceptance Criteria:**
+- ✅ Multiple sharing options available (SMS, Email, WhatsApp)
+- ✅ QR code can be shown to customer for instant scanning
+- ✅ Surveyor receives notification when customer views microsite
+- ✅ Link works immediately after generation
+
+---
+
+#### 4.4 Analytics & Tracking
+**User Story:** As a surveyor, I want to know when the customer has viewed their survey so I can follow up at the right time.
+
+**Tasks:**
+- [ ] Track microsite views (timestamp, device, location)
+- [ ] Track user interactions (photos viewed, CTA clicked)
+- [ ] Dashboard showing:
+  - Total surveys created
+  - Total views
+  - Conversion rate (views → quote requests)
+  - Average time on microsite
+- [ ] Notifications for surveyor (optional):
+  - Customer viewed survey
+  - Customer requested quote
+  - Survey link expires soon
+
+**Analytics Implementation:**
+```typescript
+// Track page view
+async function trackMicrositeView(surveyId: string, metadata: ViewMetadata) {
+  await db.analytics.create({
+    surveyId,
+    eventType: 'page_view',
+    timestamp: new Date(),
+    userAgent: metadata.userAgent,
+    referrer: metadata.referrer,
+    ipAddress: metadata.ipAddress, // For general location only
+  });
+}
+
+// Track interactions
+async function trackInteraction(surveyId: string, action: string, details?: any) {
+  await db.analytics.create({
+    surveyId,
+    eventType: 'interaction',
+    action, // 'photo_viewed', 'cta_clicked', 'section_expanded'
+    details,
+    timestamp: new Date(),
+  });
+}
+
+// Dashboard queries
+async function getSurveyAnalytics(surveyId: string) {
+  const views = await db.analytics.count({ 
+    surveyId, 
+    eventType: 'page_view' 
+  });
+  
+  const uniqueVisitors = await db.analytics.distinct('ipAddress', {
+    surveyId,
+    eventType: 'page_view',
+  });
+  
+  const ctaClicks = await db.analytics.count({
+    surveyId,
+    action: 'cta_clicked',
+  });
+  
+  return {
+    totalViews: views,
+    uniqueVisitors: uniqueVisitors.length,
+    conversionRate: views > 0 ? (ctaClicks / views) * 100 : 0,
   };
 }
 ```
 
 **Acceptance Criteria:**
-- ✅ Settings persist after app restart
-- ✅ Logo uploaded and displayed in PDFs
-- ✅ Email signature auto-filled
-- ✅ Settings export/import for team consistency
+- ✅ View count tracked accurately
+- ✅ Surveyor can see when customer viewed survey
+- ✅ Dashboard shows analytics for all surveys
+- ✅ No personally identifiable information stored beyond what's necessary
 
 ---
 
-#### 4.6 Bug Fixes & Edge Cases
-**Tasks:**
-- [ ] Test with incomplete voice data (missing boiler model, etc.)
-- [ ] Test with poor quality photos (low light, blurry)
-- [ ] Test with very long surveys (100+ voice segments)
-- [ ] Test PDF generation with missing images
-- [ ] Test email delivery failures (retry logic)
-- [ ] Fix any UI glitches on iOS Safari and Android Chrome
+#### 4.5 Security & Privacy
+**User Story:** As a customer, I want to know my survey data is secure and private.
 
-**Edge Cases to Handle:**
-- Voice recognition fails → Fallback to manual text entry
-- Photo annotation crashes → Auto-save annotations periodically
-- PDF generation fails → Show error, allow retry
-- Email send fails → Queue for retry, notify surveyor
-- Session corrupted → Recover from last auto-save
+**Tasks:**
+- [ ] Implement access controls:
+  - Survey links are unguessable (10+ character random IDs)
+  - Optional: Password protection for sensitive surveys
+  - Link expiration (default 30 days, configurable)
+- [ ] Data privacy:
+  - No tracking cookies without consent
+  - Customer can request link deletion
+  - Data retention policy clearly stated
+- [ ] HTTPS enforcement
+- [ ] Rate limiting to prevent abuse
+
+**Security Implementation:**
+```typescript
+// Generate cryptographically secure survey IDs
+import { nanoid } from 'nanoid';
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+function generateSecureSurveyId(): string {
+  return nanoid(12); // 12 characters = ~72 bits of entropy (log2(64^12))
+}
+
+// Optional password protection
+async function createProtectedSurveyLink(sessionId: string, password?: string): Promise<string> {
+  const shortId = generateSecureSurveyId();
+  
+  const surveyLink = await db.surveyLinks.create({
+    shortId,
+    sessionId,
+    passwordHash: password ? await hashPassword(password) : null,
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + THIRTY_DAYS_MS),
+  });
+  
+  return `${process.env.NEXT_PUBLIC_BASE_URL}/survey/${shortId}`;
+}
+
+// Password verification
+async function verifySurveyAccess(shortId: string, password?: string): Promise<boolean> {
+  const link = await db.surveyLinks.findOne({ shortId });
+  
+  if (!link) return false;
+  if (new Date() > link.expiresAt) return false;
+  if (link.passwordHash && !password) return false;
+  
+  // Verify password only if both password and passwordHash exist
+  if (link.passwordHash && password) {
+    const isValid = await verifyPassword(password, link.passwordHash);
+    if (!isValid) return false;
+  }
+  
+  return true;
+}
+
+// Rate limiting (using Redis or in-memory cache)
+import rateLimit from 'express-rate-limit';
+
+const surveyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later.',
+});
+
+app.get('/survey/:surveyId', surveyLimiter, async (req, res) => {
+  // ... handle request
+});
+```
+
+**Privacy Features:**
+```tsx
+function MicrositeFooter() {
+  return (
+    <footer>
+      <p>
+        This survey link will expire on {expirationDate.toLocaleDateString()}.
+        <br />
+        <a href="/privacy">Privacy Policy</a> | 
+        <a href="/delete-request">Request Deletion</a>
+      </p>
+    </footer>
+  );
+}
+```
 
 **Acceptance Criteria:**
-- ✅ App handles errors gracefully (no crashes)
-- ✅ User notified of issues with actionable messages
-- ✅ Data recovery possible from auto-saves
-- ✅ Works on iOS Safari, Android Chrome, desktop Chrome
+- ✅ Survey links are cryptographically secure
+- ✅ Links expire automatically after set period
+- ✅ Optional password protection available
+- ✅ Customer can request link/data deletion
+- ✅ All traffic over HTTPS
+- ✅ Rate limiting prevents abuse
+
+---
+
+#### 4.6 Integration & Polish
+**User Story:** As a surveyor, I want the entire workflow from survey to microsite to be seamless.
+
+**Tasks:**
+- [ ] End-to-end workflow testing:
+  1. Complete voice survey
+  2. Annotate photos
+  3. Generate PDF
+  4. Create microsite link
+  5. Share via SMS/Email/WhatsApp
+  6. Customer views microsite
+  7. Customer requests quote
+- [ ] Offline support for microsite creation (generate link, sync later)
+- [ ] Performance optimization:
+  - Image optimization (WebP, responsive sizes)
+  - Code splitting (microsite code separate from survey tool)
+  - CDN for static assets
+- [ ] Add microsite previews for surveyor before sharing
+- [ ] Bug fixes and edge case handling
+
+**Workflow Integration:**
+```typescript
+// Complete workflow from survey to microsite
+async function completeSurveyWorkflow(sessionId: string) {
+  // 1. Finalize survey session
+  const session = await db.sessions.update(sessionId, { status: 'completed' });
+  
+  // 2. Generate PDF (client-side, saved to session)
+  const pdfBlob = await generateSurveyPdf(session, template);
+  const pdfUrl = await uploadPdfToStorage(pdfBlob);
+  await db.sessions.update(sessionId, { pdfUrl });
+  
+  // 3. Create microsite link
+  const micrositeUrl = await createSurveyLink(sessionId);
+  
+  // 4. Generate QR code
+  const qrCodeDataUrl = await generateSurveyQRCode(micrositeUrl);
+  
+  // 5. Return sharing options
+  return {
+    pdfUrl,
+    micrositeUrl,
+    qrCodeDataUrl,
+    sharingMethods: ['sms', 'email', 'whatsapp', 'native'],
+  };
+}
+```
+
+**Microsite Preview:**
+```tsx
+function MicrositePreview({ session }: { session: SurveySession }) {
+  const [previewUrl, setPreviewUrl] = useState('');
+  
+  useEffect(() => {
+    // Generate temporary preview link
+    const tempId = `preview-${nanoid(8)}`;
+    setPreviewUrl(`/survey/${tempId}?preview=true`);
+  }, []);
+  
+  return (
+    <div className="microsite-preview">
+      <h3>Preview Customer Microsite</h3>
+      <iframe 
+        src={previewUrl} 
+        width="375" 
+        height="667" 
+        style={{ border: '1px solid #ccc', borderRadius: '10px' }}
+      />
+      <button onClick={() => window.open(previewUrl, '_blank')}>
+        Open in New Tab
+      </button>
+    </div>
+  );
+}
+```
+
+**Acceptance Criteria:**
+- ✅ Complete workflow works without errors
+- ✅ Surveyor can preview microsite before sharing
+- ✅ Microsite loads fast (<2s on 4G)
+- ✅ Works on all major mobile browsers (Safari, Chrome)
+- ✅ Offline microsite creation (syncs when online)
 
 ---
 
 ### Week 4 Deliverables
-- ✅ End-to-end workflow tested and polished
-- ✅ Offline support with Service Worker and IndexedDB
-- ✅ Performance optimized (<3s load, <10s PDF generation)
-- ✅ User onboarding tutorial and help system
-- ✅ Settings and customization UI
-- ✅ Bug fixes and edge case handling
+- ✅ Unique survey link generation with QR codes
+- ✅ Mobile-first customer microsite UI
+- ✅ Multi-channel sharing (SMS, Email, WhatsApp)
+- ✅ Analytics and view tracking
+- ✅ Security features (link expiration, optional passwords)
+- ✅ End-to-end workflow integration
+- ✅ Microsite preview for surveyors
 
 ### Week 4 Success Metrics
-- Complete survey workflow takes <15 minutes
-- App works offline in properties with no signal
-- Zero crashes during testing
-- Surveyor can customize branding without developer help
+- Customer can view survey on their phone via link
+- Microsite loads in <2 seconds on mobile
+- Surveyor knows when customer has viewed survey
+- >80% of customers view microsite within 24 hours of sharing
+- Clear path from microsite view to quote request
 
 ---
 
@@ -916,9 +1410,14 @@ interface AppSettings {
 | **Styling** | Tailwind CSS | Utility-first, fast styling, mobile-first |
 | **State Management** | Zustand | Lightweight, simple API, minimal boilerplate |
 | **Voice** | Web Speech API | Native browser support, no external API needed |
-| **PDF Generation** | jsPDF or React-PDF | Client-side PDF generation, no server needed |
+| **PDF Generation** | @react-pdf/renderer | Client-side PDF generation, React components |
+| **Photo Annotation** | Fabric.js or Konva.js | Canvas manipulation for drawing tools |
+| **Diagrams** | React Flow or Reaflow | Node-based system schematics |
+| **QR Codes** | qrcode.react | Generate QR codes for microsite links |
+| **Unique IDs** | nanoid | Short, secure, URL-friendly IDs |
 | **Offline** | Service Worker + IndexedDB | PWA standard, works across browsers |
-| **Email** | SendGrid API or SMTP | Reliable delivery, tracking, templates |
+| **SMS** | Twilio API | Reliable SMS delivery for microsite links |
+| **Email** | SendGrid API or SMTP | Email delivery with tracking |
 | **Hosting** | Vercel or Railway | Easy deployment, edge network, auto-scaling |
 
 ### Data Flow
@@ -950,20 +1449,29 @@ interface AppSettings {
              ├──────────────────┬──────────────────────────┐
              ▼                  ▼                          ▼
 ┌─────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│ VISUALIZATION   │  │  PDF GENERATOR   │  │  EMAIL SENDER    │
-│  • Photo        │  │  • Template      │  │  • SendGrid API  │
-│    annotation   │  │  • Branding      │  │  • Attachment    │
-│  • Schematic    │  │  • Content       │  │  • Tracking      │
-│  • Flue overlay │  │  • Export        │  │                  │
+│ VISUALIZATION   │  │  PDF GENERATOR   │  │ MICROSITE LINK   │
+│  • Photo        │  │  • Template      │  │  • Unique URL    │
+│    annotation   │  │  • Branding      │  │  • QR Code       │
+│  • Schematic    │  │  • Content       │  │  • SMS/Email     │
+│  • Flue overlay │  │  • Client-side   │  │  • View tracking │
 └─────────────────┘  └──────────────────┘  └──────────────────┘
              │                  │                          │
-             └──────────────────┴──────────────────────────┘
-                                │
-                                ▼
-                      ┌─────────────────┐
-                      │    CUSTOMER     │
-                      │  (receives PDF) │
-                      └─────────────────┘
+             │                  ├──────────────────────────┤
+             │                  ▼                          ▼
+             │         ┌────────────────┐      ┌──────────────────┐
+             │         │ PRINT OUTPUT   │      │ DIGITAL OUTPUT   │
+             │         │ (Portable      │      │ (Customer        │
+             │         │  Printer)      │      │  Microsite)      │
+             │         └────────────────┘      └──────────────────┘
+             │                                          │
+             └──────────────────────────────────────────┘
+                                 │
+                                 ▼
+                       ┌─────────────────┐
+                       │    CUSTOMER     │
+                       │  (Views on      │
+                       │   Phone)        │
+                       └─────────────────┘
 ```
 
 ### Progressive Web App (PWA) Features
@@ -1017,84 +1525,161 @@ interface AppSettings {
 - ✅ Surveyor completes first voice-only survey
 - ✅ Voice transcription accuracy >85%
 - ✅ Session auto-saves and can be resumed
+- ✅ Entity recognition identifies boiler models and measurements
 
 ### Week 2 Success
 - ✅ Customer sees annotated photo showing boiler/flue location
 - ✅ System schematic auto-generates from voice data
 - ✅ Flue clearances calculated and visualized
+- ✅ Professional-looking diagrams ready for presentation
 
 ### Week 3 Success
-- ✅ Professional PDF generated in <10 seconds
-- ✅ PDF emailed to customer within 2 minutes of survey completion
+- ✅ Professional PDF generated client-side in <10 seconds
+- ✅ PDF can be downloaded or printed immediately
 - ✅ PDF looks better than competitors' offerings
+- ✅ No server processing required (privacy & speed)
 
 ### Week 4 Success
-- ✅ Complete survey workflow tested end-to-end
-- ✅ App works offline in properties with no signal
-- ✅ Surveyor can customize branding without developer help
-- ✅ Zero critical bugs found during testing
+- ✅ Unique microsite link generated for each survey
+- ✅ Customer can view survey on phone via link/QR code
+- ✅ Microsite loads in <2 seconds on mobile
+- ✅ Multiple sharing options work (SMS, Email, WhatsApp)
+- ✅ Surveyor receives notification when customer views microsite
 
 ### Overall Launch Success
 - ✅ Surveyor can complete a survey in 15-20 minutes (vs 45+ minutes manual)
-- ✅ Customer receives professional PDF immediately (vs waiting days)
+- ✅ Customer receives both PDF (print) and microsite link (digital) immediately
 - ✅ Surveyor wins more jobs by showing professionalism on-site
 - ✅ Tool works reliably without internet connection
+- ✅ >80% of customers view microsite within 24 hours
 
 ---
 
 ## Post-Launch Roadmap
 
 ### Month 2 (After 4-Week Build)
-**Focus:** Collect feedback and iterate
+**Focus:** Collect feedback and iterate on microsite & PDF outputs
 
 **Features:**
-- Customer feedback form (in PDF or follow-up email)
-- Analytics dashboard (surveys completed, PDFs sent, conversion rate)
+- Customer feedback form (embedded in microsite)
+- Analytics dashboard (surveys completed, microsite views, conversion rate)
+- Microsite customization (customer-specific branding themes)
 - Template library (pre-built templates for common scenarios)
 - Multi-language support (Welsh, Polish for UK market)
+- Advanced microsite features (interactive diagrams, video walkthroughs)
 
 ### Month 3-6 (Enhancement Phase)
-**Focus:** Advanced features
+**Focus:** Advanced features and integrations
 
 **Features:**
-- Quote generation (convert survey to formal quote)
+- Quote generation (convert survey to formal quote from microsite)
 - Integration with accounting software (Xero, QuickBooks)
 - Team collaboration (share surveys, review each other's work)
-- Advanced visualizations (3D room models, AR overlays)
-- Customer portal (customer views their survey online)
+- Advanced visualizations (3D room models, AR overlays in microsite)
+- Customer portal expansion (view all past surveys, track quotes)
+- A/B testing different microsite layouts for conversion optimization
+- Portable printer integration (Bluetooth printing from app)
 
 ### Month 6-12 (Scale Phase)
-**Focus:** Market expansion
+**Focus:** Market expansion and ecosystem
 
 **Features:**
 - White-label version (sell to other heating companies)
-- Mobile app (native iOS/Android for better camera/voice)
+- Native mobile apps (iOS/Android for better camera/voice/printing)
 - LiDAR integration (iPhone 12 Pro+ for precise measurements)
-- Thermal imaging (FLIR camera for heat loss detection)
+- Thermal imaging (FLIR camera for heat loss detection in microsite)
 - Integration with Visual Surveyor (full ecosystem)
+- Customer self-service (customer can schedule follow-up from microsite)
+- Microsite analytics AI (predict quote acceptance likelihood)
 
 ---
 
 ## Dependencies & Prerequisites
 
-### Required
-- Next.js 14 installed and configured
-- Tailwind CSS set up
-- Zustand for state management
-- Web Speech API (browser support check)
-- jsPDF or React-PDF library
-- SendGrid account (for email delivery)
+### Required NPM Packages
 
-### Optional (for full feature set)
+**Core Framework:**
+- `next@14` - Next.js framework with App Router
+- `react@18` - React library
+- `react-dom@18` - React DOM renderer
+
+**State & Data:**
+- `zustand` - State management
+- `idb` - IndexedDB wrapper for offline storage
+- `nanoid` - Unique ID generation for microsite links
+
+**Voice Input (Week 1):**
+- Web Speech API (browser native, no package needed)
+- Optional: `@azure/cognitiveservices-speech-sdk` for fallback
+
+**Visualization (Week 2):**
+- `fabric` or `konva` + `react-konva` - Canvas annotation
+- `reactflow` or `reaflow` - System diagram generation
+- `react-image-crop` - Photo cropping
+
+**PDF Generation (Week 3):**
+- `@react-pdf/renderer` - PDF generation (recommended)
+  - OR `jspdf` + `html2canvas` - Alternative approach
+  - OR `pdfmake` - Another alternative
+
+**Microsite & Sharing (Week 4):**
+- `qrcode` or `qrcode.react` - QR code generation
+- `twilio` - SMS delivery (requires account)
+- `@sendgrid/mail` - Email delivery (requires account)
+
+**Styling & UI:**
+- `tailwindcss` - Utility-first CSS
+- `framer-motion` - Animations (optional)
+- `lucide-react` or `react-icons` - Icon library
+
+**Development:**
+- `typescript` - Type safety
+- `eslint` - Linting
+- `prettier` - Code formatting
+
+### External Services
+
+**Required:**
+- Next.js hosting (Vercel, Railway, or similar)
+- PostgreSQL database (for survey sessions and microsite links)
+
+**Optional (Enhanced Features):**
+- Twilio account (for SMS microsite sharing)
+- SendGrid account (for email delivery)
+- AWS S3 or Cloudinary (for photo storage)
 - Google Cloud Platform (for advanced voice recognition fallback)
-- AWS S3 or similar (for photo/PDF storage)
-- Thermal camera SDK (for heat loss detection)
-- LiDAR SDK (for 3D room scanning)
+
+### Installation Commands
+
+```bash
+# Core dependencies
+npm install next@14 react@18 react-dom@18 zustand idb nanoid
+
+# Visualization
+npm install fabric reactflow react-image-crop
+
+# PDF generation (choose one)
+npm install @react-pdf/renderer
+# OR
+npm install jspdf html2canvas
+
+# Microsite & sharing
+npm install qrcode twilio @sendgrid/mail
+
+# Styling
+npm install -D tailwindcss postcss autoprefixer
+npm install framer-motion lucide-react
+
+# Development
+npm install -D typescript @types/react @types/node eslint prettier
+```
 
 ### Browser Support
 - **Required:** Chrome/Edge (Chromium) on desktop and Android
 - **Required:** Safari on iOS (for mobile surveyors)
-- **Nice to have:** Firefox (partial support, voice may be limited)
+- **Voice Features:** Chrome/Edge have best Web Speech API support
+- **PDF Generation:** All modern browsers (client-side generation)
+- **Microsite Viewing:** All mobile browsers (responsive design)
 
 ---
 
@@ -1132,30 +1717,61 @@ interface AppSettings {
 
 ## Conclusion
 
-This 4-week plan focuses relentlessly on the **three core priorities**:
+This 4-week plan focuses relentlessly on the **four core priorities**:
 
 1. ✅ **Voice Input** - Hands-free capture during survey (Week 1)
 2. ✅ **Visualization Layer** - Show customer what they're getting (Week 2)
-3. ✅ **Presentation Output** - Professional PDF pack (Week 3)
-
-Week 4 ties everything together and prepares for real-world use.
+3. ✅ **PDF Generation** - Professional print output with client-side generation (Week 3)
+4. ✅ **Customer Microsite** - Shareable digital experience via unique link (Week 4)
 
 **Key Principle:** "Surveyors sell, engineers fit."
 
 This tool helps the surveyor **win the job on-site** by:
 - Capturing technical details effortlessly (voice)
 - Showing the customer a clear vision (diagrams, photos)
-- Leaving a professional impression (branded PDF)
+- Leaving a professional impression (branded PDF + microsite)
+
+### The Complete Workflow
+
+```
+Survey → Voice Input → Visualizations → Two Outputs:
+                                         ├─> PDF (Print on portable printer)
+                                         └─> Microsite (QR code / SMS / Email)
+                                                  ↓
+                                            Customer views on phone
+                                                  ↓
+                                            Requests formal quote
+```
 
 The goal is **not** to replace their corporate CRM or quoting system. The goal is to **help them win** before they even get back to the office.
+
+### Key Technical Decisions
+
+1. **Client-Side PDF Generation** (@react-pdf/renderer)
+   - Privacy: Data never leaves device
+   - Speed: No server round-trip
+   - Offline: Works without internet
+
+2. **Microsite Over Email Attachment**
+   - Mobile-first: Optimized for phone viewing
+   - Rich media: Better image quality and interactivity
+   - Trackable: Know when customer views survey
+   - Shareable: Easy to forward to decision-makers
+
+3. **Next.js with App Router**
+   - SSR for fast microsite loading
+   - Dynamic routes for unique survey links
+   - Built-in API routes for backend logic
+   - PWA support for offline capability
 
 ---
 
 **Next Steps:**
 1. Review this plan with stakeholders
-2. Confirm technology choices (Next.js, jsPDF, SendGrid)
-3. Set up development environment
+2. Set up Next.js 14 development environment
+3. Install dependencies (see Dependencies section)
 4. Begin Week 1: Voice Input Foundation
+5. Weekly demos to validate progress
 
 **Questions?** Contact the development team or refer to:
 - `docs/VISUAL-SURVEYOR-ARCHITECTURE.md` (for sensor integration later)

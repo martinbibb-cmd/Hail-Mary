@@ -846,15 +846,17 @@ Create a unique, shareable microsite link for each survey that customers can vie
 // Generate unique survey ID
 import { nanoid } from 'nanoid';
 
-function createSurveyLink(sessionId: string): string {
-  const shortId = nanoid(10); // e.g., "V1StGXR8_Z"
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+async function createSurveyLink(sessionId: string): Promise<string> {
+  const shortId = nanoid(10); // e.g., "V1StGXR8_z" (10 random URL-safe characters)
   
   // Save mapping in database
   await db.surveyLinks.create({
     shortId,
     sessionId,
     createdAt: new Date(),
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+    expiresAt: new Date(Date.now() + THIRTY_DAYS_MS),
     viewCount: 0,
   });
   
@@ -1216,12 +1218,14 @@ async function getSurveyAnalytics(surveyId: string) {
 // Generate cryptographically secure survey IDs
 import { nanoid } from 'nanoid';
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
 function generateSecureSurveyId(): string {
-  return nanoid(12); // 12 characters = ~70 bits of entropy
+  return nanoid(12); // 12 characters = ~72 bits of entropy (log2(64^12))
 }
 
 // Optional password protection
-async function createProtectedSurveyLink(sessionId: string, password?: string) {
+async function createProtectedSurveyLink(sessionId: string, password?: string): Promise<string> {
   const shortId = generateSecureSurveyId();
   
   const surveyLink = await db.surveyLinks.create({
@@ -1229,7 +1233,7 @@ async function createProtectedSurveyLink(sessionId: string, password?: string) {
     sessionId,
     passwordHash: password ? await hashPassword(password) : null,
     createdAt: new Date(),
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    expiresAt: new Date(Date.now() + THIRTY_DAYS_MS),
   });
   
   return `${process.env.NEXT_PUBLIC_BASE_URL}/survey/${shortId}`;
@@ -1242,8 +1246,11 @@ async function verifySurveyAccess(shortId: string, password?: string): Promise<b
   if (!link) return false;
   if (new Date() > link.expiresAt) return false;
   if (link.passwordHash && !password) return false;
-  if (link.passwordHash && !(await verifyPassword(password!, link.passwordHash))) {
-    return false;
+  
+  // Verify password only if both password and passwordHash exist
+  if (link.passwordHash && password) {
+    const isValid = await verifyPassword(password, link.passwordHash);
+    if (!isValid) return false;
   }
   
   return true;

@@ -204,7 +204,7 @@ export function getNextQuestion(
   const availableSlots = getSlotsForModules(modulesToInclude);
 
   // Filter slots
-  const candidateSlots = availableSlots.filter(slot => {
+  const candidateSlots = availableSlots.filter((slot: SurveySlot) => {
     // Skip if already asked
     if (askedSlotIds.includes(slot.id)) {
       return false;
@@ -240,7 +240,7 @@ export function getNextQuestion(
   }
 
   // Score and sort slots
-  const scoredSlots = candidateSlots.map(slot => ({
+  const scoredSlots = candidateSlots.map((slot: SurveySlot) => ({
     slot,
     score: scoreSlot(slot, currentTopic, recentTranscriptText),
   }));
@@ -257,13 +257,13 @@ export function calculateModuleCompleteness(
   module: ModuleName,
   specDraft: SystemSpecDraft
 ): ModuleCompleteness {
-  const moduleSlots = allSurveySlots.filter(slot => slot.module === module);
-  
-  const criticalSlots = moduleSlots.filter(s => s.priority === 'critical');
-  const importantSlots = moduleSlots.filter(s => s.priority === 'important');
+  const moduleSlots = allSurveySlots.filter((slot: SurveySlot) => slot.module === module);
 
-  const filledCritical = criticalSlots.filter(s => isSlotSatisfied(s, specDraft)).length;
-  const filledImportant = importantSlots.filter(s => isSlotSatisfied(s, specDraft)).length;
+  const criticalSlots = moduleSlots.filter((s: SurveySlot) => s.priority === 'critical');
+  const importantSlots = moduleSlots.filter((s: SurveySlot) => s.priority === 'important');
+
+  const filledCritical = criticalSlots.filter((s: SurveySlot) => isSlotSatisfied(s, specDraft)).length;
+  const filledImportant = importantSlots.filter((s: SurveySlot) => isSlotSatisfied(s, specDraft)).length;
 
   const totalCritical = criticalSlots.length;
   const totalImportant = importantSlots.length;

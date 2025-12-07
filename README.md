@@ -1,26 +1,40 @@
 # Hail-Mary 🔥
 
-**Universal Quote Tool for Heating Professionals**
+**Pre-Contract Sales & Survey Tool for Heating Professionals**
 
-A rock-solid boiler CRM + quoting engine that AI and voice can plug into. Built specifically for heating engineers, plumbers, and HVAC professionals.
+A voice-driven survey tool that helps surveyors win jobs on-site with professional visualizations and instant PDF reports. Built specifically for heating engineers, plumbers, and HVAC professionals.
+
+> **"Surveyors sell, engineers fit."** - This tool helps you win the job before you leave the property.
 
 ## 🏗️ Architecture
 
 ```
-📱 PWA / iOS / LiDAR app (Frontend)
-         ↑
-         │
-🧠 AI & Voice Assistant (Coming Soon)
-         ↑
-         │
+📱 Pre-Contract Sales & Survey Tool
+         ↓
+   ┌─────────────────┬─────────────────┬──────────────────┐
+   │  Voice Input    │  Visualization  │  PDF Output      │
+   │  (Hands-free)   │  (Show Customer)│  (Leave Behind)  │
+   └─────────────────┴─────────────────┴──────────────────┘
+         ↓
 🏛️ Core App (API + Database)
 ```
 
 This is a **monorepo** containing:
 
 - `packages/api` - Backend API with Express/TypeScript + PostgreSQL (Drizzle ORM)
-- `packages/pwa` - Frontend PWA with React/TypeScript + Vite
+- `packages/pwa` - Frontend PWA with React/TypeScript + Vite (Next.js migration planned)
 - `packages/shared` - Shared types and utilities
+
+## 📋 4-Week Build Plan
+
+**[View the complete 4-Week Rapid Build Plan →](docs/PRE-CONTRACT-SALES-SURVEY-TOOL-4-WEEK-BUILD-PLAN.md)**
+
+This plan focuses on three core priorities:
+1. **Voice Input** - Capture technical details hands-free during surveys
+2. **Visualization Layer** - Show customers diagrams of flue, boiler, and system layout
+3. **Presentation Output** - Generate professional PDF reports to leave with customers
+
+Each week is broken down into focused sprints with clear deliverables.
 
 ## 🚀 Quick Start
 
@@ -45,41 +59,54 @@ npm run pwa:dev   # PWA on http://localhost:3000
 
 ## 📦 Core Features
 
-### ✅ STEP 1 — Database (Complete)
+### Current Status
 
-Structured storage for:
-- **Customers** - Contact details, addresses, notes
-- **Leads** - Inquiry tracking, source, status
-- **Products** - Boilers, cylinders, parts with specifications
-- **Quotes** - Multi-line quotes with automatic totals
-- **Appointments** - Survey, installation, service scheduling
-- **Surveys** - Property assessments, photos, measurements
-- **Documents** - PDFs, proposals, handover packs
+The foundation is in place with database and CRUD operations. The **4-week build plan** will transform this into a Pre-Contract Sales & Survey Tool.
 
-### ✅ STEP 2 — CRUD API (Complete)
+### ✅ Foundation (Complete)
 
-RESTful API endpoints:
-- `GET/POST/PUT/DELETE /api/customers`
-- `GET/POST/PUT/DELETE /api/products`
-- `GET/POST/PUT/DELETE /api/quotes`
-- `GET/POST/PUT/DELETE /api/leads`
-- `GET/POST/PUT/DELETE /api/appointments`
+- **Database** - Structured storage for customers, leads, products, quotes, appointments, surveys, documents
+- **CRUD API** - RESTful endpoints for all entities
+- **PWA Skeleton** - Dashboard, customer management, lead tracking
+- **Authentication** - User login and session management
 
-### ✅ STEP 3 — PWA Skeleton (Complete)
+### 🚧 In Progress (4-Week Build)
 
-- Dashboard with stats
-- Customer list and creation form
-- Quote list view
-- Lead list and creation form
-- Responsive design for mobile/tablet/desktop
+#### Week 1: Voice Input Foundation
+- Voice recording with live transcription
+- Smart entity recognition (boiler, flue, radiators)
+- Voice command shortcuts
+- Survey session management
 
-### 🔜 Coming Soon
+#### Week 2: Visualization Layer
+- Photo annotation (mark boiler/flue positions)
+- System schematic auto-generation
+- Flue clearance visualization with compliance checking
+- Before/after comparisons
 
-- **STEP 4** — PDF Generator (quotes, proposals)
-- **STEP 5** — AI Assistant (text-based workflows)
-- **STEP 6** — Voice Interface
-- **STEP 7** — Technical Manual Search (RAG)
-- **STEP 8** — Native iOS + LiDAR
+#### Week 3: Presentation Output
+- Professional PDF generation with branding
+- Email delivery to customers
+- WhatsApp sharing (stretch goal)
+- Customizable templates
+
+#### Week 4: Integration & Polish
+- End-to-end workflow testing
+- Offline support (Service Worker + IndexedDB)
+- Performance optimization
+- User onboarding and help system
+
+**[Full build plan details →](docs/PRE-CONTRACT-SALES-SURVEY-TOOL-4-WEEK-BUILD-PLAN.md)**
+
+### 🔜 Future Enhancements
+
+- **Quote Generation** - Convert surveys to formal quotes
+- **Advanced Visualizations** - 3D room models, AR overlays
+- **LiDAR Integration** - iPhone 12 Pro+ for precise measurements
+- **Thermal Imaging** - FLIR camera for heat loss detection
+- **Visual Surveyor** - Complete sensor integration ecosystem
+
+**[Visual Surveyor Architecture →](docs/VISUAL-SURVEYOR-ARCHITECTURE.md)**
 
 ## 🛠️ Tech Stack
 
@@ -250,10 +277,12 @@ To use custom credentials instead of the defaults, set these environment variabl
 
 ## 🎯 Design Principles
 
-1. **Core app never depends on AI** - AI is a helper, not a controller
-2. **Structured + Unstructured data** - Tables for specs, search for manuals
-3. **Future-proof architecture** - Ready for LiDAR, 3D scanning, voice
-4. **Modular and replaceable** - Swap out any component without breaking others
+1. **"Surveyors sell, engineers fit"** - Win the job on-site with professional presentation
+2. **Voice-first** - Hands-free capture while working
+3. **Visual communication** - Show customers what they're getting with diagrams and photos
+4. **Instant gratification** - Generate professional PDFs in seconds, not days
+5. **Offline-capable** - Works in properties with poor mobile signal
+6. **Future-proof architecture** - Ready for LiDAR, 3D scanning, thermal imaging
 
 ## 📄 License
 

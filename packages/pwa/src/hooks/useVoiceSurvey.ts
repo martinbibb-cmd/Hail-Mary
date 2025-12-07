@@ -311,6 +311,8 @@ export function useVoiceSurvey(options: UseVoiceSurveyOptions): UseVoiceSurveyRe
     }
   }, [speak, startListening, autoListen]);
 
+  const state = engineRef.current?.getState();
+  
   return {
     currentQuestion,
     isListening,
@@ -319,8 +321,8 @@ export function useVoiceSurvey(options: UseVoiceSurveyOptions): UseVoiceSurveyRe
     manualSubmit,
     stopListening,
     surveyState: {
-      started: engineRef.current?.getState().currentNodeId !== null || engineRef.current?.getState().isComplete === true,
-      completed: engineRef.current?.getState().isComplete ?? false,
+      started: state?.currentNodeId !== null || state?.isComplete === true,
+      completed: state?.isComplete ?? false,
       answers: engineRef.current?.getAnswers() ?? {},
     },
     error,

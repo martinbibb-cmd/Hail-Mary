@@ -11,6 +11,7 @@ build/
 vite.config.d.ts
 vite.config.js
 # TypeScript compiled outputs in source directories
+!packages/*/src/vite-env.d.ts
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.js
 !packages/*/src/**/*.config.js

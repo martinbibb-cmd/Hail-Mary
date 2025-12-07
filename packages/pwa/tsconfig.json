@@ -11,6 +11,13 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "baseUrl": "./src",
+    "paths": {
+      "@hail-mary/shared": ["../shared/src"],
+      "@hail-mary/shared/*": ["../shared/src/*"],
+      "@hail-mary/surveyor-engine": ["../surveyor-engine/src"],
+      "@hail-mary/surveyor-engine/*": ["../surveyor-engine/src/*"]
+    },
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

@@ -66,8 +66,10 @@ Build robust audio infrastructure supporting external wireless microphones with 
 **Browser Support:**
 - Chrome/Edge 84+ ✅
 - Safari 16.4+ ✅
-- Firefox (via flag) ⚠️
-- Android Chrome ✅ (Critical for our Samsung Tablet)
+- Firefox 126+ (requires `dom.screenwakelock.enabled` flag in about:config) ⚠️
+- Android Chrome 84+ ✅ (Critical for our Samsung Tablet - built-in support)
+
+**Note:** Since our target platform is Samsung Android Tablet running Chrome, Wake Lock API is fully supported without any configuration.
 
 **Implementation:**
 
@@ -428,7 +430,8 @@ export function useVoiceCapture(): VoiceCapture {
       
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-GB';
+      // Language can be configured: 'en-GB', 'en-US', 'en-AU', etc.
+      recognitionRef.current.lang = 'en-GB'; // TODO: Make configurable via settings
       recognitionRef.current.maxAlternatives = 1;
 
       recognitionRef.current.onstart = () => {
@@ -758,8 +761,10 @@ export function useSurveyDB() {
 **Installation:**
 
 ```bash
-npm install idb
+npm install idb@^8.0.0
 ```
+
+**Note:** Using idb v8.x for TypeScript support and IndexedDB schema validation.
 
 **Tasks:**
 - [ ] Install `idb` package (IndexedDB wrapper)
@@ -812,8 +817,10 @@ Create professional visual diagrams showing property layout, boiler placement, a
 
 **Installation:**
 ```bash
-npm install react-konva konva
+npm install react-konva@^18.2.0 konva@^9.3.0
 ```
+
+**Note:** react-konva v18.x provides full React 18 support with touch event handling optimized for tablets.
 
 **Implementation:**
 
@@ -1021,8 +1028,10 @@ Generate professional A4 PDFs using `@react-pdf/renderer` that can be printed di
 
 **Installation:**
 ```bash
-npm install @react-pdf/renderer
+npm install @react-pdf/renderer@^3.1.0
 ```
+
+**Note:** Using v3.1+ for React 18 compatibility and improved performance. API is stable from v3.0 onwards.
 
 **Implementation:**
 
@@ -1385,9 +1394,43 @@ export function PrintButton({ surveyData, diagramBase64 }: any) {
 
 ### 4.4 Offline PWA Configuration
 
-**Service Worker & Manifest:**
+**Installation:**
 
-```typescript
+```bash
+npm install next-pwa@^5.6.0
+```
+
+**Next.js Configuration:**
+
+```javascript
+// next.config.js
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+  register: true,
+  skipWaiting: true,
+  runtimeCaching: [
+    {
+      urlPattern: /^https?.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'offlineCache',
+        expiration: {
+          maxEntries: 200,
+        },
+      },
+    },
+  ],
+});
+
+module.exports = withPWA({
+  // Your Next.js config
+});
+```
+
+**PWA Manifest:**
+
+```json
 // /public/manifest.json
 {
   "name": "Hail Mary - Heating Survey Tool",
@@ -1414,8 +1457,9 @@ export function PrintButton({ surveyData, diagramBase64 }: any) {
 ```
 
 **Tasks:**
+- [ ] Install next-pwa package
 - [ ] Configure PWA manifest
-- [ ] Set up service worker
+- [ ] Set up service worker via next-pwa
 - [ ] Cache critical assets
 - [ ] Enable offline functionality
 - [ ] Add install prompt

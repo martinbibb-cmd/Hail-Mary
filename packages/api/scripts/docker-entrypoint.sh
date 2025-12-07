@@ -2,8 +2,8 @@
 # Docker entrypoint script for Hail-Mary API
 # This script validates configuration, runs database migrations and seeds, then starts the API
 
-# Don't use set -e globally - we want to handle errors gracefully
-# and continue with startup even if migration/seed has issues
+# Exit immediately if any command fails
+set -e
 
 # Helper command for generating JWT secret
 JWT_GEN_CMD='node -e "console.log(require('\''crypto'\'').randomBytes(32).toString('\''hex'\''))"'
@@ -118,22 +118,16 @@ fi
 # ================================
 echo ""
 echo "📦 Running database migrations..."
-if npm run db:push -w packages/api 2>&1; then
-  echo "   ✅ Database migrations completed"
-else
-  echo "   ⚠️  Migration returned non-zero (schema may already be up to date)"
-fi
+npm run migrate -w packages/api
+echo "   ✅ Database migrations completed"
 
 # ================================
 # Step 4: Database Seeding
 # ================================
 echo ""
 echo "🌱 Running database seed..."
-if npm run db:seed -w packages/api 2>&1; then
-  echo "   ✅ Database seed completed"
-else
-  echo "   ⚠️  Seed returned non-zero (data may already be seeded)"
-fi
+npm run db:seed -w packages/api
+echo "   ✅ Database seed completed"
 
 # ================================
 # Step 5: Start Application

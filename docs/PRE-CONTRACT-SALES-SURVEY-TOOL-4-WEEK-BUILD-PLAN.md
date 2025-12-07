@@ -71,8 +71,14 @@ interface VoiceSegment {
   tags?: string[]; // e.g., ["boiler", "flue", "measurements"]
 }
 
-// Web Speech API integration
-const recognition = new webkitSpeechRecognition();
+// Web Speech API integration with cross-browser support and feature detection
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (!SpeechRecognition) {
+  throw new Error('Speech recognition not supported in this browser');
+}
+
+const recognition = new SpeechRecognition();
 recognition.continuous = true;
 recognition.interimResults = true;
 recognition.lang = 'en-GB';
@@ -598,13 +604,14 @@ Best regards,
 
 **Tasks:**
 - [ ] Implement WhatsApp sharing via Web Share API
-- [ ] Optimize PDF for WhatsApp (reduce file size if >5MB)
+- [ ] Upload PDF to temporary cloud storage for sharing (if Web Share API not available)
 - [ ] Add QR code option (customer scans to download PDF)
 
 **Implementation:**
 ```typescript
 async function shareViaWhatsApp(pdfBlob: Blob, customerPhone: string) {
-  if (navigator.share) {
+  if (navigator.share && navigator.canShare({ files: [new File([pdfBlob], 'test.pdf')] })) {
+    // Native Web Share API (works on mobile)
     const file = new File([pdfBlob], 'survey-report.pdf', { type: 'application/pdf' });
     await navigator.share({
       title: 'Survey Report',
@@ -612,10 +619,24 @@ async function shareViaWhatsApp(pdfBlob: Blob, customerPhone: string) {
       files: [file],
     });
   } else {
-    // Fallback: Generate download link
-    const url = URL.createObjectURL(pdfBlob);
-    window.open(`https://wa.me/${customerPhone}?text=Survey report: ${url}`);
+    // Fallback: Upload PDF to cloud storage and share link
+    const uploadUrl = await uploadPdfToCloudStorage(pdfBlob);
+    const message = encodeURIComponent(`Your survey report is ready: ${uploadUrl}`);
+    window.open(`https://wa.me/${customerPhone}?text=${message}`);
   }
+}
+
+async function uploadPdfToCloudStorage(pdfBlob: Blob): Promise<string> {
+  // Upload to S3, Cloudinary, or similar
+  // Return public URL with expiration (e.g., 7 days)
+  const formData = new FormData();
+  formData.append('file', pdfBlob);
+  const response = await fetch('/api/upload/temp-pdf', {
+    method: 'POST',
+    body: formData,
+  });
+  const { url } = await response.json();
+  return url;
 }
 ```
 
@@ -960,7 +981,8 @@ interface AppSettings {
 **Performance:**
 - Code splitting (load only what's needed)
 - Image optimization (WebP, lazy loading)
-- Minimal JavaScript bundle (<200KB gzipped)
+- Progressive loading (initial bundle <500KB gzipped, additional features loaded on demand)
+- PDF generation library loaded only when needed
 
 **Manifest:**
 ```json

@@ -19,6 +19,7 @@ COPY package.json package-lock.json .npmrc ./
 # Copy all package.json files for workspace resolution
 COPY packages/pwa/package.json ./packages/pwa/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
 
 # Install dependencies 
 # Note: Optional deps are required for Rollup 4.x native bindings
@@ -26,11 +27,15 @@ RUN npm ci
 
 # Copy source files
 COPY packages/shared ./packages/shared
+COPY packages/surveyor-engine ./packages/surveyor-engine
 COPY packages/pwa ./packages/pwa
 
 # Build shared package first (using workspace command from root)
 WORKDIR /app
 RUN npm run build -w packages/shared
+
+# Build surveyor-engine package (using workspace command from root)
+RUN npm run build -w packages/surveyor-engine
 
 # Build PWA (using workspace command from root)
 RUN npm run build -w packages/pwa

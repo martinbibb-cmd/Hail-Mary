@@ -27,9 +27,24 @@ This is a **monorepo** containing:
 
 ## 📋 4-Week Build Plans
 
-We have two comprehensive build plans available:
+We have three comprehensive build plans available:
 
-### **[Next.js PWA Build Plan →](docs/NEXTJS-PWA-4-WEEK-BUILD-PLAN.md)** ⭐ RECOMMENDED
+### **[Single-Device Workflow Build Plan →](docs/SINGLE-DEVICE-WORKFLOW-4-WEEK-BUILD-PLAN.md)** ⭐ LATEST
+
+A focused 4-week plan optimized for **Single-Device workflow** using Samsung Tablet + Hollyland wireless mics:
+- **Screen Wake Lock API** - Prevents sleep during recording
+- **External Mic Selection** - Hollyland wireless mic support
+- **IndexedDB** - Local-first data storage
+- **@react-pdf/renderer** - Client-side PDF generation
+- **Tablet-Optimized UI** - Touch-friendly interface
+
+**Weekly Breakdown:**
+1. **Week 1:** Audio Logic (External Mic + Wake Lock API + Voice-to-Text)
+2. **Week 2:** Visualization Layer (Touch-optimized diagrams)
+3. **Week 3:** PDF Brochure Generator (Portable printer ready)
+4. **Week 4:** UI Polish & Print Testing
+
+### [Next.js PWA Build Plan →](docs/NEXTJS-PWA-4-WEEK-BUILD-PLAN.md)
 
 A focused 4-week plan to build a **Sales Enablement Pack** (physical + digital) using:
 - **Next.js** with App Router

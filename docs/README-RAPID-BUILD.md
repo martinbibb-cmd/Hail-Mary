@@ -188,5 +188,5 @@ After 4 weeks, surveyors will:
 ---
 
 **Start Date:** 2025-12-07  
-**Target Completion:** 4 weeks from start  
+**Target Completion:** 2026-01-04 (4 weeks)  
 **Status:** Planning complete, ready for implementation

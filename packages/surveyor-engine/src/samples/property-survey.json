@@ -52,6 +52,9 @@
     "id": "current_boiler_type",
     "promptText": "What type of boiler do you currently have? Say combi, system, heat only, back boiler, or none.",
     "inputType": "text",
+    "validationRule": {
+      "regex": "^(combi|system|heat only|back boiler|none)$"
+    },
     "next": "boiler_age"
   },
   {
@@ -92,12 +95,18 @@
     "id": "fuel_type",
     "promptText": "What fuel type does the boiler use? Say gas, oil, electric, or other.",
     "inputType": "text",
+    "validationRule": {
+      "regex": "^(gas|oil|electric|other)$"
+    },
     "next": "boiler_location"
   },
   {
     "id": "boiler_location",
     "promptText": "Where is the boiler located? For example, kitchen, utility room, garage, or loft.",
     "inputType": "text",
+    "validationRule": {
+      "regex": "^(kitchen|utility room|garage|loft|cupboard|bathroom|other)$"
+    },
     "next": "radiator_count"
   },
   {

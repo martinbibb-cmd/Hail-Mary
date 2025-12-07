@@ -40,6 +40,41 @@ HARDWARE SETUP:
 
 ---
 
+## Important Notes
+
+### Code Examples & TypeScript
+
+The code examples in this document are designed for **clarity and readability** in a planning document. When implementing:
+
+- **Replace `any` types** with proper TypeScript interfaces and types
+- **Add type declarations** for browser APIs (Web Speech API, Wake Lock API, etc.)
+- **Use proper error handling** with type guards (`err instanceof Error`)
+- **Define interfaces** for all data structures (SurveyData, AudioDevice, etc.)
+- **Add type augmentation** for window object extensions
+
+**Example TypeScript improvements:**
+```typescript
+// Instead of: const recognitionRef = useRef<any>(null);
+// Use: const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+// Instead of: catch (err) { setError(err.message); }
+// Use: catch (err) { 
+//   setError(err instanceof Error ? err.message : String(err)); 
+// }
+
+// Define proper types for Web Speech API
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  // ... other properties
+}
+```
+
+For production implementation, use `@types/dom-speech-recognition` or create proper type declarations.
+
+---
+
 ## Table of Contents
 
 1. [Week 1: Audio Logic (External Mic + Wake Lock + Voice-to-Text)](#week-1-audio-logic)

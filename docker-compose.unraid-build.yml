@@ -24,10 +24,13 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: hailmary
+      POSTGRES_USER: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       # unRAID appdata path for persistent PostgreSQL data
       - ${APPDATA_PATH:-/mnt/user/appdata/hailmary}/postgres:/var/lib/postgresql/data
+      # Mount init script for first-run setup
+      - ./db-init:/docker-entrypoint-initdb.d:ro
     networks:
       - hailmary-network
     healthcheck:
@@ -35,6 +38,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     labels:
       net.unraid.docker.managed: "composeman"
       net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/postgres.png"

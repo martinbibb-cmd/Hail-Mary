@@ -22,6 +22,14 @@ import {
 } from '@hail-mary/shared';
 
 /**
+ * Type for a scored survey slot used in ranking
+ */
+type ScoredSlot = {
+  slot: SurveySlot;
+  score: number;
+};
+
+/**
  * Get value from a nested object using dot-notation path
  */
 export function getValueAtPath(obj: Record<string, unknown>, path: string): unknown {
@@ -240,12 +248,12 @@ export function getNextQuestion(
   }
 
   // Score and sort slots
-  const scoredSlots = candidateSlots.map((slot: SurveySlot) => ({
+  const scoredSlots: ScoredSlot[] = candidateSlots.map((slot: SurveySlot) => ({
     slot,
     score: scoreSlot(slot, currentTopic, recentTranscriptText),
   }));
 
-  scoredSlots.sort((a: { slot: SurveySlot; score: number }, b: { slot: SurveySlot; score: number }) => b.score - a.score);
+  scoredSlots.sort((a, b) => b.score - a.score);
 
   return scoredSlots[0].slot;
 }

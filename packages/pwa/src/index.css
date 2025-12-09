@@ -1,9 +1,10 @@
 /* Import theme variables */
 @import './styles/theme.css';
+@import './cognitive/cognitive.css';
 
 :root {
   /* San Francisco-style font stack for macOS feel */
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  font-family: var(--font-family-base, -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif);
   line-height: 1.47059;
   font-weight: 400;
 
@@ -201,7 +202,7 @@ body {
   background: var(--accent);
   color: white;
   border: none;
-  padding: 0.625rem 1.25rem;
+  padding: var(--button-padding-y, 0.625rem) var(--button-padding-x, 1.25rem);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9375rem;

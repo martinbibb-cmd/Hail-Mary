@@ -31,6 +31,8 @@ This will:
 
 After installation completes, access the app at `http://YOUR-UNRAID-IP:8080`
 
+> ℹ️ Make sure the **Docker Compose Manager** plugin is installed on unRAID and that Git is available (via NerdTools) before running the one-line installer. The script expects those prerequisites so it can pull or build containers successfully.
+
 ### Installation Options
 
 ```bash

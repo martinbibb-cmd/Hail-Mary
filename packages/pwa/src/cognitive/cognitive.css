@@ -1,0 +1,367 @@
+/* Shared adaptive styling */
+:root {
+  --font-family-base: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  --button-padding-y: 0.625rem;
+  --button-padding-x: 1.25rem;
+}
+
+body.profile-focus .sidebar,
+body.profile-focus .os-dock {
+  display: none;
+}
+
+body.profile-focus .os-desktop {
+  padding-bottom: 18px;
+}
+
+body.profile-focus .content {
+  padding: 2rem 2.75rem;
+  max-width: 1100px;
+}
+
+body.profile-focus .content .page-header {
+  align-items: flex-start;
+}
+
+.focus-mode-banner {
+  background: var(--surface-primary);
+  border: 1px dashed var(--window-border);
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+.focus-mode-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.focus-mode-copy {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+}
+
+/* Clarity profile styles */
+body.profile-clarity {
+  --font-family-base: 'Atkinson Hyperlegible', 'OpenDyslexic', 'Inter', system-ui, sans-serif;
+  --button-padding-y: 0.85rem;
+  --button-padding-x: 1.45rem;
+  letter-spacing: 0.01em;
+  word-spacing: 0.02em;
+}
+
+body.profile-clarity .content {
+  line-height: 1.6;
+}
+
+body.profile-clarity button,
+body.profile-clarity .btn-primary,
+body.profile-clarity .settings-logout-btn {
+  padding-top: calc(var(--button-padding-y) + 2px);
+  padding-bottom: calc(var(--button-padding-y) + 2px);
+  padding-left: calc(var(--button-padding-x) + 4px);
+  padding-right: calc(var(--button-padding-x) + 4px);
+}
+
+body.bionic-reading-active :where(p, li, label, button, a, span, h1, h2, h3, h4, h5, h6) {
+  font-feature-settings: "liga" 0;
+}
+
+body.bionic-reading-active :where(p, li, label, button, a, span, h1, h2, h3, h4, h5, h6)::first-letter {
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+/* Calm profile styles */
+body.profile-calm {
+  --accent: #7088a8;
+  --accent-hover: #566f8e;
+  --accent-soft: rgba(112, 136, 168, 0.2);
+  --surface-primary: #f6f8fb;
+  --surface-secondary: rgba(112, 136, 168, 0.1);
+  --error: #d69c2f;
+  --error-soft: rgba(214, 156, 47, 0.18);
+  --warning: #c9a449;
+  --warning-soft: rgba(201, 164, 73, 0.18);
+}
+
+body.calm-safe-mode .btn-primary,
+body.calm-safe-mode button,
+body.calm-safe-mode input,
+body.calm-safe-mode textarea {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+body.calm-safe-mode .btn-primary:active,
+body.calm-safe-mode button:active {
+  transform: translateY(0);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+body.profile-calm .badge,
+body.profile-calm [data-badge],
+body.profile-calm .notification-count {
+  display: none;
+}
+
+/* Focus timer styling */
+.focus-timer {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  width: 360px;
+  background: var(--surface-primary);
+  border: 1px solid var(--window-border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  padding: 12px 14px;
+  z-index: 12000;
+}
+
+.focus-timer.celebrate {
+  animation: pulse 0.45s ease-in-out 3;
+  border-color: var(--accent);
+}
+
+.focus-timer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focus-timer-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.focus-timer-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.focus-timer-presets {
+  display: flex;
+  gap: 6px;
+}
+
+.focus-timer-presets button {
+  border: 1px solid var(--window-border);
+  background: var(--surface-secondary);
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.focus-timer-presets button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
+.focus-timer-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 10px;
+}
+
+.focus-timer-time {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.focus-timer-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.focus-timer-controls button {
+  border: 1px solid var(--window-border);
+  background: var(--surface-secondary);
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.focus-timer-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: var(--surface-secondary);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.focus-timer-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
+  transition: width 1s linear;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.3); }
+  100% { box-shadow: 0 0 0 12px rgba(0, 122, 255, 0); }
+}
+
+/* Parking lot */
+.parking-lot-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 90px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--window-border);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  z-index: 12000;
+}
+
+.parking-lot-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 170px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: var(--surface-primary);
+  border: 1px solid var(--window-border);
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+  padding: 14px;
+  z-index: 12000;
+}
+
+.parking-lot-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.parking-lot-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.parking-lot-subtitle {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.parking-lot-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+.parking-lot-form {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.parking-lot-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--window-border);
+}
+
+.parking-lot-form button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--window-border);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  cursor: pointer;
+}
+
+.parking-lot-empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.parking-lot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parking-lot-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--window-border);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+}
+
+.parking-lot-idea {
+  margin: 0;
+  font-weight: 600;
+}
+
+.parking-lot-meta {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.parking-lot-list button {
+  border: none;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* Reading ruler */
+.reading-ruler {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.02),
+    rgba(0, 0, 0, 0.04),
+    rgba(0, 0, 0, 0.02)
+  );
+  pointer-events: none;
+  z-index: 9000;
+}
+
+@media (max-width: 640px) {
+  .focus-timer,
+  .parking-lot-panel {
+    width: calc(100vw - 24px);
+    right: 12px;
+  }
+
+  .parking-lot-toggle {
+    right: 12px;
+  }
+}
+

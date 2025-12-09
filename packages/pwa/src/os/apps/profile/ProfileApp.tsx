@@ -6,13 +6,15 @@
  * - User registration form
  * - Profile display when logged in
  * - Password reset flow
+ * - Admin user management (for admin users)
  */
 
 import React, { useState } from 'react';
 import { useAuth } from '../../../auth';
+import type { AuthUser } from '@hail-mary/shared';
 import './ProfileApp.css';
 
-type ViewMode = 'login' | 'register' | 'profile' | 'forgot-password' | 'reset-sent';
+type ViewMode = 'login' | 'register' | 'profile' | 'forgot-password' | 'reset-sent' | 'admin-users';
 
 export const ProfileApp: React.FC = () => {
   const { user, loading, error, login, register, logout, requestPasswordReset, clearError } = useAuth();
@@ -25,6 +27,10 @@ export const ProfileApp: React.FC = () => {
   });
   const [localError, setLocalError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [users, setUsers] = useState<AuthUser[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [adminSuccess, setAdminSuccess] = useState<string | null>(null);
 
   // Update view mode when user state changes
   React.useEffect(() => {
@@ -98,6 +104,63 @@ export const ProfileApp: React.FC = () => {
     setViewMode('login');
   };
 
+  const handleManageUsers = async () => {
+    setViewMode('admin-users');
+    setLocalError(null);
+    setAdminSuccess(null);
+    setFormSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setUsers(data.data);
+      } else {
+        setLocalError(data.error || 'Failed to load users');
+      }
+    } catch (err) {
+      setLocalError('Failed to load users');
+      console.error('Error loading users:', err);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleResetUserPassword = async (userId: number) => {
+    if (!newPassword || newPassword.length < 8) {
+      setLocalError('Password must be at least 8 characters');
+      return;
+    }
+
+    setFormSubmitting(true);
+    setLocalError(null);
+    setAdminSuccess(null);
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setAdminSuccess(`Password reset successfully for user ID ${userId}`);
+        setNewPassword('');
+        setSelectedUserId(null);
+      } else {
+        setLocalError(data.error || 'Failed to reset password');
+      }
+    } catch (err) {
+      setLocalError('Failed to reset password');
+      console.error('Error resetting password:', err);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
   const switchToRegister = () => {
     setViewMode('register');
     setFormData({ name: '', email: '', password: '', confirmPassword: '' });
@@ -150,12 +213,114 @@ export const ProfileApp: React.FC = () => {
             <span className="label">User ID:</span>
             <span className="value">{user.id}</span>
           </div>
+          {user.role === 'admin' && (
+            <div className="profile-info-row">
+              <span className="label">Role:</span>
+              <span className="value">👑 Admin</span>
+            </div>
+          )}
         </div>
 
         <div className="profile-actions">
+          {user.role === 'admin' && (
+            <button className="btn-primary" onClick={handleManageUsers}>
+              👥 Manage Users
+            </button>
+          )}
           <button className="btn-secondary btn-logout" onClick={handleLogout}>
             🚪 Log Out
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin Users View
+  if (viewMode === 'admin-users' && user?.role === 'admin') {
+    return (
+      <div className="profile-app">
+        <div className="auth-form-container">
+          <h2>👥 User Management</h2>
+          
+          {(error || localError) && (
+            <div className="auth-error">{localError || error}</div>
+          )}
+
+          {adminSuccess && (
+            <div className="auth-success">{adminSuccess}</div>
+          )}
+
+          {formSubmitting && !users.length ? (
+            <p>Loading users...</p>
+          ) : (
+            <div className="users-list">
+              {users.map(u => (
+                <div key={u.id} className="user-item">
+                  <div className="user-info">
+                    <strong>{u.name}</strong>
+                    <span className="user-email">{u.email}</span>
+                    <span className="user-meta">
+                      {u.role === 'admin' && '👑 '}
+                      {u.authProvider === 'local' ? '🔐 Local' : `☁️ ${u.authProvider}`}
+                    </span>
+                  </div>
+                  
+                  {u.authProvider === 'local' && (
+                    <div className="user-actions">
+                      {selectedUserId === u.id ? (
+                        <div className="password-reset-form">
+                          <input
+                            type="password"
+                            placeholder="New password (8+ chars)"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            disabled={formSubmitting}
+                            minLength={8}
+                          />
+                          <button
+                            className="btn-primary btn-sm"
+                            onClick={() => handleResetUserPassword(u.id)}
+                            disabled={formSubmitting || !newPassword || newPassword.length < 8}
+                          >
+                            {formSubmitting ? 'Resetting...' : 'Reset'}
+                          </button>
+                          <button
+                            className="btn-secondary btn-sm"
+                            onClick={() => {
+                              setSelectedUserId(null);
+                              setNewPassword('');
+                              setLocalError(null);
+                            }}
+                            disabled={formSubmitting}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          className="btn-secondary btn-sm"
+                          onClick={() => {
+                            setSelectedUserId(u.id);
+                            setNewPassword('');
+                            setLocalError(null);
+                            setAdminSuccess(null);
+                          }}
+                        >
+                          Reset Password
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="auth-switch">
+            <button className="btn-link" onClick={() => setViewMode('profile')}>
+              ← Back to Profile
+            </button>
+          </div>
         </div>
       </div>
     );

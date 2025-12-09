@@ -436,6 +436,103 @@ export async function getUserById(id: number): Promise<UserPayload | null> {
   };
 }
 
+// ============================================
+// Admin Functions
+// ============================================
+
+/**
+ * List all users (admin only)
+ */
+export async function listAllUsers(): Promise<UserPayload[]> {
+  try {
+    const allUsers = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        accountId: users.accountId,
+        authProvider: users.authProvider,
+        role: users.role,
+      })
+      .from(users)
+      .orderBy(users.name);
+
+    return allUsers.map(user => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      accountId: user.accountId ?? undefined,
+      authProvider: user.authProvider,
+      role: user.role,
+    }));
+  } catch (error) {
+    if (isDatabaseError(error)) {
+      console.error('Database error listing users:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error listing users:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
+}
+
+/**
+ * Reset a user's password (admin only)
+ * @param userId - The ID of the user whose password to reset
+ * @param newPassword - The new password
+ */
+export async function adminResetUserPassword(userId: number, newPassword: string): Promise<void> {
+  if (!newPassword || newPassword.length < 8) {
+    throw new AuthError('validation_error', 'Password must be at least 8 characters', 400);
+  }
+
+  try {
+    // Find user by ID
+    const foundUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (foundUsers.length === 0) {
+      throw new AuthError('not_found', 'User not found', 404);
+    }
+
+    const user = foundUsers[0];
+
+    // Check if this is a local auth user
+    if (user.authProvider !== 'local') {
+      throw new AuthError(
+        'invalid_operation',
+        `Cannot reset password for ${user.authProvider} users. They must use their SSO provider.`,
+        400
+      );
+    }
+
+    // Hash the new password
+    const passwordHash = await hashPassword(newPassword);
+
+    // Update user's password
+    await db
+      .update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    console.log(`[Admin] Password reset for user ${user.email} (ID: ${userId})`);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    if (isDatabaseError(error)) {
+      console.error('Database error during password reset:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error during password reset:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
+}
+
 /**
  * Google OAuth profile data
  */

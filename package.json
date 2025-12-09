@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w packages/shared -w packages/surveyor-engine -w packages/vision-engine && npm run build -w packages/api -w packages/assistant -w packages/pwa",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "api:dev": "npm run dev -w packages/api",

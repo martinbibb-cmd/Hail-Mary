@@ -245,7 +245,7 @@ export function getNextQuestion(
     score: scoreSlot(slot, currentTopic, recentTranscriptText),
   }));
 
-  scoredSlots.sort((a, b) => b.score - a.score);
+  scoredSlots.sort((a: { slot: SurveySlot; score: number }, b: { slot: SurveySlot; score: number }) => b.score - a.score);
 
   return scoredSlots[0].slot;
 }

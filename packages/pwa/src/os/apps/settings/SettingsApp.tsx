@@ -10,17 +10,19 @@
 import React, { useRef } from 'react';
 import { useAuth } from '../../../auth';
 import { useWallpaper, builtInWallpapers, Wallpaper } from '../../wallpaper';
+import { cognitiveProfiles, useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext';
 import './SettingsApp.css';
 
 export const SettingsApp: React.FC = () => {
   const { user, logout } = useAuth();
-  const { 
+  const {
     currentWallpaper, 
     customWallpapers, 
     setWallpaper, 
     addCustomWallpaper,
-    removeCustomWallpaper 
+    removeCustomWallpaper
   } = useWallpaper();
+  const { profile, settings, setProfile, updateSettings } = useCognitiveProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = async () => {
@@ -72,6 +74,72 @@ export const SettingsApp: React.FC = () => {
         <button className="settings-logout-btn" onClick={handleLogout}>
           🚪 Log Out
         </button>
+      </div>
+
+      <div className="settings-section">
+        <h3>Cognitive Profiles</h3>
+        <p className="settings-section-desc">
+          Adapt Hail-Mary for different neuro types by changing information density, fonts, and safety nets.
+        </p>
+
+        <div className="cognitive-profile-grid">
+          {cognitiveProfiles.map((option) => (
+            <label key={option.id} className={`cognitive-card ${profile === option.id ? 'active' : ''}`}>
+              <input
+                type="radio"
+                name="cognitive-profile"
+                value={option.id}
+                checked={profile === option.id}
+                onChange={() => setProfile(option.id)}
+              />
+              <div className="cognitive-card-body">
+                <div className="cognitive-card-heading">
+                  <p className="cognitive-card-title">{option.label}</p>
+                  <p className="cognitive-card-intent">{option.intent}</p>
+                </div>
+                <p className="cognitive-card-copy">{option.highlights}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        <div className="cognitive-toggle-grid">
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={settings.focusTimers}
+              onChange={(e) => updateSettings({ focusTimers: e.target.checked })}
+            />
+            <div>
+              <p className="toggle-title">Visual timers</p>
+              <p className="toggle-copy">Adds a Time Timer-style countdown bar in Focus mode.</p>
+            </div>
+          </label>
+
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={settings.bionicReading}
+              onChange={(e) => updateSettings({ bionicReading: e.target.checked })}
+            />
+            <div>
+              <p className="toggle-title">Bionic reading emphasis</p>
+              <p className="toggle-copy">Bold leading letters to help dyslexic readers scan faster.</p>
+            </div>
+          </label>
+
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={settings.calmSafeMode}
+              onChange={(e) => updateSettings({ calmSafeMode: e.target.checked })}
+            />
+            <div>
+              <p className="toggle-title">Safe-mode confirmations</p>
+              <p className="toggle-copy">Softens alerts and adds gentle affordances for anxious workflows.</p>
+            </div>
+          </label>
+        </div>
       </div>
 
       <div className="settings-section">

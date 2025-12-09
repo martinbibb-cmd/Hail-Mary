@@ -16,6 +16,7 @@ import { isGoogleAuthEnabled } from './config/passport';
 
 // Import routes
 import authRouter from './routes/auth';
+import adminRouter from './routes/admin';
 import customersRouter from './routes/customers';
 import productsRouter from './routes/products';
 import quotesRouter from './routes/quotes';
@@ -109,6 +110,7 @@ app.get('/health/db', async (_req, res) => {
 
 // API Routes
 app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/quotes', quotesRouter);
@@ -159,7 +161,7 @@ app.listen(PORT, HOST, () => {
   }
   console.log('');
   console.log('📊 API Endpoints:');
-  console.log(`   /api/customers, /api/products, /api/quotes`);
+  console.log(`   /api/admin, /api/customers, /api/products, /api/quotes`);
   console.log(`   /api/leads, /api/appointments, /api/visit-sessions`);
   console.log(`   /api/files, /api/transcription, /api/survey-helper`);
   console.log('');

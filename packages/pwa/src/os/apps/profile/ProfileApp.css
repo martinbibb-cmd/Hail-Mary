@@ -255,3 +255,92 @@
   font-size: 12px;
   margin-bottom: 24px;
 }
+
+/* Admin User Management Styles */
+.auth-success {
+  background: var(--success-soft, rgba(40, 167, 69, 0.1));
+  border: 1px solid rgba(40, 167, 69, 0.25);
+  color: var(--success, #28a745);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.user-item {
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-info strong {
+  font-size: 16px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+}
+
+.user-email {
+  font-size: 14px;
+  color: var(--text-secondary, rgba(60, 50, 40, 0.7));
+}
+
+.user-meta {
+  font-size: 12px;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
+}
+
+.user-actions {
+  margin-top: 8px;
+}
+
+.password-reset-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.password-reset-form input {
+  flex: 1;
+  min-width: 150px;
+  padding: 8px 12px;
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.25));
+  border-radius: 6px;
+  background: var(--surface-primary, #fffcf7);
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+  font-size: 14px;
+}
+
+.password-reset-form input:focus {
+  outline: none;
+  border-color: var(--accent, #6b8e23);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(107, 142, 35, 0.15));
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.profile-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

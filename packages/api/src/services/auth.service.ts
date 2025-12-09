@@ -49,6 +49,9 @@ export interface ResetPasswordDto {
 const JWT_SECRET_ENV = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '24h';
 
+// Password configuration
+const MIN_PASSWORD_LENGTH = 8;
+
 // Validate JWT_SECRET on module load (before any auth operations)
 if (!JWT_SECRET_ENV || JWT_SECRET_ENV === 'development-secret-change-in-production') {
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -172,8 +175,8 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
     throw new AuthError('validation_error', 'Name, email, and password are required', 400);
   }
 
-  if (dto.password.length < 8) {
-    throw new AuthError('validation_error', 'Password must be at least 8 characters', 400);
+  if (dto.password.length < MIN_PASSWORD_LENGTH) {
+    throw new AuthError('validation_error', `Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 400);
   }
 
   // Normalize email
@@ -368,8 +371,8 @@ export async function completePasswordReset(dto: ResetPasswordDto): Promise<bool
     throw new Error('Token and new password are required');
   }
 
-  if (dto.newPassword.length < 8) {
-    throw new Error('Password must be at least 8 characters');
+  if (dto.newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
 
   const now = new Date();
@@ -434,6 +437,103 @@ export async function getUserById(id: number): Promise<UserPayload | null> {
     authProvider: user.authProvider,
     role: user.role,
   };
+}
+
+// ============================================
+// Admin Functions
+// ============================================
+
+/**
+ * List all users (admin only)
+ */
+export async function listAllUsers(): Promise<UserPayload[]> {
+  try {
+    const allUsers = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        accountId: users.accountId,
+        authProvider: users.authProvider,
+        role: users.role,
+      })
+      .from(users)
+      .orderBy(users.name);
+
+    return allUsers.map(user => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      accountId: user.accountId ?? undefined,
+      authProvider: user.authProvider,
+      role: user.role,
+    }));
+  } catch (error) {
+    if (isDatabaseError(error)) {
+      console.error('Database error listing users:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error listing users:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
+}
+
+/**
+ * Reset a user's password (admin only)
+ * @param userId - The ID of the user whose password to reset
+ * @param newPassword - The new password
+ */
+export async function adminResetUserPassword(userId: number, newPassword: string): Promise<void> {
+  if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new AuthError('validation_error', `Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 400);
+  }
+
+  try {
+    // Find user by ID
+    const foundUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (foundUsers.length === 0) {
+      throw new AuthError('not_found', 'User not found', 404);
+    }
+
+    const user = foundUsers[0];
+
+    // Check if this is a local auth user
+    if (user.authProvider !== 'local') {
+      throw new AuthError(
+        'invalid_operation',
+        `Cannot reset password for ${user.authProvider} users. They must use their SSO provider.`,
+        400
+      );
+    }
+
+    // Hash the new password
+    const passwordHash = await hashPassword(newPassword);
+
+    // Update user's password
+    await db
+      .update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    console.log(`[Admin] Password reset for user ${user.email} (ID: ${userId})`);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    if (isDatabaseError(error)) {
+      console.error('Database error during password reset:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error during password reset:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
 }
 
 /**

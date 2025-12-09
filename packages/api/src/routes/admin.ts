@@ -52,7 +52,7 @@ router.post('/users/:userId/reset-password', async (req: Request, res: Response)
     const userId = parseInt(req.params.userId, 10);
     const { newPassword } = req.body;
 
-    if (!userId || isNaN(userId)) {
+    if (isNaN(userId) || userId <= 0) {
       return res.status(400).json({
         success: false,
         error: 'Valid user ID is required',

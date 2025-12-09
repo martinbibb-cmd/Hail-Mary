@@ -49,6 +49,9 @@ export interface ResetPasswordDto {
 const JWT_SECRET_ENV = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '24h';
 
+// Password configuration
+const MIN_PASSWORD_LENGTH = 8;
+
 // Validate JWT_SECRET on module load (before any auth operations)
 if (!JWT_SECRET_ENV || JWT_SECRET_ENV === 'development-secret-change-in-production') {
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -172,8 +175,8 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
     throw new AuthError('validation_error', 'Name, email, and password are required', 400);
   }
 
-  if (dto.password.length < 8) {
-    throw new AuthError('validation_error', 'Password must be at least 8 characters', 400);
+  if (dto.password.length < MIN_PASSWORD_LENGTH) {
+    throw new AuthError('validation_error', `Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 400);
   }
 
   // Normalize email
@@ -368,8 +371,8 @@ export async function completePasswordReset(dto: ResetPasswordDto): Promise<bool
     throw new Error('Token and new password are required');
   }
 
-  if (dto.newPassword.length < 8) {
-    throw new Error('Password must be at least 8 characters');
+  if (dto.newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
 
   const now = new Date();
@@ -481,8 +484,8 @@ export async function listAllUsers(): Promise<UserPayload[]> {
  * @param newPassword - The new password
  */
 export async function adminResetUserPassword(userId: number, newPassword: string): Promise<void> {
-  if (!newPassword || newPassword.length < 8) {
-    throw new AuthError('validation_error', 'Password must be at least 8 characters', 400);
+  if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new AuthError('validation_error', `Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 400);
   }
 
   try {

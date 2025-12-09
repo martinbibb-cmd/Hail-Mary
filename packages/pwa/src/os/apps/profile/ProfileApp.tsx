@@ -114,7 +114,10 @@ export const ProfileApp: React.FC = () => {
         credentials: 'include',
       });
       const data = await res.json();
-      if (data.success && data.data) {
+      
+      if (res.status === 401 || res.status === 403) {
+        setLocalError('Access denied. Admin privileges required.');
+      } else if (data.success && data.data) {
         setUsers(data.data);
       } else {
         setLocalError(data.error || 'Failed to load users');
@@ -146,8 +149,14 @@ export const ProfileApp: React.FC = () => {
       });
       const data = await res.json();
       
-      if (data.success) {
-        setAdminSuccess(`Password reset successfully for user ID ${userId}`);
+      if (res.status === 401 || res.status === 403) {
+        setLocalError('Access denied. Admin privileges required.');
+      } else if (res.status === 404) {
+        setLocalError('User not found.');
+      } else if (data.success) {
+        const user = users.find(u => u.id === userId);
+        const userName = user ? `${user.name} (${user.email})` : `user ID ${userId}`;
+        setAdminSuccess(`Password reset successfully for ${userName}`);
         setNewPassword('');
         setSelectedUserId(null);
       } else {

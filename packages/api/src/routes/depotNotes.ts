@@ -109,8 +109,10 @@ router.post('/sessions/:sessionId/structure', async (req: Request, res: Response
     let fallbackProvider: AIProviderConfig | undefined;
 
     if (grminiApiKey) {
+      // Note: GRMINI is assumed to use OpenAI-compatible API
+      // If GRMINI has different behavior, this may need adjustment
       primaryProvider = {
-        provider: 'openai', // GRMINI uses OpenAI-compatible API
+        provider: 'openai',
         model: 'gpt-4',
         apiKey: grminiApiKey,
         temperature: 0.3,
@@ -152,15 +154,8 @@ router.post('/sessions/:sessionId/structure', async (req: Request, res: Response
           maxTokens: 2000,
         };
       }
-    } else {
-      // Only Anthropic available
-      if (!anthropicApiKey) {
-        const response: ApiResponse<null> = {
-          success: false,
-          error: 'No valid AI provider API keys configured',
-        };
-        return res.status(500).json(response);
-      }
+    } else if (anthropicApiKey) {
+      // Only Anthropic available (validation already done above)
       primaryProvider = {
         provider: 'anthropic',
         model: 'claude-3-sonnet-20240229',
@@ -168,6 +163,13 @@ router.post('/sessions/:sessionId/structure', async (req: Request, res: Response
         temperature: 0.3,
         maxTokens: 2000,
       };
+    } else {
+      // This should never happen due to validation above, but added for type safety
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'No valid AI provider API keys configured',
+      };
+      return res.status(500).json(response);
     }
 
     // TODO: Fetch reference materials from product database

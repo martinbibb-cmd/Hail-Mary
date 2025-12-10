@@ -55,16 +55,16 @@ async function fetchKeysFromWorker(): Promise<WorkerKeysResponse> {
  * Get API keys from worker with caching
  */
 export async function getApiKeys(): Promise<WorkerKeysResponse> {
+  // If a fetch is already in progress, wait for it
+  if (fetchInProgress) {
+    return fetchInProgress;
+  }
+
   const now = Date.now();
   
   // Return cached keys if they're still valid
   if (cachedKeys && (now - lastFetchTime) < CACHE_DURATION_MS) {
     return cachedKeys;
-  }
-
-  // If a fetch is already in progress, wait for it
-  if (fetchInProgress) {
-    return fetchInProgress;
   }
 
   // Start a new fetch and store the promise

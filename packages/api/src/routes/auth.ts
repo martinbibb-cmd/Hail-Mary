@@ -252,7 +252,7 @@ router.get('/me', (req: Request, res: Response) => {
 
 /**
  * POST /api/auth/request-password-reset
- * Start password reset flow - sends reset email (or logs to console in dev)
+ * Start password reset flow - sends reset email
  */
 router.post('/request-password-reset', async (req: Request, res: Response) => {
   try {
@@ -265,16 +265,8 @@ router.post('/request-password-reset', async (req: Request, res: Response) => {
       });
     }
 
-    const resetToken = await startPasswordReset(email);
-
-    // Log the reset URL (in production, this would send an email)
-    if (resetToken) {
-      const resetUrl = `${getBaseUrl()}/reset-password?token=${resetToken}`;
-      console.log('\n=== PASSWORD RESET ===');
-      console.log(`Reset requested for: ${email}`);
-      console.log(`Reset URL: ${resetUrl}`);
-      console.log('======================\n');
-    }
+    // Send password reset email (or log to console if email service fails)
+    await startPasswordReset(email, getBaseUrl());
 
     // Always return success to not leak whether email exists
     return res.json({

@@ -15,6 +15,7 @@ import { users } from './db/drizzle-schema';
 import { isGoogleAuthEnabled } from './config/passport';
 import { setSttProvider } from './services/stt.service';
 import { WhisperSttProvider } from './services/whisperProvider.service';
+import { getOpenaiApiKey } from './services/workerKeys.service';
 
 // Import routes
 import authRouter from './routes/auth';
@@ -41,12 +42,35 @@ const HOST = process.env.HOST || '0.0.0.0';
 initializeDatabase();
 
 // Initialize STT provider based on environment configuration
-if (process.env.USE_WHISPER_STT === 'true' && process.env.OPENAI_API_KEY) {
-  console.log('🎙️  Using OpenAI Whisper for transcription');
-  setSttProvider(new WhisperSttProvider(process.env.OPENAI_API_KEY));
-} else {
-  console.log('🎙️  Using Mock STT provider (set USE_WHISPER_STT=true and OPENAI_API_KEY to enable Whisper)');
-}
+// Try to get OpenAI API key from worker, fallback to environment variable
+const initializeSttProvider = async () => {
+  if (process.env.USE_WHISPER_STT === 'true') {
+    try {
+      const openaiApiKey = await getOpenaiApiKey();
+      if (openaiApiKey) {
+        console.log('🎙️  Using OpenAI Whisper for transcription (key from worker)');
+        setSttProvider(new WhisperSttProvider(openaiApiKey));
+        return;
+      }
+    } catch (error) {
+      console.warn('⚠️  Failed to get OpenAI key from worker, trying environment variable');
+    }
+    
+    // Fallback to environment variable
+    if (process.env.OPENAI_API_KEY) {
+      console.log('🎙️  Using OpenAI Whisper for transcription (key from environment)');
+      setSttProvider(new WhisperSttProvider(process.env.OPENAI_API_KEY));
+      return;
+    }
+  }
+  
+  console.log('🎙️  Using Mock STT provider (set USE_WHISPER_STT=true and configure OPENAI_API_KEY to enable Whisper)');
+};
+
+// Initialize STT provider asynchronously
+initializeSttProvider().catch(error => {
+  console.error('Failed to initialize STT provider:', error);
+});
 
 // Rate limiting middleware
 const limiter = rateLimit({

@@ -219,7 +219,7 @@ async function main() {
         console.warn("INITIAL_ADMIN_PASSWORD must be at least 8 characters. Skipping admin user creation.");
       } else {
         const passwordHash = await hashPassword(initialAdminPassword);
-        
+
         const [insertedUser] = await db.insert(users).values({
           accountId,
           email: normalizedEmail,
@@ -228,31 +228,11 @@ async function main() {
           authProvider: "local",
           role: "admin",
         }).returning();
-        
+
         console.log(`✅ Created initial admin user: ${normalizedEmail} (id: ${insertedUser.id})`);
       }
     } else {
-      // User exists - reset password if this is a local auth user
-      if (existingUser.authProvider === "local") {
-        // Check password length
-        if (initialAdminPassword.length < 8) {
-          console.warn("INITIAL_ADMIN_PASSWORD must be at least 8 characters. Skipping password reset.");
-        } else {
-          const passwordHash = await hashPassword(initialAdminPassword);
-          
-          await db
-            .update(users)
-            .set({
-              passwordHash,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, existingUser.id));
-          
-          console.log(`✅ Reset password for admin user: ${normalizedEmail} (id: ${existingUser.id})`);
-        }
-      } else {
-        console.log(`Admin user already exists: ${normalizedEmail} (id: ${existingUser.id}), uses ${existingUser.authProvider} auth`);
-      }
+      console.log(`Admin user already exists: ${normalizedEmail} (id: ${existingUser.id}), no seed needed`);
     }
   } else {
     // Check if there are any users at all

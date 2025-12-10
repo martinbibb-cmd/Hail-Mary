@@ -37,7 +37,7 @@ async function sendEmailViaWorker(emailData: SendEmailRequest): Promise<boolean>
       return false;
     }
 
-    const result: SendEmailResponse = await response.json();
+    const result = (await response.json()) as SendEmailResponse;
     
     // Validate response structure
     if (typeof result !== 'object' || result === null || typeof result.success !== 'boolean') {

@@ -39,7 +39,7 @@ async function fetchKeysFromWorker(): Promise<WorkerKeysResponse> {
       throw new Error(`Worker responded with status ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as any;
     return {
       grminiApiKey: data.GRMINI_API_KEY,
       openaiApiKey: data.OPENAI_API_KEY,

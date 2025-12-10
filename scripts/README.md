@@ -97,6 +97,35 @@ Examples:
 **Prerequisites:**
 - User Scripts plugin installed from Community Applications
 
+### reinstall-hailmary.sh
+
+Reinstalls Hail-Mary on unRAID using the local build compose configuration.
+
+**What it does:**
+- Stops any existing Hail-Mary containers (both variants)
+- Ensures `.env` file exists (copies from `.env.example` if needed)
+- Displays key environment values for verification
+- Rebuilds and starts containers using `docker-compose.unraid-build.yml`
+- Shows status and connection information
+
+**Usage:**
+```bash
+# From the default unRAID location
+/mnt/user/appdata/hailmary/reinstall-hailmary.sh
+
+# Or from the repository scripts directory
+cd /mnt/user/appdata/hailmary
+./scripts/reinstall-hailmary.sh
+```
+
+**When to use:**
+- When pre-built images are unavailable or outdated
+- After making local code changes
+- When switching from pre-built to local build mode
+- To force a complete rebuild of all containers
+
+**Note:** This script uses the local build compose file which builds images from source instead of pulling from GitHub Container Registry.
+
 ### nas-deploy.sh
 
 Generic NAS deployment script for production use.

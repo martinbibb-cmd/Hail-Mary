@@ -25,7 +25,7 @@
 #   - Displays status and connection information
 # ==============================================================================
 
-set -euo pipefail
+set -e
 
 BASE_DIR="/mnt/user/appdata/hailmary"
 

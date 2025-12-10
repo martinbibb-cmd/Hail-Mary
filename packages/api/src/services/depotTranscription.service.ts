@@ -318,18 +318,27 @@ export function matchChecklistItems(transcript: string, materials: MaterialItem[
   for (const item of CHECKLIST_CONFIG.checklist_items) {
     let matched = false;
     
+    // Check if label keywords are mentioned
+    const labelKeywords = item.label.toLowerCase().split(' ');
+    const majorKeywords = labelKeywords.filter(k => k.length > 3); // Skip short words
+    if (majorKeywords.some(keyword => text.includes(keyword))) {
+      matched = true;
+    }
+    
     // Check if any associated materials are mentioned
-    for (const material of item.associated_materials) {
-      const aliases = CHECKLIST_CONFIG.material_aliases[material] || [material];
-      
-      for (const alias of aliases) {
-        if (text.includes(alias.toLowerCase())) {
-          matched = true;
-          break;
+    if (!matched) {
+      for (const material of item.associated_materials) {
+        const aliases = CHECKLIST_CONFIG.material_aliases[material] || [material];
+        
+        for (const alias of aliases) {
+          if (text.includes(alias.toLowerCase())) {
+            matched = true;
+            break;
+          }
         }
+        
+        if (matched) break;
       }
-      
-      if (matched) break;
     }
     
     // Also check against extracted materials

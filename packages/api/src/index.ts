@@ -13,6 +13,8 @@ import { initializeDatabase } from './db/schema';
 import { db } from './db/drizzle-client';
 import { users } from './db/drizzle-schema';
 import { isGoogleAuthEnabled } from './config/passport';
+import { setSttProvider } from './services/stt.service';
+import { WhisperSttProvider } from './services/whisperProvider.service';
 
 // Import routes
 import authRouter from './routes/auth';
@@ -25,6 +27,7 @@ import appointmentsRouter from './routes/appointments';
 import visitSessionsRouter from './routes/visitSessions';
 import filesRouter from './routes/files';
 import transcriptionRouter from './routes/transcription';
+import depotNotesRouter from './routes/depotNotes';
 import surveyHelperRouter from './routes/surveyHelper';
 
 // API version - kept in sync with package.json
@@ -36,6 +39,14 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 // Initialize database (PostgreSQL via Drizzle ORM)
 initializeDatabase();
+
+// Initialize STT provider based on environment configuration
+if (process.env.USE_WHISPER_STT === 'true' && process.env.OPENAI_API_KEY) {
+  console.log('🎙️  Using OpenAI Whisper for transcription');
+  setSttProvider(new WhisperSttProvider(process.env.OPENAI_API_KEY));
+} else {
+  console.log('🎙️  Using Mock STT provider (set USE_WHISPER_STT=true and OPENAI_API_KEY to enable Whisper)');
+}
 
 // Rate limiting middleware
 const limiter = rateLimit({
@@ -119,6 +130,7 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
 app.use('/api/files', filesRouter);
 app.use('/api/transcription', transcriptionRouter);
+app.use('/api/depot-notes', depotNotesRouter);
 app.use('/api/survey-helper', surveyHelperRouter);
 
 // 404 handler
@@ -163,7 +175,7 @@ app.listen(PORT, HOST, () => {
   console.log('📊 API Endpoints:');
   console.log(`   /api/admin, /api/customers, /api/products, /api/quotes`);
   console.log(`   /api/leads, /api/appointments, /api/visit-sessions`);
-  console.log(`   /api/files, /api/transcription, /api/survey-helper`);
+  console.log(`   /api/files, /api/transcription, /api/depot-notes, /api/survey-helper`);
   console.log('');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 });

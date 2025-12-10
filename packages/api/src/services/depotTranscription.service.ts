@@ -179,6 +179,25 @@ export function buildSchemaInfo(): string {
   return sections;
 }
 
+// ============================================
+// Transcription Sanity Check Configuration
+// ============================================
+
+const PIPE_SIZE_REPLACEMENTS: Array<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /(\d+)\s*mm/gi, replacement: '$1mm' }, // "15 mm" -> "15mm"
+  { pattern: /(\d+)\s*millimeter/gi, replacement: '$1mm' }, // "15 millimeter" -> "15mm"
+  { pattern: /fifteen\s*mm/gi, replacement: '15mm' },
+  { pattern: /twenty[- ]?two\s*mm/gi, replacement: '22mm' },
+  { pattern: /twenty[- ]?eight\s*mm/gi, replacement: '28mm' },
+];
+
+const COMMON_ERROR_FIXES: Array<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /monkey\s+mock/gi, replacement: 'monkey muck' },
+  { pattern: /TRB/g, replacement: 'TRV' },
+  { pattern: /tear[- ]?away\s+valve/gi, replacement: 'TRV' },
+  { pattern: /micro[- ]?bore/gi, replacement: 'microbore' },
+];
+
 /**
  * Apply transcription sanity checks
  * Normalizes pipe sizes and fixes common transcription errors
@@ -186,20 +205,15 @@ export function buildSchemaInfo(): string {
 export function applyTranscriptionSanityChecks(text: string): string {
   let result = text;
   
-  // Fix pipe size formats
-  result = result.replace(/(\d+)\s*mm/gi, '$1mm'); // "15 mm" -> "15mm"
-  result = result.replace(/(\d+)\s*millimeter/gi, '$1mm'); // "15 millimeter" -> "15mm"
-  result = result.replace(/fifteen\s*mm/gi, '15mm');
-  result = result.replace(/twenty[- ]?two\s*mm/gi, '22mm');
-  result = result.replace(/twenty[- ]?eight\s*mm/gi, '28mm');
+  // Apply pipe size replacements
+  for (const { pattern, replacement } of PIPE_SIZE_REPLACEMENTS) {
+    result = result.replace(pattern, replacement);
+  }
   
-  // Fix common transcription errors
-  result = result.replace(/monkey\s+mock/gi, 'monkey muck');
-  result = result.replace(/TRB/g, 'TRV');
-  result = result.replace(/tear[- ]?away\s+valve/gi, 'TRV');
-  
-  // Normalize microbore references
-  result = result.replace(/micro[- ]?bore/gi, 'microbore');
+  // Apply common error fixes
+  for (const { pattern, replacement } of COMMON_ERROR_FIXES) {
+    result = result.replace(pattern, replacement);
+  }
   
   return result;
 }

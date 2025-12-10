@@ -19,6 +19,43 @@ import {
 } from './depotTranscription.service';
 
 // ============================================
+// AI API Response Types
+// ============================================
+
+interface OpenAIMessage {
+  role: string;
+  content: string;
+}
+
+interface OpenAIChoice {
+  message: OpenAIMessage;
+  index: number;
+  finish_reason: string;
+}
+
+interface OpenAIResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: OpenAIChoice[];
+}
+
+interface AnthropicContentBlock {
+  type: string;
+  text: string;
+}
+
+interface AnthropicResponse {
+  id: string;
+  type: string;
+  role: string;
+  content: AnthropicContentBlock[];
+  model: string;
+  stop_reason: string;
+}
+
+// ============================================
 // OpenAI Integration
 // ============================================
 
@@ -53,7 +90,7 @@ export async function transcribeAudioWithWhisper(
       'Authorization': `Bearer ${apiKey}`,
       ...form.getHeaders(),
     },
-    body: form as any,
+    body: form,
   });
   
   if (!response.ok) {
@@ -128,7 +165,7 @@ Only include sections that have information. Use "Not discussed" if a required s
     throw new Error(`OpenAI API error: ${error}`);
   }
   
-  const data = await response.json() as any;
+  const data = await response.json() as OpenAIResponse;
   const content = data.choices[0]?.message?.content;
   
   if (!content) {
@@ -204,7 +241,7 @@ Only include sections that have information. Use "Not discussed" if a required s
     throw new Error(`Anthropic API error: ${error}`);
   }
   
-  const data = await response.json() as any;
+  const data = await response.json() as AnthropicResponse;
   const content = data.content[0]?.text;
   
   if (!content) {

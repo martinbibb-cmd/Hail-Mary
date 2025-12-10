@@ -10,12 +10,14 @@ import { aiProviderService } from './aiProvider.service';
 export class WhisperSttProvider implements SttProvider {
   name = 'whisper';
   private apiKey: string;
+  private defaultSegmentDuration: number;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, defaultSegmentDuration: number = 30) {
     if (!apiKey) {
       throw new Error('OpenAI API key is required for Whisper STT provider');
     }
     this.apiKey = apiKey;
+    this.defaultSegmentDuration = defaultSegmentDuration;
   }
 
   async transcribe(audioPath: string, language: string = 'en'): Promise<SttResult> {
@@ -34,7 +36,7 @@ export class WhisperSttProvider implements SttProvider {
         segments: [
           {
             startSeconds: 0,
-            endSeconds: 30, // Default duration, actual duration from chunk metadata
+            endSeconds: this.defaultSegmentDuration,
             text: transcriptText,
             confidence: 0.95,
           },

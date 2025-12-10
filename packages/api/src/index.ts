@@ -13,6 +13,8 @@ import { initializeDatabase } from './db/schema';
 import { db } from './db/drizzle-client';
 import { users } from './db/drizzle-schema';
 import { isGoogleAuthEnabled } from './config/passport';
+import { setSttProvider } from './services/stt.service';
+import { WhisperSttProvider } from './services/whisperProvider.service';
 
 // Import routes
 import authRouter from './routes/auth';
@@ -37,6 +39,14 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 // Initialize database (PostgreSQL via Drizzle ORM)
 initializeDatabase();
+
+// Initialize STT provider based on environment configuration
+if (process.env.USE_WHISPER_STT === 'true' && process.env.OPENAI_API_KEY) {
+  console.log('🎙️  Using OpenAI Whisper for transcription');
+  setSttProvider(new WhisperSttProvider(process.env.OPENAI_API_KEY));
+} else {
+  console.log('🎙️  Using Mock STT provider (set USE_WHISPER_STT=true and OPENAI_API_KEY to enable Whisper)');
+}
 
 // Rate limiting middleware
 const limiter = rateLimit({

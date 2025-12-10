@@ -15,6 +15,7 @@ import type {
 } from '@hail-mary/shared';
 import { aiProviderService } from '../services/aiProvider.service';
 import { depotTranscriptionService } from '../services/depotTranscription.service';
+import { getApiKeys } from '../services/workerKeys.service';
 
 const router = Router();
 
@@ -75,11 +76,26 @@ router.post('/sessions/:sessionId/structure', async (req: Request, res: Response
     // Combine all segments into full transcript
     const fullTranscript = segments.map(s => s.text).join(' ');
 
-    // Get AI provider configuration from environment
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    // Get AI provider API keys from worker (with fallback to environment variables)
+    let openaiApiKey: string | undefined;
+    let anthropicApiKey: string | undefined;
+    let grminiApiKey: string | undefined;
 
-    if (!openaiApiKey && !anthropicApiKey) {
+    try {
+      const workerKeys = await getApiKeys();
+      grminiApiKey = workerKeys.grminiApiKey;
+      openaiApiKey = workerKeys.openaiApiKey;
+      anthropicApiKey = workerKeys.anthropicApiKey;
+      console.log('✅ Successfully fetched API keys from worker');
+    } catch (error) {
+      console.warn('⚠️  Failed to fetch keys from worker, falling back to environment variables:', error);
+      // Fallback to environment variables
+      openaiApiKey = process.env.OPENAI_API_KEY;
+      anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    }
+
+    // Check if we have any AI provider keys (prioritize GRMINI, then OpenAI, then Anthropic)
+    if (!grminiApiKey && !openaiApiKey && !anthropicApiKey) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'No AI provider API keys configured',
@@ -87,33 +103,65 @@ router.post('/sessions/:sessionId/structure', async (req: Request, res: Response
       return res.status(500).json(response);
     }
 
-    // Configure primary and fallback providers
-    const primaryProvider: AIProviderConfig = openaiApiKey
-      ? {
+    // Configure primary and fallback providers based on available keys
+    // Priority order: GRMINI > OpenAI > Anthropic
+    let primaryProvider: AIProviderConfig;
+    let fallbackProvider: AIProviderConfig | undefined;
+
+    if (grminiApiKey) {
+      primaryProvider = {
+        provider: 'openai', // GRMINI uses OpenAI-compatible API
+        model: 'gpt-4',
+        apiKey: grminiApiKey,
+        temperature: 0.3,
+        maxTokens: 2000,
+      };
+      // Use OpenAI as fallback if available
+      if (openaiApiKey) {
+        fallbackProvider = {
           provider: 'openai',
           model: 'gpt-4',
           apiKey: openaiApiKey,
           temperature: 0.3,
           maxTokens: 2000,
-        }
-      : {
+        };
+      } else if (anthropicApiKey) {
+        fallbackProvider = {
           provider: 'anthropic',
           model: 'claude-3-sonnet-20240229',
-          apiKey: anthropicApiKey!,
+          apiKey: anthropicApiKey,
           temperature: 0.3,
           maxTokens: 2000,
         };
-
-    const fallbackProvider: AIProviderConfig | undefined =
-      openaiApiKey && anthropicApiKey
-        ? {
-            provider: 'anthropic',
-            model: 'claude-3-sonnet-20240229',
-            apiKey: anthropicApiKey,
-            temperature: 0.3,
-            maxTokens: 2000,
-          }
-        : undefined;
+      }
+    } else if (openaiApiKey) {
+      primaryProvider = {
+        provider: 'openai',
+        model: 'gpt-4',
+        apiKey: openaiApiKey,
+        temperature: 0.3,
+        maxTokens: 2000,
+      };
+      // Use Anthropic as fallback if available
+      if (anthropicApiKey) {
+        fallbackProvider = {
+          provider: 'anthropic',
+          model: 'claude-3-sonnet-20240229',
+          apiKey: anthropicApiKey,
+          temperature: 0.3,
+          maxTokens: 2000,
+        };
+      }
+    } else {
+      // Only Anthropic available
+      primaryProvider = {
+        provider: 'anthropic',
+        model: 'claude-3-sonnet-20240229',
+        apiKey: anthropicApiKey!,
+        temperature: 0.3,
+        maxTokens: 2000,
+      };
+    }
 
     // TODO: Fetch reference materials from product database
     // const referenceMaterials = await fetchReferenceMaterials();

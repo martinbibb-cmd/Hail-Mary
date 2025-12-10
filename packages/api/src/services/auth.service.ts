@@ -16,6 +16,7 @@ import crypto from 'crypto';
 import { db } from '../db/drizzle-client';
 import { users, passwordResetTokens, accounts } from '../db/drizzle-schema';
 import { eq, and, gt } from 'drizzle-orm';
+import { sendPasswordResetEmail } from './email.service';
 
 // Types
 export interface RegisterUserDto {
@@ -325,9 +326,12 @@ export function getCurrentUserFromToken(token: string): UserPayload | null {
 
 /**
  * Start a password reset flow for an email address
- * Returns the reset token (in production this would be sent via email)
+ * Sends a password reset email with a secure link
+ * @param email - The email address to send the reset link to
+ * @param baseUrl - The base URL for constructing the reset link
+ * @returns Promise<boolean> - Always returns true to not reveal if email exists
  */
-export async function startPasswordReset(email: string): Promise<string | null> {
+export async function startPasswordReset(email: string, baseUrl: string): Promise<boolean> {
   const normalizedEmail = email.toLowerCase().trim();
 
   // Find user by email
@@ -338,15 +342,15 @@ export async function startPasswordReset(email: string): Promise<string | null> 
 
   // Don't reveal if email exists or not (security)
   if (foundUsers.length === 0) {
-    // Return null but don't indicate email doesn't exist
-    return null;
+    // Return true but don't send email
+    return true;
   }
 
   const user = foundUsers[0];
 
   // Only allow password reset for local auth users
   if (user.authProvider !== 'local') {
-    return null;
+    return true;
   }
 
   // Generate reset token
@@ -360,7 +364,31 @@ export async function startPasswordReset(email: string): Promise<string | null> 
     expiresAt,
   });
 
-  return resetToken;
+  // Construct reset URL
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+
+  // Send password reset email
+  try {
+    const emailSent = await sendPasswordResetEmail(normalizedEmail, resetUrl);
+    if (!emailSent) {
+      console.error('Failed to send password reset email, falling back to console log');
+      // Fallback: log to console if email sending fails
+      console.log('\n=== PASSWORD RESET ===');
+      console.log(`Reset requested for: ${normalizedEmail}`);
+      console.log(`Reset URL: ${resetUrl}`);
+      console.log('======================\n');
+    }
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    // Fallback: log to console
+    console.log('\n=== PASSWORD RESET (FALLBACK) ===');
+    console.log(`Reset requested for: ${normalizedEmail}`);
+    console.log(`Reset URL: ${resetUrl}`);
+    console.log('==================================\n');
+  }
+
+  // Always return true to not reveal if email exists
+  return true;
 }
 
 /**

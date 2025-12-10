@@ -1,0 +1,116 @@
+{
+  "sections": [
+    {
+      "key": "customer_summary",
+      "name": "Customer Summary",
+      "description": "Brief overview of customer needs and key points from the conversation",
+      "order": 1,
+      "required": true
+    },
+    {
+      "key": "existing_system",
+      "name": "Existing System",
+      "description": "Current heating system details including boiler type, age, and condition",
+      "order": 2,
+      "required": true
+    },
+    {
+      "key": "property_details",
+      "name": "Property Details",
+      "description": "Property type, size, construction details, and insulation",
+      "order": 3,
+      "required": true
+    },
+    {
+      "key": "radiators_emitters",
+      "name": "Radiators & Emitters",
+      "description": "Details of existing radiators, underfloor heating, and heat emitters",
+      "order": 4,
+      "required": false
+    },
+    {
+      "key": "pipework",
+      "name": "Pipework",
+      "description": "Pipe sizes, materials, routing, and condition",
+      "order": 5,
+      "required": true
+    },
+    {
+      "key": "flue_ventilation",
+      "name": "Flue & Ventilation",
+      "description": "Flue type, routing, ventilation requirements",
+      "order": 6,
+      "required": true
+    },
+    {
+      "key": "hot_water",
+      "name": "Hot Water",
+      "description": "Hot water cylinder details, capacity, and configuration",
+      "order": 7,
+      "required": false
+    },
+    {
+      "key": "controls",
+      "name": "Controls",
+      "description": "Current controls, thermostats, and smart heating systems",
+      "order": 8,
+      "required": false
+    },
+    {
+      "key": "electrical",
+      "name": "Electrical",
+      "description": "Electrical supply, consumer unit, earth bonding, and capacity",
+      "order": 9,
+      "required": true
+    },
+    {
+      "key": "gas_supply",
+      "name": "Gas Supply",
+      "description": "Gas meter location, pipe size, and supply details",
+      "order": 10,
+      "required": false
+    },
+    {
+      "key": "water_supply",
+      "name": "Water Supply",
+      "description": "Mains water pressure, supply pipe, and stop cock details",
+      "order": 11,
+      "required": false
+    },
+    {
+      "key": "location_access",
+      "name": "Location & Access",
+      "description": "Proposed boiler location, access for installation, and constraints",
+      "order": 12,
+      "required": true
+    },
+    {
+      "key": "materials_parts",
+      "name": "Materials & Parts",
+      "description": "List of materials, parts, and components required for the job",
+      "order": 13,
+      "required": false
+    },
+    {
+      "key": "hazards_risks",
+      "name": "Hazards & Risks",
+      "description": "Safety concerns, asbestos, accessibility issues, and risk assessments",
+      "order": 14,
+      "required": true
+    },
+    {
+      "key": "customer_requests",
+      "name": "Customer Requests",
+      "description": "Specific customer requirements, preferences, and special requests",
+      "order": 15,
+      "required": false
+    },
+    {
+      "key": "follow_up_actions",
+      "name": "Follow-up Actions",
+      "description": "Actions required before quoting or installing",
+      "order": 16,
+      "required": false
+    }
+  ]
+}

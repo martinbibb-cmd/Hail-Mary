@@ -765,3 +765,94 @@ export interface UpdateSystemSpecDraftDto {
   path: string;
   value: unknown;
 }
+
+// ============================================
+// Depot Notes / Structured Transcription Types
+// ============================================
+
+export interface DepotSection {
+  key: string;
+  name: string;
+  description: string;
+  order: number;
+  required: boolean;
+}
+
+export interface DepotSectionSchema {
+  sections: DepotSection[];
+}
+
+export interface DepotNotes {
+  customer_summary?: string;
+  existing_system?: string;
+  property_details?: string;
+  radiators_emitters?: string;
+  pipework?: string;
+  flue_ventilation?: string;
+  hot_water?: string;
+  controls?: string;
+  electrical?: string;
+  gas_supply?: string;
+  water_supply?: string;
+  location_access?: string;
+  materials_parts?: string;
+  hazards_risks?: string;
+  customer_requests?: string;
+  follow_up_actions?: string;
+  [key: string]: string | undefined;
+}
+
+export interface MaterialItem {
+  name: string;
+  quantity?: number;
+  notes?: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  category: string;
+  associated_materials: string[];
+}
+
+export interface ChecklistConfig {
+  checklist_items: ChecklistItem[];
+  material_aliases: Record<string, string[]>;
+}
+
+export interface MissingInfoItem {
+  section: string;
+  question: string;
+  priority: 'critical' | 'important' | 'nice_to_have';
+}
+
+export interface StructuredTranscriptResult {
+  depotNotes: DepotNotes;
+  materials: MaterialItem[];
+  missingInfo: MissingInfoItem[];
+  checklist: string[];
+  confidence: number;
+}
+
+export interface TranscriptionSanityChecks {
+  pipeSizes: boolean;
+  commonErrors: boolean;
+}
+
+// AI Provider Types for Transcription
+export type AIProvider = 'openai' | 'anthropic';
+
+export interface AIProviderConfig {
+  provider: AIProvider;
+  model: string;
+  apiKey: string;
+  maxTokens?: number;
+  temperature?: number;
+}
+
+export interface TranscriptionConfig {
+  whisperApiKey: string;
+  primaryAIProvider: AIProviderConfig;
+  fallbackAIProvider?: AIProviderConfig;
+  enableSanityChecks: boolean;
+}

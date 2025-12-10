@@ -1,0 +1,116 @@
+{
+  "checklist_items": [
+    {
+      "id": "boiler_replacement",
+      "label": "Boiler Replacement",
+      "category": "primary_work",
+      "associated_materials": [
+        "boiler",
+        "flue_kit",
+        "condensate_pipe",
+        "filling_loop"
+      ]
+    },
+    {
+      "id": "system_flush",
+      "label": "System Flush/Cleanse",
+      "category": "system_work",
+      "associated_materials": [
+        "inhibitor",
+        "cleaner",
+        "filter"
+      ]
+    },
+    {
+      "id": "pipework_modification",
+      "label": "Pipework Modifications",
+      "category": "system_work",
+      "associated_materials": [
+        "copper_pipe_15mm",
+        "copper_pipe_22mm",
+        "fittings",
+        "isolation_valves"
+      ]
+    },
+    {
+      "id": "radiator_upgrade",
+      "label": "Radiator Upgrade/Addition",
+      "category": "emitters",
+      "associated_materials": [
+        "radiator",
+        "trv",
+        "radiator_valves"
+      ]
+    },
+    {
+      "id": "cylinder_replacement",
+      "label": "Hot Water Cylinder Replacement",
+      "category": "hot_water",
+      "associated_materials": [
+        "cylinder",
+        "immersion_heater",
+        "cylinder_thermostat",
+        "tundish"
+      ]
+    },
+    {
+      "id": "controls_upgrade",
+      "label": "Controls Upgrade",
+      "category": "controls",
+      "associated_materials": [
+        "programmer",
+        "room_thermostat",
+        "wireless_receiver"
+      ]
+    },
+    {
+      "id": "gas_work",
+      "label": "Gas Supply Work",
+      "category": "services",
+      "associated_materials": [
+        "gas_pipe_22mm",
+        "gas_pipe_28mm",
+        "gas_isolation_valve",
+        "regulator"
+      ]
+    },
+    {
+      "id": "electrical_work",
+      "label": "Electrical Work",
+      "category": "services",
+      "associated_materials": [
+        "fused_spur",
+        "cable",
+        "earth_bonding"
+      ]
+    },
+    {
+      "id": "flue_modification",
+      "label": "Flue Modifications",
+      "category": "ventilation",
+      "associated_materials": [
+        "flue_kit",
+        "plume_kit",
+        "flue_brackets"
+      ]
+    },
+    {
+      "id": "filter_installation",
+      "label": "Magnetic Filter Installation",
+      "category": "system_work",
+      "associated_materials": [
+        "magnetic_filter"
+      ]
+    }
+  ],
+  "material_aliases": {
+    "boiler": ["combi", "system boiler", "regular boiler", "back boiler"],
+    "radiator": ["rad", "rads", "radiators"],
+    "trv": ["thermostatic valve", "TRV", "trv valve"],
+    "copper_pipe_15mm": ["15mm pipe", "half inch pipe"],
+    "copper_pipe_22mm": ["22mm pipe", "three quarter pipe"],
+    "microbore": ["8mm", "10mm", "micro bore"],
+    "inhibitor": ["fernox", "sentinel", "system inhibitor"],
+    "magnetic_filter": ["magnaclean", "filter", "system filter"]
+  }
+}

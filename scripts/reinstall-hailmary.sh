@@ -66,7 +66,10 @@ echo ""
 echo "✅ Hail Mary containers rebuilt and started."
 echo "   → Check status with: docker compose -f docker-compose.unraid-build.yml ps"
 echo "   → API logs:         docker logs hailmary-api --tail 100"
-echo "   → Web UI:           http://main.cloudbibb.uk:8080"
+
+# Get PWA_PORT from .env or use default
+PWA_PORT=$(grep '^PWA_PORT=' .env 2>/dev/null | cut -d'=' -f2 || echo "8080")
+echo "   → Web UI:           http://$(hostname -I | awk '{print $1}'):${PWA_PORT}"
 echo ""
 echo "Default admin (if not changed in .env):"
 echo "   Email:    admin@hailmary.local"

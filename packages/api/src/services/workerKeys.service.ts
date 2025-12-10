@@ -20,6 +20,7 @@ interface WorkerKeysResponse {
 
 let cachedKeys: WorkerKeysResponse | null = null;
 let lastFetchTime = 0;
+let fetchInProgress: Promise<WorkerKeysResponse> | null = null;
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
@@ -61,12 +62,25 @@ export async function getApiKeys(): Promise<WorkerKeysResponse> {
     return cachedKeys;
   }
 
-  // Fetch fresh keys
-  const keys = await fetchKeysFromWorker();
-  cachedKeys = keys;
-  lastFetchTime = now;
-  
-  return keys;
+  // If a fetch is already in progress, wait for it
+  if (fetchInProgress) {
+    return fetchInProgress;
+  }
+
+  // Start a new fetch and store the promise
+  fetchInProgress = fetchKeysFromWorker()
+    .then(keys => {
+      cachedKeys = keys;
+      lastFetchTime = Date.now();
+      fetchInProgress = null;
+      return keys;
+    })
+    .catch(error => {
+      fetchInProgress = null;
+      throw error;
+    });
+
+  return fetchInProgress;
 }
 
 /**
@@ -99,4 +113,5 @@ export async function getAnthropicApiKey(): Promise<string | undefined> {
 export function clearKeyCache(): void {
   cachedKeys = null;
   lastFetchTime = 0;
+  fetchInProgress = null;
 }

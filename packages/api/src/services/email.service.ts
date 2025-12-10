@@ -38,6 +38,13 @@ async function sendEmailViaWorker(emailData: SendEmailRequest): Promise<boolean>
     }
 
     const result: SendEmailResponse = await response.json();
+    
+    // Validate response structure
+    if (typeof result !== 'object' || result === null || typeof result.success !== 'boolean') {
+      console.error('Invalid response from worker email service:', result);
+      return false;
+    }
+    
     return result.success;
   } catch (error) {
     console.error('Failed to send email via worker:', error);

@@ -154,10 +154,17 @@ router.post('/sessions/:sessionId/structure', async (req: Request, res: Response
       }
     } else {
       // Only Anthropic available
+      if (!anthropicApiKey) {
+        const response: ApiResponse<null> = {
+          success: false,
+          error: 'No valid AI provider API keys configured',
+        };
+        return res.status(500).json(response);
+      }
       primaryProvider = {
         provider: 'anthropic',
         model: 'claude-3-sonnet-20240229',
-        apiKey: anthropicApiKey!,
+        apiKey: anthropicApiKey,
         temperature: 0.3,
         maxTokens: 2000,
       };

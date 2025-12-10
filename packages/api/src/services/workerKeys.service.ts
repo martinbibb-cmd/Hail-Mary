@@ -18,6 +18,12 @@ interface WorkerKeysResponse {
   anthropicApiKey?: string;
 }
 
+interface WorkerRawResponse {
+  GRMINI_API_KEY?: string;
+  OPENAI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+}
+
 let cachedKeys: WorkerKeysResponse | null = null;
 let lastFetchTime = 0;
 let fetchInProgress: Promise<WorkerKeysResponse> | null = null;
@@ -39,7 +45,7 @@ async function fetchKeysFromWorker(): Promise<WorkerKeysResponse> {
       throw new Error(`Worker responded with status ${response.status}`);
     }
 
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as WorkerRawResponse;
     return {
       grminiApiKey: data.GRMINI_API_KEY,
       openaiApiKey: data.OPENAI_API_KEY,

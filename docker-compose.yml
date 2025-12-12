@@ -16,7 +16,7 @@ services:
     networks:
       - hailmary-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hailmary} -d ${POSTGRES_DB:-hailmary}"]
+      test: ["CMD-SHELL", "pg_isready -U hailmary -d hailmary"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -46,6 +46,8 @@ const statusLabels: Record<string, string> = {
 export const LeadsApp: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [leads, setLeads] = useState<Lead[]>([])
+  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([])
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -71,6 +73,14 @@ export const LeadsApp: React.FC = () => {
   useEffect(() => {
     loadLeads()
   }, [])
+
+  useEffect(() => {
+    if (statusFilter === 'all') {
+      setFilteredLeads(leads)
+    } else {
+      setFilteredLeads(leads.filter(lead => lead.status === statusFilter))
+    }
+  }, [leads, statusFilter])
 
   const loadLeads = async () => {
     try {
@@ -370,11 +380,28 @@ export const LeadsApp: React.FC = () => {
         </button>
       </div>
 
+      <div className="leads-filter-bar">
+        <label>Filter by status:</label>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="all">All Leads ({leads.length})</option>
+          <option value="new">New ({leads.filter(l => l.status === 'new').length})</option>
+          <option value="contacted">Contacted ({leads.filter(l => l.status === 'contacted').length})</option>
+          <option value="qualified">Qualified ({leads.filter(l => l.status === 'qualified').length})</option>
+          <option value="quoted">Quoted ({leads.filter(l => l.status === 'quoted').length})</option>
+          <option value="won">Active Customers ({leads.filter(l => l.status === 'won').length})</option>
+          <option value="lost">Lost ({leads.filter(l => l.status === 'lost').length})</option>
+        </select>
+      </div>
+
       <div className="leads-list">
-        {leads.length === 0 ? (
-          <p className="leads-empty">No leads yet. Create your first lead!</p>
+        {filteredLeads.length === 0 ? (
+          <p className="leads-empty">
+            {statusFilter === 'all'
+              ? 'No leads yet. Create your first lead!'
+              : `No ${statusFilter === 'won' ? 'active customers' : statusFilter} leads found.`}
+          </p>
         ) : (
-          leads.map(lead => (
+          filteredLeads.map(lead => (
             <button
               key={lead.id}
               className="lead-item"

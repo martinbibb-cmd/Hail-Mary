@@ -4,7 +4,7 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db/drizzle-client';
-import { quotes, quoteLines, customers } from '../db/drizzle-schema';
+import { quotes, quoteLines, leads } from '../db/drizzle-schema';
 import { eq, desc, count, and } from 'drizzle-orm';
 import type { Quote, QuoteLine, CreateQuoteDto, UpdateQuoteDto, ApiResponse, PaginatedResponse } from '@hail-mary/shared';
 
@@ -50,8 +50,7 @@ function mapRowToQuote(row: typeof quotes.$inferSelect, lines: QuoteLine[] = [])
   return {
     id: String(row.id),
     quoteNumber: generateQuoteNumber(), // Generate since not stored in DB
-    customerId: String(row.customerId),
-    leadId: row.leadId ? String(row.leadId) : undefined,
+    leadId: String(row.leadId),
     status: row.status as Quote['status'],
     title: row.title || '',
     description: undefined, // Not in postgres schema
@@ -75,12 +74,12 @@ router.get('/', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
     const status = req.query.status as string;
-    const customerId = req.query.customerId as string;
+    const leadId = req.query.leadId as string;
 
     // Build conditions
     const conditions = [];
     if (status) conditions.push(eq(quotes.status, status));
-    if (customerId) conditions.push(eq(quotes.customerId, parseInt(customerId)));
+    if (leadId) conditions.push(eq(quotes.leadId, parseInt(leadId)));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 

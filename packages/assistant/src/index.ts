@@ -18,6 +18,10 @@ const app = express();
 const PORT = Number(process.env.ASSISTANT_PORT) || 3002;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Trust proxy - required when running behind nginx/Docker/Cloudflare
+// This must be set before rate-limit middleware to prevent ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+app.set('trust proxy', 1);
+
 // Rate limiting middleware
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

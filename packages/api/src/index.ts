@@ -38,6 +38,10 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Trust proxy - required when running behind nginx/Docker/Cloudflare
+// This must be set before rate-limit middleware to prevent ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+app.set('trust proxy', 1);
+
 // Initialize database (PostgreSQL via Drizzle ORM)
 initializeDatabase();
 

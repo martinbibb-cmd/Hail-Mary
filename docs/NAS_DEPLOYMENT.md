@@ -2,6 +2,12 @@
 
 This guide explains how to deploy Hail-Mary to a NAS (Network Attached Storage) device using Docker and keep it automatically synced with GitHub.
 
+> **🚀 Quick Start:** Already installed? Enable auto-updates with one command:
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/enable-autoupdate.sh | bash
+> ```
+> **[Complete Auto-Update Guide →](./ENABLE-AUTO-UPDATES.md)**
+
 ## Overview
 
 The deployment architecture uses:

@@ -1,5 +1,17 @@
 name: Build and Push Docker Images
 
+# This workflow builds Docker images and pushes them to GitHub Container Registry (GHCR)
+# Images are automatically pulled by NAS deployments for auto-updates
+#
+# Triggers:
+# - Automatic: Push to main or staging branches (builds only changed services)
+# - Manual: workflow_dispatch with optional force rebuild (builds all services)
+#
+# Images are tagged with:
+# - latest (for main branch)
+# - <branch-name> (for any branch)
+# - <commit-sha> (for every commit)
+
 on:
   push:
     branches:
@@ -8,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       force_rebuild:
-        description: 'Force rebuild all services'
+        description: 'Force rebuild all services (ignores change detection)'
         required: false
         default: 'false'
         type: boolean
@@ -96,6 +108,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Image published
+        run: |
+          echo "### 🚀 API Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "Image: \`ghcr.io/${{ env.IMAGE_PREFIX }}-api:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Your NAS will automatically pull this update within 5 minutes (if auto-update is enabled)." >> $GITHUB_STEP_SUMMARY
+
   build-pwa:
     needs: detect-changes
     if: needs.detect-changes.outputs.pwa == 'true' || github.event.inputs.force_rebuild == 'true'
@@ -138,6 +157,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Image published
+        run: |
+          echo "### 🚀 PWA Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "Image: \`ghcr.io/${{ env.IMAGE_PREFIX }}-pwa:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Your NAS will automatically pull this update within 5 minutes (if auto-update is enabled)." >> $GITHUB_STEP_SUMMARY
+
   build-assistant:
     needs: detect-changes
     if: needs.detect-changes.outputs.assistant == 'true' || github.event.inputs.force_rebuild == 'true'
@@ -179,3 +205,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Image published
+        run: |
+          echo "### 🚀 Assistant Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "Image: \`ghcr.io/${{ env.IMAGE_PREFIX }}-assistant:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Your NAS will automatically pull this update within 5 minutes (if auto-update is enabled)." >> $GITHUB_STEP_SUMMARY

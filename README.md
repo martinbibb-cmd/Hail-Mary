@@ -254,6 +254,14 @@ wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/script
 
 Database persists to `/mnt/user/appdata/hailmary/postgres` on your NAS array.
 
+**Enable automatic updates** (pulls new versions when you push to GitHub):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/enable-autoupdate.sh | bash
+```
+
+This sets up a cron job that checks for updates every 5 minutes. **[Auto-Update Guide →](docs/ENABLE-AUTO-UPDATES.md)**
+
 ### Quick Start: Railway (Managed Cloud)
 
 ```bash

@@ -35,6 +35,7 @@ import surveyHelperRouter from './routes/surveyHelper';
 const API_VERSION = '0.2.0';
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 

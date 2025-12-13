@@ -1,309 +1,134 @@
-# Hail-Mary Deployment Scripts
+# 🛠️ Hail-Mary Scripts
 
-This directory contains scripts for deploying and managing Hail-Mary on various platforms.
+Quick reference for managing your Hail-Mary stack.
 
-## unRAID Installation & Auto-Update
+## Quick Commands (Using Makefile)
 
-### Quick Install (Recommended)
+The easiest way to manage your stack:
 
 ```bash
-wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash
+make help          # Show all available commands
+make up            # Start the stack
+make down          # Stop the stack
+make restart       # Restart the stack
+make logs          # View logs
+make update        # Pull latest code + rebuild + restart
+make migrate       # Run database migrations
 ```
 
-Or if you've already cloned the repository:
+## Update Scripts
+
+### 1️⃣ Quick Update (No Rebuild)
+**Use when:** Only code changed, no new dependencies
 
 ```bash
-cd /mnt/user/appdata/hailmary
-./scripts/install-unraid.sh
+./scripts/quick-update.sh
 ```
 
-**Options:**
-- `--auto-update` - Enable automatic updates via User Scripts
-- `--port <number>` - Set custom port (default: 8080)
+What it does:
+- ✅ Pulls latest code
+- ✅ Restarts services
+- ⚡ Fast (2-5 seconds)
 
-### Setup Automatic Updates
-
-After installation, enable automatic updates:
+### 2️⃣ Full Update (With Rebuild)
+**Use when:** Dependencies changed, Dockerfile modified, or you see errors
 
 ```bash
-cd /mnt/user/appdata/hailmary
-./scripts/setup-unraid-autoupdate.sh
+./scripts/full-update.sh
 ```
 
-**Customize update frequency:**
+What it does:
+- ✅ Pulls latest code
+- ✅ Installs dependencies
+- ✅ Rebuilds containers
+- ✅ Restarts stack
+- 🐢 Slower (2-5 minutes)
 
+### 3️⃣ Standard Update (Original)
 ```bash
-# Every 15 minutes
-./scripts/setup-unraid-autoupdate.sh --interval "*/15 * * * *"
-
-# Every hour (default)
-./scripts/setup-unraid-autoupdate.sh --interval "0 * * * *"
-
-# Every 6 hours
-./scripts/setup-unraid-autoupdate.sh --interval "0 */6 * * *"
-
-# Daily at 2 AM
-./scripts/setup-unraid-autoupdate.sh --interval "0 2 * * *"
+./scripts/update-and-restart.sh
 ```
 
-## Script Reference
+## Manual Commands
 
-### install-unraid.sh
+If you prefer manual control:
 
-Full automated installation for unRAID servers.
-
-**What it does:**
-- Checks prerequisites (Docker, Git, etc.)
-- Clones repository to `/mnt/user/appdata/hailmary`
-- Creates `.env` file with secure defaults
-- Pulls Docker images from GitHub Container Registry
-- Starts all containers
-- Optionally sets up automatic updates
-
-**Usage:**
 ```bash
-./scripts/install-unraid.sh [options]
+# Pull latest code
+git pull
 
-Options:
-  --auto-update    Enable automatic updates
-  --port <number>  Set PWA port (default: 8080)
-  --help           Show help message
-```
+# Install dependencies
+npm install
 
-### setup-unraid-autoupdate.sh
+# Restart stack (quick)
+docker-compose restart
 
-Configures automatic updates using the unRAID User Scripts plugin.
+# Rebuild and restart (full)
+docker-compose down
+docker-compose build
+docker-compose up -d
 
-**What it does:**
-- Creates a User Script that runs on a schedule
-- Pulls latest repository changes
-- Checks for new Docker images
-- Restarts containers if updates found
-- Sends unRAID notifications on updates
-- Cleans up old Docker images
-
-**Usage:**
-```bash
-./scripts/setup-unraid-autoupdate.sh [--interval "cron_schedule"]
-
-Examples:
-  # Hourly updates
-  ./scripts/setup-unraid-autoupdate.sh --interval "0 * * * *"
-
-  # Every 15 minutes
-  ./scripts/setup-unraid-autoupdate.sh --interval "*/15 * * * *"
-```
-
-**Prerequisites:**
-- User Scripts plugin installed from Community Applications
-
-### reinstall-hailmary.sh
-
-Reinstalls Hail-Mary on unRAID using the local build compose configuration.
-
-**What it does:**
-- Stops any existing Hail-Mary containers (both variants)
-- Ensures `.env` file exists (copies from `.env.example` if needed)
-- Displays key environment values for verification
-- Rebuilds and starts containers using `docker-compose.unraid-build.yml`
-- Shows status and connection information
-
-**Usage:**
-```bash
-# From the default unRAID location
-/mnt/user/appdata/hailmary/reinstall-hailmary.sh
-
-# Or from the repository scripts directory
-cd /mnt/user/appdata/hailmary
-./scripts/reinstall-hailmary.sh
-```
-
-**When to use:**
-- When pre-built images are unavailable or outdated
-- After making local code changes
-- When switching from pre-built to local build mode
-- To force a complete rebuild of all containers
-
-**Note:** This script uses the local build compose file which builds images from source instead of pulling from GitHub Container Registry.
-
-### nas-deploy.sh
-
-Generic NAS deployment script for production use.
-
-**What it does:**
-- Auto-detects unRAID (checks for `/mnt/user`)
-- Pulls latest Docker images
-- Restarts containers with new images
-- Performs health checks
-- Cleans up old images
-
-**Usage:**
-```bash
-./scripts/nas-deploy.sh [options]
-
-Options:
-  --registry-login    Login to GitHub Container Registry
-  --force-recreate    Force recreate all containers
-  --service <name>    Deploy only specific service (api, pwa, assistant)
-  --help              Show help message
-```
-
-**Auto-detection:**
-- On unRAID: Uses `/mnt/user/appdata/hailmary` and `docker-compose.unraid.yml`
-- Other systems: Uses `/opt/hail-mary` and `docker-compose.prod.yml`
-
-### setup-cron.sh
-
-Sets up cron-based automatic updates (for non-unRAID Linux systems).
-
-**What it does:**
-- Creates a cron job that periodically checks for updates
-- Pulls new Docker images
-- Restarts containers if images changed
-- Logs all activity to `/var/log/hail-mary-updates.log`
-
-**Usage:**
-```bash
-./scripts/setup-cron.sh [interval_minutes]
-
-# Check every 5 minutes (default)
-./scripts/setup-cron.sh
-
-# Check every 30 minutes
-./scripts/setup-cron.sh 30
-
-# Check every hour
-./scripts/setup-cron.sh 60
-```
-
-**Note:** For unRAID, use `setup-unraid-autoupdate.sh` instead.
-
-### setup-webhook.sh
-
-Sets up a webhook listener for instant updates on GitHub push events.
-
-**What it does:**
-- Creates a Node.js webhook server
-- Listens for GitHub webhook events
-- Triggers deployment when code is pushed
-- Verifies webhook signatures for security
-
-**Usage:**
-```bash
-./scripts/setup-webhook.sh
-```
-
-**Prerequisites:**
-- Node.js installed
-- Set `WEBHOOK_SECRET` environment variable
-- Configure GitHub webhook to point to your server
-
-**Note:** This is advanced setup. Most users should use the cron or User Scripts approach instead.
-
-## Deployment Workflow
-
-### For unRAID Users
-
-1. **Install:**
-   ```bash
-   wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash
-   ```
-
-2. **Enable auto-updates:**
-   ```bash
-   cd /mnt/user/appdata/hailmary
-   ./scripts/setup-unraid-autoupdate.sh
-   ```
-
-3. **Done!** Your system will automatically update when you push changes to GitHub.
-
-### For Other Linux/NAS Systems
-
-1. **Clone repository:**
-   ```bash
-   git clone https://github.com/martinbibb-cmd/Hail-Mary.git /opt/hail-mary
-   cd /opt/hail-mary
-   ```
-
-2. **Deploy:**
-   ```bash
-   ./scripts/nas-deploy.sh
-   ```
-
-3. **Enable auto-updates:**
-   ```bash
-   ./scripts/setup-cron.sh 60  # Check hourly
-   ```
-
-## Environment Variables
-
-All scripts respect these environment variables:
-
-| Variable | Description | Default (unRAID) | Default (Other) |
-|----------|-------------|------------------|-----------------|
-| `DEPLOY_DIR` | Installation directory | `/mnt/user/appdata/hailmary` | `/opt/hail-mary` |
-| `COMPOSE_FILE` | Docker Compose file | `docker-compose.unraid.yml` | `docker-compose.prod.yml` |
-| `PWA_PORT` | External port for PWA | `8080` | `3000` |
-| `JWT_SECRET` | JWT authentication secret | (auto-generated) | (auto-generated) |
-
-## Troubleshooting
-
-### "Docker not found"
-Install Docker from unRAID's Docker settings or install Docker Engine on Linux.
-
-### "Docker Compose not found"
-- **unRAID:** Install "Docker Compose Manager" from Community Applications
-- **Linux:** Run `apt install docker-compose` or install Docker Compose v2
-
-### "Git not found"
-- **unRAID:** Install "Nerd Tools" plugin from Community Applications
-- **Linux:** Run `apt install git`
-
-### "User Scripts plugin not found"
-Only needed for unRAID auto-updates. Install "User Scripts" from Community Applications.
-
-### Updates not running
-1. Check User Scripts in Settings > User Scripts
-2. View logs by clicking the script name
-3. Manually run to test: Click "Run Script"
-
-### Containers won't start
-```bash
-# Check logs
-docker logs hailmary-pwa
-docker logs hailmary-api
+# View logs
+docker-compose logs -f
 
 # Check status
-docker ps -a
-
-# Restart
-cd /mnt/user/appdata/hailmary
-docker compose -f docker-compose.unraid.yml restart
+docker-compose ps
 ```
 
-## Advanced Usage
+## Common Workflows
 
-### Deploy specific service only
+### After Merging a PR
 ```bash
-./scripts/nas-deploy.sh --service api
-./scripts/nas-deploy.sh --service pwa
-./scripts/nas-deploy.sh --service assistant
+make update        # Pull + rebuild + restart
+make migrate       # Apply database changes
+make logs          # Check for errors
 ```
 
-### Force recreate containers
+### Quick Code Changes
 ```bash
-./scripts/nas-deploy.sh --force-recreate
+./scripts/quick-update.sh
 ```
 
-### Use with private registry
+### Major Updates (Dependencies, Docker)
 ```bash
-export GITHUB_TOKEN="your_github_token"
-export GITHUB_USER="your_username"
-./scripts/nas-deploy.sh --registry-login
+./scripts/full-update.sh
 ```
 
-## Support
+### Database Migrations
+```bash
+make migrate       # Run migrations
+make seed          # Seed data (optional)
+```
 
-- **Documentation:** See `docs/DEPLOYMENT-unRAID.md` for detailed unRAID guide
-- **Issues:** https://github.com/martinbibb-cmd/Hail-Mary/issues
-- **Logs:** Check `/var/log/hail-mary-*.log` for deployment logs
+### Troubleshooting
+```bash
+make logs          # View all logs
+make restart       # Restart everything
+make clean         # Remove containers + volumes
+make reset         # Full reset (deletes data!)
+```
+
+## Service URLs
+
+After running `make up`:
+
+- **PWA (Frontend):** http://localhost:3000
+- **API:** http://localhost:3001 (internal)
+- **Assistant:** http://localhost:3002 (internal)
+- **Database:** localhost:5432 (internal)
+
+## Tips
+
+💡 **Bookmark these commands:**
+- `make help` - Show all commands
+- `make logs` - Debug issues
+- `make update` - Get latest changes
+
+⚠️ **Before running `make reset`:**
+- Backup your data!
+- This deletes ALL database data
+
+🎯 **Best practices:**
+- Use `quick-update.sh` for code-only changes
+- Use `full-update.sh` when dependencies change
+- Always run `make migrate` after pulling database changes

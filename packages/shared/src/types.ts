@@ -15,21 +15,8 @@ export interface BaseEntity {
 }
 
 // ============================================
-// Customer & Lead Types
+// Lead Types (Single Source of Truth)
 // ============================================
-
-export interface Customer {
-  id: number;
-  accountId?: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: Address;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 export interface Address {
   line1: string;
@@ -41,16 +28,27 @@ export interface Address {
 
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'quoted' | 'won' | 'lost';
 
+// Lead is the single source of truth - combines lead tracking with customer contact info
 export interface Lead extends BaseEntity {
-  customerId?: string | number;
-  customer?: Customer;
-  source: string;
+  accountId?: number;
+  // Contact information
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  address?: Address;
+  // Lead information
+  source?: string;
   status: LeadStatus;
-  description: string;
+  description?: string;
   propertyType?: string;
   estimatedValue?: number;
   notes?: string;
 }
+
+// Legacy alias for backwards compatibility (deprecated - use Lead instead)
+// @deprecated Use Lead type instead - Customer is now a state of Lead (status='won')
+export type Customer = Lead;
 
 // ============================================
 // Product Types
@@ -98,9 +96,7 @@ export type QuoteStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' 
 
 export interface Quote extends BaseEntity {
   quoteNumber: string;
-  customerId: string | number;
-  customer?: Customer;
-  leadId?: string | number;
+  leadId: string | number;
   lead?: Lead;
   status: QuoteStatus;
   title: string;
@@ -134,8 +130,8 @@ export type AppointmentType = 'survey' | 'installation' | 'service' | 'followup'
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'rescheduled';
 
 export interface Appointment extends BaseEntity {
-  customerId: string | number;
-  customer?: Customer;
+  leadId: string | number;
+  lead?: Lead;
   quoteId?: string | number;
   quote?: Quote;
   type: AppointmentType;
@@ -154,8 +150,8 @@ export interface Appointment extends BaseEntity {
 export interface Survey extends BaseEntity {
   appointmentId: string | number;
   appointment?: Appointment;
-  customerId: string | number;
-  customer?: Customer;
+  leadId: string | number;
+  lead?: Lead;
   propertyType: string;
   numberOfBedrooms?: number;
   heatingType?: string;
@@ -185,7 +181,7 @@ export interface Document extends BaseEntity {
   type: DocumentType;
   name: string;
   url: string;
-  customerId?: string | number;
+  leadId?: string | number;
   quoteId?: string | number;
   mimeType: string;
   size: number;
@@ -217,22 +213,25 @@ export interface PaginatedResponse<T> {
 // Create/Update DTOs
 // ============================================
 
-export type CreateCustomerDto = Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>;
-export type UpdateCustomerDto = Partial<CreateCustomerDto>;
-
-export type CreateLeadDto = Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'customer'>;
+export type CreateLeadDto = Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>;
 export type UpdateLeadDto = Partial<CreateLeadDto>;
+
+// Legacy aliases for backwards compatibility
+// @deprecated Use CreateLeadDto instead
+export type CreateCustomerDto = CreateLeadDto;
+// @deprecated Use UpdateLeadDto instead
+export type UpdateCustomerDto = UpdateLeadDto;
 
 export type CreateProductDto = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
 export type UpdateProductDto = Partial<CreateProductDto>;
 
-export type CreateQuoteDto = Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'customer' | 'lead' | 'quoteNumber' | 'subtotal' | 'vatAmount' | 'total'>;
+export type CreateQuoteDto = Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'lead' | 'quoteNumber' | 'subtotal' | 'vatAmount' | 'total'>;
 export type UpdateQuoteDto = Partial<CreateQuoteDto>;
 
-export type CreateAppointmentDto = Omit<Appointment, 'id' | 'createdAt' | 'updatedAt' | 'customer' | 'quote'>;
+export type CreateAppointmentDto = Omit<Appointment, 'id' | 'createdAt' | 'updatedAt' | 'lead' | 'quote'>;
 export type UpdateAppointmentDto = Partial<CreateAppointmentDto>;
 
-export type CreateSurveyDto = Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'customer' | 'appointment'>;
+export type CreateSurveyDto = Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'lead' | 'appointment'>;
 export type UpdateSurveyDto = Partial<CreateSurveyDto>;
 
 // ============================================
@@ -244,8 +243,8 @@ export type VisitSessionStatus = 'in_progress' | 'completed' | 'cancelled';
 export interface VisitSession {
   id: number;
   accountId: number;
-  customerId: number;
-  customer?: Customer;
+  leadId: number;
+  lead?: Lead;
   startedAt: Date;
   endedAt?: Date;
   status: VisitSessionStatus;
@@ -256,7 +255,7 @@ export type MediaType = 'photo' | 'video' | 'measurement' | 'other';
 export interface MediaAttachment {
   id: number;
   visitSessionId: number;
-  customerId: number;
+  leadId: number;
   type: MediaType;
   url: string;
   description?: string;
@@ -305,8 +304,8 @@ export interface SurveyInstance {
   template?: SurveyTemplate;
   visitSessionId: number;
   visitSession?: VisitSession;
-  customerId: number;
-  customer?: Customer;
+  leadId: number;
+  lead?: Lead;
   status: SurveyInstanceStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -327,7 +326,7 @@ export interface SurveyAnswer {
 export interface VisitObservation {
   id: number;
   visitSessionId: number;
-  customerId: number;
+  leadId: number;
   text: string;
   createdAt: Date;
 }
@@ -338,7 +337,7 @@ export interface VisitObservation {
 
 export interface CreateVisitSessionDto {
   accountId: number;
-  customerId: number;
+  leadId: number;
 }
 
 export interface UpdateVisitSessionDto {
@@ -352,7 +351,7 @@ export interface UpdateVisitSessionDto {
 
 export interface AssistantMessageRequest {
   sessionId: number;
-  customerId: number;
+  leadId: number;
   text: string;
 }
 
@@ -428,7 +427,6 @@ export type TranscriptSessionStatus = 'recording' | 'processing' | 'completed' |
 export interface TranscriptSession {
   id: number;
   leadId?: number;
-  customerId?: number;
   createdAt: Date;
   updatedAt: Date;
   status: TranscriptSessionStatus;
@@ -471,7 +469,6 @@ export interface TranscriptSegment {
 // Transcription DTOs
 export interface CreateTranscriptSessionDto {
   leadId?: number;
-  customerId?: number;
   language?: string;
   notes?: string;
 }

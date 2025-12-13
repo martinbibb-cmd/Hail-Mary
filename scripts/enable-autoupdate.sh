@@ -124,44 +124,67 @@ log() {
 
 cd "$DEPLOY_DIR" || exit 1
 
-# Get current image IDs
-get_image_id() {
+# Get current running container image ID
+get_container_image_id() {
     docker inspect --format='{{.Image}}' "hailmary-$1" 2>/dev/null || echo "none"
 }
 
-api_old=$(get_image_id api)
-pwa_old=$(get_image_id pwa)
-assistant_old=$(get_image_id assistant)
+# Get image ID from compose config (what would be used if we deploy)
+get_compose_image_id() {
+    local image_name
+    image_name=$(docker-compose -f "$COMPOSE_FILE" config | grep -A5 "hailmary-$1:" | grep "image:" | awk '{print $2}')
+    if [[ -n "$image_name" ]]; then
+        docker image inspect --format='{{.Id}}' "$image_name" 2>/dev/null || echo "none"
+    else
+        echo "none"
+    fi
+}
 
-# Pull latest images (quietly)
-if docker-compose -f "$COMPOSE_FILE" pull --quiet 2>&1 | grep -q "Downloaded newer image"; then
-    log "New images detected - pulling updates..."
+# Store current running image IDs
+api_old=$(get_container_image_id api)
+pwa_old=$(get_container_image_id pwa)
+assistant_old=$(get_container_image_id assistant)
+
+# Pull latest images and capture output
+pull_output=$(docker-compose -f "$COMPOSE_FILE" pull 2>&1)
+
+# Check if any new images were downloaded
+if echo "$pull_output" | grep -q "Downloaded\|Pulling\|Pull complete"; then
+    log "Updates detected, checking what changed..."
     
-    # Get new image IDs
-    api_new=$(get_image_id api)
-    pwa_new=$(get_image_id pwa)
-    assistant_new=$(get_image_id assistant)
+    # Get new image IDs from what was pulled
+    api_new=$(get_compose_image_id api)
+    pwa_new=$(get_compose_image_id pwa)
+    assistant_new=$(get_compose_image_id assistant)
     
     # Check what changed
-    if [[ "$api_old" != "$api_new" ]]; then
+    updates_found=false
+    if [[ "$api_old" != "$api_new" ]] && [[ "$api_new" != "none" ]]; then
         log "  → API service updated"
+        updates_found=true
     fi
-    if [[ "$pwa_old" != "$pwa_new" ]]; then
+    if [[ "$pwa_old" != "$pwa_new" ]] && [[ "$pwa_new" != "none" ]]; then
         log "  → PWA service updated"
+        updates_found=true
     fi
-    if [[ "$assistant_old" != "$assistant_new" ]]; then
+    if [[ "$assistant_old" != "$assistant_new" ]] && [[ "$assistant_new" != "none" ]]; then
         log "  → Assistant service updated"
+        updates_found=true
     fi
     
-    # Restart with new images
-    log "Restarting containers..."
-    if docker-compose -f "$COMPOSE_FILE" up -d --remove-orphans 2>&1 | tee -a "$LOG_FILE"; then
-        log "✓ Update completed successfully"
-        
-        # Cleanup old images
-        docker image prune -f &> /dev/null
+    if [[ "$updates_found" == "true" ]]; then
+        # Restart with new images
+        log "Restarting containers with new images..."
+        if docker-compose -f "$COMPOSE_FILE" up -d --remove-orphans 2>&1 | tee -a "$LOG_FILE"; then
+            log "✓ Update completed successfully"
+            
+            # Cleanup old images
+            docker image prune -f &> /dev/null
+        else
+            log "✗ Update failed - check logs"
+        fi
     else
-        log "✗ Update failed - check logs"
+        log "Images pulled but no version changes detected"
     fi
 else
     log "No updates available"

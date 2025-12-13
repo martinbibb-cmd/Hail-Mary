@@ -60,12 +60,13 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
     .notNull(),
 });
 
-// Customers (households / people you quote for)
-export const customers = pgTable("customers", {
+// Leads (single source of truth - combines lead tracking with customer contact info)
+export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
   accountId: integer("account_id")
     .references(() => accounts.id)
     .notNull(),
+  // Contact information
   firstName: varchar("first_name", { length: 255 }).notNull(),
   lastName: varchar("last_name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }),
@@ -75,26 +76,17 @@ export const customers = pgTable("customers", {
   city: varchar("city", { length: 255 }),
   postcode: varchar("postcode", { length: 20 }),
   country: varchar("country", { length: 100 }).default("UK"),
+  // Lead information
+  source: varchar("source", { length: 100 }), // e.g. "web", "phone", "referral", "existing_customer"
+  status: varchar("status", { length: 50 }).default("new").notNull(), // new, contacted, qualified, quoted, won, lost
+  description: text("description"),
+  propertyType: varchar("property_type", { length: 100 }),
+  estimatedValue: numeric("estimated_value", { precision: 10, scale: 2 }),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
-// Leads (raw inbound interest)
-export const leads = pgTable("leads", {
-  id: serial("id").primaryKey(),
-  accountId: integer("account_id")
-    .references(() => accounts.id)
-    .notNull(),
-  customerId: integer("customer_id").references(() => customers.id),
-  source: varchar("source", { length: 100 }), // e.g. "web", "phone", "referral"
-  status: varchar("status", { length: 50 }).default("new").notNull(), // new, contacted, qualified, closed
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -121,10 +113,9 @@ export const quotes = pgTable("quotes", {
   accountId: integer("account_id")
     .references(() => accounts.id)
     .notNull(),
-  customerId: integer("customer_id")
-    .references(() => customers.id)
+  leadId: integer("lead_id")
+    .references(() => leads.id)
     .notNull(),
-  leadId: integer("lead_id").references(() => leads.id),
   status: varchar("status", { length: 50 }).default("draft").notNull(), // draft, sent, accepted, rejected, expired
   title: varchar("title", { length: 255 }),
   validUntil: timestamp("valid_until", { withTimezone: true }),
@@ -155,8 +146,8 @@ export const appointments = pgTable("appointments", {
   accountId: integer("account_id")
     .references(() => accounts.id)
     .notNull(),
-  customerId: integer("customer_id")
-    .references(() => customers.id)
+  leadId: integer("lead_id")
+    .references(() => leads.id)
     .notNull(),
   quoteId: integer("quote_id").references(() => quotes.id),
   type: varchar("type", { length: 50 }).notNull(), // survey, installation, follow-up
@@ -182,14 +173,14 @@ export const appointments = pgTable("appointments", {
 // Visit & Survey Tables (for voice-first workflow)
 // ============================================
 
-// Visit sessions - tracks a single site visit for a customer
+// Visit sessions - tracks a single site visit for a lead
 export const visitSessions = pgTable("visit_sessions", {
   id: serial("id").primaryKey(),
   accountId: integer("account_id")
     .references(() => accounts.id)
     .notNull(),
-  customerId: integer("customer_id")
-    .references(() => customers.id)
+  leadId: integer("lead_id")
+    .references(() => leads.id)
     .notNull(),
   startedAt: timestamp("started_at", { withTimezone: true })
     .defaultNow()
@@ -204,8 +195,8 @@ export const mediaAttachments = pgTable("media_attachments", {
   visitSessionId: integer("visit_session_id")
     .references(() => visitSessions.id)
     .notNull(),
-  customerId: integer("customer_id")
-    .references(() => customers.id)
+  leadId: integer("lead_id")
+    .references(() => leads.id)
     .notNull(),
   type: varchar("type", { length: 50 }).notNull(), // photo, video, measurement, other
   url: text("url").notNull(),
@@ -241,8 +232,8 @@ export const surveyInstances = pgTable("survey_instances", {
   visitSessionId: integer("visit_session_id")
     .references(() => visitSessions.id)
     .notNull(),
-  customerId: integer("customer_id")
-    .references(() => customers.id)
+  leadId: integer("lead_id")
+    .references(() => leads.id)
     .notNull(),
   status: varchar("status", { length: 50 }).default("in_progress").notNull(), // in_progress, complete
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -274,8 +265,8 @@ export const visitObservations = pgTable("visit_observations", {
   visitSessionId: integer("visit_session_id")
     .references(() => visitSessions.id)
     .notNull(),
-  customerId: integer("customer_id")
-    .references(() => customers.id)
+  leadId: integer("lead_id")
+    .references(() => leads.id)
     .notNull(),
   text: text("text").notNull(), // raw observation from STT
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -291,7 +282,6 @@ export const visitObservations = pgTable("visit_observations", {
 export const transcriptSessions = pgTable("transcript_sessions", {
   id: serial("id").primaryKey(),
   leadId: integer("lead_id").references(() => leads.id),
-  customerId: integer("customer_id").references(() => customers.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

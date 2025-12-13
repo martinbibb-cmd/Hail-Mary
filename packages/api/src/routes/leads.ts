@@ -14,15 +14,26 @@ const router = Router();
 function mapRowToLead(row: typeof leads.$inferSelect): Lead {
   return {
     id: String(row.id),
-    customerId: row.customerId ? String(row.customerId) : undefined,
-    source: row.source || '',
+    accountId: row.accountId,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email || undefined,
+    phone: row.phone || undefined,
+    address: {
+      line1: row.addressLine1 || '',
+      line2: row.addressLine2 || undefined,
+      city: row.city || '',
+      postcode: row.postcode || '',
+      country: row.country || 'UK',
+    },
+    source: row.source || undefined,
     status: row.status as Lead['status'],
-    description: '', // Not in postgres schema, kept for API compatibility
-    propertyType: undefined, // Not in postgres schema
-    estimatedValue: undefined, // Not in postgres schema
+    description: row.description || undefined,
+    propertyType: row.propertyType || undefined,
+    estimatedValue: row.estimatedValue ? Number(row.estimatedValue) : undefined,
     notes: row.notes || undefined,
     createdAt: row.createdAt,
-    updatedAt: row.createdAt, // Use createdAt since updatedAt not in postgres schema
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -124,9 +135,20 @@ router.post('/', async (req: Request, res: Response) => {
       .insert(leads)
       .values({
         accountId: 1, // TODO: Get from auth context
-        customerId: dto.customerId ? (typeof dto.customerId === 'number' ? dto.customerId : parseInt(dto.customerId)) : null,
-        source: dto.source,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email || null,
+        phone: dto.phone || null,
+        addressLine1: dto.address?.line1 || null,
+        addressLine2: dto.address?.line2 || null,
+        city: dto.address?.city || null,
+        postcode: dto.address?.postcode || null,
+        country: dto.address?.country || 'UK',
+        source: dto.source || null,
         status: dto.status || 'new',
+        description: dto.description || null,
+        propertyType: dto.propertyType || null,
+        estimatedValue: dto.estimatedValue || null,
         notes: dto.notes || null,
       })
       .returning();
@@ -176,18 +198,24 @@ router.put('/:id', async (req: Request, res: Response) => {
     const dto: UpdateLeadDto = req.body;
 
     // Build update object with only provided fields
-    const updateData: Partial<{
-      customerId: number | null;
-      source: string | null;
-      status: string;
-      notes: string | null;
-    }> = {};
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
 
-    if (dto.customerId !== undefined) {
-      updateData.customerId = dto.customerId ? (typeof dto.customerId === 'number' ? dto.customerId : parseInt(dto.customerId)) : null;
-    }
-    if (dto.source !== undefined) updateData.source = dto.source;
+    if (dto.firstName !== undefined) updateData.firstName = dto.firstName;
+    if (dto.lastName !== undefined) updateData.lastName = dto.lastName;
+    if (dto.email !== undefined) updateData.email = dto.email || null;
+    if (dto.phone !== undefined) updateData.phone = dto.phone || null;
+    if (dto.address?.line1 !== undefined) updateData.addressLine1 = dto.address.line1 || null;
+    if (dto.address?.line2 !== undefined) updateData.addressLine2 = dto.address.line2 || null;
+    if (dto.address?.city !== undefined) updateData.city = dto.address.city || null;
+    if (dto.address?.postcode !== undefined) updateData.postcode = dto.address.postcode || null;
+    if (dto.address?.country !== undefined) updateData.country = dto.address.country || null;
+    if (dto.source !== undefined) updateData.source = dto.source || null;
     if (dto.status !== undefined) updateData.status = dto.status;
+    if (dto.description !== undefined) updateData.description = dto.description || null;
+    if (dto.propertyType !== undefined) updateData.propertyType = dto.propertyType || null;
+    if (dto.estimatedValue !== undefined) updateData.estimatedValue = dto.estimatedValue || null;
     if (dto.notes !== undefined) updateData.notes = dto.notes || null;
 
     const [updated] = await db

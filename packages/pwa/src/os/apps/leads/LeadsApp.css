@@ -27,6 +27,43 @@
   color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
+/* Filter Bar */
+.leads-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.08));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.leads-filter-bar label {
+  font-size: 12px;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.leads-filter-bar select {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--surface-primary, #fffcf7);
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.2));
+  border-radius: 6px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.leads-filter-bar select:focus {
+  outline: none;
+  border-color: var(--accent, #6b8e23);
+  box-shadow: 0 0 0 2px var(--accent-soft, rgba(107, 142, 35, 0.15));
+}
+
 /* Lead List */
 .leads-list {
   flex: 1;
@@ -84,8 +121,11 @@
   color: var(--text-muted, rgba(60, 50, 40, 0.6));
 }
 
-.lead-property {
+.lead-property,
+.lead-description,
+.lead-location {
   color: var(--accent, #6b8e23) !important;
+  font-weight: 500;
 }
 
 .lead-arrow {
@@ -205,6 +245,12 @@
 .form-row textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+.form-row-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .leads-message {

@@ -1,0 +1,165 @@
+/**
+ * About App Styles
+ * Clean, readable layout for the Atlas by PHM About page
+ */
+
+.about-app {
+  height: 100%;
+  overflow-y: auto;
+  padding: 2rem;
+  background: var(--surface-primary, #ffffff);
+}
+
+.about-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--window-border, #e5e5e5);
+}
+
+.about-header h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--text-primary, #1d1d1f);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.about-tagline {
+  font-size: 1.125rem;
+  color: var(--text-muted, #6e6e73);
+  font-weight: 400;
+  margin: 0;
+}
+
+.about-content {
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.about-section {
+  margin-bottom: 2.5rem;
+}
+
+.about-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary, #1d1d1f);
+  margin: 0 0 1rem 0;
+  letter-spacing: -0.01em;
+}
+
+.about-section h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary, #1d1d1f);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.01em;
+}
+
+.about-section p {
+  color: var(--text-primary, #1d1d1f);
+  font-size: 1rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.6;
+}
+
+.about-intro {
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: 1.7;
+}
+
+.principle {
+  margin-bottom: 2rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--accent, #007aff);
+}
+
+.principle h3 {
+  margin-top: 0;
+}
+
+.principle p {
+  color: var(--text-primary, #1d1d1f);
+  margin-bottom: 0;
+}
+
+.tech-list,
+.audience-list,
+.values-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 1rem 0 1.5rem 0;
+}
+
+.tech-list li,
+.audience-list li,
+.values-list li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary, #1d1d1f);
+  line-height: 1.6;
+}
+
+.tech-list li::before,
+.audience-list li::before,
+.values-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--accent, #007aff);
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.about-closing {
+  font-style: italic;
+  color: var(--text-muted, #6e6e73);
+}
+
+.about-footer {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--window-border, #e5e5e5);
+  text-align: center;
+}
+
+.about-motto {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #1d1d1f);
+  margin: 0 0 0.5rem 0;
+}
+
+.about-motto-tagline {
+  font-size: 0.9375rem;
+  color: var(--text-muted, #6e6e73);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .about-app {
+    padding: 1.5rem;
+  }
+
+  .about-header h1 {
+    font-size: 2rem;
+  }
+
+  .about-tagline {
+    font-size: 1rem;
+  }
+
+  .about-section h2 {
+    font-size: 1.25rem;
+  }
+
+  .about-content {
+    max-width: 100%;
+  }
+}

@@ -23,6 +23,7 @@ const dockApps: DockApp[] = [
   { id: 'leads', name: 'Leads', icon: '🧲' },
   { id: 'assistant', name: 'Assistant', icon: '🧠' },
   { id: 'browser', name: 'Browser', icon: '🌐' },
+  { id: 'about', name: 'About', icon: 'ℹ️' },
   // Settings must always remain last (far right)
   { id: 'settings', name: 'Settings', icon: '⚙️' },
 ]

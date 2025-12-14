@@ -4,13 +4,28 @@
 
 **Q: "This is installed on my NAS can we push updates?"**
 
-**A: YES! ✅** Run this one command on your NAS:
+**A: YES! ✅** You have two options:
+
+### Option 1: Automatic Updates (Recommended)
+Run this one command on your NAS:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/enable-autoupdate.sh | bash
 ```
 
 That's it! Your NAS will now automatically receive updates when you push code to GitHub.
+
+### Option 2: Manual Web Interface (NEW! ⭐)
+For admin users, you can now manage updates directly from the web interface:
+
+1. Login at `http://nas.cloudbibb.uk/login`
+2. Open your profile and click "🖥️ NAS Management"
+3. Use the buttons to:
+   - Check for updates
+   - Deploy updates
+   - Run database migrations
+
+See [NAS Admin Management Guide](./docs/NAS-ADMIN-MANAGEMENT.md) for detailed instructions.
 
 ---
 

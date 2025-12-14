@@ -13,6 +13,7 @@ import { QuoteApp } from '../apps/quote/QuoteApp'
 import { SettingsApp } from '../apps/settings/SettingsApp'
 import { FilesApp } from '../apps/files/FilesApp'
 import { BrowserApp } from '../apps/browser/BrowserApp'
+import { AboutApp } from '../apps/about/AboutApp'
 // Mini app modules
 import { 
   PropertyApp, 
@@ -36,6 +37,7 @@ const appComponents: Record<string, React.FC> = {
   photos: PhotosApp,
   survey: SurveyApp,
   quote: QuoteApp,
+  about: AboutApp,
   settings: SettingsApp,
   files: FilesApp,
   browser: BrowserApp,

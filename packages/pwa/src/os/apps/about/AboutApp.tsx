@@ -140,5 +140,3 @@ export const AboutApp: React.FC = () => {
     </div>
   );
 };
-
-export default AboutApp;

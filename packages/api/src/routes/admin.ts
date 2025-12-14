@@ -4,11 +4,25 @@
  * Handles administrative endpoints (requires admin role):
  * - GET /api/admin/users - List all users
  * - POST /api/admin/users/:userId/reset-password - Reset a user's password
+ * - GET /api/admin/nas/status - Get NAS deployment status
+ * - POST /api/admin/nas/check-updates - Check for Docker image updates
+ * - POST /api/admin/nas/pull-updates - Pull latest Docker images
+ * - POST /api/admin/nas/migrate - Run database migrations
  */
 
 import { Router, Request, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { listAllUsers, adminResetUserPassword, AuthError } from '../services/auth.service';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+const execAsync = promisify(exec);
+
+// NAS deployment configuration
+const DEPLOY_DIR = process.env.DEPLOY_DIR || '/opt/hail-mary';
+const API_DIR = process.env.API_DIR || '/app';
 
 const router = Router();
 
@@ -84,6 +98,191 @@ router.post('/users/:userId/reset-password', async (req: Request, res: Response)
     return res.status(500).json({
       success: false,
       error: 'Failed to reset password',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/nas/status
+ * Get current NAS deployment status
+ */
+router.get('/nas/status', async (_req: Request, res: Response) => {
+  try {
+    // Check if running in a Docker container using Node.js fs methods
+    let isDocker = false;
+    try {
+      await fs.access('/.dockerenv');
+      isDocker = true;
+    } catch {
+      isDocker = false;
+    }
+    
+    // Get docker-compose status if available
+    let containerStatus = null;
+    if (isDocker) {
+      try {
+        const prodComposeFile = path.join(DEPLOY_DIR, 'docker-compose.prod.yml');
+        const devComposeFile = path.join(DEPLOY_DIR, 'docker-compose.yml');
+        
+        // Try production compose file first, then dev
+        const { stdout } = await execAsync(
+          `docker-compose -f ${prodComposeFile} ps --format json 2>/dev/null || docker-compose -f ${devComposeFile} ps --format json 2>/dev/null || echo "[]"`
+        );
+        containerStatus = stdout.trim();
+      } catch (error) {
+        console.log('Could not get container status:', error);
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        isDocker,
+        containerStatus,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error getting NAS status:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to get NAS status',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/nas/check-updates
+ * Check for available Docker image updates
+ */
+router.post('/nas/check-updates', async (_req: Request, res: Response) => {
+  try {
+    // Validate and sanitize paths
+    const composeFile = path.join(DEPLOY_DIR, 'docker-compose.prod.yml');
+    const scriptPath = path.join(DEPLOY_DIR, 'scripts/nas-deploy.sh');
+    
+    // Verify deploy directory exists and is within expected path
+    if (!path.normalize(scriptPath).startsWith(path.normalize(DEPLOY_DIR))) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid deployment path configuration',
+      });
+    }
+    
+    // Check if the NAS deploy script exists using Node.js fs methods
+    try {
+      await fs.access(scriptPath, fs.constants.F_OK);
+    } catch {
+      return res.status(404).json({
+        success: false,
+        error: 'NAS deployment scripts not found. This may not be a NAS deployment.',
+      });
+    }
+
+    // Pull images to check for updates (this doesn't restart containers)
+    const { stdout, stderr } = await execAsync(
+      `cd "${DEPLOY_DIR}" && docker-compose -f "${composeFile}" pull 2>&1`,
+      { timeout: 300000 }
+    );
+    
+    // Check if any images were updated
+    const hasUpdates = stdout.includes('Downloaded newer image') || stdout.includes('Pulled');
+    
+    return res.json({
+      success: true,
+      message: hasUpdates ? 'Updates available' : 'No updates available',
+      hasUpdates,
+      output: stdout + stderr,
+    });
+  } catch (error: any) {
+    console.error('Error checking for updates:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to check for updates',
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/nas/pull-updates
+ * Pull latest Docker images and restart containers
+ */
+router.post('/nas/pull-updates', async (_req: Request, res: Response) => {
+  try {
+    // Validate and sanitize paths
+    const scriptPath = path.join(DEPLOY_DIR, 'scripts/nas-deploy.sh');
+    
+    // Verify script path is within expected directory
+    if (!path.normalize(scriptPath).startsWith(path.normalize(DEPLOY_DIR))) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid deployment path configuration',
+      });
+    }
+    
+    // Check if the NAS deploy script exists using Node.js fs methods
+    try {
+      await fs.access(scriptPath, fs.constants.F_OK | fs.constants.X_OK);
+    } catch {
+      return res.status(404).json({
+        success: false,
+        error: 'NAS deployment scripts not found. This may not be a NAS deployment.',
+      });
+    }
+
+    // Run the NAS deploy script
+    const { stdout, stderr } = await execAsync(`bash "${scriptPath}" 2>&1`, {
+      timeout: 300000, // 5 minute timeout
+      cwd: DEPLOY_DIR,
+    });
+    
+    return res.json({
+      success: true,
+      message: 'Updates deployed successfully',
+      output: stdout + stderr,
+    });
+  } catch (error: any) {
+    console.error('Error deploying updates:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to deploy updates',
+      details: error.message,
+      output: error.stdout || error.stderr,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/nas/migrate
+ * Run database migrations
+ */
+router.post('/nas/migrate', async (_req: Request, res: Response) => {
+  try {
+    // Validate API directory path
+    const normalizedApiDir = path.normalize(API_DIR);
+    
+    // Run migrations using npm script
+    const { stdout, stderr } = await execAsync(`cd "${normalizedApiDir}" && npm run migrate 2>&1`, {
+      timeout: 120000, // 2 minute timeout
+      env: {
+        ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL,
+      },
+    });
+    
+    return res.json({
+      success: true,
+      message: 'Database migrations completed successfully',
+      output: stdout + stderr,
+    });
+  } catch (error: any) {
+    console.error('Error running migrations:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to run database migrations',
+      details: error.message,
+      output: error.stdout || error.stderr,
     });
   }
 });

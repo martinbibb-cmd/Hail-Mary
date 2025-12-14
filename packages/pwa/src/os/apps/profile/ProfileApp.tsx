@@ -14,7 +14,7 @@ import { useAuth } from '../../../auth';
 import type { AuthUser } from '@hail-mary/shared';
 import './ProfileApp.css';
 
-type ViewMode = 'login' | 'register' | 'profile' | 'forgot-password' | 'reset-sent' | 'admin-users';
+type ViewMode = 'login' | 'register' | 'profile' | 'forgot-password' | 'reset-sent' | 'admin-users' | 'nas-management';
 
 export const ProfileApp: React.FC = () => {
   const { user, loading, error, login, register, logout, requestPasswordReset, clearError } = useAuth();
@@ -31,6 +31,8 @@ export const ProfileApp: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [adminSuccess, setAdminSuccess] = useState<string | null>(null);
+  const [nasStatus, setNasStatus] = useState<any>(null);
+  const [nasOutput, setNasOutput] = useState<string>('');
 
   // Update view mode when user state changes
   React.useEffect(() => {
@@ -190,6 +192,131 @@ export const ProfileApp: React.FC = () => {
     clearError();
   };
 
+  const handleNasManagement = async () => {
+    setViewMode('nas-management');
+    setLocalError(null);
+    setAdminSuccess(null);
+    setNasOutput('');
+    setFormSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/nas/status', {
+        credentials: 'include',
+      });
+      const data = await res.json();
+      
+      if (res.status === 401 || res.status === 403) {
+        setLocalError('Access denied. Admin privileges required.');
+      } else if (data.success) {
+        setNasStatus(data.data);
+      } else {
+        setLocalError(data.error || 'Failed to get NAS status');
+      }
+    } catch (err) {
+      setLocalError('Failed to get NAS status');
+      console.error('Error getting NAS status:', err);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleCheckUpdates = async () => {
+    setFormSubmitting(true);
+    setLocalError(null);
+    setAdminSuccess(null);
+    setNasOutput('');
+
+    try {
+      const res = await fetch('/api/admin/nas/check-updates', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      
+      if (res.status === 401 || res.status === 403) {
+        setLocalError('Access denied. Admin privileges required.');
+      } else if (data.success) {
+        setAdminSuccess(data.message);
+        setNasOutput(data.output || '');
+      } else {
+        setLocalError(data.error || 'Failed to check for updates');
+        setNasOutput(data.details || '');
+      }
+    } catch (err) {
+      setLocalError('Failed to check for updates');
+      console.error('Error checking updates:', err);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handlePullUpdates = async () => {
+    if (!confirm('This will pull the latest Docker images and restart containers. Continue?')) {
+      return;
+    }
+
+    setFormSubmitting(true);
+    setLocalError(null);
+    setAdminSuccess(null);
+    setNasOutput('');
+
+    try {
+      const res = await fetch('/api/admin/nas/pull-updates', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      
+      if (res.status === 401 || res.status === 403) {
+        setLocalError('Access denied. Admin privileges required.');
+      } else if (data.success) {
+        setAdminSuccess(data.message);
+        setNasOutput(data.output || '');
+      } else {
+        setLocalError(data.error || 'Failed to pull updates');
+        setNasOutput(data.output || data.details || '');
+      }
+    } catch (err) {
+      setLocalError('Failed to pull updates');
+      console.error('Error pulling updates:', err);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleRunMigrations = async () => {
+    if (!confirm('This will run database migrations. Continue?')) {
+      return;
+    }
+
+    setFormSubmitting(true);
+    setLocalError(null);
+    setAdminSuccess(null);
+    setNasOutput('');
+
+    try {
+      const res = await fetch('/api/admin/nas/migrate', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      
+      if (res.status === 401 || res.status === 403) {
+        setLocalError('Access denied. Admin privileges required.');
+      } else if (data.success) {
+        setAdminSuccess(data.message);
+        setNasOutput(data.output || '');
+      } else {
+        setLocalError(data.error || 'Failed to run migrations');
+        setNasOutput(data.output || data.details || '');
+      }
+    } catch (err) {
+      setLocalError('Failed to run migrations');
+      console.error('Error running migrations:', err);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
   if (loading && !formSubmitting) {
     return (
       <div className="profile-app">
@@ -232,9 +359,14 @@ export const ProfileApp: React.FC = () => {
 
         <div className="profile-actions">
           {user.role === 'admin' && (
-            <button className="btn-primary" onClick={handleManageUsers}>
-              👥 Manage Users
-            </button>
+            <>
+              <button className="btn-primary" onClick={handleManageUsers}>
+                👥 Manage Users
+              </button>
+              <button className="btn-primary" onClick={handleNasManagement}>
+                🖥️ NAS Management
+              </button>
+            </>
           )}
           <button className="btn-secondary btn-logout" onClick={handleLogout}>
             🚪 Log Out
@@ -322,6 +454,93 @@ export const ProfileApp: React.FC = () => {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          <div className="auth-switch">
+            <button className="btn-link" onClick={() => setViewMode('profile')}>
+              ← Back to Profile
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // NAS Management View
+  if (viewMode === 'nas-management' && user?.role === 'admin') {
+    return (
+      <div className="profile-app">
+        <div className="auth-form-container">
+          <h2>🖥️ NAS Management</h2>
+          <p className="form-subtitle">Manage updates and migrations for the NAS deployment</p>
+          
+          {(error || localError) && (
+            <div className="auth-error">{localError || error}</div>
+          )}
+
+          {adminSuccess && (
+            <div className="auth-success">{adminSuccess}</div>
+          )}
+
+          {nasStatus && (
+            <div className="nas-status">
+              <h3>Status</h3>
+              <div className="profile-info">
+                <div className="profile-info-row">
+                  <span className="label">Environment:</span>
+                  <span className="value">{nasStatus.isDocker ? '🐳 Docker' : '💻 Native'}</span>
+                </div>
+                <div className="profile-info-row">
+                  <span className="label">Last Check:</span>
+                  <span className="value">{new Date(nasStatus.timestamp).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="nas-actions" style={{ marginTop: '20px' }}>
+            <button
+              className="btn-primary btn-full"
+              onClick={handleCheckUpdates}
+              disabled={formSubmitting}
+              style={{ marginBottom: '10px' }}
+            >
+              {formSubmitting ? '🔄 Checking...' : '🔍 Check for Updates'}
+            </button>
+            
+            <button
+              className="btn-primary btn-full"
+              onClick={handlePullUpdates}
+              disabled={formSubmitting}
+              style={{ marginBottom: '10px' }}
+            >
+              {formSubmitting ? '🔄 Updating...' : '⬇️ Pull & Deploy Updates'}
+            </button>
+            
+            <button
+              className="btn-primary btn-full"
+              onClick={handleRunMigrations}
+              disabled={formSubmitting}
+              style={{ marginBottom: '10px' }}
+            >
+              {formSubmitting ? '🔄 Running...' : '🗄️ Run Database Migrations'}
+            </button>
+          </div>
+
+          {nasOutput && (
+            <div className="nas-output">
+              <h3>Output</h3>
+              <pre style={{
+                backgroundColor: '#f5f5f5',
+                padding: '10px',
+                borderRadius: '4px',
+                maxHeight: '300px',
+                overflow: 'auto',
+                fontSize: '12px',
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+              }}>{nasOutput}</pre>
             </div>
           )}
 

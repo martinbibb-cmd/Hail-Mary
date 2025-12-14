@@ -15,8 +15,14 @@ import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { listAllUsers, adminResetUserPassword, AuthError } from '../services/auth.service';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 const execAsync = promisify(exec);
+
+// NAS deployment configuration
+const DEPLOY_DIR = process.env.DEPLOY_DIR || '/opt/hail-mary';
+const API_DIR = process.env.API_DIR || '/app';
 
 const router = Router();
 
@@ -102,14 +108,26 @@ router.post('/users/:userId/reset-password', async (req: Request, res: Response)
  */
 router.get('/nas/status', async (_req: Request, res: Response) => {
   try {
-    // Check if running in a Docker container
-    const { stdout: isDocker } = await execAsync('[ -f /.dockerenv ] && echo "true" || echo "false"').catch(() => ({ stdout: 'false' }));
+    // Check if running in a Docker container using Node.js fs methods
+    let isDocker = false;
+    try {
+      await fs.access('/.dockerenv');
+      isDocker = true;
+    } catch {
+      isDocker = false;
+    }
     
     // Get docker-compose status if available
     let containerStatus = null;
-    if (isDocker.trim() === 'true') {
+    if (isDocker) {
       try {
-        const { stdout } = await execAsync('docker-compose -f /opt/hail-mary/docker-compose.prod.yml ps --format json 2>/dev/null || docker-compose -f /opt/hail-mary/docker-compose.yml ps --format json 2>/dev/null || echo "[]"');
+        const prodComposeFile = path.join(DEPLOY_DIR, 'docker-compose.prod.yml');
+        const devComposeFile = path.join(DEPLOY_DIR, 'docker-compose.yml');
+        
+        // Try production compose file first, then dev
+        const { stdout } = await execAsync(
+          `docker-compose -f ${prodComposeFile} ps --format json 2>/dev/null || docker-compose -f ${devComposeFile} ps --format json 2>/dev/null || echo "[]"`
+        );
         containerStatus = stdout.trim();
       } catch (error) {
         console.log('Could not get container status:', error);
@@ -119,7 +137,7 @@ router.get('/nas/status', async (_req: Request, res: Response) => {
     return res.json({
       success: true,
       data: {
-        isDocker: isDocker.trim() === 'true',
+        isDocker,
         containerStatus,
         timestamp: new Date().toISOString(),
       },
@@ -139,14 +157,22 @@ router.get('/nas/status', async (_req: Request, res: Response) => {
  */
 router.post('/nas/check-updates', async (_req: Request, res: Response) => {
   try {
-    const deployDir = process.env.DEPLOY_DIR || '/opt/hail-mary';
-    const composeFile = `${deployDir}/docker-compose.prod.yml`;
+    // Validate and sanitize paths
+    const composeFile = path.join(DEPLOY_DIR, 'docker-compose.prod.yml');
+    const scriptPath = path.join(DEPLOY_DIR, 'scripts/nas-deploy.sh');
     
-    // Check if the NAS deploy script exists
-    const scriptPath = `${deployDir}/scripts/nas-deploy.sh`;
-    const { stdout: scriptExists } = await execAsync(`[ -f ${scriptPath} ] && echo "true" || echo "false"`).catch(() => ({ stdout: 'false' }));
+    // Verify deploy directory exists and is within expected path
+    if (!path.normalize(scriptPath).startsWith(path.normalize(DEPLOY_DIR))) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid deployment path configuration',
+      });
+    }
     
-    if (scriptExists.trim() !== 'true') {
+    // Check if the NAS deploy script exists using Node.js fs methods
+    try {
+      await fs.access(scriptPath, fs.constants.F_OK);
+    } catch {
       return res.status(404).json({
         success: false,
         error: 'NAS deployment scripts not found. This may not be a NAS deployment.',
@@ -154,18 +180,19 @@ router.post('/nas/check-updates', async (_req: Request, res: Response) => {
     }
 
     // Pull images to check for updates (this doesn't restart containers)
-    const { stdout, stderr } = await execAsync(`cd ${deployDir} && docker-compose -f ${composeFile} pull 2>&1`);
+    const { stdout, stderr } = await execAsync(
+      `cd "${DEPLOY_DIR}" && docker-compose -f "${composeFile}" pull 2>&1`,
+      { timeout: 300000 }
+    );
     
     // Check if any images were updated
     const hasUpdates = stdout.includes('Downloaded newer image') || stdout.includes('Pulled');
     
     return res.json({
       success: true,
-      data: {
-        hasUpdates,
-        message: hasUpdates ? 'Updates available' : 'No updates available',
-        output: stdout + stderr,
-      },
+      message: hasUpdates ? 'Updates available' : 'No updates available',
+      hasUpdates,
+      output: stdout + stderr,
     });
   } catch (error: any) {
     console.error('Error checking for updates:', error);
@@ -183,13 +210,21 @@ router.post('/nas/check-updates', async (_req: Request, res: Response) => {
  */
 router.post('/nas/pull-updates', async (_req: Request, res: Response) => {
   try {
-    const deployDir = process.env.DEPLOY_DIR || '/opt/hail-mary';
-    const scriptPath = `${deployDir}/scripts/nas-deploy.sh`;
+    // Validate and sanitize paths
+    const scriptPath = path.join(DEPLOY_DIR, 'scripts/nas-deploy.sh');
     
-    // Check if the NAS deploy script exists
-    const { stdout: scriptExists } = await execAsync(`[ -f ${scriptPath} ] && echo "true" || echo "false"`).catch(() => ({ stdout: 'false' }));
+    // Verify script path is within expected directory
+    if (!path.normalize(scriptPath).startsWith(path.normalize(DEPLOY_DIR))) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid deployment path configuration',
+      });
+    }
     
-    if (scriptExists.trim() !== 'true') {
+    // Check if the NAS deploy script exists using Node.js fs methods
+    try {
+      await fs.access(scriptPath, fs.constants.F_OK | fs.constants.X_OK);
+    } catch {
       return res.status(404).json({
         success: false,
         error: 'NAS deployment scripts not found. This may not be a NAS deployment.',
@@ -197,8 +232,9 @@ router.post('/nas/pull-updates', async (_req: Request, res: Response) => {
     }
 
     // Run the NAS deploy script
-    const { stdout, stderr } = await execAsync(`bash ${scriptPath} 2>&1`, {
+    const { stdout, stderr } = await execAsync(`bash "${scriptPath}" 2>&1`, {
       timeout: 300000, // 5 minute timeout
+      cwd: DEPLOY_DIR,
     });
     
     return res.json({
@@ -223,10 +259,11 @@ router.post('/nas/pull-updates', async (_req: Request, res: Response) => {
  */
 router.post('/nas/migrate', async (_req: Request, res: Response) => {
   try {
-    const apiDir = process.env.API_DIR || '/app';
+    // Validate API directory path
+    const normalizedApiDir = path.normalize(API_DIR);
     
     // Run migrations using npm script
-    const { stdout, stderr } = await execAsync(`cd ${apiDir} && npm run migrate 2>&1`, {
+    const { stdout, stderr } = await execAsync(`cd "${normalizedApiDir}" && npm run migrate 2>&1`, {
       timeout: 120000, // 2 minute timeout
       env: {
         ...process.env,

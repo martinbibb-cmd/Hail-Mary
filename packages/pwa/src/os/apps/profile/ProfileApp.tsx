@@ -235,8 +235,8 @@ export const ProfileApp: React.FC = () => {
       if (res.status === 401 || res.status === 403) {
         setLocalError('Access denied. Admin privileges required.');
       } else if (data.success) {
-        setAdminSuccess(data.data.message);
-        setNasOutput(data.data.output || '');
+        setAdminSuccess(data.message);
+        setNasOutput(data.output || '');
       } else {
         setLocalError(data.error || 'Failed to check for updates');
         setNasOutput(data.details || '');

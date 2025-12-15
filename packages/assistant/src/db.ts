@@ -37,7 +37,7 @@ export const db = drizzle(pool);
 export const visitSessions = pgTable("visit_sessions", {
   id: serial("id").primaryKey(),
   accountId: integer("account_id").notNull(),
-  customerId: integer("customer_id").notNull(),
+  leadId: integer("lead_id").notNull(),
   startedAt: timestamp("started_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -50,7 +50,7 @@ export const visitObservations = pgTable("visit_observations", {
   visitSessionId: integer("visit_session_id")
     .references(() => visitSessions.id)
     .notNull(),
-  customerId: integer("customer_id").notNull(),
+  leadId: integer("lead_id").notNull(),
   text: text("text").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

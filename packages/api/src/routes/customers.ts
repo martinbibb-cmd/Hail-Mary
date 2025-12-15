@@ -21,7 +21,7 @@ const router = Router();
 // Apply authentication middleware to all customer routes
 router.use(requireAuth);
 
-// Helper to map database row to Customer object
+// Helper to map database row (from leads table) to Customer object for legacy compatibility
 function mapRowToCustomer(
   row: typeof leads.$inferSelect
 ): Customer {

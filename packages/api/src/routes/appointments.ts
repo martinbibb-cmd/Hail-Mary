@@ -147,7 +147,7 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json(response);
     }
 
-    const quoteIdNum = dto.quoteId ? (typeof dto.quoteId === 'number' ? dto.quoteId : parseInt(String(dto.quoteId))) : null;
+    const quoteIdNum = dto.quoteId ? (typeof dto.quoteId === 'number' ? dto.quoteId : parseInt(dto.quoteId)) : null;
 
     const [inserted] = await db
       .insert(appointments)

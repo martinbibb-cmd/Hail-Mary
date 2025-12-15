@@ -9,7 +9,7 @@ import type { VisitObservation } from "@hail-mary/shared";
 
 export interface LogObservationParams {
   visitSessionId: number;
-  customerId: number;
+  leadId: number;
   text: string;
 }
 
@@ -26,13 +26,13 @@ export async function logObservation(
   params: LogObservationParams
 ): Promise<LogObservationResult> {
   try {
-    const { visitSessionId, customerId, text } = params;
+    const { visitSessionId, leadId, text } = params;
 
     const [inserted] = await db
       .insert(visitObservations)
       .values({
         visitSessionId,
-        customerId,
+        leadId,
         text,
       })
       .returning();
@@ -42,7 +42,7 @@ export async function logObservation(
       observation: {
         id: inserted.id,
         visitSessionId: inserted.visitSessionId,
-        customerId: inserted.customerId,
+        leadId: inserted.leadId,
         text: inserted.text,
         createdAt: inserted.createdAt,
       },

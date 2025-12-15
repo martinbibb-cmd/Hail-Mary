@@ -47,7 +47,7 @@ If you're unsure what the engineer wants, ask a clarifying question.`;
  * POST /assistant/message
  * Input:
  *   - sessionId (visit_session)
- *   - customerId
+ *   - leadId
  *   - text (from STT)
  * Output:
  *   - assistantReply (what to show/say back)
@@ -56,13 +56,13 @@ If you're unsure what the engineer wants, ask a clarifying question.`;
 router.post("/message", async (req: Request, res: Response) => {
   try {
     const body: AssistantMessageRequest = req.body;
-    const { sessionId, customerId, text } = body;
+    const { sessionId, leadId, text } = body;
 
     // Validate required fields
-    if (!sessionId || !customerId || !text) {
+    if (!sessionId || !leadId || !text) {
       const response: ApiResponse<null> = {
         success: false,
-        error: "Missing required fields: sessionId, customerId, and text are required",
+        error: "Missing required fields: sessionId, leadId, and text are required",
       };
       return res.status(400).json(response);
     }
@@ -87,7 +87,7 @@ router.post("/message", async (req: Request, res: Response) => {
           // Log the observation using the tool function
           const result = await logObservation({
             visitSessionId: sessionId,
-            customerId,
+            leadId,
             text: observationText,
           });
 

@@ -30,6 +30,7 @@
   color: var(--text-muted, #6e6e73);
   font-weight: 400;
   margin: 0;
+  font-style: italic;
 }
 
 .about-content {
@@ -69,6 +70,95 @@
   font-size: 1.0625rem;
   font-weight: 400;
   line-height: 1.7;
+}
+
+.mission-statement {
+  background: var(--surface-secondary, #f5f5f7);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 3rem;
+}
+
+.mission-intro {
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.7;
+  color: var(--text-primary, #1d1d1f);
+}
+
+.about-problem {
+  font-style: italic;
+  color: var(--text-secondary, #515154);
+  margin: 1rem 0;
+}
+
+.subsection-label {
+  font-weight: 500;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.atlas-independence {
+  font-style: italic;
+  color: var(--text-secondary, #515154);
+  margin-top: 1.5rem;
+}
+
+.principles-intro {
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.what-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 1rem 0 1.5rem 0;
+}
+
+.what-list li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary, #1d1d1f);
+  line-height: 1.6;
+}
+
+.what-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--accent, #007aff);
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.why-atlas-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 1rem 0 1.5rem 0;
+}
+
+.why-atlas-list li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary, #1d1d1f);
+  line-height: 1.6;
+}
+
+.why-atlas-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--accent, #007aff);
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.atlas-purpose {
+  font-style: italic;
+  color: var(--text-secondary, #515154);
+  margin-top: 1.5rem;
 }
 
 .principle {

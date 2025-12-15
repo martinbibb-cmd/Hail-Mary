@@ -13,118 +13,115 @@ export const AboutApp: React.FC = () => {
     <div className="about-app">
       <div className="about-header">
         <h1>Atlas by PHM</h1>
-        <p className="about-tagline">Helping homes carry less weight</p>
+        <p className="about-tagline">Supporting homeowners through complex decisions</p>
       </div>
 
       <div className="about-content">
-        <section className="about-section">
-          <p className="about-intro">
-            Atlas by PHM is an evidence-led platform designed to help people understand their homes as energy systems — and make better decisions about how to improve them.
+        <section className="about-section mission-statement">
+          <h2>Mission Statement</h2>
+          <p className="mission-intro">
+            Atlas by PHM exists to make homes more comfortable, efficient, and sustainable — through evidence-based advice, honest planning, and practical tools that put people first.
           </p>
           <p>
-            Homes are complex. Insulation, heating, hot water, ventilation, solar generation, storage, and controls all interact. Changes made in isolation often lead to wasted cost, underperformance, or disappointment. Atlas exists to bring clarity to that complexity.
+            We believe good decisions come from clear information, not pressure selling.
+            Atlas provides the knowledge, structure, and long-term thinking needed to improve homes properly — whether that's today's upgrade or a roadmap for the next decade.
           </p>
           <p>
-            By combining clear measurement, visual explanation, and practical planning tools, Atlas supports advisors and homeowners in choosing solutions that genuinely improve comfort, efficiency, and long-term resilience.
+            We are technology-agnostic, customer-led, and grounded in real-world experience.
+            If something isn't right, we say so.
+            If there's uncertainty, we under-promise and over-deliver.
+            And if there's a better solution tomorrow, we plan for it today.
           </p>
         </section>
 
         <section className="about-section">
-          <h2>Our Mission</h2>
+          <h2>About Atlas by PHM</h2>
           <p>
-            Atlas exists to help people make better decisions about their homes.
+            Atlas by PHM is an independent platform for improving residential energy efficiency — from insulation and heating to renewables, storage, and beyond.
+          </p>
+          <p className="about-problem">
+            It was created to solve a simple problem:
+            homeowners and professionals alike are often forced to make complex, high-impact decisions with incomplete, biased, or oversimplified information.
           </p>
           <p>
-            By combining evidence, clear explanation, and practical tools, Atlas enables advisors and homeowners to understand how a home uses energy, where improvements genuinely matter, and how changes can be staged responsibly over time.
+            <strong>Atlas takes a different approach.</strong>
           </p>
-          <p>
-            Atlas provides education and solutions that improve efficiency and comfort in an evidence-based way — creating a trusted roadmap toward a more sustainable future, without bias, pressure, or unnecessary complexity.
+        </section>
+
+        <section className="about-section">
+          <h2>What Atlas Does</h2>
+          <p>Atlas provides:</p>
+          <ul className="what-list">
+            <li>Clear, evidence-based guidance on energy-saving and renewable technologies</li>
+            <li>Practical tools to assess homes properly, not generically</li>
+            <li>Honest recommendations that prioritise comfort, efficiency, and longevity</li>
+            <li>A future-ready roadmap, not just a single product or install</li>
+          </ul>
+          
+          <p className="subsection-label">This can include:</p>
+          <ul className="tech-list">
+            <li>Loft and fabric improvements</li>
+            <li>Heating system upgrades and controls</li>
+            <li>Hot water solutions</li>
+            <li>Solar PV, batteries, and emerging technologies</li>
+            <li>Whole-home efficiency planning</li>
+          </ul>
+          
+          <p className="atlas-independence">
+            Atlas is not tied to any single manufacturer, installer, or technology.
+            Solutions are chosen because they make sense — not because they're fashionable or profitable.
           </p>
         </section>
 
         <section className="about-section">
           <h2>Our Principles</h2>
+          <p className="principles-intro">Atlas is built on four core principles:</p>
           
           <div className="principle">
-            <h3>Evidence before opinion</h3>
+            <h3>1. Evidence before opinion</h3>
             <p>
-              Atlas is guided by measured data, clear assumptions, and transparent reasoning.
-              Recommendations exist to serve the customer — not a product, a quota, or a trend.
+              Decisions should be driven by data, physics, and real-world outcomes — not trends or sales targets.
             </p>
           </div>
 
           <div className="principle">
-            <h3>Under-promise. Over-deliver.</h3>
+            <h3>2. Customer-led, always</h3>
             <p>
-              Atlas favours realistic outcomes and honest uncertainty.
-              If something cannot be supported by evidence, it is treated as a risk — not a claim.
+              Every home, household, and budget is different. Atlas adapts to people — not the other way around.
             </p>
           </div>
 
           <div className="principle">
-            <h3>Tools that enable better decisions</h3>
+            <h3>3. Under-promise, over-deliver</h3>
             <p>
-              Atlas provides high-quality information, visualisation, and planning tools so advisors and customers can arrive at the best solution together — with confidence and clarity.
+              We don't oversell savings or certainty. We plan conservatively and aim to exceed expectations.
             </p>
           </div>
 
           <div className="principle">
-            <h3>Design with the future in mind</h3>
+            <h3>4. Plan for the future</h3>
             <p>
-              Every recommendation should make future improvements easier, not harder.
-              Atlas supports phased upgrades, long-term thinking, and adaptable homes.
+              Even if the right answer today is "not yet," Atlas helps map a path forward that avoids wasted money and regret.
             </p>
           </div>
         </section>
 
         <section className="about-section">
-          <h2>Technology-agnostic by design</h2>
+          <h2>Why "Atlas"</h2>
           <p>
-            Atlas is not tied to any single manufacturer or technology.
+            In mythology, Atlas held up the sky — bearing a responsibility that mattered to everyone beneath it.
           </p>
           <p>
-            It supports a wide range of energy-saving and renewable measures, including:
+            Atlas by PHM reflects that same idea:
           </p>
-          <ul className="tech-list">
-            <li>insulation and fabric improvements</li>
-            <li>heating and hot water systems</li>
-            <li>heat pumps</li>
-            <li>solar PV</li>
-            <li>battery storage</li>
-            <li>controls and demand reduction strategies</li>
+          <ul className="why-atlas-list">
+            <li>Supporting homeowners through complex decisions</li>
+            <li>Holding together data, tools, and long-term thinking</li>
+            <li>Carrying the weight so better outcomes are possible</li>
           </ul>
-          <p>
-            Recommendations are driven by evidence and context — not brand alignment.
-          </p>
-        </section>
-
-        <section className="about-section">
-          <h2>Who Atlas is for</h2>
-          <p>Atlas is built for:</p>
-          <ul className="audience-list">
-            <li>energy and heating advisors</li>
-            <li>retrofit and sustainability professionals</li>
-            <li>surveyors and consultants</li>
-            <li>homeowners who want clear, honest guidance</li>
-          </ul>
-          <p>
-            It is designed to support professional judgement — not replace it.
-          </p>
-        </section>
-
-        <section className="about-section">
-          <h2>Why Atlas</h2>
-          <p>
-            The transition to more efficient, lower-impact homes will only succeed if decisions are:
-          </p>
-          <ul className="values-list">
-            <li>informed</li>
-            <li>proportionate</li>
-            <li>honest about uncertainty</li>
-            <li>respectful of people's homes and finances</li>
-          </ul>
-          <p className="about-closing">
-            Atlas exists to support that transition — quietly, carefully, and responsibly.
+          <p className="atlas-purpose">
+            It's not about selling a product.
+            It's about holding the whole picture.
           </p>
         </section>
 
@@ -133,7 +130,7 @@ export const AboutApp: React.FC = () => {
             <strong>Atlas by PHM</strong>
           </p>
           <p className="about-motto-tagline">
-            Engineering clarity for a lighter future.
+            Holding the whole picture
           </p>
         </div>
       </div>

@@ -147,7 +147,7 @@ export const AuthScreen: React.FC = () => {
       <div className="auth-screen">
         <div className="auth-screen-container">
           <div className="auth-screen-logo">
-            <span className="auth-screen-logo-icon">🔥</span>
+            <img src="/logo.png" alt="Hail-Mary Logo" className="auth-screen-logo-image" />
             <h1>Hail-Mary</h1>
           </div>
           <div className="auth-screen-form">
@@ -203,7 +203,7 @@ export const AuthScreen: React.FC = () => {
       <div className="auth-screen">
         <div className="auth-screen-container">
           <div className="auth-screen-logo">
-            <span className="auth-screen-logo-icon">🔥</span>
+            <img src="/logo.png" alt="Hail-Mary Logo" className="auth-screen-logo-image" />
             <h1>Hail-Mary</h1>
           </div>
           <div className="auth-screen-form">
@@ -229,7 +229,7 @@ export const AuthScreen: React.FC = () => {
       <div className="auth-screen">
         <div className="auth-screen-container">
           <div className="auth-screen-logo">
-            <span className="auth-screen-logo-icon">🔥</span>
+            <img src="/logo.png" alt="Hail-Mary Logo" className="auth-screen-logo-image" />
             <h1>Hail-Mary</h1>
           </div>
           <div className="auth-screen-form">
@@ -281,7 +281,7 @@ export const AuthScreen: React.FC = () => {
       <div className="auth-screen">
         <div className="auth-screen-container">
           <div className="auth-screen-logo">
-            <span className="auth-screen-logo-icon">🔥</span>
+            <img src="/logo.png" alt="Hail-Mary Logo" className="auth-screen-logo-image" />
             <h1>Hail-Mary</h1>
           </div>
           <div className="auth-screen-form">
@@ -389,7 +389,7 @@ export const AuthScreen: React.FC = () => {
     <div className="auth-screen">
       <div className="auth-screen-container">
         <div className="auth-screen-logo">
-          <span className="auth-screen-logo-icon">🔥</span>
+          <img src="/logo.png" alt="Hail-Mary Logo" className="auth-screen-logo-image" />
           <h1>Hail-Mary</h1>
         </div>
         <div className="auth-screen-form">

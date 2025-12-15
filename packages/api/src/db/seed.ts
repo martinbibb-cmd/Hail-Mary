@@ -12,7 +12,7 @@
 import "dotenv/config";
 import { eq } from "drizzle-orm";
 import { db, pool } from "./drizzle-client";
-import { accounts, customers, users, products } from "./drizzle-schema";
+import { accounts, leads, users, products } from "./drizzle-schema";
 import { hashPassword } from "../services/auth.service";
 
 async function main() {
@@ -34,28 +34,29 @@ async function main() {
     console.log(`Seeded Test Account (id: ${accountId})`);
   }
 
-  // 2. Ensure there is at least one customer for this account
-  const [existingCustomer] = await db
+  // 2. Ensure there is at least one lead for this account
+  const [existingLead] = await db
     .select()
-    .from(customers)
-    .where(eq(customers.accountId, accountId))
+    .from(leads)
+    .where(eq(leads.accountId, accountId))
     .limit(1);
 
-  if (!existingCustomer) {
-    const [insertedCustomer] = await db.insert(customers).values({
+  if (!existingLead) {
+    const [insertedLead] = await db.insert(leads).values({
       accountId,
       firstName: "Test",
-      lastName: "Customer",
+      lastName: "Lead",
       email: "test@example.com",
       phone: "00000000000",
       addressLine1: "1 Test Street",
       city: "Testville",
       postcode: "TE57 1NG",
       country: "UK",
+      status: "new",
     }).returning();
-    console.log(`Seeded Test Customer (id: ${insertedCustomer.id})`);
+    console.log(`Seeded Test Lead (id: ${insertedLead.id})`);
   } else {
-    console.log(`Customer already exists for account ${accountId}: ${existingCustomer.firstName} ${existingCustomer.lastName} (id: ${existingCustomer.id}), no seed needed`);
+    console.log(`Lead already exists for account ${accountId}: ${existingLead.firstName} ${existingLead.lastName} (id: ${existingLead.id}), no seed needed`);
   }
 
   // 3. Seed sample boiler products if none exist

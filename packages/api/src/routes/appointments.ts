@@ -4,7 +4,7 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db/drizzle-client';
-import { appointments, customers } from '../db/drizzle-schema';
+import { appointments, leads } from '../db/drizzle-schema';
 import { eq, desc, count, and } from 'drizzle-orm';
 import type { Appointment, CreateAppointmentDto, UpdateAppointmentDto, ApiResponse, PaginatedResponse } from '@hail-mary/shared';
 

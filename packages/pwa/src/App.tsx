@@ -488,9 +488,9 @@ interface TimelineEntry {
 
 // Visit Page Component - Voice-first workflow
 function VisitPage() {
-  const { customerId, visitSessionId } = useParams<{ customerId: string; visitSessionId: string }>()
+  const { leadId, visitSessionId } = useParams<{ leadId: string; visitSessionId: string }>()
   const navigate = useNavigate()
-  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [lead, setLead] = useState<Customer | null>(null)
   const [session, setSession] = useState<VisitSession | null>(null)
   const [timeline, setTimeline] = useState<TimelineEntry[]>([])
   const [inputText, setInputText] = useState('')
@@ -500,15 +500,15 @@ function VisitPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load customer and session data
-        const [customerRes, sessionRes, observationsRes] = await Promise.all([
-          api.get<ApiResponse<Customer>>(`/api/customers/${customerId}`),
+        // Load lead and session data
+        const [leadRes, sessionRes, observationsRes] = await Promise.all([
+          api.get<ApiResponse<Customer>>(`/api/leads/${leadId}`),
           api.get<ApiResponse<VisitSession>>(`/api/visit-sessions/${visitSessionId}`),
           api.get<ApiResponse<VisitObservation[]>>(`/api/visit-sessions/${visitSessionId}/observations`),
         ])
-        
-        if (customerRes.success && customerRes.data) {
-          setCustomer(customerRes.data)
+
+        if (leadRes.success && leadRes.data) {
+          setLead(leadRes.data)
         }
         if (sessionRes.success && sessionRes.data) {
           setSession(sessionRes.data)
@@ -529,17 +529,17 @@ function VisitPage() {
         setLoading(false)
       }
     }
-    
+
     loadData()
-  }, [customerId, visitSessionId])
+  }, [leadId, visitSessionId])
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || !session || !customer) return
-    
+    if (!inputText.trim() || !session || !lead) return
+
     setSending(true)
     const messageText = inputText.trim()
     setInputText('')
-    
+
     // Add user message to timeline immediately
     const userEntry: TimelineEntry = {
       id: `user-${Date.now()}`,
@@ -548,14 +548,14 @@ function VisitPage() {
       timestamp: new Date(),
     }
     setTimeline(prev => [...prev, userEntry])
-    
+
     try {
       // Send to assistant service
       // Note: In production, the assistant runs on a different port (3002)
       // For now, we're using the API proxy or assuming same-origin
       const res = await api.post<ApiResponse<AssistantMessageResponse>>('/assistant/message', {
         sessionId: session.id,
-        leadId: Number(customer.id),
+        leadId: Number(lead.id),
         text: messageText,
       })
       
@@ -586,27 +586,27 @@ function VisitPage() {
 
   const handleEndVisit = async () => {
     if (!session) return
-    
+
     try {
       await api.put<ApiResponse<VisitSession>>(`/api/visit-sessions/${session.id}`, {
         status: 'completed',
         endedAt: new Date(),
       })
-      // Navigate back to customer detail using React Router
-      navigate(`/customers/${customerId}`)
+      // Navigate back to lead detail using React Router
+      navigate(`/leads/${leadId}`)
     } catch (error) {
       console.error('Failed to end visit:', error)
     }
   }
 
   if (loading) return <div className="loading">Loading visit...</div>
-  if (!customer || !session) return <div className="error">Visit not found</div>
+  if (!lead || !session) return <div className="error">Visit not found</div>
 
   return (
     <div className="visit-page">
       <div className="visit-header">
         <div>
-          <h1>Visit: {customer.firstName} {customer.lastName}</h1>
+          <h1>Visit: {lead.firstName} {lead.lastName}</h1>
           <p className="visit-status">Status: {session.status}</p>
         </div>
         <button className="btn-secondary" onClick={handleEndVisit}>
@@ -663,9 +663,9 @@ function VisitPage() {
           Press Enter to log your observation. Voice input coming soon!
         </p>
       </div>
-      
-      <Link to={`/customers/${customerId}`} className="back-link">
-        ← Back to Customer
+
+      <Link to={`/leads/${leadId}`} className="back-link">
+        ← Back to Lead
       </Link>
     </div>
   )
@@ -709,7 +709,7 @@ function App() {
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<NewCustomer />} />
           <Route path="/customers/:id" element={<CustomerDetail />} />
-          <Route path="/customers/:customerId/visit/:visitSessionId" element={<VisitPage />} />
+          <Route path="/leads/:leadId/visit/:visitSessionId" element={<VisitPage />} />
           <Route path="/quotes" element={<QuotesList />} />
           <Route path="/leads" element={<LeadsList />} />
           <Route path="/leads/new" element={<NewLead />} />

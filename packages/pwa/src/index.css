@@ -93,6 +93,13 @@ body {
   overflow-y: auto;
 }
 
+/* Stack workspace content adjustments */
+.content-stack {
+  padding: 1rem;
+  width: 100%;
+  max-width: 100%;
+}
+
 /* Dashboard */
 .dashboard h1 {
   margin-bottom: 2rem;

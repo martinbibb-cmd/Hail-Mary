@@ -10,10 +10,11 @@ import type {
   VisitObservation,
   AssistantMessageResponse,
 } from '@hail-mary/shared'
-import { Dock, WindowManager, Desktop } from './os'
+import { Desktop, DesktopWorkspace, StackWorkspace } from './os'
 import { AuthProvider, AuthGuard, ResetPasswordPage } from './auth'
 import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
+import { useDeviceLayout } from './hooks/useDeviceLayout'
 
 // Simple API client
 const api = {
@@ -674,6 +675,48 @@ function VisitPage() {
 function App() {
   const { profile } = useCognitiveProfile()
   const isFocusProfile = profile === 'focus'
+  const layout = useDeviceLayout()
+
+  // Determine if using desktop or touch workspace
+  const isDesktop = layout === 'desktop'
+
+  // Main content component (shared between both workspaces)
+  const mainContent = (
+    <>
+      {/* Traditional navigation sidebar (desktop only, not in focus mode) */}
+      {isDesktop && !isFocusProfile && (
+        <nav className="sidebar">
+          <div className="logo">
+            <h2>🔥 Hail-Mary</h2>
+          </div>
+          <ul className="nav-links">
+            <li><Link to="/">Dashboard</Link></li>
+            <li><Link to="/customers">Customers</Link></li>
+            <li><Link to="/quotes">Quotes</Link></li>
+            <li><Link to="/leads">Leads</Link></li>
+          </ul>
+        </nav>
+      )}
+      <main className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`}>
+        {isFocusProfile && (
+          <div className="focus-mode-banner">
+            <p className="focus-mode-title">Focus Mode</p>
+            <p className="focus-mode-copy">Navigation and dock are hidden to reduce distraction.</p>
+          </div>
+        )}
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/customers" element={<CustomersList />} />
+          <Route path="/customers/new" element={<NewCustomer />} />
+          <Route path="/customers/:id" element={<CustomerDetail />} />
+          <Route path="/customers/:customerId/visit/:visitSessionId" element={<VisitPage />} />
+          <Route path="/quotes" element={<QuotesList />} />
+          <Route path="/leads" element={<LeadsList />} />
+          <Route path="/leads/new" element={<NewLead />} />
+        </Routes>
+      </main>
+    </>
+  )
 
   return (
     <AuthProvider>
@@ -687,44 +730,16 @@ function App() {
             <Desktop>
               <CognitiveOverlays />
 
-              {/* Window Manager for OS-style windows */}
-              <WindowManager />
-
-              {/* macOS-style Dock at bottom */}
-              {!isFocusProfile && <Dock />}
-
-              {/* Traditional navigation sidebar */}
-              {!isFocusProfile && (
-                <nav className="sidebar">
-                  <div className="logo">
-                    <h2>🔥 Hail-Mary</h2>
-                  </div>
-                  <ul className="nav-links">
-                    <li><Link to="/">Dashboard</Link></li>
-                    <li><Link to="/customers">Customers</Link></li>
-                    <li><Link to="/quotes">Quotes</Link></li>
-                    <li><Link to="/leads">Leads</Link></li>
-                  </ul>
-                </nav>
+              {/* Conditionally render Desktop or Stack workspace based on device */}
+              {isDesktop ? (
+                <DesktopWorkspace>
+                  {mainContent}
+                </DesktopWorkspace>
+              ) : (
+                <StackWorkspace layout={layout}>
+                  {mainContent}
+                </StackWorkspace>
               )}
-              <main className={`content ${isFocusProfile ? 'content-focus' : ''}`}>
-                {isFocusProfile && (
-                  <div className="focus-mode-banner">
-                    <p className="focus-mode-title">Focus Mode</p>
-                    <p className="focus-mode-copy">Navigation and dock are hidden to reduce distraction.</p>
-                  </div>
-                )}
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/customers" element={<CustomersList />} />
-                  <Route path="/customers/new" element={<NewCustomer />} />
-                  <Route path="/customers/:id" element={<CustomerDetail />} />
-                  <Route path="/customers/:customerId/visit/:visitSessionId" element={<VisitPage />} />
-                  <Route path="/quotes" element={<QuotesList />} />
-                  <Route path="/leads" element={<LeadsList />} />
-                  <Route path="/leads/new" element={<NewLead />} />
-                </Routes>
-              </main>
             </Desktop>
           </AuthGuard>
         } />

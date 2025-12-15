@@ -23,17 +23,17 @@ router.get("/", async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
-    const customerId = req.query.customerId
-      ? parseInt(req.query.customerId as string)
+    const leadId = req.query.leadId
+      ? parseInt(req.query.leadId as string)
       : undefined;
 
     // Build base query for both count and data
     let dataQuery = db.select().from(visitSessions);
     let countQuery = db.select({ count: count() }).from(visitSessions);
 
-    if (customerId) {
-      dataQuery = dataQuery.where(eq(visitSessions.customerId, customerId)) as typeof dataQuery;
-      countQuery = countQuery.where(eq(visitSessions.customerId, customerId)) as typeof countQuery;
+    if (leadId) {
+      dataQuery = dataQuery.where(eq(visitSessions.leadId, leadId)) as typeof dataQuery;
+      countQuery = countQuery.where(eq(visitSessions.leadId, leadId)) as typeof countQuery;
     }
 
     // Execute both queries
@@ -50,7 +50,7 @@ router.get("/", async (req: Request, res: Response) => {
     const sessions: VisitSession[] = rows.map((row) => ({
       id: row.id,
       accountId: row.accountId,
-      customerId: row.customerId,
+      leadId: row.leadId,
       startedAt: row.startedAt,
       endedAt: row.endedAt ?? undefined,
       status: row.status as VisitSession["status"],
@@ -99,7 +99,7 @@ router.get("/:id", async (req: Request, res: Response) => {
     const session: VisitSession = {
       id: row.id,
       accountId: row.accountId,
-      customerId: row.customerId,
+      leadId: row.leadId,
       startedAt: row.startedAt,
       endedAt: row.endedAt ?? undefined,
       status: row.status as VisitSession["status"],
@@ -129,7 +129,7 @@ router.post("/", async (req: Request, res: Response) => {
       .insert(visitSessions)
       .values({
         accountId: dto.accountId,
-        customerId: dto.customerId,
+        leadId: dto.leadId,
         status: "in_progress",
       })
       .returning();
@@ -137,7 +137,7 @@ router.post("/", async (req: Request, res: Response) => {
     const session: VisitSession = {
       id: inserted.id,
       accountId: inserted.accountId,
-      customerId: inserted.customerId,
+      leadId: inserted.leadId,
       startedAt: inserted.startedAt,
       endedAt: inserted.endedAt ?? undefined,
       status: inserted.status as VisitSession["status"],
@@ -200,7 +200,7 @@ router.put("/:id", async (req: Request, res: Response) => {
     const session: VisitSession = {
       id: updated.id,
       accountId: updated.accountId,
-      customerId: updated.customerId,
+      leadId: updated.leadId,
       startedAt: updated.startedAt,
       endedAt: updated.endedAt ?? undefined,
       status: updated.status as VisitSession["status"],
@@ -236,7 +236,7 @@ router.get("/:id/observations", async (req: Request, res: Response) => {
     const observations: VisitObservation[] = rows.map((row) => ({
       id: row.id,
       visitSessionId: row.visitSessionId,
-      customerId: row.customerId,
+      leadId: row.leadId,
       text: row.text,
       createdAt: row.createdAt,
     }));

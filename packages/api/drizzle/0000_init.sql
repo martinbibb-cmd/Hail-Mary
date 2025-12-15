@@ -1,5 +1,6 @@
 -- Drizzle ORM Initial Migration for Hail-Mary
 -- PostgreSQL database schema
+-- Updated to use leads as single source of truth (no customers table)
 
 -- accounts / tenancies
 CREATE TABLE IF NOT EXISTS "accounts" (
@@ -32,10 +33,11 @@ CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
   "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
--- customers (households / people you quote for)
-CREATE TABLE IF NOT EXISTS "customers" (
+-- leads (single source of truth - combines lead tracking with customer contact info)
+CREATE TABLE IF NOT EXISTS "leads" (
   "id" SERIAL PRIMARY KEY,
   "account_id" INTEGER REFERENCES "accounts"("id") NOT NULL,
+  -- Contact information
   "first_name" VARCHAR(255) NOT NULL,
   "last_name" VARCHAR(255) NOT NULL,
   "email" VARCHAR(255),
@@ -45,20 +47,15 @@ CREATE TABLE IF NOT EXISTS "customers" (
   "city" VARCHAR(255),
   "postcode" VARCHAR(20),
   "country" VARCHAR(100) DEFAULT 'UK',
+  -- Lead information
+  "source" VARCHAR(100),
+  "status" VARCHAR(50) DEFAULT 'new' NOT NULL,
+  "description" TEXT,
+  "property_type" VARCHAR(100),
+  "estimated_value" NUMERIC(10, 2),
   "notes" TEXT,
   "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
-);
-
--- leads (raw inbound interest)
-CREATE TABLE IF NOT EXISTS "leads" (
-  "id" SERIAL PRIMARY KEY,
-  "account_id" INTEGER REFERENCES "accounts"("id") NOT NULL,
-  "customer_id" INTEGER REFERENCES "customers"("id"),
-  "source" VARCHAR(100),
-  "status" VARCHAR(50) DEFAULT 'new' NOT NULL,
-  "notes" TEXT,
-  "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
 -- products (boilers, cylinders, filters, controls, etc.)
@@ -77,8 +74,7 @@ CREATE TABLE IF NOT EXISTS "products" (
 CREATE TABLE IF NOT EXISTS "quotes" (
   "id" SERIAL PRIMARY KEY,
   "account_id" INTEGER REFERENCES "accounts"("id") NOT NULL,
-  "customer_id" INTEGER REFERENCES "customers"("id") NOT NULL,
-  "lead_id" INTEGER REFERENCES "leads"("id"),
+  "lead_id" INTEGER REFERENCES "leads"("id") NOT NULL,
   "status" VARCHAR(50) DEFAULT 'draft' NOT NULL,
   "title" VARCHAR(255),
   "valid_until" TIMESTAMP WITH TIME ZONE,
@@ -101,7 +97,7 @@ CREATE TABLE IF NOT EXISTS "quote_lines" (
 CREATE TABLE IF NOT EXISTS "appointments" (
   "id" SERIAL PRIMARY KEY,
   "account_id" INTEGER REFERENCES "accounts"("id") NOT NULL,
-  "customer_id" INTEGER REFERENCES "customers"("id") NOT NULL,
+  "lead_id" INTEGER REFERENCES "leads"("id") NOT NULL,
   "quote_id" INTEGER REFERENCES "quotes"("id"),
   "type" VARCHAR(50) NOT NULL,
   "status" VARCHAR(50) DEFAULT 'scheduled' NOT NULL,
@@ -118,11 +114,11 @@ CREATE TABLE IF NOT EXISTS "appointments" (
   "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
--- visit sessions - tracks a single site visit for a customer
+-- visit sessions - tracks a single site visit for a lead
 CREATE TABLE IF NOT EXISTS "visit_sessions" (
   "id" SERIAL PRIMARY KEY,
   "account_id" INTEGER REFERENCES "accounts"("id") NOT NULL,
-  "customer_id" INTEGER REFERENCES "customers"("id") NOT NULL,
+  "lead_id" INTEGER REFERENCES "leads"("id") NOT NULL,
   "started_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   "ended_at" TIMESTAMP WITH TIME ZONE,
   "status" VARCHAR(50) DEFAULT 'in_progress' NOT NULL
@@ -132,7 +128,7 @@ CREATE TABLE IF NOT EXISTS "visit_sessions" (
 CREATE TABLE IF NOT EXISTS "media_attachments" (
   "id" SERIAL PRIMARY KEY,
   "visit_session_id" INTEGER REFERENCES "visit_sessions"("id") NOT NULL,
-  "customer_id" INTEGER REFERENCES "customers"("id") NOT NULL,
+  "lead_id" INTEGER REFERENCES "leads"("id") NOT NULL,
   "type" VARCHAR(50) NOT NULL,
   "url" TEXT NOT NULL,
   "description" TEXT,
@@ -155,7 +151,7 @@ CREATE TABLE IF NOT EXISTS "survey_instances" (
   "id" SERIAL PRIMARY KEY,
   "template_id" INTEGER REFERENCES "survey_templates"("id") NOT NULL,
   "visit_session_id" INTEGER REFERENCES "visit_sessions"("id") NOT NULL,
-  "customer_id" INTEGER REFERENCES "customers"("id") NOT NULL,
+  "lead_id" INTEGER REFERENCES "leads"("id") NOT NULL,
   "status" VARCHAR(50) DEFAULT 'in_progress' NOT NULL,
   "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
@@ -176,7 +172,7 @@ CREATE TABLE IF NOT EXISTS "survey_answers" (
 CREATE TABLE IF NOT EXISTS "visit_observations" (
   "id" SERIAL PRIMARY KEY,
   "visit_session_id" INTEGER REFERENCES "visit_sessions"("id") NOT NULL,
-  "customer_id" INTEGER REFERENCES "customers"("id") NOT NULL,
+  "lead_id" INTEGER REFERENCES "leads"("id") NOT NULL,
   "text" TEXT NOT NULL,
   "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
@@ -185,7 +181,6 @@ CREATE TABLE IF NOT EXISTS "visit_observations" (
 CREATE TABLE IF NOT EXISTS "transcript_sessions" (
   "id" SERIAL PRIMARY KEY,
   "lead_id" INTEGER REFERENCES "leads"("id"),
-  "customer_id" INTEGER REFERENCES "customers"("id"),
   "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   "status" VARCHAR(50) DEFAULT 'recording' NOT NULL,

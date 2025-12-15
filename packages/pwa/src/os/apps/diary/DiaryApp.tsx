@@ -15,8 +15,8 @@ export interface DiaryEvent {
   start: Date
   end: Date
   type: EventType
-  customerId?: number
-  customerName?: string
+  leadId?: number
+  leadName?: string
   notes?: string
 }
 
@@ -43,7 +43,7 @@ export const DiaryApp: React.FC = () => {
       start: new Date(),
       end: new Date(Date.now() + 2 * 60 * 60 * 1000),
       type: 'site_visit',
-      customerName: 'John Smith',
+      leadName: 'John Smith',
     },
     {
       id: '2',
@@ -234,10 +234,10 @@ export const DiaryApp: React.FC = () => {
                     </p>
                   </div>
 
-                  {selectedEvent.customerName && (
+                  {selectedEvent.leadName && (
                     <div className="diary-event-detail">
-                      <label>👤 Customer</label>
-                      <p>{selectedEvent.customerName}</p>
+                      <label>👤 Lead</label>
+                      <p>{selectedEvent.leadName}</p>
                     </div>
                   )}
 

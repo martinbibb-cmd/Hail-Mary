@@ -34,13 +34,6 @@
   animation: fadeInDown 0.5s ease-out;
 }
 
-.auth-screen-logo-icon {
-  font-size: 72px;
-  display: block;
-  margin-bottom: 16px;
-  filter: drop-shadow(0 4px 20px rgba(107, 142, 35, 0.3));
-}
-
 .auth-screen-logo-image {
   width: 120px;
   height: 120px;
@@ -240,10 +233,6 @@
   
   .auth-screen-form {
     padding: 32px 24px;
-  }
-  
-  .auth-screen-logo-icon {
-    font-size: 56px;
   }
   
   .auth-screen-logo-image {

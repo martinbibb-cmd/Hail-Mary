@@ -5,7 +5,7 @@
 
 import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
-import { customers } from "../db/drizzle-schema";
+import { leads } from "../db/drizzle-schema";
 import { eq, desc, count } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.middleware";
 import type {
@@ -21,9 +21,9 @@ const router = Router();
 // Apply authentication middleware to all customer routes
 router.use(requireAuth);
 
-// Helper to map database row to Customer object
+// Helper to map database row (from leads table) to Customer object for legacy compatibility
 function mapRowToCustomer(
-  row: typeof customers.$inferSelect
+  row: typeof leads.$inferSelect
 ): Customer {
   return {
     id: row.id,
@@ -39,6 +39,11 @@ function mapRowToCustomer(
       postcode: row.postcode || "",
       country: row.country || "UK",
     },
+    status: row.status as Customer['status'],
+    source: row.source || undefined,
+    description: row.description || undefined,
+    propertyType: row.propertyType || undefined,
+    estimatedValue: row.estimatedValue ? Number(row.estimatedValue) : undefined,
     notes: row.notes || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -55,11 +60,11 @@ router.get("/", async (req: Request, res: Response) => {
     const [rows, countResult] = await Promise.all([
       db
         .select()
-        .from(customers)
-        .orderBy(desc(customers.createdAt))
+        .from(leads)
+        .orderBy(desc(leads.createdAt))
         .limit(limit)
         .offset(offset),
-      db.select({ count: count() }).from(customers),
+      db.select({ count: count() }).from(leads),
     ]);
 
     const total = countResult[0]?.count ?? 0;
@@ -100,8 +105,8 @@ router.get("/:id", async (req: Request, res: Response) => {
 
     const rows = await db
       .select()
-      .from(customers)
-      .where(eq(customers.id, id));
+      .from(leads)
+      .where(eq(leads.id, id));
 
     if (rows.length === 0) {
       const response: ApiResponse<null> = {
@@ -132,7 +137,7 @@ router.post("/", async (req: Request, res: Response) => {
     const dto: CreateCustomerDto = req.body;
 
     const [inserted] = await db
-      .insert(customers)
+      .insert(leads)
       .values({
         accountId: 1, // TODO: Get from auth context
         firstName: dto.firstName,
@@ -144,6 +149,11 @@ router.post("/", async (req: Request, res: Response) => {
         city: dto.address?.city || null,
         postcode: dto.address?.postcode || null,
         country: dto.address?.country || "UK",
+        status: dto.status || "new",
+        source: dto.source || null,
+        description: dto.description || null,
+        propertyType: dto.propertyType || null,
+        estimatedValue: dto.estimatedValue ? String(dto.estimatedValue) : null,
         notes: dto.notes || null,
       })
       .returning();
@@ -179,8 +189,8 @@ router.put("/:id", async (req: Request, res: Response) => {
     // Check if customer exists
     const existing = await db
       .select()
-      .from(customers)
-      .where(eq(customers.id, id));
+      .from(leads)
+      .where(eq(leads.id, id));
 
     if (existing.length === 0) {
       const response: ApiResponse<null> = {
@@ -203,6 +213,11 @@ router.put("/:id", async (req: Request, res: Response) => {
       city: string | null;
       postcode: string | null;
       country: string | null;
+      status: string;
+      source: string | null;
+      description: string | null;
+      propertyType: string | null;
+      estimatedValue: string | null;
       notes: string | null;
       updatedAt: Date;
     }> = {
@@ -218,12 +233,17 @@ router.put("/:id", async (req: Request, res: Response) => {
     if (dto.address?.city !== undefined) updateData.city = dto.address.city || null;
     if (dto.address?.postcode !== undefined) updateData.postcode = dto.address.postcode || null;
     if (dto.address?.country !== undefined) updateData.country = dto.address.country || null;
+    if (dto.status !== undefined) updateData.status = dto.status;
+    if (dto.source !== undefined) updateData.source = dto.source || null;
+    if (dto.description !== undefined) updateData.description = dto.description || null;
+    if (dto.propertyType !== undefined) updateData.propertyType = dto.propertyType || null;
+    if (dto.estimatedValue !== undefined) updateData.estimatedValue = dto.estimatedValue ? String(dto.estimatedValue) : null;
     if (dto.notes !== undefined) updateData.notes = dto.notes || null;
 
     const [updated] = await db
-      .update(customers)
+      .update(leads)
       .set(updateData)
-      .where(eq(customers.id, id))
+      .where(eq(leads.id, id))
       .returning();
 
     const response: ApiResponse<Customer> = {
@@ -255,8 +275,8 @@ router.delete("/:id", async (req: Request, res: Response) => {
     }
 
     const deleted = await db
-      .delete(customers)
-      .where(eq(customers.id, id))
+      .delete(leads)
+      .where(eq(leads.id, id))
       .returning();
 
     if (deleted.length === 0) {

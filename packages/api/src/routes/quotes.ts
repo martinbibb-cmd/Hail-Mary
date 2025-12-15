@@ -180,29 +180,26 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const dto: CreateQuoteDto = req.body;
-    const customerId = typeof dto.customerId === 'number' ? dto.customerId : parseInt(String(dto.customerId));
+    const leadIdNum = typeof dto.leadId === 'number' ? dto.leadId : parseInt(String(dto.leadId));
 
-    // Verify customer exists
-    const customer = await db
+    // Verify lead exists
+    const lead = await db
       .select()
-      .from(customers)
-      .where(eq(customers.id, customerId));
+      .from(leads)
+      .where(eq(leads.id, leadIdNum));
 
-    if (customer.length === 0) {
+    if (lead.length === 0) {
       const response: ApiResponse<null> = {
         success: false,
-        error: 'Customer not found',
+        error: 'Lead not found',
       };
       return res.status(400).json(response);
     }
-
-    const leadIdNum = dto.leadId ? (typeof dto.leadId === 'number' ? dto.leadId : parseInt(String(dto.leadId))) : null;
 
     const [inserted] = await db
       .insert(quotes)
       .values({
         accountId: 1, // TODO: Get from auth context
-        customerId,
         leadId: leadIdNum,
         status: dto.status || 'draft',
         title: dto.title || null,

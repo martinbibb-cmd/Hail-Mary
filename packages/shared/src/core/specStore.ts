@@ -87,9 +87,9 @@ export interface ISpecStore {
   getSpec(sessionId: number): Promise<SystemSpecDraft | null>;
 
   /**
-   * Get home profile for a customer
+   * Get home profile for a lead
    */
-  getHomeProfile(customerId: number): Promise<HomeProfile | null>;
+  getHomeProfile(leadId: number): Promise<HomeProfile | null>;
 
   /**
    * Update a specific path in the spec
@@ -124,7 +124,7 @@ export interface ISpecStore {
   /**
    * Save home profile (persists beyond session)
    */
-  saveHomeProfile(customerId: number, profile: HomeProfile): Promise<void>;
+  saveHomeProfile(leadId: number, profile: HomeProfile): Promise<void>;
 
   /**
    * Merge transcript inferences into spec

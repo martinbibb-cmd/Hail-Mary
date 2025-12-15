@@ -108,6 +108,27 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
   const isMobile = layout === 'mobile'
   const isTablet = layout === 'tablet'
   
+  // Maximum number of items to show in mobile bottom navigation
+  const MAX_MOBILE_NAV_ITEMS = 5
+  
+  // Map app IDs to icons for better visual representation
+  const appIcons: Record<string, string> = {
+    profile: '👤',
+    visit: '🏠',
+    diary: '📅',
+    customers: '👥',
+    leads: '📋',
+    photos: '📷',
+    survey: '📝',
+    quote: '💰',
+    settings: '⚙️',
+    files: '📁',
+    browser: '🌐',
+    about: 'ℹ️',
+  }
+  
+  const getAppIcon = (appId: string) => appIcons[appId] || '📱'
+  
   return (
     <div className={`stack-workspace stack-workspace--${layout}`}>
       {/* Full-screen panel view when a window is active */}
@@ -172,13 +193,13 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
               
               {isMobile && (
                 <div className="stack-bottom-nav">
-                  {windows.filter(w => w.state !== 'minimized').slice(0, 5).map(window => (
+                  {windows.filter(w => w.state !== 'minimized').slice(0, MAX_MOBILE_NAV_ITEMS).map(window => (
                     <button
                       key={window.id}
                       className={`stack-nav-item ${window.isActive ? 'stack-nav-item--active' : ''}`}
                       onClick={() => handleSelectWindow(window.id)}
                     >
-                      <span className="stack-nav-icon">📱</span>
+                      <span className="stack-nav-icon">{getAppIcon(window.appId)}</span>
                       <span className="stack-nav-label">{window.title}</span>
                     </button>
                   ))}

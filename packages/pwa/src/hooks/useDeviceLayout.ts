@@ -39,6 +39,11 @@ export function useDeviceLayout(): DeviceLayout {
  * Determine the current device layout based on pointer type and screen width
  */
 function getDeviceLayout(): DeviceLayout {
+  // Guard against SSR - default to desktop if window is not available
+  if (typeof window === 'undefined') {
+    return 'desktop'
+  }
+  
   // Check if the device has fine pointer (mouse/trackpad)
   const hasFinePointer = window.matchMedia('(pointer: fine)').matches
   

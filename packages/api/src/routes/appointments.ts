@@ -14,7 +14,7 @@ const router = Router();
 function mapRowToAppointment(row: typeof appointments.$inferSelect): Appointment {
   return {
     id: String(row.id),
-    customerId: String(row.customerId),
+    leadId: String(row.leadId),
     quoteId: row.quoteId ? String(row.quoteId) : undefined,
     type: row.type as Appointment['type'],
     status: row.status as Appointment['status'],
@@ -42,13 +42,13 @@ router.get('/', async (req: Request, res: Response) => {
     const offset = (page - 1) * limit;
     const type = req.query.type as string;
     const status = req.query.status as string;
-    const customerId = req.query.customerId as string;
+    const leadId = req.query.leadId as string;
 
     // Build conditions
     const conditions = [];
     if (type) conditions.push(eq(appointments.type, type));
     if (status) conditions.push(eq(appointments.status, status));
-    if (customerId) conditions.push(eq(appointments.customerId, parseInt(customerId)));
+    if (leadId) conditions.push(eq(appointments.leadId, parseInt(leadId)));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -131,29 +131,29 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const dto: CreateAppointmentDto = req.body;
-    const customerId = typeof dto.customerId === 'number' ? dto.customerId : parseInt(dto.customerId);
+    const leadIdNum = typeof dto.leadId === 'number' ? dto.leadId : parseInt(String(dto.leadId));
 
-    // Verify customer exists
-    const customer = await db
+    // Verify lead exists
+    const lead = await db
       .select()
-      .from(customers)
-      .where(eq(customers.id, customerId));
+      .from(leads)
+      .where(eq(leads.id, leadIdNum));
 
-    if (customer.length === 0) {
+    if (lead.length === 0) {
       const response: ApiResponse<null> = {
         success: false,
-        error: 'Customer not found',
+        error: 'Lead not found',
       };
       return res.status(400).json(response);
     }
 
-    const quoteIdNum = dto.quoteId ? (typeof dto.quoteId === 'number' ? dto.quoteId : parseInt(dto.quoteId)) : null;
+    const quoteIdNum = dto.quoteId ? (typeof dto.quoteId === 'number' ? dto.quoteId : parseInt(String(dto.quoteId))) : null;
 
     const [inserted] = await db
       .insert(appointments)
       .values({
         accountId: 1, // TODO: Get from auth context
-        customerId,
+        leadId: leadIdNum,
         quoteId: quoteIdNum,
         type: dto.type,
         status: dto.status || 'scheduled',

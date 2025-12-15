@@ -89,7 +89,6 @@ function mapRowToSession(row: typeof transcriptSessions.$inferSelect): Transcrip
   return {
     id: row.id,
     leadId: row.leadId ?? undefined,
-    customerId: row.customerId ?? undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     status: row.status as TranscriptSession['status'],
@@ -143,7 +142,6 @@ router.post('/sessions', async (req: Request, res: Response) => {
       .insert(transcriptSessions)
       .values({
         leadId: dto.leadId || null,
-        customerId: dto.customerId || null,
         status: 'recording',
         language: dto.language || 'en-GB',
         notes: dto.notes || null,
@@ -366,11 +364,10 @@ router.get('/sessions/:sessionId', async (req: Request, res: Response) => {
   }
 });
 
-// GET /sessions - List all sessions (optional: filter by leadId/customerId)
+// GET /sessions - List all sessions (optional: filter by leadId)
 router.get('/sessions', async (req: Request, res: Response) => {
   try {
     const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
-    const customerId = req.query.customerId ? parseInt(req.query.customerId as string) : undefined;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
@@ -379,9 +376,6 @@ router.get('/sessions', async (req: Request, res: Response) => {
     const conditions = [];
     if (leadId) {
       conditions.push(eq(transcriptSessions.leadId, leadId));
-    }
-    if (customerId) {
-      conditions.push(eq(transcriptSessions.customerId, customerId));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

@@ -41,6 +41,15 @@
   filter: drop-shadow(0 4px 20px rgba(107, 142, 35, 0.3));
 }
 
+.auth-screen-logo-image {
+  width: 120px;
+  height: 120px;
+  display: block;
+  margin: 0 auto 16px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 20px rgba(107, 142, 35, 0.3));
+}
+
 .auth-screen-logo h1 {
   margin: 0;
   font-size: 36px;
@@ -235,6 +244,11 @@
   
   .auth-screen-logo-icon {
     font-size: 56px;
+  }
+  
+  .auth-screen-logo-image {
+    width: 90px;
+    height: 90px;
   }
   
   .auth-screen-logo h1 {

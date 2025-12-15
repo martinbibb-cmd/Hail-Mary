@@ -148,7 +148,7 @@ router.post('/', async (req: Request, res: Response) => {
         status: dto.status || 'new',
         description: dto.description || null,
         propertyType: dto.propertyType || null,
-        estimatedValue: dto.estimatedValue || null,
+        estimatedValue: dto.estimatedValue ? String(dto.estimatedValue) : null,
         notes: dto.notes || null,
       })
       .returning();
@@ -215,7 +215,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (dto.status !== undefined) updateData.status = dto.status;
     if (dto.description !== undefined) updateData.description = dto.description || null;
     if (dto.propertyType !== undefined) updateData.propertyType = dto.propertyType || null;
-    if (dto.estimatedValue !== undefined) updateData.estimatedValue = dto.estimatedValue || null;
+    if (dto.estimatedValue !== undefined) updateData.estimatedValue = dto.estimatedValue ? String(dto.estimatedValue) : null;
     if (dto.notes !== undefined) updateData.notes = dto.notes || null;
 
     const [updated] = await db

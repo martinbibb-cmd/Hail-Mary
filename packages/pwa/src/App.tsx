@@ -421,7 +421,7 @@ function CustomerDetail() {
     try {
       const res = await api.post<ApiResponse<VisitSession>>('/api/visit-sessions', {
         accountId: 1, // TODO: Get from auth context
-        customerId: customer.id,
+        leadId: customer.id,
       })
       
       if (res.success && res.data) {
@@ -555,7 +555,7 @@ function VisitPage() {
       // For now, we're using the API proxy or assuming same-origin
       const res = await api.post<ApiResponse<AssistantMessageResponse>>('/assistant/message', {
         sessionId: session.id,
-        customerId: Number(customer.id),
+        leadId: Number(customer.id),
         text: messageText,
       })
       

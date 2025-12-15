@@ -145,7 +145,7 @@ export const VisitApp: React.FC = () => {
     try {
       const res = await api.post<ApiResponse<VisitSession>>('/api/visit-sessions', {
         accountId: 1,
-        customerId: customer.id,
+        leadId: customer.id,
       })
       
       if (res.success && res.data) {
@@ -165,7 +165,7 @@ export const VisitApp: React.FC = () => {
     setLoading(true)
     try {
       // Try to find an active session for this customer
-      const sessionsRes = await api.get<PaginatedResponse<VisitSession>>(`/api/visit-sessions?customerId=${customer.id}&status=in_progress`)
+      const sessionsRes = await api.get<PaginatedResponse<VisitSession>>(`/api/visit-sessions?leadId=${customer.id}&status=in_progress`)
       
       if (sessionsRes.data && sessionsRes.data.length > 0) {
         const session = sessionsRes.data[0]
@@ -221,7 +221,7 @@ export const VisitApp: React.FC = () => {
     try {
       const res = await api.post<ApiResponse<{ assistantReply: string }>>('/assistant/message', {
         sessionId: activeSession.id,
-        customerId: selectedCustomer.id,
+        leadId: selectedCustomer.id,
         text: messageText,
       })
       

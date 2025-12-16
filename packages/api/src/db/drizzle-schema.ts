@@ -386,3 +386,176 @@ export const systemSpecDrafts = pgTable("system_spec_drafts", {
     .defaultNow()
     .notNull(),
 });
+
+// ============================================
+// Lead Workspace - Normalized Data Model
+// ============================================
+
+// Lead contacts (1:1) - separated contact info from core lead
+export const leadContacts = pgTable("lead_contacts", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull()
+    .unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 255 }),
+  addressLine1: varchar("address_line_1", { length: 255 }),
+  addressLine2: varchar("address_line_2", { length: 255 }),
+  city: varchar("city", { length: 255 }),
+  postcode: varchar("postcode", { length: 20 }),
+  country: varchar("country", { length: 100 }).default("UK"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Lead occupancy (1:1) - who lives there, schedule, priorities
+export const leadOccupancy = pgTable("lead_occupancy", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull()
+    .unique(),
+  occupants: integer("occupants"),
+  schedule: text("schedule"), // e.g. "Work from home", "Out 9-5"
+  priorities: text("priorities"), // structured notes about what matters to them
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Properties (1:1 per lead for MVP)
+export const properties = pgTable("properties", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull()
+    .unique(),
+  type: varchar("type", { length: 100 }), // detached, semi, terraced, flat, bungalow
+  ageBand: varchar("age_band", { length: 100 }), // pre-1919, 1919-1944, 1945-1964, etc.
+  construction: jsonb("construction"), // { walls: "cavity", roof: "pitched", floors: "suspended" }
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Property floorplans (0..n)
+export const propertyFloorplans = pgTable("property_floorplans", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  fileId: integer("file_id").references(() => files.id),
+  label: varchar("label", { length: 255 }), // "Ground Floor", "First Floor"
+  scale: varchar("scale", { length: 100 }), // e.g. "1:50"
+  metadata: jsonb("metadata"), // any additional data
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Lead photos (0..n) - photos specific to a lead/property
+export const leadPhotos = pgTable("lead_photos", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  fileId: integer("file_id").references(() => files.id),
+  category: varchar("category", { length: 100 }), // "boiler", "cylinder", "property", "other"
+  caption: text("caption"),
+  takenAt: timestamp("taken_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Lead heat loss (1:1) - whole house heat loss calculation
+export const leadHeatloss = pgTable("lead_heatloss", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull()
+    .unique(),
+  wholeHouseW: integer("whole_house_w"), // Total heat loss in watts
+  method: varchar("method", { length: 100 }), // "MCS", "room-by-room", "estimate"
+  assumptions: text("assumptions"), // Notes about calculation assumptions
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Lead technologies (0..n) - existing equipment at property
+export const leadTechnologies = pgTable("lead_technologies", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  type: varchar("type", { length: 100 }).notNull(), // boiler, cylinder, pv, battery, ev_charger, etc.
+  make: varchar("make", { length: 255 }),
+  model: varchar("model", { length: 255 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Lead interests (0..n) - what the customer is interested in
+export const leadInterests = pgTable("lead_interests", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  category: varchar("category", { length: 100 }).notNull(), // heat_pump, solar, battery, insulation, etc.
+  value: varchar("value", { length: 255 }), // optional specific value/detail
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Lead future plans (0..n) - customer's future intentions
+export const leadFuturePlans = pgTable("lead_future_plans", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  planType: varchar("plan_type", { length: 100 }).notNull(), // extension, loft_conversion, etc.
+  timeframe: varchar("timeframe", { length: 100 }), // "next_year", "2-5_years", etc.
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Recommendations (0..n) - system recommendations for customer
+export const recommendations = pgTable("recommendations", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  option: varchar("option", { length: 10 }).notNull(), // A, B, C
+  summary: text("summary").notNull(),
+  rationale: text("rationale"), // why this option
+  dependencies: text("dependencies"), // what needs to happen first
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

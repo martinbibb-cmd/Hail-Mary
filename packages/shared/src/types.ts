@@ -855,3 +855,128 @@ export interface TranscriptionConfig {
   fallbackAIProvider?: AIProviderConfig;
   enableSanityChecks: boolean;
 }
+
+// ============================================
+// Lead Workspace - Normalized Data Model Types
+// ============================================
+
+export interface LeadContact extends BaseEntity {
+  leadId: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  postcode?: string;
+  country?: string;
+}
+
+export interface LeadOccupancy extends BaseEntity {
+  leadId: number;
+  occupants?: number;
+  schedule?: string;
+  priorities?: string;
+  notes?: string;
+}
+
+export interface Property extends BaseEntity {
+  leadId: number;
+  type?: string; // detached, semi, terraced, flat, bungalow
+  ageBand?: string; // pre-1919, 1919-1944, etc.
+  construction?: Record<string, unknown>; // { walls: "cavity", roof: "pitched", floors: "suspended" }
+  notes?: string;
+}
+
+export interface PropertyFloorplan {
+  id: number;
+  leadId: number;
+  fileId?: number;
+  label?: string; // "Ground Floor", "First Floor"
+  scale?: string; // e.g. "1:50"
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+}
+
+export interface LeadPhoto {
+  id: number;
+  leadId: number;
+  fileId?: number;
+  category?: string; // "boiler", "cylinder", "property", "other"
+  caption?: string;
+  takenAt?: Date;
+  createdAt: Date;
+}
+
+export interface LeadHeatloss extends BaseEntity {
+  leadId: number;
+  wholeHouseW?: number;
+  method?: string; // "MCS", "room-by-room", "estimate"
+  assumptions?: string;
+}
+
+export interface LeadTechnology {
+  id: number;
+  leadId: number;
+  type: string; // boiler, cylinder, pv, battery, ev_charger, etc.
+  make?: string;
+  model?: string;
+  notes?: string;
+  createdAt: Date;
+}
+
+export interface LeadInterest {
+  id: number;
+  leadId: number;
+  category: string; // heat_pump, solar, battery, insulation, etc.
+  value?: string;
+  createdAt: Date;
+}
+
+export interface LeadFuturePlan {
+  id: number;
+  leadId: number;
+  planType: string; // extension, loft_conversion, etc.
+  timeframe?: string; // "next_year", "2-5_years", etc.
+  notes?: string;
+  createdAt: Date;
+}
+
+export interface Recommendation extends BaseEntity {
+  leadId: number;
+  option: string; // A, B, C
+  summary: string;
+  rationale?: string;
+  dependencies?: string;
+}
+
+// Lead Workspace Composite Payload (returned by GET /api/leads/:id/workspace)
+export interface LeadWorkspace {
+  lead: Lead;
+  contact?: LeadContact;
+  occupancy?: LeadOccupancy;
+  property?: Property;
+  heatloss?: LeadHeatloss;
+  interests: LeadInterest[];
+  futurePlans: LeadFuturePlan[];
+  technologies: LeadTechnology[];
+  quotes: Quote[];
+  recommendations: Recommendation[];
+  photos: LeadPhoto[];
+  floorplans: PropertyFloorplan[];
+}
+
+// DTOs for workspace module endpoints
+export type UpdateLeadContactDto = Partial<Omit<LeadContact, 'id' | 'leadId' | 'createdAt' | 'updatedAt'>>;
+export type UpdateLeadOccupancyDto = Partial<Omit<LeadOccupancy, 'id' | 'leadId' | 'createdAt' | 'updatedAt'>>;
+export type UpdatePropertyDto = Partial<Omit<Property, 'id' | 'leadId' | 'createdAt' | 'updatedAt'>>;
+export type UpdateLeadHeatlossDto = Partial<Omit<LeadHeatloss, 'id' | 'leadId' | 'createdAt' | 'updatedAt'>>;
+
+export type CreateLeadTechnologyDto = Omit<LeadTechnology, 'id' | 'leadId' | 'createdAt'>;
+export type CreateLeadInterestDto = Omit<LeadInterest, 'id' | 'leadId' | 'createdAt'>;
+export type CreateLeadFuturePlanDto = Omit<LeadFuturePlan, 'id' | 'leadId' | 'createdAt'>;
+export type CreateRecommendationDto = Omit<Recommendation, 'id' | 'leadId' | 'createdAt' | 'updatedAt'>;
+export type UpdateRecommendationDto = Partial<CreateRecommendationDto>;
+
+export type CreateLeadPhotoDto = Omit<LeadPhoto, 'id' | 'leadId' | 'createdAt'>;
+export type CreatePropertyFloorplanDto = Omit<PropertyFloorplan, 'id' | 'leadId' | 'createdAt'>;

@@ -12,7 +12,18 @@
 import "dotenv/config";
 import { eq } from "drizzle-orm";
 import { db, pool } from "./drizzle-client";
-import { accounts, leads, users, products } from "./drizzle-schema";
+import { 
+  accounts, 
+  leads, 
+  users, 
+  products,
+  leadContacts,
+  leadOccupancy,
+  properties,
+  leadHeatloss,
+  leadInterests,
+  leadFuturePlans,
+} from "./drizzle-schema";
 import { hashPassword } from "../services/auth.service";
 
 async function main() {
@@ -41,6 +52,7 @@ async function main() {
     .where(eq(leads.accountId, accountId))
     .limit(1);
 
+  let leadId: number;
   if (!existingLead) {
     const [insertedLead] = await db.insert(leads).values({
       accountId,
@@ -54,9 +66,76 @@ async function main() {
       country: "UK",
       status: "new",
     }).returning();
-    console.log(`Seeded Test Lead (id: ${insertedLead.id})`);
+    leadId = insertedLead.id;
+    console.log(`Seeded Test Lead (id: ${leadId})`);
   } else {
-    console.log(`Lead already exists for account ${accountId}: ${existingLead.firstName} ${existingLead.lastName} (id: ${existingLead.id}), no seed needed`);
+    leadId = existingLead.id;
+    console.log(`Lead already exists for account ${accountId}: ${existingLead.firstName} ${existingLead.lastName} (id: ${leadId}), no seed needed`);
+  }
+
+  // 2a. Seed linked lead workspace records for the test lead
+  // Only seed if they don't already exist
+  const [existingContact] = await db
+    .select()
+    .from(leadContacts)
+    .where(eq(leadContacts.leadId, leadId))
+    .limit(1);
+
+  if (!existingContact) {
+    await db.insert(leadContacts).values({
+      leadId,
+      name: "Test Lead",
+      phone: "00000000000",
+      email: "test@example.com",
+      addressLine1: "1 Test Street",
+      city: "Testville",
+      postcode: "TE57 1NG",
+      country: "UK",
+    });
+    console.log(`Seeded lead_contacts for lead ${leadId}`);
+
+    await db.insert(leadOccupancy).values({
+      leadId,
+      occupants: 2,
+      schedule: "Work from home most days",
+      priorities: "Quiet heating system, energy efficiency",
+    });
+    console.log(`Seeded lead_occupancy for lead ${leadId}`);
+
+    await db.insert(properties).values({
+      leadId,
+      type: "semi-detached",
+      ageBand: "1945-1964",
+      construction: { walls: "cavity", roof: "pitched", floors: "suspended" },
+      notes: "Well maintained property",
+    });
+    console.log(`Seeded properties for lead ${leadId}`);
+
+    await db.insert(leadHeatloss).values({
+      leadId,
+      wholeHouseW: 8000,
+      method: "estimate",
+      assumptions: "Based on property age and size",
+    });
+    console.log(`Seeded lead_heatloss for lead ${leadId}`);
+
+    await db.insert(leadInterests).values([
+      { leadId, category: "heat_pump", value: "air_source" },
+      { leadId, category: "solar", value: "panels" },
+    ]);
+    console.log(`Seeded lead_interests for lead ${leadId}`);
+
+    await db.insert(leadFuturePlans).values({
+      leadId,
+      planType: "loft_conversion",
+      timeframe: "2-5_years",
+      notes: "Planning to convert loft for extra bedroom",
+    });
+    console.log(`Seeded lead_future_plans for lead ${leadId}`);
+
+    console.log(`✅ Seeded all lead workspace records for lead ${leadId}`);
+  } else {
+    console.log(`Lead workspace records already exist for lead ${leadId}, skipping workspace seed`);
   }
 
   // 3. Seed sample boiler products if none exist

@@ -40,11 +40,35 @@ PWA_PORT="8080"
 AUTO_UPDATE=false
 FORCE_BUILD=false
 
+# Build error output limit (number of lines to show on failure)
+BUILD_ERROR_LINES=50
+
+# Container names (used for detection and cleanup)
+# Listed in dependency order (reverse for cleanup)
+HAILMARY_CONTAINERS=(
+    "hailmary-postgres"
+    "hailmary-api"
+    "hailmary-assistant"
+    "hailmary-pwa"
+    "hailmary-migrator"
+)
+
 # Logging functions
 log_info() { echo -e "${BLUE}ℹ${NC} $*"; }
 log_success() { echo -e "${GREEN}✓${NC} $*"; }
 log_warn() { echo -e "${YELLOW}⚠${NC} $*"; }
 log_error() { echo -e "${RED}✗${NC} $*"; }
+log_debug() { 
+    if [[ "${DEBUG:-false}" == "true" ]]; then
+        echo -e "${BLUE}[DEBUG]${NC} $*" 
+    fi
+}
+
+# Build manual cleanup command from container array
+build_cleanup_command() {
+    printf "docker rm -f"
+    printf " %s" "${HAILMARY_CONTAINERS[@]}"
+}
 
 # Show help
 show_help() {
@@ -121,6 +145,147 @@ check_prerequisites() {
     log_success "Prerequisites check passed"
 }
 
+# Check for existing Hail-Mary containers
+check_existing_containers() {
+    log_info "Checking for existing Hail-Mary containers..."
+    
+    local existing=()
+    for container in "${HAILMARY_CONTAINERS[@]}"; do
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+            existing+=("$container")
+            log_debug "Found existing container: $container"
+        fi
+    done
+    
+    if [[ ${#existing[@]} -eq 0 ]]; then
+        log_success "No conflicting containers found"
+        return 0
+    fi
+    
+    log_warn "Found ${#existing[@]} existing Hail-Mary container(s):"
+    for container in "${existing[@]}"; do
+        local status
+        status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+        echo "  - $container (status: $status)"
+    done
+    
+    return 1
+}
+
+# Stop and remove existing containers
+cleanup_existing_containers() {
+    log_info "Cleaning up existing Hail-Mary containers..."
+    
+    # Cleanup in reverse dependency order
+    local containers=()
+    for ((i=${#HAILMARY_CONTAINERS[@]}-1; i>=0; i--)); do
+        containers+=("${HAILMARY_CONTAINERS[i]}")
+    done
+    
+    local removed_count=0
+    local failed_count=0
+    
+    for container in "${containers[@]}"; do
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+            log_debug "Processing container: $container"
+            
+            # Stop the container if it's running
+            local status
+            status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+            if [[ "$status" == "running" ]]; then
+                log_info "Stopping running container: $container"
+                if docker stop "$container" &>/dev/null; then
+                    log_debug "Successfully stopped $container"
+                else
+                    log_warn "Failed to stop $container, will try to remove anyway"
+                fi
+            fi
+            
+            # Remove the container
+            log_info "Removing container: $container"
+            if docker rm -f "$container" &>/dev/null; then
+                log_success "Removed container: $container"
+                ((removed_count++))
+            else
+                log_error "Failed to remove container: $container"
+                ((failed_count++))
+            fi
+        fi
+    done
+    
+    # Clean up the network if it exists and is not in use
+    if docker network ls --format '{{.Name}}' | grep -q "^hailmary-network$"; then
+        log_info "Removing existing Hail-Mary network..."
+        if docker network rm hailmary-network &>/dev/null; then
+            log_success "Removed network: hailmary-network"
+        else
+            log_debug "Network hailmary-network still in use or cannot be removed (will be reused)"
+        fi
+    fi
+    
+    if [[ $failed_count -gt 0 ]]; then
+        log_error "Failed to remove $failed_count container(s)"
+        log_info "You may need to manually remove them with: docker rm -f <container-name>"
+        return 1
+    fi
+    
+    if [[ $removed_count -gt 0 ]]; then
+        log_success "Successfully removed $removed_count container(s)"
+    else
+        log_debug "No containers needed removal"
+    fi
+    
+    return 0
+}
+
+# Handle container conflicts
+handle_container_conflicts() {
+    if ! check_existing_containers; then
+        echo ""
+        log_warn "Existing Hail-Mary containers detected!"
+        echo ""
+        echo "These containers may cause conflicts. You have the following options:"
+        echo "  1. Remove existing containers and continue (recommended)"
+        echo "  2. Stop existing containers and continue"
+        echo "  3. Cancel installation"
+        echo ""
+        
+        read -p "Choose an option (1-3): " -n 1 -r
+        echo ""
+        
+        case "$REPLY" in
+            1)
+                log_info "Removing existing containers..."
+                if ! cleanup_existing_containers; then
+                    log_error "Failed to clean up some containers"
+                    log_info "Please manually remove them or use: $(build_cleanup_command)"
+                    exit 1
+                fi
+                log_success "Cleanup complete, continuing installation..."
+                ;;
+            2)
+                log_info "Stopping existing containers..."
+                # Only stop containers that actually exist
+                for container in "${HAILMARY_CONTAINERS[@]}"; do
+                    if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+                        docker stop "$container" 2>/dev/null || true
+                    fi
+                done
+                log_warn "Containers stopped but not removed - conflicts may still occur"
+                log_info "Continuing installation..."
+                ;;
+            3)
+                log_info "Installation cancelled by user"
+                exit 0
+                ;;
+            *)
+                log_error "Invalid option selected"
+                exit 1
+                ;;
+        esac
+    fi
+}
+
 # Clone or update repository
 setup_repository() {
     log_info "Setting up repository at $INSTALL_DIR..."
@@ -184,23 +349,40 @@ pull_images() {
     log_info "Pulling Docker images from GitHub Container Registry..."
     cd "$INSTALL_DIR"
 
-    local pull_success=true
+    local pull_output
+    local pull_exit_code
+    
+    log_debug "Using compose file: docker-compose.unraid.yml"
+    
     if docker compose version &> /dev/null; then
-        if ! docker compose -f docker-compose.unraid.yml pull 2>&1; then
-            pull_success=false
-        fi
+        log_debug "Using 'docker compose' command"
+        pull_output=$(docker compose -f docker-compose.unraid.yml pull 2>&1)
+        pull_exit_code=$?
     else
-        if ! docker-compose -f docker-compose.unraid.yml pull 2>&1; then
-            pull_success=false
-        fi
+        log_debug "Using 'docker-compose' command"
+        pull_output=$(docker-compose -f docker-compose.unraid.yml pull 2>&1)
+        pull_exit_code=$?
     fi
 
-    if [[ "$pull_success" == "true" ]]; then
+    if [[ $pull_exit_code -eq 0 ]]; then
         log_success "Docker images pulled successfully"
+        log_debug "Pull output: $pull_output"
         return 0
     else
         log_warn "Failed to pull pre-built images from GitHub Container Registry"
         log_info "This is expected if the images haven't been published yet"
+        log_debug "Pull error output: $pull_output"
+        log_debug "Exit code: $pull_exit_code"
+        
+        # Log specific error messages if they indicate common issues
+        if echo "$pull_output" | grep -qi "manifest unknown\|not found"; then
+            log_info "Images not found in registry (not yet published)"
+        elif echo "$pull_output" | grep -qi "denied\|unauthorized"; then
+            log_warn "Access denied to registry (authentication issue)"
+        elif echo "$pull_output" | grep -qi "network\|timeout\|connection"; then
+            log_warn "Network error while pulling images"
+        fi
+        
         return 1
     fi
 }
@@ -210,24 +392,54 @@ build_images() {
     log_info "Building Docker images locally (this may take several minutes)..."
     cd "$INSTALL_DIR"
 
-    local build_success=true
+    local build_output
+    local build_exit_code
+    
+    log_debug "Using compose file: docker-compose.unraid-build.yml"
+    
+    # Check if compose file exists
+    if [[ ! -f "docker-compose.unraid-build.yml" ]]; then
+        log_error "Build compose file not found: docker-compose.unraid-build.yml"
+        return 1
+    fi
+    
     if docker compose version &> /dev/null; then
-        if ! docker compose -f docker-compose.unraid-build.yml build 2>&1; then
-            build_success=false
-        fi
+        log_debug "Using 'docker compose' command"
+        build_output=$(docker compose -f docker-compose.unraid-build.yml build 2>&1)
+        build_exit_code=$?
     else
-        if ! docker-compose -f docker-compose.unraid-build.yml build 2>&1; then
-            build_success=false
-        fi
+        log_debug "Using 'docker-compose' command"
+        build_output=$(docker-compose -f docker-compose.unraid-build.yml build 2>&1)
+        build_exit_code=$?
     fi
 
-    if [[ "$build_success" == "true" ]]; then
+    if [[ $build_exit_code -eq 0 ]]; then
         log_success "Docker images built successfully"
+        log_debug "Build completed successfully"
         return 0
     else
         log_error "Failed to build Docker images locally"
-        log_info "Check the error messages above for details"
-        log_info "Common issues: missing Dockerfile, network problems, or insufficient disk space"
+        log_error "Build output (last $BUILD_ERROR_LINES lines):"
+        echo "$build_output" | tail -n "$BUILD_ERROR_LINES"
+        log_debug "Full build output: $build_output"
+        log_debug "Exit code: $build_exit_code"
+        
+        # Provide specific guidance based on error patterns
+        if echo "$build_output" | grep -qi "no space left"; then
+            log_error "Insufficient disk space for building images"
+            log_info "Free up disk space and try again"
+        elif echo "$build_output" | grep -qi "network\|timeout\|connection"; then
+            log_error "Network error during build"
+            log_info "Check your internet connection and try again"
+        elif echo "$build_output" | grep -qi "dockerfile"; then
+            log_error "Dockerfile not found or has errors"
+            log_info "Ensure the repository is properly cloned"
+        elif echo "$build_output" | grep -qi "denied\|permission"; then
+            log_error "Permission error during build"
+            log_info "Ensure Docker has proper permissions"
+        fi
+        
+        log_info "For more details, check the full output above"
         return 1
     fi
 }
@@ -238,14 +450,61 @@ start_containers() {
     cd "$INSTALL_DIR"
 
     local compose_file="$1"
+    local start_output
+    local start_exit_code
+    
+    log_debug "Starting containers with compose file: $compose_file"
+    
+    # Verify compose file exists
+    if [[ ! -f "$compose_file" ]]; then
+        log_error "Compose file not found: $compose_file"
+        return 1
+    fi
     
     if docker compose version &> /dev/null; then
-        docker compose -f "$compose_file" up -d
+        log_debug "Using 'docker compose' command"
+        start_output=$(docker compose -f "$compose_file" up -d 2>&1)
+        start_exit_code=$?
     else
-        docker-compose -f "$compose_file" up -d
+        log_debug "Using 'docker-compose' command"
+        start_output=$(docker-compose -f "$compose_file" up -d 2>&1)
+        start_exit_code=$?
     fi
 
-    log_success "Containers started"
+    if [[ $start_exit_code -eq 0 ]]; then
+        log_success "Containers started successfully"
+        log_debug "Start output: $start_output"
+        
+        # Show container status
+        log_info "Container status:"
+        if docker compose version &> /dev/null; then
+            docker compose -f "$compose_file" ps
+        else
+            docker-compose -f "$compose_file" ps
+        fi
+        
+        return 0
+    else
+        log_error "Failed to start containers"
+        log_error "Error output:"
+        echo "$start_output"
+        
+        # Check for common issues
+        if echo "$start_output" | grep -qi "already in use\|conflict"; then
+            log_error "Container name conflict detected"
+            log_info "Some containers with the same names are already running"
+            log_info "Run this script again and choose to remove existing containers"
+        elif echo "$start_output" | grep -qi "port.*already allocated"; then
+            log_error "Port conflict detected"
+            log_info "Another service is using the required ports"
+            log_info "Check which service is using port $PWA_PORT with: netstat -tuln | grep $PWA_PORT"
+        elif echo "$start_output" | grep -qi "no such image"; then
+            log_error "Docker image not found"
+            log_info "Images may not have been built or pulled correctly"
+        fi
+        
+        return 1
+    fi
 }
 
 # Wait for services to be healthy
@@ -382,6 +641,9 @@ main() {
     setup_repository
     setup_environment
     
+    # Check for and handle any existing container conflicts
+    handle_container_conflicts
+    
     local compose_file=""
     
     if [[ "$FORCE_BUILD" == "true" ]]; then
@@ -410,7 +672,13 @@ main() {
         fi
     fi
     
-    start_containers "$compose_file"
+    if ! start_containers "$compose_file"; then
+        log_error "Installation failed: Could not start containers"
+        log_info "Please check the error messages above"
+        log_info "You may need to manually clean up with: $(build_cleanup_command)"
+        exit 1
+    fi
+    
     wait_for_services
     setup_auto_update
     show_completion "$compose_file"

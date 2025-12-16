@@ -50,6 +50,9 @@ initializeDatabase();
 // Initialize STT provider based on environment configuration
 // Try to get OpenAI API key from worker, fallback to environment variable
 const initializeSttProvider = async () => {
+  // Import appStatus for degraded mode tracking
+  const { appStatus } = await import('./core/appStatus');
+  
   if (process.env.USE_WHISPER_STT === 'true') {
     try {
       const openaiApiKey = await getOpenaiApiKey();
@@ -60,22 +63,31 @@ const initializeSttProvider = async () => {
       }
     } catch (error) {
       console.warn('⚠️  Failed to get OpenAI key from worker, trying environment variable');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      appStatus.setDegraded('stt', `Failed to get OpenAI key from worker: ${errorMsg}`);
     }
     
     // Fallback to environment variable
     if (process.env.OPENAI_API_KEY) {
-      console.log('🎙️  Using OpenAI Whisper for transcription (key from environment)');
-      setSttProvider(new WhisperSttProvider(process.env.OPENAI_API_KEY));
-      return;
+      try {
+        console.log('🎙️  Using OpenAI Whisper for transcription (key from environment)');
+        setSttProvider(new WhisperSttProvider(process.env.OPENAI_API_KEY));
+        return;
+      } catch (error) {
+        console.warn('⚠️  Failed to initialize Whisper, falling back to Mock STT');
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        appStatus.setDegraded('stt', `Whisper initialization failed: ${errorMsg}`);
+      }
     }
   }
   
   console.log('🎙️  Using Mock STT provider (set USE_WHISPER_STT=true and configure OPENAI_API_KEY to enable Whisper)');
 };
 
-// Initialize STT provider asynchronously
+// Initialize STT provider asynchronously - never crash on failure
 initializeSttProvider().catch(error => {
-  console.error('Failed to initialize STT provider:', error);
+  console.error('⚠️  STT provider initialization failed, continuing with degraded service:', error);
+  // Server continues despite STT failure - this is intentional for "unsinkable mode"
 });
 
 // Rate limiting middleware
@@ -112,8 +124,9 @@ app.get('/health', (_req, res) => {
 
 // Detailed health check endpoint with configuration status
 app.get('/health/detailed', async (_req, res) => {
-  // Import config status dynamically to avoid circular dependencies
+  // Import config status and app status dynamically to avoid circular dependencies
   const { depotTranscriptionService } = await import('./services/depotTranscription.service');
+  const { appStatus } = await import('./core/appStatus');
   const configStatus = depotTranscriptionService.getConfigLoadStatus();
   
   const health = {
@@ -133,6 +146,8 @@ app.get('/health/detailed', async (_req, res) => {
       checklistConfigUsedFallback: configStatus.checklistConfig.usedFallback,
     },
     database: 'unknown',
+    degraded: appStatus.degraded,
+    degradedNotes: appStatus.getNotes(),
   };
 
   try {
@@ -140,6 +155,11 @@ app.get('/health/detailed', async (_req, res) => {
     health.database = 'connected';
   } catch {
     health.database = 'disconnected';
+    health.status = 'degraded';
+  }
+
+  // Mark as degraded if any subsystem is degraded
+  if (appStatus.hasAnyDegraded()) {
     health.status = 'degraded';
   }
 
@@ -185,8 +205,68 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ success: false, error: 'Internal server error' });
 });
 
+// Print startup summary
+const printStartupSummary = async () => {
+  const { appStatus } = await import('./core/appStatus');
+  const { depotTranscriptionService } = await import('./services/depotTranscription.service');
+  
+  console.log('');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📦 STARTUP SUMMARY');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('');
+  console.log(`🔢 Version: ${process.env.npm_package_version || API_VERSION}`);
+  console.log(`🌐 Port: ${PORT}`);
+  console.log(`📍 Host: ${HOST}`);
+  console.log(`🔧 Node: ${process.version}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log('');
+  
+  // Config status
+  const configStatus = depotTranscriptionService.getConfigLoadStatus();
+  console.log('📋 Configuration:');
+  console.log(`   Depot Schema: ${configStatus.depotSchema.loadedFrom || 'fallback'}${configStatus.depotSchema.usedFallback ? ' (fallback)' : ''}`);
+  console.log(`   Checklist Config: ${configStatus.checklistConfig.loadedFrom || 'fallback'}${configStatus.checklistConfig.usedFallback ? ' (fallback)' : ''}`);
+  console.log('');
+  
+  // Database status
+  let dbOk = false;
+  try {
+    await db.select().from(users).limit(1);
+    dbOk = true;
+    console.log('🗄️  Database: ✅ Connected');
+  } catch (error) {
+    console.log('🗄️  Database: ❌ Disconnected');
+    appStatus.setDegraded('database', 'Database connection failed at startup');
+  }
+  console.log('');
+  
+  // Degraded subsystems
+  if (appStatus.hasAnyDegraded()) {
+    console.log('⚠️  DEGRADED SUBSYSTEMS:');
+    const degradedList = appStatus.getAllDegraded();
+    degradedList.forEach(key => {
+      console.log(`   ❌ ${key}`);
+    });
+    console.log('');
+    console.log('📝 Degradation Notes:');
+    appStatus.getNotes().forEach(note => {
+      console.log(`   ${note}`);
+    });
+    console.log('');
+  } else {
+    console.log('✅ All subsystems operational');
+    console.log('');
+  }
+  
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+};
+
 // Start server
-app.listen(PORT, HOST, () => {
+app.listen(PORT, HOST, async () => {
+  // Print startup summary first
+  await printStartupSummary();
+  
   console.log('');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`🚀 Hail-Mary API running on http://${HOST}:${PORT}`);

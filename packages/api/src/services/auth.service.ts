@@ -37,6 +37,8 @@ export interface UserPayload {
   accountId?: number;
   authProvider: string;
   role: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface ResetPasswordDto {
@@ -484,6 +486,8 @@ export async function listAllUsers(): Promise<UserPayload[]> {
         accountId: users.accountId,
         authProvider: users.authProvider,
         role: users.role,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
       })
       .from(users)
       .orderBy(users.name);
@@ -495,6 +499,8 @@ export async function listAllUsers(): Promise<UserPayload[]> {
       accountId: user.accountId ?? undefined,
       authProvider: user.authProvider,
       role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     }));
   } catch (error) {
     if (isDatabaseError(error)) {
@@ -560,6 +566,71 @@ export async function adminResetUserPassword(userId: number, newPassword: string
       throw new AuthError('database_error', 'A database error occurred.', 500);
     }
     console.error('Unexpected error during password reset:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
+}
+
+/**
+ * Generate a password reset token for a user (admin only)
+ * @param userId - The ID of the user
+ * @param adminId - The ID of the admin generating the token
+ * @param baseUrl - Base URL for constructing the reset link
+ * @returns Object with token and resetLink
+ */
+export async function adminGenerateResetToken(
+  userId: number, 
+  adminId: number, 
+  baseUrl: string
+): Promise<{ token: string; resetLink: string }> {
+  try {
+    // Find user by ID
+    const foundUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (foundUsers.length === 0) {
+      throw new AuthError('not_found', 'User not found', 404);
+    }
+
+    const user = foundUsers[0];
+
+    // Check if this is a local auth user
+    if (user.authProvider !== 'local') {
+      throw new AuthError(
+        'invalid_operation',
+        `Cannot generate reset token for ${user.authProvider} users. They must use their SSO provider.`,
+        400
+      );
+    }
+
+    // Generate reset token
+    const resetToken = generateResetToken();
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
+
+    // Store token in database
+    await db.insert(passwordResetTokens).values({
+      userId: user.id,
+      token: resetToken,
+      expiresAt,
+    });
+
+    // Construct reset URL
+    const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
+
+    // Log the action for audit trail
+    console.log(`[Admin] Password reset token generated for user ${user.email} (ID: ${userId}) by admin ID: ${adminId}`);
+
+    return { token: resetToken, resetLink };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    if (isDatabaseError(error)) {
+      console.error('Database error generating reset token:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error generating reset token:', error);
     throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
   }
 }

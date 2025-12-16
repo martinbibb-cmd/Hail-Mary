@@ -12,11 +12,12 @@
 
 import { Router, Request, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
-import { listAllUsers, adminResetUserPassword, AuthError } from '../services/auth.service';
+import { listAllUsers, adminResetUserPassword, adminGenerateResetToken, AuthError } from '../services/auth.service';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { db } from '../db/drizzle-client';
 
 const execAsync = promisify(exec);
 
@@ -60,6 +61,9 @@ router.get('/users', async (_req: Request, res: Response) => {
 /**
  * POST /api/admin/users/:userId/reset-password
  * Reset a user's password (admin only)
+ * Supports two modes:
+ * - With newPassword: directly sets password
+ * - Without newPassword: generates a one-time reset token/link
  */
 router.post('/users/:userId/reset-password', async (req: Request, res: Response) => {
   try {
@@ -73,13 +77,30 @@ router.post('/users/:userId/reset-password', async (req: Request, res: Response)
       });
     }
 
+    // Mode A: Generate reset token (preferred - safer)
     if (!newPassword) {
-      return res.status(400).json({
-        success: false,
-        error: 'New password is required',
+      const adminUser = req.user;
+      if (!adminUser) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+        });
+      }
+
+      const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const { token, resetLink } = await adminGenerateResetToken(userId, adminUser.id, baseUrl);
+
+      return res.json({
+        success: true,
+        message: 'Reset token generated successfully',
+        data: {
+          resetLink,
+          expiresIn: '1 hour',
+        },
       });
     }
 
+    // Mode B: Direct password reset (legacy support)
     await adminResetUserPassword(userId, newPassword);
 
     return res.json({
@@ -104,10 +125,33 @@ router.post('/users/:userId/reset-password', async (req: Request, res: Response)
 
 /**
  * GET /api/admin/nas/status
- * Get current NAS deployment status
+ * Get current NAS deployment status with health checks
  */
 router.get('/nas/status', async (_req: Request, res: Response) => {
   try {
+    // Check database health with latency measurement
+    let dbHealth = { ok: false, latencyMs: 0 };
+    try {
+      const startTime = Date.now();
+      await db.execute('SELECT 1');
+      const latencyMs = Date.now() - startTime;
+      dbHealth = { ok: true, latencyMs };
+    } catch (error) {
+      console.error('Database health check failed:', error);
+    }
+
+    // Get app version from package.json or environment
+    const appVersion = process.env.npm_package_version || '0.2.0';
+    
+    // Get git commit if available
+    let gitCommit = null;
+    try {
+      const { stdout } = await execAsync('git rev-parse --short HEAD 2>/dev/null || echo ""');
+      gitCommit = stdout.trim() || null;
+    } catch {
+      // Git not available
+    }
+
     // Check if running in a Docker container using Node.js fs methods
     let isDocker = false;
     try {
@@ -134,9 +178,26 @@ router.get('/nas/status', async (_req: Request, res: Response) => {
       }
     }
 
+    // Check migration status (optional - checks if migrations table exists)
+    let migrationsOk = false;
+    try {
+      await db.execute("SELECT 1 FROM information_schema.tables WHERE table_name = '__drizzle_migrations' LIMIT 1");
+      migrationsOk = true;
+    } catch {
+      // Migrations table doesn't exist or query failed
+    }
+
     return res.json({
       success: true,
       data: {
+        db: dbHealth,
+        app: {
+          version: appVersion,
+          commit: gitCommit,
+        },
+        migrations: {
+          ok: migrationsOk,
+        },
         isDocker,
         containerStatus,
         timestamp: new Date().toISOString(),

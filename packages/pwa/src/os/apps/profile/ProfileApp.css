@@ -344,3 +344,85 @@
   flex-direction: column;
   gap: 12px;
 }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: var(--surface-primary, #fffcf7);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content h3 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-content p {
+  margin: 0 0 16px 0;
+  color: var(--text-muted, rgba(60, 50, 40, 0.7));
+}
+
+.reset-link-display {
+  margin-bottom: 16px;
+}
+
+.reset-link-display input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.25));
+  border-radius: 6px;
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.05));
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.modal-actions button {
+  padding: 10px 20px;
+}
+
+/* Status Cards */
+.status-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.status-card {
+  padding: 15px;
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.25));
+  border-radius: 8px;
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.05));
+}
+
+.status-card h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted, rgba(60, 50, 40, 0.7));
+}

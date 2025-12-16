@@ -247,14 +247,14 @@ handle_container_conflicts() {
                 log_info "Removing existing containers..."
                 if ! cleanup_existing_containers; then
                     log_error "Failed to clean up some containers"
-                    log_info "Please manually remove them or use: docker rm -f ${HAILMARY_CONTAINERS[*]}"
+                    log_info "Please manually remove them or use: docker rm -f ${HAILMARY_CONTAINERS[@]}"
                     exit 1
                 fi
                 log_success "Cleanup complete, continuing installation..."
                 ;;
             2)
                 log_info "Stopping existing containers..."
-                docker stop ${HAILMARY_CONTAINERS[*]} 2>/dev/null || true
+                docker stop "${HAILMARY_CONTAINERS[@]}" 2>/dev/null || true
                 log_warn "Containers stopped but not removed - conflicts may still occur"
                 log_info "Continuing installation..."
                 ;;
@@ -659,7 +659,7 @@ main() {
     if ! start_containers "$compose_file"; then
         log_error "Installation failed: Could not start containers"
         log_info "Please check the error messages above"
-        log_info "You may need to manually clean up with: docker rm -f ${HAILMARY_CONTAINERS[*]}"
+        log_info "You may need to manually clean up with: docker rm -f ${HAILMARY_CONTAINERS[@]}"
         exit 1
     fi
     

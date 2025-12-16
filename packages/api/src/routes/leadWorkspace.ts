@@ -32,7 +32,7 @@ import {
   propertyFloorplans,
 } from '../db/drizzle-schema';
 import { eq } from 'drizzle-orm';
-import { requireAuth } from '../middleware/auth.middleware';
+import { requireAuth, blockGuest } from '../middleware/auth.middleware';
 import type {
   ApiResponse,
   LeadWorkspace,
@@ -53,6 +53,8 @@ const router = Router();
 
 // Apply authentication middleware to all workspace routes
 router.use(requireAuth);
+// Block guest users from accessing workspace data
+router.use(blockGuest);
 
 /**
  * GET /api/leads/:id/workspace

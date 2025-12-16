@@ -326,6 +326,45 @@ async function main() {
     }
   }
 
+  // 5. Create guest user if env vars are set
+  const guestEmail = process.env.GUEST_EMAIL;
+  const guestPassword = process.env.GUEST_PASSWORD;
+  const guestName = process.env.GUEST_NAME || "Guest";
+
+  if (guestEmail && guestPassword) {
+    const normalizedGuestEmail = guestEmail.toLowerCase().trim();
+    
+    // Check if guest user already exists
+    const [existingGuest] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalizedGuestEmail))
+      .limit(1);
+
+    if (!existingGuest) {
+      // Check password length
+      if (guestPassword.length < 4) {
+        console.warn("GUEST_PASSWORD must be at least 4 characters. Skipping guest user creation.");
+      } else {
+        const passwordHash = await hashPassword(guestPassword);
+
+        const [insertedGuest] = await db.insert(users).values({
+          accountId,
+          email: normalizedGuestEmail,
+          name: guestName,
+          passwordHash,
+          authProvider: "local",
+          role: "guest",
+        }).returning();
+
+        console.log(`✅ Created guest user: ${normalizedGuestEmail} (id: ${insertedGuest.id})`);
+        console.log(`   Guest users have read-only access and cannot view customer data`);
+      }
+    } else {
+      console.log(`Guest user already exists: ${normalizedGuestEmail} (id: ${existingGuest.id}), no seed needed`);
+    }
+  }
+
   console.log("Seed completed successfully!");
 
   // Properly close the connection pool

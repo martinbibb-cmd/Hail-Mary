@@ -6,9 +6,15 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db/drizzle-client';
 import { leads } from '../db/drizzle-schema';
 import { eq, desc, count, and } from 'drizzle-orm';
+import { requireAuth, blockGuest } from '../middleware/auth.middleware';
 import type { Lead, CreateLeadDto, UpdateLeadDto, ApiResponse, PaginatedResponse } from '@hail-mary/shared';
 
 const router = Router();
+
+// Apply authentication middleware to all lead routes
+router.use(requireAuth);
+// Block guest users from accessing lead data
+router.use(blockGuest);
 
 // Helper to map database row to Lead object
 function mapRowToLead(row: typeof leads.$inferSelect): Lead {

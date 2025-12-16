@@ -16,10 +16,38 @@ services:
     networks:
       - hailmary-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hailmary -d hailmary"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hailmary}"]
+      interval: 5s
       timeout: 5s
       retries: 5
+
+  # Database Migrator Service - Runs once to set up database
+  hailmary-migrator:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: hailmary-migrator
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env file}
+      NODE_ENV: production
+      # Initial admin credentials for seeding
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Admin}
+      # Guest user credentials
+      GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
+      GUEST_PASSWORD: ${GUEST_PASSWORD:-guest}
+    command: npm run db:init -w packages/api
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    depends_on:
+      hailmary-postgres:
+        condition: service_healthy
+    networks:
+      - hailmary-network
 
   # Hail-Mary API Service
   hailmary-api:
@@ -35,20 +63,16 @@ services:
       JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
       BASE_URL: ${BASE_URL:-https://hail_mary.cloudbibb.uk}
       NODE_ENV: production
-      # Default admin credentials for first-time setup
-      # ⚠️  SECURITY WARNING: Change these in production via .env file!
-      # Default: admin@hailmary.local / HailMary2024!
-      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
       # Optional: Override core config path for custom depot schema and checklist config
       # Uncomment to use custom configs from a mounted volume:
       # HAILMARY_CORE_PATH: /app/config/core
     # Optional: Mount custom config volume (requires HAILMARY_CORE_PATH above)
     # volumes:
     #   - /mnt/user/appdata/hailmary/shared-core:/app/config/core:ro
+    command: npm run start -w packages/api
     depends_on:
-      hailmary-postgres:
-        condition: service_healthy
+      hailmary-migrator:
+        condition: service_completed_successfully
     networks:
       - hailmary-network
     # Internal only - not exposed externally

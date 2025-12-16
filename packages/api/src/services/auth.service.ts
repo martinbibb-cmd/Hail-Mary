@@ -917,3 +917,52 @@ export async function nasQuickLogin(userId: number, clientIp: string): Promise<{
     throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
   }
 }
+
+/**
+ * Login as guest user (read-only access, no customer data)
+ * Finds the guest user with role='guest' and logs them in
+ */
+export async function loginAsGuest(): Promise<{ user: UserPayload; token: string }> {
+  try {
+    // Find guest user by role
+    const foundUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.role, 'guest'))
+      .limit(1);
+
+    if (foundUsers.length === 0) {
+      throw new AuthError(
+        'guest_not_configured', 
+        'Guest login is not available. Please contact administrator.',
+        503
+      );
+    }
+
+    const user = foundUsers[0];
+
+    const userPayload: UserPayload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      accountId: user.accountId ?? undefined,
+      authProvider: user.authProvider,
+      role: user.role,
+    };
+
+    const token = generateToken(userPayload);
+    
+    console.log(`[Guest Auth] Guest login successful`);
+    return { user: userPayload, token };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    if (isDatabaseError(error)) {
+      console.error('Database error during guest login:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error during guest login:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
+}

@@ -40,6 +40,16 @@ PWA_PORT="8080"
 AUTO_UPDATE=false
 FORCE_BUILD=false
 
+# Container names (used for detection and cleanup)
+# Listed in dependency order (reverse for cleanup)
+HAILMARY_CONTAINERS=(
+    "hailmary-postgres"
+    "hailmary-api"
+    "hailmary-assistant"
+    "hailmary-pwa"
+    "hailmary-migrator"
+)
+
 # Logging functions
 log_info() { echo -e "${BLUE}ℹ${NC} $*"; }
 log_success() { echo -e "${GREEN}✓${NC} $*"; }
@@ -130,16 +140,8 @@ check_prerequisites() {
 check_existing_containers() {
     log_info "Checking for existing Hail-Mary containers..."
     
-    local containers=(
-        "hailmary-postgres"
-        "hailmary-api"
-        "hailmary-assistant"
-        "hailmary-pwa"
-        "hailmary-migrator"
-    )
-    
     local existing=()
-    for container in "${containers[@]}"; do
+    for container in "${HAILMARY_CONTAINERS[@]}"; do
         if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
             existing+=("$container")
             log_debug "Found existing container: $container"
@@ -164,13 +166,11 @@ check_existing_containers() {
 cleanup_existing_containers() {
     log_info "Cleaning up existing Hail-Mary containers..."
     
-    local containers=(
-        "hailmary-pwa"
-        "hailmary-assistant"
-        "hailmary-api"
-        "hailmary-migrator"
-        "hailmary-postgres"
-    )
+    # Cleanup in reverse dependency order
+    local containers=()
+    for ((i=${#HAILMARY_CONTAINERS[@]}-1; i>=0; i--)); do
+        containers+=("${HAILMARY_CONTAINERS[i]}")
+    done
     
     local removed_count=0
     local failed_count=0
@@ -247,14 +247,14 @@ handle_container_conflicts() {
                 log_info "Removing existing containers..."
                 if ! cleanup_existing_containers; then
                     log_error "Failed to clean up some containers"
-                    log_info "Please manually remove them or use: docker rm -f hailmary-postgres hailmary-api hailmary-assistant hailmary-pwa hailmary-migrator"
+                    log_info "Please manually remove them or use: docker rm -f ${HAILMARY_CONTAINERS[*]}"
                     exit 1
                 fi
                 log_success "Cleanup complete, continuing installation..."
                 ;;
             2)
                 log_info "Stopping existing containers..."
-                docker stop hailmary-pwa hailmary-assistant hailmary-api hailmary-migrator hailmary-postgres 2>/dev/null || true
+                docker stop ${HAILMARY_CONTAINERS[*]} 2>/dev/null || true
                 log_warn "Containers stopped but not removed - conflicts may still occur"
                 log_info "Continuing installation..."
                 ;;
@@ -659,7 +659,7 @@ main() {
     if ! start_containers "$compose_file"; then
         log_error "Installation failed: Could not start containers"
         log_info "Please check the error messages above"
-        log_info "You may need to manually clean up with: docker rm -f hailmary-postgres hailmary-api hailmary-assistant hailmary-pwa hailmary-migrator"
+        log_info "You may need to manually clean up with: docker rm -f ${HAILMARY_CONTAINERS[*]}"
         exit 1
     fi
     

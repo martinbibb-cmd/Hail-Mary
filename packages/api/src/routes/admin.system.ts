@@ -115,8 +115,11 @@ router.get('/status', async (_req: Request, res: Response) => {
     const degradedNotes = appStatus.getNotes();
 
     // Collect any warnings (excluding degraded subsystems as they're reported separately)
+    // Note: Database and migration issues are tracked via degraded subsystems (appStatus),
+    // so only config fallback warnings are included here
     const warnings: string[] = [];
-    if (!dbOk) {
+    if (!dbOk && !appStatus.isDegraded('database')) {
+      // Only add warning if not already tracked as degraded
       warnings.push('Database connection failed');
     }
     if (!migrationsOk) {

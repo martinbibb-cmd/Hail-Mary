@@ -33,6 +33,9 @@ interface SystemStatus {
     checklistConfigLoadedFrom: string;
     checklistConfigUsedFallback: boolean;
   };
+  // degraded is the full map of subsystem states from appStatus
+  // degradedSubsystems is the filtered list of only degraded subsystems
+  // degradedNotes contains timestamped error messages
   degraded?: {
     [key: string]: boolean;
   };

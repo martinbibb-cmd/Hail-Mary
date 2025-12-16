@@ -15,12 +15,7 @@ describe('Degraded Mode Integration Tests', () => {
   describe('STT Provider Degradation', () => {
     it('should mark STT as degraded when initialization fails', () => {
       // Simulate STT initialization failure
-      try {
-        throw new Error('Whisper API key invalid');
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        appStatus.setDegraded('stt', `Whisper initialization failed: ${errorMsg}`);
-      }
+      appStatus.setDegraded('stt', 'Whisper initialization failed: Whisper API key invalid');
 
       expect(appStatus.isDegraded('stt')).toBe(true);
       expect(appStatus.hasAnyDegraded()).toBe(true);
@@ -47,11 +42,7 @@ describe('Degraded Mode Integration Tests', () => {
   describe('Database Degradation', () => {
     it('should mark database as degraded when connection fails', () => {
       // Simulate database connection failure
-      try {
-        throw new Error('Connection refused');
-      } catch (error) {
-        appStatus.setDegraded('database', 'Connection failed at startup');
-      }
+      appStatus.setDegraded('database', 'Connection failed at startup');
 
       expect(appStatus.isDegraded('database')).toBe(true);
       expect(appStatus.getAllDegraded()).toContain('database');

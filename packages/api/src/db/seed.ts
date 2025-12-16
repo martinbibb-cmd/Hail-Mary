@@ -343,8 +343,8 @@ async function main() {
 
     if (!existingGuest) {
       // Check password length
-      if (guestPassword.length < 4) {
-        console.warn("GUEST_PASSWORD must be at least 4 characters. Skipping guest user creation.");
+      if (guestPassword.length < 8) {
+        console.warn("GUEST_PASSWORD must be at least 8 characters. Skipping guest user creation.");
       } else {
         const passwordHash = await hashPassword(guestPassword);
 
@@ -358,7 +358,7 @@ async function main() {
         }).returning();
 
         console.log(`✅ Created guest user: ${normalizedGuestEmail} (id: ${insertedGuest.id})`);
-        console.log(`   Guest users have read-only access and cannot view customer data`);
+        console.log(`   Guest users have limited access - check middleware for current restrictions`);
       }
     } else {
       console.log(`Guest user already exists: ${normalizedGuestEmail} (id: ${existingGuest.id}), no seed needed`);

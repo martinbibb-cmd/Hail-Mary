@@ -43,7 +43,7 @@ services:
       INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Admin}
       # Guest user credentials
       GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
-      GUEST_PASSWORD: ${GUEST_PASSWORD:-guest}
+      GUEST_PASSWORD: ${GUEST_PASSWORD:-guestpass}
     command: npm run db:init -w packages/api
     deploy:
       restart_policy:

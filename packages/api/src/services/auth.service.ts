@@ -952,7 +952,7 @@ export async function loginAsGuest(): Promise<{ user: UserPayload; token: string
 
     const token = generateToken(userPayload);
     
-    console.log(`[Guest Auth] Guest login successful`);
+    // Note: Reduced logging for guest logins to avoid log clutter
     return { user: userPayload, token };
   } catch (error) {
     if (error instanceof AuthError) {

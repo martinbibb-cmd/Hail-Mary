@@ -115,7 +115,7 @@ When you first deploy Hail-Mary, these users are automatically created:
 | User Type | Email | Password | Access |
 |-----------|-------|----------|--------|
 | **Admin** | `admin@hailmary.local` | `HailMary2024!` | Full access |
-| **Guest** | `guest@hailmary.local` | `guest` | Demo access only |
+| **Guest** | `guest@hailmary.local` | `guestpass` | Demo access only |
 
 > ⚠️ **Security Warning**: Change admin credentials immediately after first login by setting `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` in your `.env` file.
 

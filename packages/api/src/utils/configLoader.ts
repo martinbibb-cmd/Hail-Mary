@@ -105,14 +105,15 @@ export function loadJsonConfig<T>(fileName: string, fallback: T): ConfigLoadResu
 /**
  * Singleton storage for config load results to avoid reloading on every access
  */
-const configCache = new Map<string, ConfigLoadResult<any>>();
+const configCache = new Map<string, ConfigLoadResult<unknown>>();
 
 /**
  * Load config with caching to avoid repeated file system access
  */
 export function loadJsonConfigCached<T>(fileName: string, fallback: T): ConfigLoadResult<T> {
-  if (configCache.has(fileName)) {
-    return configCache.get(fileName)!;
+  const cached = configCache.get(fileName);
+  if (cached) {
+    return cached as ConfigLoadResult<T>;
   }
   
   const result = loadJsonConfig(fileName, fallback);

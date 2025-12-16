@@ -60,11 +60,8 @@ describe('Config Loader', () => {
         expect(result.usedFallback).toBe(true);
       } finally {
         // Cleanup
-        if (fs.existsSync(tmpFile)) {
-          fs.unlinkSync(tmpFile);
-        }
         if (fs.existsSync(tmpDir)) {
-          fs.rmdirSync(tmpDir);
+          fs.rmSync(tmpDir, { recursive: true, force: true });
         }
         delete process.env.HAILMARY_CORE_PATH;
       }
@@ -89,11 +86,8 @@ describe('Config Loader', () => {
         expect(result.loadedFrom).toContain('tmp-test-config');
       } finally {
         // Cleanup
-        if (fs.existsSync(tmpFile)) {
-          fs.unlinkSync(tmpFile);
-        }
         if (fs.existsSync(tmpDir)) {
-          fs.rmdirSync(tmpDir);
+          fs.rmSync(tmpDir, { recursive: true, force: true });
         }
         delete process.env.HAILMARY_CORE_PATH;
       }
@@ -117,11 +111,8 @@ describe('Config Loader', () => {
         expect(result.loadedFrom).toBeTruthy();
       } finally {
         // Cleanup
-        if (fs.existsSync(tmpFile)) {
-          fs.unlinkSync(tmpFile);
-        }
         if (fs.existsSync(tmpDir)) {
-          fs.rmdirSync(tmpDir);
+          fs.rmSync(tmpDir, { recursive: true, force: true });
         }
         delete process.env.HAILMARY_CORE_PATH;
       }
@@ -150,11 +141,8 @@ describe('Config Loader', () => {
         }).not.toThrow();
       } finally {
         // Cleanup
-        if (fs.existsSync(tmpFile)) {
-          fs.unlinkSync(tmpFile);
-        }
         if (fs.existsSync(tmpDir)) {
-          fs.rmdirSync(tmpDir);
+          fs.rmSync(tmpDir, { recursive: true, force: true });
         }
         delete process.env.HAILMARY_CORE_PATH;
       }

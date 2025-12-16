@@ -92,6 +92,43 @@
   margin: 0.25rem 0;
 }
 
+/* Degraded Subsystems Banner */
+.admin-warnings-degraded {
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-warnings-degraded .admin-warnings-title {
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: #ffc107;
+}
+
+.admin-warnings-degraded .admin-warnings-list {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.admin-warnings-degraded .admin-warnings-list li {
+  margin: 0.25rem 0;
+}
+
+.admin-degraded-notes {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: rgba(255, 193, 7, 0.8);
+}
+
+.admin-degraded-notes-title {
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: #ffc107;
+}
+
 /* Status Cards */
 .admin-cards {
   display: grid;

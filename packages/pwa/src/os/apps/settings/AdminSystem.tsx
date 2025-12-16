@@ -33,6 +33,14 @@ interface SystemStatus {
     checklistConfigLoadedFrom: string;
     checklistConfigUsedFallback: boolean;
   };
+  // degraded is the full map of subsystem states from appStatus
+  // degradedSubsystems is the filtered list of only degraded subsystems
+  // degradedNotes contains timestamped error messages
+  degraded?: {
+    [key: string]: boolean;
+  };
+  degradedSubsystems?: string[];
+  degradedNotes?: string[];
   warnings: string[];
 }
 
@@ -176,6 +184,28 @@ export const AdminSystem: React.FC = () => {
           🔄 Refresh
         </button>
       </div>
+
+      {/* Degraded Subsystems Banner */}
+      {status.degradedSubsystems && status.degradedSubsystems.length > 0 && (
+        <div className="admin-warnings-degraded">
+          <p className="admin-warnings-title">⚠️ Degraded Subsystems</p>
+          <ul className="admin-warnings-list">
+            {status.degradedSubsystems.map((subsystem, idx) => (
+              <li key={idx}>❌ {subsystem}</li>
+            ))}
+          </ul>
+          {status.degradedNotes && status.degradedNotes.length > 0 && (
+            <div className="admin-degraded-notes">
+              <p className="admin-degraded-notes-title">📝 Details:</p>
+              <ul className="admin-warnings-list">
+                {status.degradedNotes.map((note, idx) => (
+                  <li key={idx}>{note}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Warnings Banner */}
       {status.warnings.length > 0 && (

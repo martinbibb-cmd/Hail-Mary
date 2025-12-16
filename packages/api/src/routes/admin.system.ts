@@ -109,9 +109,17 @@ router.get('/status', async (_req: Request, res: Response) => {
       console.error('Failed to get config status:', error);
     }
 
-    // Collect any warnings
+    // Get degraded subsystems information
+    const { appStatus } = await import('../core/appStatus');
+    const degradedSubsystems = appStatus.getAllDegraded();
+    const degradedNotes = appStatus.getNotes();
+
+    // Collect any warnings (excluding degraded subsystems as they're reported separately)
+    // Note: Database and migration issues are tracked via degraded subsystems (appStatus),
+    // so only config fallback warnings are included here
     const warnings: string[] = [];
-    if (!dbOk) {
+    if (!dbOk && !appStatus.isDegraded('database')) {
+      // Only add warning if not already tracked as degraded
       warnings.push('Database connection failed');
     }
     if (!migrationsOk) {
@@ -143,6 +151,9 @@ router.get('/status', async (_req: Request, res: Response) => {
           notes: migrationNotes,
         },
         config: configStatus,
+        degraded: appStatus.degraded,
+        degradedSubsystems,
+        degradedNotes,
         warnings,
       },
     });

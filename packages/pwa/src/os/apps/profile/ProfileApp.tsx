@@ -526,6 +526,28 @@ export const ProfileApp: React.FC = () => {
                 </div>
               </div>
               
+              {/* Display degraded subsystems if any */}
+              {nasStatus.degradedSubsystems && nasStatus.degradedSubsystems.length > 0 && (
+                <div className="degraded-warning">
+                  <strong>⚠️ Degraded Subsystems:</strong>
+                  <ul>
+                    {nasStatus.degradedSubsystems.map((subsystem: string, idx: number) => (
+                      <li key={idx}>❌ {subsystem}</li>
+                    ))}
+                  </ul>
+                  {nasStatus.degradedNotes && nasStatus.degradedNotes.length > 0 && (
+                    <div className="degraded-notes">
+                      <strong>📝 Details:</strong>
+                      <ul>
+                        {nasStatus.degradedNotes.map((note: string, idx: number) => (
+                          <li key={idx}>{note}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Display warnings if any */}
               {nasStatus.warnings && nasStatus.warnings.length > 0 && (
                 <div className="auth-error" style={{ marginTop: '10px' }}>

@@ -66,13 +66,14 @@ router.get('/status', async (_req: Request, res: Response) => {
     let migrationNotes = null;
 
     try {
-      // Check if migrations table exists
+      // Check if migrations table exists using literal SQL (safe - no user input)
+      // Note: This queries the system information_schema table with a literal table name
       const result = await db.execute(
         "SELECT 1 FROM information_schema.tables WHERE table_name = '__drizzle_migrations' LIMIT 1"
       );
       migrationsOk = true;
 
-      // Try to get last migration timestamp if table exists
+      // Try to get last migration timestamp if table exists (safe - literal table name)
       try {
         const migrationData = await db.execute(
           "SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1"

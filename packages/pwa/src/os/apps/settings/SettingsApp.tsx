@@ -11,6 +11,7 @@ import React, { useRef } from 'react';
 import { useAuth } from '../../../auth';
 import { useWallpaper, builtInWallpapers, Wallpaper } from '../../wallpaper';
 import { cognitiveProfiles, useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext';
+import { AdminSystem } from './AdminSystem';
 import './SettingsApp.css';
 
 export const SettingsApp: React.FC = () => {
@@ -220,6 +221,13 @@ export const SettingsApp: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Admin-only section */}
+      {user?.role === 'admin' && (
+        <div className="settings-section">
+          <AdminSystem />
+        </div>
+      )}
     </div>
   );
 };

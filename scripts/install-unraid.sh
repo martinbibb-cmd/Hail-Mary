@@ -249,7 +249,12 @@ handle_container_conflicts() {
                 log_info "Removing existing containers..."
                 if ! cleanup_existing_containers; then
                     log_error "Failed to clean up some containers"
-                    log_info "Please manually remove them or use: docker rm -f ${HAILMARY_CONTAINERS[*]}"
+                    # Build manual cleanup command
+                    local cleanup_cmd="docker rm -f"
+                    for c in "${HAILMARY_CONTAINERS[@]}"; do
+                        cleanup_cmd="$cleanup_cmd $c"
+                    done
+                    log_info "Please manually remove them or use: $cleanup_cmd"
                     exit 1
                 fi
                 log_success "Cleanup complete, continuing installation..."
@@ -661,7 +666,12 @@ main() {
     if ! start_containers "$compose_file"; then
         log_error "Installation failed: Could not start containers"
         log_info "Please check the error messages above"
-        log_info "You may need to manually clean up with: docker rm -f ${HAILMARY_CONTAINERS[*]}"
+        # Build manual cleanup command
+        local cleanup_cmd="docker rm -f"
+        for c in "${HAILMARY_CONTAINERS[@]}"; do
+            cleanup_cmd="$cleanup_cmd $c"
+        done
+        log_info "You may need to manually clean up with: $cleanup_cmd"
         exit 1
     fi
     

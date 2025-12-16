@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../auth';
 import type { AuthUser } from '@hail-mary/shared';
+import { APP_VERSION } from '../../../constants';
 import './ProfileApp.css';
 
 type ViewMode = 'login' | 'register' | 'profile' | 'forgot-password' | 'reset-sent' | 'admin-users' | 'nas-management';
@@ -29,7 +30,7 @@ export const ProfileApp: React.FC = () => {
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [newPassword, setNewPassword] = useState('');
+  const [resetLink, setResetLink] = useState<string | null>(null);
   const [adminSuccess, setAdminSuccess] = useState<string | null>(null);
   const [nasStatus, setNasStatus] = useState<any>(null);
   const [nasOutput, setNasOutput] = useState<string>('');
@@ -132,22 +133,18 @@ export const ProfileApp: React.FC = () => {
     }
   };
 
-  const handleResetUserPassword = async (userId: number) => {
-    if (!newPassword || newPassword.length < 8) {
-      setLocalError('Password must be at least 8 characters');
-      return;
-    }
-
+  const handleGenerateResetLink = async (userId: number) => {
     setFormSubmitting(true);
     setLocalError(null);
     setAdminSuccess(null);
+    setResetLink(null);
 
     try {
       const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({}), // Empty body to trigger token generation
       });
       const data = await res.json();
       
@@ -155,20 +152,30 @@ export const ProfileApp: React.FC = () => {
         setLocalError('Access denied. Admin privileges required.');
       } else if (res.status === 404) {
         setLocalError('User not found.');
-      } else if (data.success) {
+      } else if (data.success && data.data?.resetLink) {
         const user = users.find(u => u.id === userId);
         const userName = user ? `${user.name} (${user.email})` : `user ID ${userId}`;
-        setAdminSuccess(`Password reset successfully for ${userName}`);
-        setNewPassword('');
+        setResetLink(data.data.resetLink);
+        setAdminSuccess(`Reset link generated for ${userName}`);
         setSelectedUserId(null);
       } else {
-        setLocalError(data.error || 'Failed to reset password');
+        setLocalError(data.error || 'Failed to generate reset link');
       }
     } catch (err) {
-      setLocalError('Failed to reset password');
-      console.error('Error resetting password:', err);
+      setLocalError('Failed to generate reset link');
+      console.error('Error generating reset link:', err);
     } finally {
       setFormSubmitting(false);
+    }
+  };
+
+  const handleCopyResetLink = () => {
+    if (resetLink) {
+      navigator.clipboard.writeText(resetLink).then(() => {
+        setAdminSuccess('Reset link copied to clipboard!');
+      }).catch(() => {
+        setLocalError('Failed to copy link to clipboard');
+      });
     }
   };
 
@@ -391,6 +398,32 @@ export const ProfileApp: React.FC = () => {
             <div className="auth-success">{adminSuccess}</div>
           )}
 
+          {/* Reset Link Modal */}
+          {resetLink && (
+            <div className="modal-overlay" onClick={() => setResetLink(null)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <h3>🔑 Password Reset Link</h3>
+                <p>Share this link with the user. It expires in 1 hour.</p>
+                <div className="reset-link-display">
+                  <input
+                    type="text"
+                    value={resetLink}
+                    readOnly
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button className="btn-primary" onClick={handleCopyResetLink}>
+                    📋 Copy Link
+                  </button>
+                  <button className="btn-secondary" onClick={() => setResetLink(null)}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {formSubmitting && !users.length ? (
             <p>Loading users...</p>
           ) : (
@@ -403,53 +436,25 @@ export const ProfileApp: React.FC = () => {
                     <span className="user-meta">
                       {u.role === 'admin' && '👑 '}
                       {u.authProvider === 'local' ? '🔐 Local' : `☁️ ${u.authProvider}`}
+                      {u.createdAt && (
+                        <> • Created {new Date(u.createdAt).toLocaleDateString()}</>
+                      )}
                     </span>
                   </div>
                   
                   {u.authProvider === 'local' && (
                     <div className="user-actions">
-                      {selectedUserId === u.id ? (
-                        <div className="password-reset-form">
-                          <input
-                            type="password"
-                            placeholder="New password (8+ chars)"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            disabled={formSubmitting}
-                            minLength={8}
-                          />
-                          <button
-                            className="btn-primary btn-sm"
-                            onClick={() => handleResetUserPassword(u.id)}
-                            disabled={formSubmitting || !newPassword || newPassword.length < 8}
-                          >
-                            {formSubmitting ? 'Resetting...' : 'Reset'}
-                          </button>
-                          <button
-                            className="btn-secondary btn-sm"
-                            onClick={() => {
-                              setSelectedUserId(null);
-                              setNewPassword('');
-                              setLocalError(null);
-                            }}
-                            disabled={formSubmitting}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          className="btn-secondary btn-sm"
-                          onClick={() => {
-                            setSelectedUserId(u.id);
-                            setNewPassword('');
-                            setLocalError(null);
-                            setAdminSuccess(null);
-                          }}
-                        >
-                          Reset Password
-                        </button>
-                      )}
+                      <button
+                        className="btn-secondary btn-sm"
+                        onClick={() => {
+                          setLocalError(null);
+                          setAdminSuccess(null);
+                          handleGenerateResetLink(u.id);
+                        }}
+                        disabled={formSubmitting}
+                      >
+                        {formSubmitting && selectedUserId === u.id ? 'Generating...' : 'Generate Reset Link'}
+                      </button>
                     </div>
                   )}
                 </div>
@@ -485,11 +490,44 @@ export const ProfileApp: React.FC = () => {
 
           {nasStatus && (
             <div className="nas-status">
-              <h3>Status</h3>
+              <h3>System Status</h3>
+              <div className="status-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+                <div className="status-card" style={{ padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
+                  <h4>🗄️ Database</h4>
+                  <div style={{ fontSize: '24px', margin: '10px 0' }}>
+                    {nasStatus.db?.ok ? '✅' : '❌'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    {nasStatus.db?.ok ? `Latency: ${nasStatus.db.latencyMs}ms` : 'Disconnected'}
+                  </div>
+                </div>
+                <div className="status-card" style={{ padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
+                  <h4>📦 API</h4>
+                  <div style={{ fontSize: '14px', margin: '10px 0' }}>
+                    v{nasStatus.app?.version || APP_VERSION}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    {nasStatus.app?.commit ? `Commit: ${nasStatus.app.commit}` : 'No git info'}
+                  </div>
+                </div>
+                <div className="status-card" style={{ padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
+                  <h4>🔄 Migrations</h4>
+                  <div style={{ fontSize: '24px', margin: '10px 0' }}>
+                    {nasStatus.migrations?.ok ? '✅' : '⚠️'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    {nasStatus.migrations?.ok ? 'Up to date' : 'Not initialized'}
+                  </div>
+                </div>
+              </div>
               <div className="profile-info">
                 <div className="profile-info-row">
                   <span className="label">Environment:</span>
                   <span className="value">{nasStatus.isDocker ? '🐳 Docker' : '💻 Native'}</span>
+                </div>
+                <div className="profile-info-row">
+                  <span className="label">NAS Auth Mode:</span>
+                  <span className="value">{nasStatus.nasAuthMode ? '✅ Enabled' : '❌ Disabled'}</span>
                 </div>
                 <div className="profile-info-row">
                   <span className="label">Last Check:</span>

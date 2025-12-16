@@ -388,6 +388,8 @@ export interface AuthUser {
   accountId?: number;
   authProvider: AuthProvider;
   role: UserRole;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
 export interface RegisterDto {

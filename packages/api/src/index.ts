@@ -20,6 +20,7 @@ import { getOpenaiApiKey } from './services/workerKeys.service';
 // Import routes
 import authRouter from './routes/auth';
 import adminRouter from './routes/admin';
+import nasRouter from './routes/nas';
 import customersRouter from './routes/customers';
 import productsRouter from './routes/products';
 import quotesRouter from './routes/quotes';
@@ -32,7 +33,7 @@ import depotNotesRouter from './routes/depotNotes';
 import surveyHelperRouter from './routes/surveyHelper';
 
 // API version - kept in sync with package.json
-const API_VERSION = '0.2.0';
+export const API_VERSION = '0.2.0';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -151,6 +152,7 @@ app.get('/health/db', async (_req, res) => {
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/nas', nasRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/quotes', quotesRouter);

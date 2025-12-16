@@ -33,6 +33,7 @@ import {
   RoadmapApp,
   OtherTradesApp,
 } from '../../modules'
+import { getAllDockApps } from '../dock/Dock'
 import './StackWorkspace.css'
 
 interface StackWorkspaceProps {
@@ -42,6 +43,7 @@ interface StackWorkspaceProps {
 
 export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children }) => {
   const windows = useWindowStore((state) => state.windows)
+  const openWindow = useWindowStore((state) => state.openWindow)
   const focusWindow = useWindowStore((state) => state.focusWindow)
   const closeWindow = useWindowStore((state) => state.closeWindow)
   
@@ -50,6 +52,9 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
   
   // State to control whether panel view or main content is shown
   const [showingPanel, setShowingPanel] = useState(false)
+  
+  // State to control mobile menu visibility
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   
   useEffect(() => {
     // Show panel when there's an active window
@@ -129,6 +134,17 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
   
   const getAppIcon = (appId: string) => appIcons[appId] || '📱'
   
+  const handleOpenApp = (appId: string, appName: string) => {
+    const existingWindow = windows.find(w => w.appId === appId)
+    if (existingWindow) {
+      focusWindow(existingWindow.id)
+    } else {
+      openWindow(appId, appName)
+    }
+    setShowMobileMenu(false)
+    setShowingPanel(true)
+  }
+  
   return (
     <div className={`stack-workspace stack-workspace--${layout}`}>
       {/* Full-screen panel view when a window is active */}
@@ -160,6 +176,48 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
       {/* Main content view (when no panel is showing) */}
       {!showingPanel && (
         <>
+          {/* Mobile Menu Button */}
+          {isMobile && (
+            <button 
+              className="mobile-menu-button"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              aria-label="Toggle menu"
+            >
+              {showMobileMenu ? '✕' : '☰'}
+            </button>
+          )}
+          
+          {/* Mobile Menu Overlay */}
+          {isMobile && showMobileMenu && (
+            <>
+              <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)} />
+              <div className="mobile-menu-sidebar">
+                <div className="mobile-menu-header">
+                  <h2>Apps</h2>
+                  <button 
+                    className="mobile-menu-close"
+                    onClick={() => setShowMobileMenu(false)}
+                    aria-label="Close menu"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="mobile-menu-items">
+                  {getAllDockApps().filter(app => !app.isSurveyModule).map(app => (
+                    <button
+                      key={app.id}
+                      className="mobile-menu-item"
+                      onClick={() => handleOpenApp(app.id, app.name)}
+                    >
+                      <span className="mobile-menu-icon">{app.icon}</span>
+                      <span className="mobile-menu-label">{app.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+          
           <div className="stack-main-content">
             {children}
           </div>

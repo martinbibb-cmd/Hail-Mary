@@ -25,6 +25,7 @@ import customersRouter from './routes/customers';
 import productsRouter from './routes/products';
 import quotesRouter from './routes/quotes';
 import leadsRouter from './routes/leads';
+import leadWorkspaceRouter from './routes/leadWorkspace';
 import appointmentsRouter from './routes/appointments';
 import visitSessionsRouter from './routes/visitSessions';
 import filesRouter from './routes/files';
@@ -187,6 +188,7 @@ app.use('/api/customers', customersRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/quotes', quotesRouter);
 app.use('/api/leads', leadsRouter);
+app.use('/api/leads', leadWorkspaceRouter); // Workspace routes (/:id/workspace, etc.)
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
 app.use('/api/files', filesRouter);

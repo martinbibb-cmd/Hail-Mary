@@ -4,10 +4,12 @@
  * Handles administrative endpoints (requires admin role):
  * - GET /api/admin/users - List all users
  * - POST /api/admin/users/:userId/reset-password - Reset a user's password
- * - GET /api/admin/nas/status - Get NAS deployment status
+ * - GET /api/admin/system/status - Get system status (DB, migrations, config)
+ * - POST /api/admin/system/migrate - Run database migrations
+ * - GET /api/admin/nas/status - Get NAS deployment status (legacy)
  * - POST /api/admin/nas/check-updates - Check for Docker image updates
  * - POST /api/admin/nas/pull-updates - Pull latest Docker images
- * - POST /api/admin/nas/migrate - Run database migrations
+ * - POST /api/admin/nas/migrate - Run database migrations (legacy)
  */
 
 import { Router, Request, Response } from 'express';
@@ -19,6 +21,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { db } from '../db/drizzle-client';
 import { API_VERSION } from '../index';
+import adminSystemRouter from './admin.system';
 
 const execAsync = promisify(exec);
 
@@ -31,6 +34,9 @@ const router = Router();
 // All admin routes require authentication and admin role
 router.use(requireAuth);
 router.use(requireAdmin);
+
+// Mount system management routes
+router.use('/system', adminSystemRouter);
 
 /**
  * GET /api/admin/users

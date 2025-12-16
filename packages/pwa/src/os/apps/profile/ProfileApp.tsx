@@ -206,7 +206,8 @@ export const ProfileApp: React.FC = () => {
     setNasOutput('');
     setFormSubmitting(true);
     try {
-      const res = await fetch('/api/admin/nas/status', {
+      // Use new system status endpoint
+      const res = await fetch('/api/admin/system/status', {
         credentials: 'include',
       });
       const data = await res.json();
@@ -216,11 +217,11 @@ export const ProfileApp: React.FC = () => {
       } else if (data.success) {
         setNasStatus(data.data);
       } else {
-        setLocalError(data.error || 'Failed to get NAS status');
+        setLocalError(data.error || 'Failed to get system status');
       }
     } catch (err) {
-      setLocalError('Failed to get NAS status');
-      console.error('Error getting NAS status:', err);
+      setLocalError('Failed to get system status');
+      console.error('Error getting system status:', err);
     } finally {
       setFormSubmitting(false);
     }
@@ -301,7 +302,8 @@ export const ProfileApp: React.FC = () => {
     setNasOutput('');
 
     try {
-      const res = await fetch('/api/admin/nas/migrate', {
+      // Use new system migrate endpoint
+      const res = await fetch('/api/admin/system/migrate', {
         method: 'POST',
         credentials: 'include',
       });
@@ -504,10 +506,13 @@ export const ProfileApp: React.FC = () => {
                 <div className="status-card" style={{ padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
                   <h4>📦 API</h4>
                   <div style={{ fontSize: '14px', margin: '10px 0' }}>
-                    v{nasStatus.app?.version || APP_VERSION}
+                    v{nasStatus.api?.version || nasStatus.app?.version || APP_VERSION}
                   </div>
                   <div style={{ fontSize: '12px', color: '#666' }}>
-                    {nasStatus.app?.commit ? `Commit: ${nasStatus.app.commit}` : 'No git info'}
+                    Node {nasStatus.api?.nodeVersion || 'unknown'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    Uptime: {nasStatus.api?.uptimeSeconds ? Math.floor(nasStatus.api.uptimeSeconds / 60) + 'm' : 'unknown'}
                   </div>
                 </div>
                 <div className="status-card" style={{ padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
@@ -520,6 +525,19 @@ export const ProfileApp: React.FC = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Display warnings if any */}
+              {nasStatus.warnings && nasStatus.warnings.length > 0 && (
+                <div className="auth-error" style={{ marginTop: '10px' }}>
+                  <strong>⚠️ Warnings:</strong>
+                  <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                    {nasStatus.warnings.map((warning: string, idx: number) => (
+                      <li key={idx}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
               <div className="profile-info">
                 <div className="profile-info-row">
                   <span className="label">Environment:</span>
@@ -531,7 +549,7 @@ export const ProfileApp: React.FC = () => {
                 </div>
                 <div className="profile-info-row">
                   <span className="label">Last Check:</span>
-                  <span className="value">{new Date(nasStatus.timestamp).toLocaleString()}</span>
+                  <span className="value">{nasStatus.timestamp ? new Date(nasStatus.timestamp).toLocaleString() : 'N/A'}</span>
                 </div>
               </div>
             </div>

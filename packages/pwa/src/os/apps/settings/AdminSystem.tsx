@@ -50,6 +50,9 @@ interface MigrateResponse {
   details?: string;
 }
 
+// Constants
+const REFRESH_DELAY_MS = 1000;
+
 export const AdminSystem: React.FC = () => {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +105,7 @@ export const AdminSystem: React.FC = () => {
           message: data.message || 'Migrations completed successfully',
         });
         // Refresh status after successful migration
-        setTimeout(fetchStatus, 1000);
+        setTimeout(fetchStatus, REFRESH_DELAY_MS);
       } else {
         setMigrateResult({
           success: false,
@@ -157,6 +160,9 @@ export const AdminSystem: React.FC = () => {
   if (!status) {
     return null;
   }
+
+  // Helper to check if configuration is fully healthy
+  const isConfigHealthy = !status.config.depotSchemaUsedFallback && !status.config.checklistConfigUsedFallback;
 
   return (
     <div className="admin-system">
@@ -261,9 +267,9 @@ export const AdminSystem: React.FC = () => {
         </div>
 
         {/* Configuration Card */}
-        <div className={`admin-card ${!status.config.depotSchemaUsedFallback && !status.config.checklistConfigUsedFallback ? 'healthy' : 'warning'}`}>
+        <div className={`admin-card ${isConfigHealthy ? 'healthy' : 'warning'}`}>
           <h4 className="admin-card-title">
-            {!status.config.depotSchemaUsedFallback && !status.config.checklistConfigUsedFallback ? '✅' : '⚠️'} Configuration
+            {isConfigHealthy ? '✅' : '⚠️'} Configuration
           </h4>
           <div className="admin-card-content">
             <div className="admin-stat">

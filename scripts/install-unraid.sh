@@ -40,6 +40,9 @@ PWA_PORT="8080"
 AUTO_UPDATE=false
 FORCE_BUILD=false
 
+# Build error output limit (number of lines to show on failure)
+BUILD_ERROR_LINES=50
+
 # Container names (used for detection and cleanup)
 # Listed in dependency order (reverse for cleanup)
 HAILMARY_CONTAINERS=(
@@ -59,6 +62,12 @@ log_debug() {
     if [[ "${DEBUG:-false}" == "true" ]]; then
         echo -e "${BLUE}[DEBUG]${NC} $*" 
     fi
+}
+
+# Build manual cleanup command from container array
+build_cleanup_command() {
+    printf "docker rm -f"
+    printf " %s" "${HAILMARY_CONTAINERS[@]}"
 }
 
 # Show help
@@ -249,19 +258,19 @@ handle_container_conflicts() {
                 log_info "Removing existing containers..."
                 if ! cleanup_existing_containers; then
                     log_error "Failed to clean up some containers"
-                    # Build manual cleanup command
-                    local cleanup_cmd="docker rm -f"
-                    for c in "${HAILMARY_CONTAINERS[@]}"; do
-                        cleanup_cmd="$cleanup_cmd $c"
-                    done
-                    log_info "Please manually remove them or use: $cleanup_cmd"
+                    log_info "Please manually remove them or use: $(build_cleanup_command)"
                     exit 1
                 fi
                 log_success "Cleanup complete, continuing installation..."
                 ;;
             2)
                 log_info "Stopping existing containers..."
-                docker stop "${HAILMARY_CONTAINERS[@]}" 2>/dev/null || true
+                # Only stop containers that actually exist
+                for container in "${HAILMARY_CONTAINERS[@]}"; do
+                    if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+                        docker stop "$container" 2>/dev/null || true
+                    fi
+                done
                 log_warn "Containers stopped but not removed - conflicts may still occur"
                 log_info "Continuing installation..."
                 ;;
@@ -410,8 +419,8 @@ build_images() {
         return 0
     else
         log_error "Failed to build Docker images locally"
-        log_error "Build output (last 50 lines):"
-        echo "$build_output" | tail -n 50
+        log_error "Build output (last $BUILD_ERROR_LINES lines):"
+        echo "$build_output" | tail -n "$BUILD_ERROR_LINES"
         log_debug "Full build output: $build_output"
         log_debug "Exit code: $build_exit_code"
         
@@ -666,12 +675,7 @@ main() {
     if ! start_containers "$compose_file"; then
         log_error "Installation failed: Could not start containers"
         log_info "Please check the error messages above"
-        # Build manual cleanup command
-        local cleanup_cmd="docker rm -f"
-        for c in "${HAILMARY_CONTAINERS[@]}"; do
-            cleanup_cmd="$cleanup_cmd $c"
-        done
-        log_info "You may need to manually clean up with: $cleanup_cmd"
+        log_info "You may need to manually clean up with: $(build_cleanup_command)"
         exit 1
     fi
     

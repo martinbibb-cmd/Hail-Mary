@@ -184,7 +184,7 @@ export const AdminSystem: React.FC = () => {
 
       {/* Degraded Subsystems Banner */}
       {status.degradedSubsystems && status.degradedSubsystems.length > 0 && (
-        <div className="admin-warnings" style={{ backgroundColor: '#fff3cd', borderColor: '#ffc107' }}>
+        <div className="admin-warnings-degraded">
           <p className="admin-warnings-title">⚠️ Degraded Subsystems</p>
           <ul className="admin-warnings-list">
             {status.degradedSubsystems.map((subsystem, idx) => (
@@ -192,14 +192,14 @@ export const AdminSystem: React.FC = () => {
             ))}
           </ul>
           {status.degradedNotes && status.degradedNotes.length > 0 && (
-            <>
-              <p className="admin-warnings-title" style={{ marginTop: '10px' }}>📝 Details:</p>
-              <ul className="admin-warnings-list" style={{ fontSize: '12px', color: '#856404' }}>
+            <div className="admin-degraded-notes">
+              <p className="admin-degraded-notes-title">📝 Details:</p>
+              <ul className="admin-warnings-list">
                 {status.degradedNotes.map((note, idx) => (
                   <li key={idx}>{note}</li>
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </div>
       )}

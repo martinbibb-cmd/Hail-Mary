@@ -114,7 +114,7 @@ router.get('/status', async (_req: Request, res: Response) => {
     const degradedSubsystems = appStatus.getAllDegraded();
     const degradedNotes = appStatus.getNotes();
 
-    // Collect any warnings
+    // Collect any warnings (excluding degraded subsystems as they're reported separately)
     const warnings: string[] = [];
     if (!dbOk) {
       warnings.push('Database connection failed');
@@ -127,12 +127,6 @@ router.get('/status', async (_req: Request, res: Response) => {
     }
     if (configStatus.checklistConfigUsedFallback) {
       warnings.push('Using fallback checklist configuration');
-    }
-    // Add warnings for degraded subsystems
-    if (degradedSubsystems.length > 0) {
-      degradedSubsystems.forEach(subsystem => {
-        warnings.push(`Subsystem degraded: ${subsystem}`);
-      });
     }
 
     return res.json({

@@ -112,6 +112,10 @@ app.get('/health', (_req, res) => {
 
 // Detailed health check endpoint with configuration status
 app.get('/health/detailed', async (_req, res) => {
+  // Import config status dynamically to avoid circular dependencies
+  const { depotTranscriptionService } = await import('./services/depotTranscription.service');
+  const configStatus = depotTranscriptionService.getConfigLoadStatus();
+  
   const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -121,6 +125,12 @@ app.get('/health/detailed', async (_req, res) => {
       googleAuth: isGoogleAuthEnabled() ? 'enabled' : 'disabled',
       nasAuthMode: process.env.NAS_AUTH_MODE === 'true' ? 'enabled' : 'disabled',
       nodeEnv: process.env.NODE_ENV || 'development',
+    },
+    coreConfig: {
+      depotSchemaLoadedFrom: configStatus.depotSchema.loadedFrom || 'fallback',
+      depotSchemaUsedFallback: configStatus.depotSchema.usedFallback,
+      checklistConfigLoadedFrom: configStatus.checklistConfig.loadedFrom || 'fallback',
+      checklistConfigUsedFallback: configStatus.checklistConfig.usedFallback,
     },
     database: 'unknown',
   };

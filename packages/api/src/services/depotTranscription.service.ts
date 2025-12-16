@@ -22,15 +22,234 @@ import type {
   ChecklistConfig,
   AIProviderConfig,
 } from '@hail-mary/shared';
-import depotSchemaJson from '@hail-mary/shared/src/core/depot-schema.json';
-import checklistConfigJson from '@hail-mary/shared/src/core/checklist-config.json';
+import { loadJsonConfigCached } from '../utils/configLoader';
 
 // ============================================
-// Schema and Configuration
+// Schema and Configuration - Embedded Fallbacks
 // ============================================
 
-const DEPOT_SCHEMA: DepotSectionSchema = depotSchemaJson as DepotSectionSchema;
-const CHECKLIST_CONFIG: ChecklistConfig = checklistConfigJson as ChecklistConfig;
+/**
+ * Default depot schema fallback
+ * Used if depot-schema.json cannot be loaded from any path
+ */
+const DEFAULT_DEPOT_SCHEMA: DepotSectionSchema = {
+  sections: [
+    {
+      key: "customer_summary",
+      name: "Customer Summary",
+      description: "Brief overview of customer needs and key points from the conversation",
+      order: 1,
+      required: true
+    },
+    {
+      key: "existing_system",
+      name: "Existing System",
+      description: "Current heating system details including boiler type, age, and condition",
+      order: 2,
+      required: true
+    },
+    {
+      key: "property_details",
+      name: "Property Details",
+      description: "Property type, size, construction details, and insulation",
+      order: 3,
+      required: true
+    },
+    {
+      key: "radiators_emitters",
+      name: "Radiators & Emitters",
+      description: "Details of existing radiators, underfloor heating, and heat emitters",
+      order: 4,
+      required: false
+    },
+    {
+      key: "pipework",
+      name: "Pipework",
+      description: "Pipe sizes, materials, routing, and condition",
+      order: 5,
+      required: true
+    },
+    {
+      key: "flue_ventilation",
+      name: "Flue & Ventilation",
+      description: "Flue type, routing, ventilation requirements",
+      order: 6,
+      required: true
+    },
+    {
+      key: "hot_water",
+      name: "Hot Water",
+      description: "Hot water cylinder details, capacity, and configuration",
+      order: 7,
+      required: false
+    },
+    {
+      key: "controls",
+      name: "Controls",
+      description: "Current controls, thermostats, and smart heating systems",
+      order: 8,
+      required: false
+    },
+    {
+      key: "electrical",
+      name: "Electrical",
+      description: "Electrical supply, consumer unit, earth bonding, and capacity",
+      order: 9,
+      required: true
+    },
+    {
+      key: "gas_supply",
+      name: "Gas Supply",
+      description: "Gas meter location, pipe size, and supply details",
+      order: 10,
+      required: false
+    },
+    {
+      key: "water_supply",
+      name: "Water Supply",
+      description: "Mains water pressure, supply pipe, and stop cock details",
+      order: 11,
+      required: false
+    },
+    {
+      key: "location_access",
+      name: "Location & Access",
+      description: "Proposed boiler location, access for installation, and constraints",
+      order: 12,
+      required: true
+    },
+    {
+      key: "materials_parts",
+      name: "Materials & Parts",
+      description: "List of materials, parts, and components required for the job",
+      order: 13,
+      required: false
+    },
+    {
+      key: "hazards_risks",
+      name: "Hazards & Risks",
+      description: "Safety concerns, asbestos, accessibility issues, and risk assessments",
+      order: 14,
+      required: true
+    },
+    {
+      key: "customer_requests",
+      name: "Customer Requests",
+      description: "Specific customer requirements, preferences, and special requests",
+      order: 15,
+      required: false
+    },
+    {
+      key: "follow_up_actions",
+      name: "Follow-up Actions",
+      description: "Actions required before quoting or installing",
+      order: 16,
+      required: false
+    }
+  ]
+};
+
+/**
+ * Default checklist config fallback
+ * Used if checklist-config.json cannot be loaded from any path
+ */
+const DEFAULT_CHECKLIST_CONFIG: ChecklistConfig = {
+  checklist_items: [
+    {
+      id: "boiler_replacement",
+      label: "Boiler Replacement",
+      category: "primary_work",
+      associated_materials: ["boiler", "flue_kit", "condensate_pipe", "filling_loop"]
+    },
+    {
+      id: "system_flush",
+      label: "System Flush/Cleanse",
+      category: "system_work",
+      associated_materials: ["inhibitor", "cleaner", "filter"]
+    },
+    {
+      id: "pipework_modification",
+      label: "Pipework Modifications",
+      category: "system_work",
+      associated_materials: ["copper_pipe_15mm", "copper_pipe_22mm", "fittings", "isolation_valves"]
+    },
+    {
+      id: "radiator_upgrade",
+      label: "Radiator Upgrade/Addition",
+      category: "emitters",
+      associated_materials: ["radiator", "trv", "radiator_valves"]
+    },
+    {
+      id: "cylinder_replacement",
+      label: "Hot Water Cylinder Replacement",
+      category: "hot_water",
+      associated_materials: ["cylinder", "immersion_heater", "cylinder_thermostat", "tundish"]
+    },
+    {
+      id: "controls_upgrade",
+      label: "Controls Upgrade",
+      category: "controls",
+      associated_materials: ["programmer", "room_thermostat", "wireless_receiver"]
+    },
+    {
+      id: "gas_work",
+      label: "Gas Supply Work",
+      category: "services",
+      associated_materials: ["gas_pipe_22mm", "gas_pipe_28mm", "gas_isolation_valve", "regulator"]
+    },
+    {
+      id: "electrical_work",
+      label: "Electrical Work",
+      category: "services",
+      associated_materials: ["fused_spur", "cable", "earth_bonding"]
+    },
+    {
+      id: "flue_modification",
+      label: "Flue Modifications",
+      category: "ventilation",
+      associated_materials: ["flue_kit", "plume_kit", "flue_brackets"]
+    },
+    {
+      id: "filter_installation",
+      label: "Magnetic Filter Installation",
+      category: "system_work",
+      associated_materials: ["magnetic_filter"]
+    }
+  ],
+  material_aliases: {
+    boiler: ["combi", "system boiler", "regular boiler", "back boiler"],
+    radiator: ["rad", "rads", "radiators"],
+    trv: ["thermostatic valve", "TRV", "trv valve"],
+    copper_pipe_15mm: ["15mm pipe", "half inch pipe"],
+    copper_pipe_22mm: ["22mm pipe", "three quarter pipe"],
+    microbore: ["8mm", "10mm", "micro bore"],
+    inhibitor: ["fernox", "sentinel", "system inhibitor"],
+    magnetic_filter: ["magnaclean", "filter", "system filter"]
+  }
+};
+
+// Load configurations with resilient fallback behavior
+const depotSchemaResult = loadJsonConfigCached('depot-schema.json', DEFAULT_DEPOT_SCHEMA);
+const checklistConfigResult = loadJsonConfigCached('checklist-config.json', DEFAULT_CHECKLIST_CONFIG);
+
+const DEPOT_SCHEMA: DepotSectionSchema = depotSchemaResult.config;
+const CHECKLIST_CONFIG: ChecklistConfig = checklistConfigResult.config;
+
+/**
+ * Get config load status for health checks
+ */
+export function getConfigLoadStatus() {
+  return {
+    depotSchema: {
+      loadedFrom: depotSchemaResult.loadedFrom,
+      usedFallback: depotSchemaResult.usedFallback,
+    },
+    checklistConfig: {
+      loadedFrom: checklistConfigResult.loadedFrom,
+      usedFallback: checklistConfigResult.usedFallback,
+    },
+  };
+}
 
 /**
  * Default instructions for the AI model when structuring depot notes
@@ -380,6 +599,7 @@ export function matchChecklistItems(transcript: string, materials: MaterialItem[
 export const depotTranscriptionService = {
   getDepotSchema,
   getChecklistConfig,
+  getConfigLoadStatus,
   normalizeSectionKey,
   resolveCanonicalSectionName,
   normalizeSectionsFromModel,

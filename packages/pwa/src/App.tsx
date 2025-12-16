@@ -15,6 +15,7 @@ import { AuthProvider, AuthGuard, ResetPasswordPage } from './auth'
 import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useDeviceLayout } from './hooks/useDeviceLayout'
+import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 
 // Simple API client
 const api = {
@@ -198,12 +199,16 @@ function LeadsList() {
       ) : (
         <div className="list">
           {leads.map(l => (
-            <div key={l.id} className="list-item">
-              <div>
-                <h3>{l.description}</h3>
-                <p>Source: {l.source} • Status: {l.status}</p>
+            <Link key={l.id} to={`/leads/${l.id}`} className="list-item-link">
+              <div className="list-item">
+                <div>
+                  <h3>{l.firstName} {l.lastName}</h3>
+                  <p>{l.description || 'No description'}</p>
+                  <p>Source: {l.source} • Status: {l.status}</p>
+                </div>
+                <span className="arrow">→</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -713,6 +718,7 @@ function App() {
           <Route path="/quotes" element={<QuotesList />} />
           <Route path="/leads" element={<LeadsList />} />
           <Route path="/leads/new" element={<NewLead />} />
+          <Route path="/leads/:id" element={<LeadWorkspace />} />
         </Routes>
       </main>
     </>

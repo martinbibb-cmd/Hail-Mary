@@ -31,14 +31,42 @@ services:
     networks:
       - hailmary-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d hailmary"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
       timeout: 5s
       retries: 5
       start_period: 30s
     labels:
       net.unraid.docker.managed: "composeman"
       net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/postgres.png"
+
+  # Database Migrator Service - Runs once to set up database
+  hailmary-migrator:
+    image: ghcr.io/martinbibb-cmd/hail-mary-api:latest
+    container_name: hailmary-migrator
+    environment:
+      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      NODE_ENV: production
+      # Initial admin credentials for seeding
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Admin}
+      # Guest user credentials
+      GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
+      GUEST_PASSWORD: ${GUEST_PASSWORD:-guest}
+    command: npm run db:init -w packages/api
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    depends_on:
+      hailmary-postgres:
+        condition: service_healthy
+    networks:
+      - hailmary-network
+    labels:
+      net.unraid.docker.managed: "composeman"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/api.png"
 
   # Hail-Mary API Service
   hailmary-api:
@@ -55,18 +83,14 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       NODE_ENV: production
-      # Default admin credentials for first-time setup
-      # ⚠️  SECURITY WARNING: Change these in production via .env file!
-      # Default: admin@hailmary.local / HailMary2024!
-      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
       # NAS Authentication Mode (optional - only for trusted local networks)
       # See .env.example for NAS_ALLOWED_IPS configuration
       NAS_AUTH_MODE: ${NAS_AUTH_MODE:-false}
       NAS_ALLOWED_IPS: ${NAS_ALLOWED_IPS:-}
+    command: npm run start -w packages/api
     depends_on:
-      hailmary-postgres:
-        condition: service_healthy
+      hailmary-migrator:
+        condition: service_completed_successfully
     networks:
       - hailmary-network
     expose:

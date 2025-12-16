@@ -155,7 +155,8 @@ check_existing_containers() {
     
     log_warn "Found ${#existing[@]} existing Hail-Mary container(s):"
     for container in "${existing[@]}"; do
-        local status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+        local status
+        status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
         echo "  - $container (status: $status)"
     done
     
@@ -180,7 +181,8 @@ cleanup_existing_containers() {
             log_debug "Processing container: $container"
             
             # Stop the container if it's running
-            local status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+            local status
+            status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
             if [[ "$status" == "running" ]]; then
                 log_info "Stopping running container: $container"
                 if docker stop "$container" &>/dev/null; then
@@ -247,7 +249,7 @@ handle_container_conflicts() {
                 log_info "Removing existing containers..."
                 if ! cleanup_existing_containers; then
                     log_error "Failed to clean up some containers"
-                    log_info "Please manually remove them or use: docker rm -f ${HAILMARY_CONTAINERS[@]}"
+                    log_info "Please manually remove them or use: docker rm -f ${HAILMARY_CONTAINERS[*]}"
                     exit 1
                 fi
                 log_success "Cleanup complete, continuing installation..."
@@ -659,7 +661,7 @@ main() {
     if ! start_containers "$compose_file"; then
         log_error "Installation failed: Could not start containers"
         log_info "Please check the error messages above"
-        log_info "You may need to manually clean up with: docker rm -f ${HAILMARY_CONTAINERS[@]}"
+        log_info "You may need to manually clean up with: docker rm -f ${HAILMARY_CONTAINERS[*]}"
         exit 1
     fi
     

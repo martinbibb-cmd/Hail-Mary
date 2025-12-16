@@ -18,6 +18,7 @@ import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { db } from '../db/drizzle-client';
+import { API_VERSION } from '../index';
 
 const execAsync = promisify(exec);
 
@@ -141,7 +142,7 @@ router.get('/nas/status', async (_req: Request, res: Response) => {
     }
 
     // Get app version from package.json or environment
-    const appVersion = process.env.npm_package_version || '0.2.0';
+    const appVersion = process.env.npm_package_version || API_VERSION;
     
     // Get git commit if available
     let gitCommit = null;

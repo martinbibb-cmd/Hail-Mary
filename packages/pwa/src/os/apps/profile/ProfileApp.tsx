@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../auth';
 import type { AuthUser } from '@hail-mary/shared';
+import { APP_VERSION } from '../../../constants';
 import './ProfileApp.css';
 
 type ViewMode = 'login' | 'register' | 'profile' | 'forgot-password' | 'reset-sent' | 'admin-users' | 'nas-management';
@@ -503,7 +504,7 @@ export const ProfileApp: React.FC = () => {
                 <div className="status-card" style={{ padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
                   <h4>📦 API</h4>
                   <div style={{ fontSize: '14px', margin: '10px 0' }}>
-                    v{nasStatus.app?.version || '0.2.0'}
+                    v{nasStatus.app?.version || APP_VERSION}
                   </div>
                   <div style={{ fontSize: '12px', color: '#666' }}>
                     {nasStatus.app?.commit ? `Commit: ${nasStatus.app.commit}` : 'No git info'}

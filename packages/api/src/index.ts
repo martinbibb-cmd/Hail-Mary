@@ -33,7 +33,7 @@ import depotNotesRouter from './routes/depotNotes';
 import surveyHelperRouter from './routes/surveyHelper';
 
 // API version - kept in sync with package.json
-const API_VERSION = '0.2.0';
+export const API_VERSION = '0.2.0';
 
 const app = express();
 app.set('trust proxy', 1);

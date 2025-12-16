@@ -198,6 +198,47 @@ router.post('/login', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/auth/guest-login
+ * Quick login as guest user (read-only access, no customer data)
+ */
+router.post('/guest-login', async (req: Request, res: Response) => {
+  try {
+    const { loginAsGuest } = await import('../services/auth.service');
+    const { user, token } = await loginAsGuest();
+
+    // Set auth cookie
+    res.cookie(COOKIE_NAME, token, getCookieOptions(req));
+
+    return res.json({
+      success: true,
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        accountId: user.accountId,
+        authProvider: user.authProvider,
+        role: user.role,
+      },
+      message: 'Guest login successful',
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        code: error.code,
+        error: error.message,
+      });
+    }
+    console.error('Unexpected guest login error:', error);
+    return res.status(500).json({
+      success: false,
+      code: 'internal_error',
+      error: 'Guest login failed. Please contact administrator.',
+    });
+  }
+});
+
+/**
  * POST /api/auth/logout
  * Clear the auth cookie
  */

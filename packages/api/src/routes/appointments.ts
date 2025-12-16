@@ -6,9 +6,15 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db/drizzle-client';
 import { appointments, leads } from '../db/drizzle-schema';
 import { eq, desc, count, and } from 'drizzle-orm';
+import { requireAuth, blockGuest } from '../middleware/auth.middleware';
 import type { Appointment, CreateAppointmentDto, UpdateAppointmentDto, ApiResponse, PaginatedResponse } from '@hail-mary/shared';
 
 const router = Router();
+
+// Apply authentication middleware to all appointment routes
+router.use(requireAuth);
+// Block guest users from accessing appointment data
+router.use(blockGuest);
 
 // Helper to map database row to Appointment object
 function mapRowToAppointment(row: typeof appointments.$inferSelect): Appointment {

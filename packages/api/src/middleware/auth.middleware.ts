@@ -71,3 +71,27 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
 
   next();
 }
+
+/**
+ * Middleware to block guest users from accessing a route
+ * Must be used after requireAuth
+ */
+export function blockGuest(req: Request, res: Response, next: NextFunction): void {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      error: 'Authentication required',
+    });
+    return;
+  }
+
+  if (req.user.role === 'guest') {
+    res.status(403).json({
+      success: false,
+      error: 'Guest users do not have access to this resource',
+    });
+    return;
+  }
+
+  next();
+}

@@ -7,7 +7,7 @@ import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
 import { leads } from "../db/drizzle-schema";
 import { eq, desc, count } from "drizzle-orm";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth, blockGuest } from "../middleware/auth.middleware";
 import type {
   Customer,
   CreateCustomerDto,
@@ -20,6 +20,8 @@ const router = Router();
 
 // Apply authentication middleware to all customer routes
 router.use(requireAuth);
+// Block guest users from accessing customer data
+router.use(blockGuest);
 
 // Helper to map database row (from leads table) to Customer object for legacy compatibility
 function mapRowToCustomer(

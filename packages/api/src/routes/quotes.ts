@@ -6,9 +6,15 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db/drizzle-client';
 import { quotes, quoteLines, leads } from '../db/drizzle-schema';
 import { eq, desc, count, and } from 'drizzle-orm';
+import { requireAuth, blockGuest } from '../middleware/auth.middleware';
 import type { Quote, QuoteLine, CreateQuoteDto, UpdateQuoteDto, ApiResponse, PaginatedResponse } from '@hail-mary/shared';
 
 const router = Router();
+
+// Apply authentication middleware to all quote routes
+router.use(requireAuth);
+// Block guest users from accessing quote data
+router.use(blockGuest);
 
 // Generate quote number
 function generateQuoteNumber(): string {

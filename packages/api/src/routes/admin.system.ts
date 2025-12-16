@@ -109,6 +109,11 @@ router.get('/status', async (_req: Request, res: Response) => {
       console.error('Failed to get config status:', error);
     }
 
+    // Get degraded subsystems information
+    const { appStatus } = await import('../core/appStatus');
+    const degradedSubsystems = appStatus.getAllDegraded();
+    const degradedNotes = appStatus.getNotes();
+
     // Collect any warnings
     const warnings: string[] = [];
     if (!dbOk) {
@@ -122,6 +127,12 @@ router.get('/status', async (_req: Request, res: Response) => {
     }
     if (configStatus.checklistConfigUsedFallback) {
       warnings.push('Using fallback checklist configuration');
+    }
+    // Add warnings for degraded subsystems
+    if (degradedSubsystems.length > 0) {
+      degradedSubsystems.forEach(subsystem => {
+        warnings.push(`Subsystem degraded: ${subsystem}`);
+      });
     }
 
     return res.json({
@@ -143,6 +154,9 @@ router.get('/status', async (_req: Request, res: Response) => {
           notes: migrationNotes,
         },
         config: configStatus,
+        degraded: appStatus.degraded,
+        degradedSubsystems,
+        degradedNotes,
         warnings,
       },
     });

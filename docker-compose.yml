@@ -63,6 +63,11 @@ services:
       JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
       BASE_URL: ${BASE_URL:-https://hail_mary.cloudbibb.uk}
       NODE_ENV: production
+      # Sarah (LLM Explanation Layer) Configuration
+      SARAH_BASE_URL: ${SARAH_BASE_URL:-https://hail-mary.martinbibb.workers.dev}
+      SARAH_VOICE_NOTES_PATH: ${SARAH_VOICE_NOTES_PATH:-/v1/voice-notes}
+      SARAH_CHAT_PATH: ${SARAH_CHAT_PATH:-/v1/chat}
+      SARAH_TRANSCRIBE_PATH: ${SARAH_TRANSCRIBE_PATH:-/v1/transcribe}
       # Optional: Override core config path for custom depot schema and checklist config
       # Uncomment to use custom configs from a mounted volume:
       # HAILMARY_CORE_PATH: /app/config/core

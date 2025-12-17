@@ -48,7 +48,7 @@ export const RockyTool: React.FC = () => {
     }
   }
 
-  const copyEngineerBasics = () => {
+  const copyEngineerBasics = async () => {
     if (!result?.engineerBasics) return
 
     const basics = result.engineerBasics.basics
@@ -69,8 +69,13 @@ Actions:
 ${basics.actions.map(a => `- ${a}`).join('\n')}
     `.trim()
 
-    navigator.clipboard.writeText(text)
-    alert('Engineer basics copied to clipboard!')
+    try {
+      await navigator.clipboard.writeText(text)
+      alert('Engineer basics copied to clipboard!')
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err)
+      alert('Failed to copy to clipboard. Please try again.')
+    }
   }
 
   return (

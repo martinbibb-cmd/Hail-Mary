@@ -83,8 +83,8 @@ router.post('/run', async (req: Request, res: Response) => {
       return res.status(400).json(response);
     }
     
-    // Use sessionId or create a temporary one (0 for direct API calls)
-    const effectiveSessionId = processingSessionId || 0;
+    // Use sessionId or create a temporary one (-1 for direct API calls without session)
+    const effectiveSessionId = processingSessionId || -1;
     
     // Process through Rocky
     const rockyRequest: RockyProcessRequest = {

@@ -84,8 +84,10 @@ export const TabletCockpitLayout: React.FC<TabletCockpitLayoutProps> = ({ childr
   const handleSplitToggle = () => {
     if (splitMode === 'none') {
       setSplitMode('two-up')
-      // Set secondary module to first non-active app
-      const firstOtherApp = dockApps.find(app => app.id !== activeModuleId)
+      // Set secondary module to first non-active app (or first app if no active module)
+      const firstOtherApp = activeModuleId 
+        ? dockApps.find(app => app.id !== activeModuleId)
+        : dockApps[0]
       if (firstOtherApp) {
         setSecondaryModule(firstOtherApp.id)
         setPanelMode(firstOtherApp.id, 'half')
@@ -144,7 +146,7 @@ export const TabletCockpitLayout: React.FC<TabletCockpitLayoutProps> = ({ childr
               <div className="cockpit-panel-controls">
                 <button
                   className="cockpit-panel-control"
-                  onClick={() => setPanelMode(activeModuleId!, 'half')}
+                  onClick={() => activeModuleId && setPanelMode(activeModuleId, 'half')}
                   disabled={primaryMode === 'half'}
                   aria-label="Half size"
                 >
@@ -152,7 +154,7 @@ export const TabletCockpitLayout: React.FC<TabletCockpitLayoutProps> = ({ childr
                 </button>
                 <button
                   className="cockpit-panel-control"
-                  onClick={() => setPanelMode(activeModuleId!, 'full')}
+                  onClick={() => activeModuleId && setPanelMode(activeModuleId, 'full')}
                   disabled={primaryMode === 'full'}
                   aria-label="Full size"
                 >
@@ -160,7 +162,7 @@ export const TabletCockpitLayout: React.FC<TabletCockpitLayoutProps> = ({ childr
                 </button>
                 <button
                   className="cockpit-panel-control"
-                  onClick={() => setPanelMode(activeModuleId!, 'min')}
+                  onClick={() => activeModuleId && setPanelMode(activeModuleId, 'min')}
                   aria-label="Minimize"
                 >
                   ▬
@@ -183,7 +185,7 @@ export const TabletCockpitLayout: React.FC<TabletCockpitLayoutProps> = ({ childr
               <div className="cockpit-panel-controls">
                 <button
                   className="cockpit-panel-control"
-                  onClick={() => setPanelMode(secondaryModuleId!, 'half')}
+                  onClick={() => secondaryModuleId && setPanelMode(secondaryModuleId, 'half')}
                   disabled={secondaryMode === 'half'}
                   aria-label="Half size"
                 >
@@ -191,7 +193,7 @@ export const TabletCockpitLayout: React.FC<TabletCockpitLayoutProps> = ({ childr
                 </button>
                 <button
                   className="cockpit-panel-control"
-                  onClick={() => setPanelMode(secondaryModuleId!, 'full')}
+                  onClick={() => secondaryModuleId && setPanelMode(secondaryModuleId, 'full')}
                   disabled={secondaryMode === 'full'}
                   aria-label="Full size"
                 >
@@ -199,7 +201,7 @@ export const TabletCockpitLayout: React.FC<TabletCockpitLayoutProps> = ({ childr
                 </button>
                 <button
                   className="cockpit-panel-control"
-                  onClick={() => setPanelMode(secondaryModuleId!, 'min')}
+                  onClick={() => secondaryModuleId && setPanelMode(secondaryModuleId, 'min')}
                   aria-label="Minimize"
                 >
                   ▬

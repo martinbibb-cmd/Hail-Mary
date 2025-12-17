@@ -35,7 +35,7 @@ router.post('/transform', async (req: Request, res: Response) => {
     
     // Process through Rocky to get structured output
     const rockyResult = await rockyService.processNaturalNotes({
-      sessionId: 0, // Temporary session for API-only processing
+      sessionId: -1, // Temporary session for API-only processing (no DB session)
       naturalNotes: textToProcess,
       language: 'en-GB',
     });

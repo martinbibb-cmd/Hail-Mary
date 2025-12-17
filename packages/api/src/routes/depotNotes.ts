@@ -77,25 +77,26 @@ router.post('/sessions/:sessionId/structure', async (req: Request, res: Response
     const fullTranscript = segments.map(s => s.text).join(' ');
 
     // Get AI provider API keys from worker (with fallback to environment variables)
+    let geminiApiKey: string | undefined;
     let openaiApiKey: string | undefined;
     let anthropicApiKey: string | undefined;
-    let grminiApiKey: string | undefined;
 
     try {
       const workerKeys = await getApiKeys();
-      grminiApiKey = workerKeys.grminiApiKey;
+      geminiApiKey = workerKeys.geminiApiKey;
       openaiApiKey = workerKeys.openaiApiKey;
       anthropicApiKey = workerKeys.anthropicApiKey;
       console.log('✅ Successfully fetched API keys from worker');
     } catch (error) {
       console.warn('⚠️  Failed to fetch keys from worker, falling back to environment variables:', error);
       // Fallback to environment variables
+      geminiApiKey = process.env.GEMINI_API_KEY;
       openaiApiKey = process.env.OPENAI_API_KEY;
       anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     }
 
-    // Check if we have any AI provider keys (prioritize GRMINI, then OpenAI, then Anthropic)
-    if (!grminiApiKey && !openaiApiKey && !anthropicApiKey) {
+    // Check if we have any AI provider keys (prioritize Gemini, then OpenAI, then Anthropic)
+    if (!geminiApiKey && !openaiApiKey && !anthropicApiKey) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'No AI provider API keys configured',
@@ -104,17 +105,15 @@ router.post('/sessions/:sessionId/structure', async (req: Request, res: Response
     }
 
     // Configure primary and fallback providers based on available keys
-    // Priority order: GRMINI > OpenAI > Anthropic
+    // Priority order: Gemini > OpenAI > Anthropic
     let primaryProvider: AIProviderConfig;
     let fallbackProvider: AIProviderConfig | undefined;
 
-    if (grminiApiKey) {
-      // Note: GRMINI is assumed to use OpenAI-compatible API
-      // If GRMINI has different behavior, this may need adjustment
+    if (geminiApiKey) {
       primaryProvider = {
-        provider: 'openai',
-        model: 'gpt-4',
-        apiKey: grminiApiKey,
+        provider: 'gemini',
+        model: 'gemini-1.5-flash',
+        apiKey: geminiApiKey,
         temperature: 0.3,
         maxTokens: 2000,
       };

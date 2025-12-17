@@ -2,9 +2,12 @@
  * AI Provider Service
  * 
  * Handles communication with AI providers:
+ * - Google Gemini for structured note generation (primary)
  * - OpenAI Whisper for audio transcription
- * - OpenAI GPT-4 for structured note generation
- * - Anthropic Claude as fallback
+ * - OpenAI GPT-4 for structured note generation (fallback)
+ * - Anthropic Claude as secondary fallback
+ * 
+ * Provider priority: Gemini → OpenAI → Anthropic
  * 
  * Implements provider abstraction and fallback pattern
  */
@@ -53,6 +56,133 @@ interface AnthropicResponse {
   content: AnthropicContentBlock[];
   model: string;
   stop_reason: string;
+}
+
+interface GeminiContent {
+  role: 'user' | 'model';
+  parts: Array<{ text: string }>;
+}
+
+interface GeminiCandidate {
+  content: {
+    parts: Array<{ text?: string }>;
+    role: string;
+  };
+  finishReason: string;
+}
+
+interface GeminiResponse {
+  candidates?: GeminiCandidate[];
+  error?: {
+    code: number;
+    message: string;
+    status: string;
+  };
+}
+
+// ============================================
+// Google Gemini Integration
+// ============================================
+
+/**
+ * Call Google Gemini to structure transcript into depot notes
+ */
+export async function callGeminiForStructuring(
+  transcript: string,
+  config: AIProviderConfig,
+  referenceMaterials?: string
+): Promise<DepotNotes> {
+  const systemPrompt = depotTranscriptionService.DEFAULT_DEPOT_NOTES_INSTRUCTIONS;
+  
+  let userPrompt = `Here is the transcript from a heating survey:\n\n${transcript}\n\n`;
+  
+  if (referenceMaterials) {
+    userPrompt += `\nReference materials database:\n${referenceMaterials}\n\n`;
+  }
+  
+  userPrompt += `Please structure this into depot notes following the sections described above. Return ONLY valid JSON in this format:
+{
+  "customer_summary": "...",
+  "existing_system": "...",
+  "property_details": "...",
+  "radiators_emitters": "...",
+  "pipework": "...",
+  "flue_ventilation": "...",
+  "hot_water": "...",
+  "controls": "...",
+  "electrical": "...",
+  "gas_supply": "...",
+  "water_supply": "...",
+  "location_access": "...",
+  "materials_parts": "...",
+  "hazards_risks": "...",
+  "customer_requests": "...",
+  "follow_up_actions": "..."
+}
+
+Only include sections that have information. Use "Not discussed" if a required section has no information.`;
+
+  const model = config.model || 'gemini-1.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey}`;
+
+  // Build request body with system instruction and user prompt
+  const contents: GeminiContent[] = [
+    {
+      role: 'user',
+      parts: [{ text: userPrompt }],
+    },
+  ];
+
+  const body = {
+    contents,
+    system_instruction: {
+      parts: [{ text: systemPrompt }],
+    },
+    generationConfig: {
+      temperature: config.temperature || 0.3,
+      maxOutputTokens: config.maxTokens || 2000,
+      responseMimeType: 'application/json',
+    },
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: HTTP ${response.status} - ${errorText}`);
+  }
+  
+  const data = await response.json() as GeminiResponse;
+  
+  if (data.error) {
+    throw new Error(`Gemini API error: ${data.error.code} - ${data.error.message}`);
+  }
+  
+  if (!data.candidates || data.candidates.length === 0) {
+    throw new Error('No candidates in Gemini response');
+  }
+  
+  const candidate = data.candidates[0];
+  const parts = candidate.content.parts;
+  
+  if (!parts || parts.length === 0 || !parts[0].text) {
+    throw new Error('No text content in Gemini response');
+  }
+  
+  const content = parts[0].text;
+  
+  try {
+    const rawSections = JSON.parse(content);
+    return depotTranscriptionService.normalizeSectionsFromModel(rawSections);
+  } catch (parseError) {
+    throw new Error(`Failed to parse Gemini response: ${parseError}`);
+  }
 }
 
 // ============================================
@@ -266,6 +396,7 @@ Only include sections that have information. Use "Not discussed" if a required s
 /**
  * Call notes model with fallback pattern
  * Tries primary provider first, falls back to secondary if configured
+ * Provider priority: Gemini → OpenAI → Anthropic
  */
 export async function callNotesModel(
   transcript: string,
@@ -275,7 +406,9 @@ export async function callNotesModel(
 ): Promise<DepotNotes> {
   try {
     // Try primary provider
-    if (primaryProvider.provider === 'openai') {
+    if (primaryProvider.provider === 'gemini') {
+      return await callGeminiForStructuring(transcript, primaryProvider, referenceMaterials);
+    } else if (primaryProvider.provider === 'openai') {
       return await callOpenAIForStructuring(transcript, primaryProvider, referenceMaterials);
     } else if (primaryProvider.provider === 'anthropic') {
       return await callAnthropicForStructuring(transcript, primaryProvider, referenceMaterials);
@@ -289,7 +422,9 @@ export async function callNotesModel(
     if (fallbackProvider) {
       console.log('Attempting fallback provider...');
       try {
-        if (fallbackProvider.provider === 'openai') {
+        if (fallbackProvider.provider === 'gemini') {
+          return await callGeminiForStructuring(transcript, fallbackProvider, referenceMaterials);
+        } else if (fallbackProvider.provider === 'openai') {
           return await callOpenAIForStructuring(transcript, fallbackProvider, referenceMaterials);
         } else if (fallbackProvider.provider === 'anthropic') {
           return await callAnthropicForStructuring(transcript, fallbackProvider, referenceMaterials);
@@ -359,6 +494,7 @@ export async function processTranscriptToStructuredNotes(
 
 export const aiProviderService = {
   transcribeAudioWithWhisper,
+  callGeminiForStructuring,
   callOpenAIForStructuring,
   callAnthropicForStructuring,
   callNotesModel,

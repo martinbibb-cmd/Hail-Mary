@@ -21,7 +21,7 @@ const dockApps: DockApp[] = [
   { id: 'quote', name: 'Quote', icon: '£' },
   { id: 'customers', name: 'Customers', icon: '📁' },
   { id: 'leads', name: 'Leads', icon: '🧲' },
-  { id: 'assistant', name: 'Assistant', icon: '🧠' },
+  { id: 'assistant', name: 'Sarah', icon: '🧠' },
   { id: 'browser', name: 'Browser', icon: '🌐' },
   { id: 'about', name: 'About', icon: 'ℹ️' },
   // Settings must always remain last (far right)

@@ -14,6 +14,8 @@ import { SettingsApp } from '../apps/settings/SettingsApp'
 import { FilesApp } from '../apps/files/FilesApp'
 import { BrowserApp } from '../apps/browser/BrowserApp'
 import { AboutApp } from '../apps/about/AboutApp'
+import { RockyApp } from '../apps/rocky'
+import { SarahApp } from '../apps/sarah'
 // Mini app modules
 import { 
   PropertyApp, 
@@ -41,6 +43,8 @@ const appComponents: Record<string, React.FC> = {
   settings: SettingsApp,
   files: FilesApp,
   browser: BrowserApp,
+  rocky: RockyApp,
+  sarah: SarahApp,
   // Mini app modules (survey modules)
   property: PropertyApp,
   central_heating: CentralHeatingApp,

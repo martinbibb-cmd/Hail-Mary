@@ -16,6 +16,7 @@ import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useDeviceLayout } from './hooks/useDeviceLayout'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
+import { RockyTool, SarahTool } from './modules'
 
 // Simple API client
 const api = {
@@ -719,6 +720,8 @@ function App() {
           <Route path="/leads" element={<LeadsList />} />
           <Route path="/leads/new" element={<NewLead />} />
           <Route path="/leads/:id" element={<LeadWorkspace />} />
+          <Route path="/rocky" element={<RockyTool />} />
+          <Route path="/sarah" element={<SarahTool />} />
         </Routes>
       </main>
     </>

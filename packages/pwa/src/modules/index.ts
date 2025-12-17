@@ -14,6 +14,10 @@
  * - EvApp - EV charging (Phase 2)
  * - RoadmapApp - Upgrade roadmap (Phase 3)
  * - OtherTradesApp - Future trades gateway
+ * 
+ * Tools:
+ * - RockyTool - Deterministic fact extraction
+ * - SarahTool - Human-readable explanations
  */
 
 // Phase 1 - Live modules
@@ -27,3 +31,7 @@ export { SolarPvApp } from './pv';
 export { EvApp } from './ev';
 export { RoadmapApp } from './roadmap';
 export { OtherTradesApp } from './other';
+
+// Tools
+export { RockyTool } from './rocky';
+export { SarahTool } from './sarah';

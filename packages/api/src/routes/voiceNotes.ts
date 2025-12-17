@@ -98,6 +98,7 @@ router.post('/process', async (req: Request, res: Response) => {
     }
     
     // Store in database
+    // Note: Using JSON.parse/stringify to ensure JSONB compatibility
     const [inserted] = await db
       .insert(voiceNotes)
       .values({
@@ -106,15 +107,19 @@ router.post('/process', async (req: Request, res: Response) => {
         naturalNotesEdited: null,
         naturalNotesHash: rockyResult.rockyFacts.naturalNotesHash,
         rockyFactsVersion: rockyResult.rockyFacts.version,
-        rockyFacts: rockyResult.rockyFacts as any,
-        automaticNotes: rockyResult.automaticNotes as any,
-        engineerBasics: rockyResult.engineerBasics as any,
+        rockyFacts: JSON.parse(JSON.stringify(rockyResult.rockyFacts)),
+        automaticNotes: JSON.parse(JSON.stringify(rockyResult.automaticNotes)),
+        engineerBasics: JSON.parse(JSON.stringify(rockyResult.engineerBasics)),
         rockyProcessedAt: rockyResult.rockyFacts.processedAt,
         rockyProcessingTimeMs: rockyResult.processingTimeMs,
       })
       .returning();
     
-    const response: ApiResponse<any> = {
+    type RockyProcessResponse = typeof rockyResult & {
+      voiceNoteId: number;
+    };
+    
+    const response: ApiResponse<RockyProcessResponse> = {
       success: true,
       data: {
         ...rockyResult,
@@ -193,20 +198,25 @@ router.post('/:id/explain', async (req: Request, res: Response) => {
     }
     
     // Store explanation in database
+    // Note: Using JSON.parse/stringify to ensure JSONB compatibility
     const [inserted] = await db
       .insert(sarahExplanations)
       .values({
         voiceNoteId,
         audience,
         tone,
-        explanation: sarahResult.explanation as any,
+        explanation: JSON.parse(JSON.stringify(sarahResult.explanation)),
         rockyFactsVersion: note.rockyFactsVersion,
         generatedAt: sarahResult.explanation.generatedAt,
         processingTimeMs: sarahResult.processingTimeMs,
       })
       .returning();
     
-    const response: ApiResponse<any> = {
+    type SarahProcessResponse = typeof sarahResult & {
+      explanationId: number;
+    };
+    
+    const response: ApiResponse<SarahProcessResponse> = {
       success: true,
       data: {
         ...sarahResult,
@@ -340,14 +350,15 @@ router.patch('/:id/edit', async (req: Request, res: Response) => {
     }
     
     // Update database
+    // Note: Using JSON.parse/stringify to ensure JSONB compatibility
     const [updated] = await db
       .update(voiceNotes)
       .set({
         naturalNotesEdited: editedNotes,
         naturalNotesHash: rockyResult.rockyFacts.naturalNotesHash,
-        rockyFacts: rockyResult.rockyFacts as any,
-        automaticNotes: rockyResult.automaticNotes as any,
-        engineerBasics: rockyResult.engineerBasics as any,
+        rockyFacts: JSON.parse(JSON.stringify(rockyResult.rockyFacts)),
+        automaticNotes: JSON.parse(JSON.stringify(rockyResult.automaticNotes)),
+        engineerBasics: JSON.parse(JSON.stringify(rockyResult.engineerBasics)),
         rockyProcessedAt: rockyResult.rockyFacts.processedAt,
         rockyProcessingTimeMs: rockyResult.processingTimeMs,
         updatedAt: new Date(),
@@ -355,7 +366,11 @@ router.patch('/:id/edit', async (req: Request, res: Response) => {
       .where(eq(voiceNotes.id, voiceNoteId))
       .returning();
     
-    const response: ApiResponse<any> = {
+    type RockyProcessResponse = typeof rockyResult & {
+      voiceNoteId: number;
+    };
+    
+    const response: ApiResponse<RockyProcessResponse> = {
       success: true,
       data: {
         ...rockyResult,

@@ -167,6 +167,7 @@ GUEST_NAME=Guest User
 - **PWA Skeleton** - Dashboard, customer management, lead tracking
 - **Authentication** - User login with JWT, role-based access control, guest access
 - **Bulletproof Deployment** - Init container pattern for reliable database setup
+- **Rocky & Sarah Architecture** - Deterministic fact extraction (Rocky) with human-readable explanations (Sarah) for voice notes **[→ Architecture Docs](docs/ROCKY-SARAH-ARCHITECTURE.md)**
 
 ### 🚧 In Progress (4-Week Build)
 

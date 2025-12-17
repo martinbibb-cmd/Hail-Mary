@@ -110,6 +110,8 @@ function normalizeText(text: string): string {
   }
   
   // Fix common transcription errors (deterministic)
+  // Note: "monkey mock" → "monkey muck" is heating industry jargon for asbestos-based pipe lagging
+  // "TRB" → "TRV" is Thermostatic Radiator Valve (common speech-to-text error)
   normalized = normalized
     .replace(/monkey\s+mock/gi, 'monkey muck')
     .replace(/TRB/g, 'TRV')

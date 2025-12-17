@@ -469,8 +469,91 @@ A: Create a migration script that processes old transcripts through Rocky. Rocky
 **Q: What happens when RockyFacts schema changes?**  
 A: Version number increases (v1.0.0 → v2.0.0). Old facts remain valid. Sarah can work with multiple versions.
 
+## Future Enhancement: Worker Integration (LLM Sarah)
+
+### Current State
+Sarah uses **template-based generation** (no LLM). This provides consistent, fast explanations but lacks natural language flexibility.
+
+### Future State: Cloudflare Worker Integration
+When ready to add LLM capabilities, Sarah can call a Cloudflare Worker for natural language generation.
+
+### Environment Variables (Pre-configured)
+
+The infrastructure is **already configured** to support Worker integration:
+
+```bash
+# Cloudflare Worker URL (default provided)
+SARAH_BASE_URL=https://hail-mary.martinbibb.workers.dev
+
+# Worker endpoints
+SARAH_VOICE_NOTES_PATH=/v1/voice-notes  # Voice notes processing
+SARAH_CHAT_PATH=/v1/chat                # Chat interface
+SARAH_TRANSCRIBE_PATH=/v1/transcribe    # Transcription service
+```
+
+Add these to your `.env` file when deploying the Worker.
+
+### Migration Path
+
+1. **Keep templates**: Current template-based Sarah continues to work
+2. **Deploy Worker**: Set up Cloudflare Worker with `/v1/*` routes
+3. **Update service**: Modify `sarah.service.ts` to call Worker endpoint
+4. **A/B test**: Compare template vs LLM output quality
+5. **Switch**: Enable LLM mode via feature flag
+
+### Worker API Contract
+
+**Request to Worker:**
+```http
+POST https://hail-mary.martinbibb.workers.dev/v1/voice-notes
+Content-Type: application/json
+
+{
+  "rockyFacts": { /* RockyFactsV1 */ },
+  "audience": "customer",
+  "tone": "friendly"
+}
+```
+
+**Response from Worker:**
+```json
+{
+  "explanation": {
+    "sections": {
+      "summary": "Here's what we found during your survey...",
+      "systemAssessment": "About your current system...",
+      "nextStepsGuidance": "What happens next..."
+    }
+  },
+  "model": "gpt-4o-mini",
+  "tokensUsed": 450
+}
+```
+
+### Worker Safety Rules
+
+The Worker MUST:
+- ✅ Consume RockyFacts as readonly context
+- ✅ Generate explanations based ONLY on provided facts
+- ✅ Apply audience-specific tone
+- ✅ Include disclaimer: "Based on survey facts"
+
+The Worker MUST NOT:
+- ❌ Modify or add to RockyFacts
+- ❌ Make claims not in RockyFacts
+- ❌ Use prohibited phrases (see `SarahConfig.safetyRules`)
+
+### Why Separate Worker?
+
+**Benefits:**
+- 🚀 **Independent scaling**: LLM calls don't block API
+- 💰 **Cost control**: Track LLM usage separately
+- 🔄 **Easy updates**: Change prompts without API deployment
+- 🌍 **Edge deployment**: Low latency worldwide (Cloudflare)
+- 🔒 **API key isolation**: Sensitive keys stay in Worker
+
 ---
 
 **Last Updated**: 2024-12-17  
-**Version**: 1.0.0  
+**Version**: 1.1.0  
 **Architectural Rule**: Rocky decides. Sarah explains.

@@ -15,7 +15,24 @@ curl -fsSL https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scrip
 
 That's it! Your NAS will now automatically receive updates when you push code to GitHub.
 
-### Option 2: Manual Web Interface (NEW! ⭐)
+### Option 2: Safe Update Script (Recommended for Unraid) ⭐
+A single script that handles everything: pull, migrate, restart, and health checks.
+
+**Installation (Unraid User Script):**
+1. Go to **Settings → User Scripts** in Unraid
+2. Click **Add New Script** → Name it: `Update PHM (safe + migrate)`
+3. Copy contents of `scripts/unraid-safe-update.sh` into the script
+4. Click **Run Script** to update
+
+**What it does:**
+- ✅ Pulls latest Docker images
+- ✅ Runs database migrations automatically
+- ✅ Restarts services
+- ✅ Performs health checks
+
+See [Unraid Safe Update Guide](./docs/UNRAID-SAFE-UPDATE.md) for detailed instructions.
+
+### Option 3: Manual Web Interface
 For admin users, you can now manage updates directly from the web interface:
 
 1. Login at `http://nas.cloudbibb.uk/login`

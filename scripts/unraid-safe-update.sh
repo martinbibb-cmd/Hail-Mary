@@ -50,8 +50,9 @@ if [[ -z "$PG_CID" ]]; then
 fi
 
 # Wait until pg_isready succeeds inside the container
+# Note: pg_isready without -U will check if postgres is accepting connections
 for i in {1..30}; do
-  if docker exec "$PG_CID" sh -lc 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1'; then
+  if docker exec "$PG_CID" pg_isready >/dev/null 2>&1; then
     echo "✅ Postgres ready"
     break
   fi

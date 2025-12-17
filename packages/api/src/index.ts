@@ -32,6 +32,7 @@ import filesRouter from './routes/files';
 import transcriptionRouter from './routes/transcription';
 import depotNotesRouter from './routes/depotNotes';
 import surveyHelperRouter from './routes/surveyHelper';
+import voiceNotesRouter from './routes/voiceNotes';
 
 // API version - kept in sync with package.json
 export const API_VERSION = '0.2.0';
@@ -195,6 +196,7 @@ app.use('/api/files', filesRouter);
 app.use('/api/transcription', transcriptionRouter);
 app.use('/api/depot-notes', depotNotesRouter);
 app.use('/api/survey-helper', surveyHelperRouter);
+app.use('/api/voice-notes', voiceNotesRouter); // Rocky & Sarah architecture
 
 // 404 handler
 app.use((_req, res) => {

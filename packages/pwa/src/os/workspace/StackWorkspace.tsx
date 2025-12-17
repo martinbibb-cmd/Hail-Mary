@@ -22,6 +22,8 @@ import { SettingsApp } from '../apps/settings/SettingsApp'
 import { FilesApp } from '../apps/files/FilesApp'
 import { BrowserApp } from '../apps/browser/BrowserApp'
 import { AboutApp } from '../apps/about/AboutApp'
+import { RockyApp } from '../apps/rocky'
+import { SarahApp } from '../apps/sarah'
 // Mini app modules
 import { 
   PropertyApp, 
@@ -95,6 +97,8 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
       settings: SettingsApp,
       files: FilesApp,
       browser: BrowserApp,
+      rocky: RockyApp,
+      sarah: SarahApp,
       // Mini app modules (survey modules)
       property: PropertyApp,
       central_heating: CentralHeatingApp,
@@ -130,6 +134,8 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
     files: '📁',
     browser: '🌐',
     about: 'ℹ️',
+    rocky: '🪨',
+    sarah: '🧠',
   }
   
   const getAppIcon = (appId: string) => appIcons[appId] || '📱'

@@ -48,6 +48,12 @@ API_CONTAINER="${API_CONTAINER:-hailmary-hailmary-api-1}"
 ASSISTANT_CONTAINER="${ASSISTANT_CONTAINER:-hailmary-hailmary-assistant-1}"
 POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-hailmary-hailmary-postgres-1}"
 
+# PostgreSQL configuration
+POSTGRES_USER="${POSTGRES_USER:-postgres}"
+
+# Application paths
+APP_WORKDIR="${APP_WORKDIR:-/app}"
+
 # Health check endpoints (internal Docker network)
 API_HEALTH_URL="http://127.0.0.1:3001/health"
 API_DB_HEALTH_URL="http://127.0.0.1:3001/health/db"
@@ -84,7 +90,7 @@ wait_for_postgres() {
   local interval=2
   
   while [ $elapsed -lt $POSTGRES_TIMEOUT ]; do
-    if docker exec "$POSTGRES_CONTAINER" pg_isready -U postgres >/dev/null 2>&1; then
+    if docker exec "$POSTGRES_CONTAINER" pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; then
       success "PostgreSQL is healthy"
       return 0
     fi
@@ -103,11 +109,11 @@ wait_for_postgres() {
 check_health() {
   local url="$1"
   local name="$2"
-  local timeout="${3:-$HEALTH_CHECK_TIMEOUT}"
+  local max_time="${3:-$HEALTH_CHECK_TIMEOUT}"
   
   log "Health check: $name ($url)..."
   
-  if timeout "$timeout" curl -f -s "$url" >/dev/null 2>&1; then
+  if curl --max-time "$max_time" -f -s "$url" >/dev/null 2>&1; then
     success "$name is healthy"
     return 0
   else
@@ -211,7 +217,7 @@ fi
 # Run migrations inside the API container
 # Using sh -lc to ensure proper environment loading
 log "Executing: npm -w @hail-mary/api run db:migrate"
-if docker exec "$API_CONTAINER" sh -lc "cd /app && npm -w @hail-mary/api run db:migrate"; then
+if docker exec "$API_CONTAINER" sh -lc "cd $APP_WORKDIR && npm -w @hail-mary/api run db:migrate"; then
   success "Database migrations completed successfully"
 else
   error "Database migrations failed"

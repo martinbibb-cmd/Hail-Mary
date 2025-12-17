@@ -559,3 +559,66 @@ export const recommendations = pgTable("recommendations", {
     .defaultNow()
     .notNull(),
 });
+
+// ============================================
+// Rocky & Sarah - Voice Notes Architecture
+// ============================================
+
+// Voice Notes - Refactored to use Rocky/Sarah architecture
+// Natural Notes: verbatim transcript (editable)
+// Automatic Notes: Rocky-generated structured notes
+// Engineer Basics: Rocky-generated fixed format
+// RockyFacts: Versioned JSON contract
+export const voiceNotes = pgTable("voice_notes", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .references(() => transcriptSessions.id)
+    .notNull()
+    .unique(),
+  
+  // Natural Notes (verbatim, editable)
+  naturalNotesRaw: text("natural_notes_raw").notNull(), // Original transcript
+  naturalNotesEdited: text("natural_notes_edited"), // User-edited version
+  naturalNotesHash: varchar("natural_notes_hash", { length: 64 }).notNull(), // SHA-256 hash for auditability
+  
+  // Rocky Outputs
+  rockyFactsVersion: varchar("rocky_facts_version", { length: 20 }).notNull(), // e.g., "1.0.0"
+  rockyFacts: jsonb("rocky_facts").notNull(), // RockyFactsV1 JSON
+  automaticNotes: jsonb("automatic_notes").notNull(), // AutomaticNotes JSON
+  engineerBasics: jsonb("engineer_basics").notNull(), // EngineerBasics JSON
+  
+  // Processing metadata
+  rockyProcessedAt: timestamp("rocky_processed_at", { withTimezone: true }).notNull(),
+  rockyProcessingTimeMs: integer("rocky_processing_time_ms"),
+  
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Sarah Explanations - Generated on-demand from RockyFacts
+export const sarahExplanations = pgTable("sarah_explanations", {
+  id: serial("id").primaryKey(),
+  voiceNoteId: integer("voice_note_id")
+    .references(() => voiceNotes.id)
+    .notNull(),
+  
+  // Request parameters
+  audience: varchar("audience", { length: 50 }).notNull(), // customer, engineer, surveyor, manager, admin
+  tone: varchar("tone", { length: 50 }).notNull(), // professional, friendly, technical, simple, urgent
+  
+  // Sarah output
+  explanation: jsonb("explanation").notNull(), // SarahExplanation JSON
+  rockyFactsVersion: varchar("rocky_facts_version", { length: 20 }).notNull(), // Version of facts used
+  
+  // Processing metadata
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull(),
+  processingTimeMs: integer("processing_time_ms"),
+  
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

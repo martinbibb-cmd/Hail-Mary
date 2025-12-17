@@ -839,7 +839,8 @@ export interface TranscriptionSanityChecks {
 }
 
 // AI Provider Types for Transcription
-export type AIProvider = 'openai' | 'anthropic';
+// Priority order: Gemini → OpenAI → Anthropic
+export type AIProvider = 'gemini' | 'openai' | 'anthropic';
 
 export interface AIProviderConfig {
   provider: AIProvider;

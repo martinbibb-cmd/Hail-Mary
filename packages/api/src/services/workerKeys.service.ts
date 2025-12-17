@@ -5,7 +5,7 @@
  * URL: hail-mary.martinbibb.workers.dev
  * 
  * The worker provides keys in this order:
- * 1. GRMINI_API_KEY
+ * 1. GEMINI_API_KEY
  * 2. OPENAI_API_KEY
  * 3. ANTHROPIC_API_KEY
  */
@@ -13,13 +13,13 @@
 const WORKER_URL = 'https://hail-mary.martinbibb.workers.dev';
 
 interface WorkerKeysResponse {
-  grminiApiKey?: string;
+  geminiApiKey?: string;
   openaiApiKey?: string;
   anthropicApiKey?: string;
 }
 
 interface WorkerRawResponse {
-  GRMINI_API_KEY?: string;
+  GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
 }
@@ -47,7 +47,7 @@ async function fetchKeysFromWorker(): Promise<WorkerKeysResponse> {
 
     const data = (await response.json()) as WorkerRawResponse;
     return {
-      grminiApiKey: data.GRMINI_API_KEY,
+      geminiApiKey: data.GEMINI_API_KEY,
       openaiApiKey: data.OPENAI_API_KEY,
       anthropicApiKey: data.ANTHROPIC_API_KEY,
     };
@@ -90,11 +90,11 @@ export async function getApiKeys(): Promise<WorkerKeysResponse> {
 }
 
 /**
- * Get GRMINI API key
+ * Get Gemini API key
  */
-export async function getGrminiApiKey(): Promise<string | undefined> {
+export async function getGeminiApiKey(): Promise<string | undefined> {
   const keys = await getApiKeys();
-  return keys.grminiApiKey;
+  return keys.geminiApiKey;
 }
 
 /**

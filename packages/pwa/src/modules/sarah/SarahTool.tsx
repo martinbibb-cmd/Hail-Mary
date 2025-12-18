@@ -85,7 +85,7 @@ export const SarahTool: React.FC = () => {
     if (!chatInput.trim()) return
 
     const userMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: 'user',
       content: chatInput,
       timestamp: new Date(),
@@ -99,7 +99,7 @@ export const SarahTool: React.FC = () => {
     try {
       // Simple echo response for now - can be enhanced with actual AI
       const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         role: 'assistant',
         content: `I received your message: "${userMessage.content}". Chat integration is active! In a full implementation, I would process this with the Sarah service to provide contextual explanations.`,
         timestamp: new Date(),

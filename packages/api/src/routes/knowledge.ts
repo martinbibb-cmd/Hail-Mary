@@ -94,7 +94,7 @@ router.post('/upload', requireAdmin, upload.single('pdf'), async (req: Request, 
 
     // Process PDF synchronously: extract text and render page images
     // This is required for v1 so Sarah/Rocky can cite pages immediately
-    console.log(`Processing PDF for document ${result.documentId}...`);
+    console.log('Processing PDF document...');
     const pdfResult = await pdfProcessor.processPDF(req.file.buffer);
     
     // Store each page with image and text
@@ -110,7 +110,7 @@ router.post('/upload', requireAdmin, upload.single('pdf'), async (req: Request, 
     // Update document with page count
     await knowledgeService.updatePageCount(result.documentId, pdfResult.totalPages);
 
-    console.log(`PDF processing complete for document ${result.documentId}: ${pdfResult.totalPages} pages`);
+    console.log(`PDF processing complete: ${pdfResult.totalPages} pages extracted`);
 
     // TODO: Trigger background job for heavy processing (OCR fallback, chunking, embeddings)
     // For now, pages are immediately searchable
@@ -343,19 +343,34 @@ router.get('/citations', async (req: Request, res: Response) => {
       let pagePairs: Array<{ docId: number; pageNo: number }> = [];
 
       if (pages) {
-        // Parse pages JSON array
+        // Parse pages JSON array with validation
         try {
           const parsedPages = typeof pages === 'string' ? JSON.parse(pages) : pages;
-          if (Array.isArray(parsedPages)) {
-            pagePairs = parsedPages.map((p: any) => ({
-              docId: parseInt(p.docId, 10),
-              pageNo: parseInt(p.pageNo, 10),
-            }));
+          if (!Array.isArray(parsedPages)) {
+            return res.status(400).json({
+              success: false,
+              error: 'Pages parameter must be an array',
+            });
           }
+          
+          // Validate each page object
+          for (const p of parsedPages) {
+            if (!p || typeof p !== 'object' || !('docId' in p) || !('pageNo' in p)) {
+              return res.status(400).json({
+                success: false,
+                error: 'Each page object must have docId and pageNo properties',
+              });
+            }
+          }
+          
+          pagePairs = parsedPages.map((p: any) => ({
+            docId: parseInt(p.docId, 10),
+            pageNo: parseInt(p.pageNo, 10),
+          }));
         } catch (e) {
           return res.status(400).json({
             success: false,
-            error: 'Invalid pages parameter format',
+            error: 'Invalid pages parameter format - must be valid JSON array',
           });
         }
       } else if (docId && pageNo) {

@@ -287,6 +287,9 @@ export async function searchPages(
   topK: number = 10
 ): Promise<PageSearchResult[]> {
   // Search knowledge_pages instead of chunks for v1
+  // Use parameterized query to prevent SQL injection
+  const searchPattern = `%${query}%`;
+  
   const results = await db.select({
     pageId: knowledgePages.id,
     documentId: knowledgePages.documentId,
@@ -299,7 +302,7 @@ export async function searchPages(
     .where(and(
       eq(knowledgeDocuments.accountId, accountId),
       sql`${knowledgePages.text} IS NOT NULL AND ${knowledgePages.text} != ''`,
-      sql`${knowledgePages.text} ILIKE ${'%' + query + '%'}`
+      sql`${knowledgePages.text} ILIKE ${searchPattern}`
     ))
     .limit(topK);
 

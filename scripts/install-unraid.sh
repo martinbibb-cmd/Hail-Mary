@@ -325,8 +325,14 @@ APPDATA_PATH=/mnt/user/appdata/hailmary
 # Port configuration
 PWA_PORT=$PWA_PORT
 
+# Database configuration
+POSTGRES_DB=hailmary
+POSTGRES_USER=hailmary
+POSTGRES_PASSWORD=$(openssl rand -hex 24)
+DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@hailmary-postgres:5432/${POSTGRES_DB}
+
 # Security (CHANGE THESE IN PRODUCTION!)
-JWT_SECRET=change-this-to-a-random-secret-$(openssl rand -hex 16)
+JWT_SECRET=$(openssl rand -hex 32)
 
 # Base URL (update this if using a custom domain)
 BASE_URL=http://$(hostname -I | awk '{print $1}'):$PWA_PORT

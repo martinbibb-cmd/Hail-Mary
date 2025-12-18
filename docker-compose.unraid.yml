@@ -47,6 +47,8 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
       NODE_ENV: production
+      # JWT_SECRET is required for security checks during initialization
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       # Initial admin credentials for seeding
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
@@ -80,7 +82,7 @@ services:
       # The application will refuse to start without a secure JWT_SECRET.
       # Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
       # Then add to .env: JWT_SECRET=your-generated-secret-here
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       NODE_ENV: production
       # NAS Authentication Mode (optional - only for trusted local networks)
@@ -94,8 +96,8 @@ services:
       SARAH_TRANSCRIBE_PATH: ${SARAH_TRANSCRIBE_PATH:-/v1/transcribe}
     command: npm run start -w packages/api
     depends_on:
-      hailmary-migrator:
-        condition: service_completed_successfully
+      hailmary-postgres:
+        condition: service_healthy
     networks:
       - hailmary-network
     expose:

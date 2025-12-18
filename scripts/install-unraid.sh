@@ -293,18 +293,33 @@ setup_repository() {
     if [[ -d "$INSTALL_DIR/.git" ]]; then
         log_info "Repository already exists. Updating code..."
         cd "$INSTALL_DIR"
+        
+        # Stash any local changes before pulling
+        if ! git diff-index --quiet HEAD --; then
+            log_info "Stashing local changes..."
+            git stash
+        fi
+        
+        # Update repository
+        log_info "Fetching latest changes from origin..."
         git fetch --all
+        
+        log_info "Resetting to latest main branch..."
         git reset --hard origin/main
+        
+        log_success "Repository updated to latest version"
     elif [[ -d "$INSTALL_DIR" ]]; then
         log_warn "Folder exists but is not a git repo. Cleaning and re-cloning..."
         rm -rf "$INSTALL_DIR"
         git clone "$REPO_URL" "$INSTALL_DIR"
         cd "$INSTALL_DIR"
+        log_success "Repository cloned successfully"
     else
         log_info "Cloning repository..."
         mkdir -p "$(dirname "$INSTALL_DIR")"
         git clone "$REPO_URL" "$INSTALL_DIR"
         cd "$INSTALL_DIR"
+        log_success "Repository cloned successfully"
     fi
 
     log_success "Repository ready at $INSTALL_DIR"
@@ -319,8 +334,38 @@ setup_environment() {
         log_warn ".env file already exists, skipping creation"
     else
         log_info "Creating .env file with default configuration..."
-        # Generate secrets
-        local DB_PASS=$(openssl rand -hex 24)
+        
+        # Interactive password prompt
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  Database Password Configuration"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        log_info "Please enter a secure password for the PostgreSQL database."
+        log_info "This password will be used to secure your Hail-Mary database."
+        echo ""
+        log_info "Requirements:"
+        echo "  • Minimum 12 characters recommended"
+        echo "  • Use a mix of letters, numbers, and symbols"
+        echo ""
+        log_warn "If you leave this blank, a secure random password will be generated."
+        echo ""
+        
+        local DB_PASS=""
+        read -s -p "Enter PostgreSQL password (or press Enter to auto-generate): " -r DB_PASS
+        echo ""
+        
+        # If user didn't provide a password, generate one
+        if [[ -z "$DB_PASS" ]]; then
+            DB_PASS=$(openssl rand -hex 24)
+            log_info "Generated secure random password"
+            SHOW_PASSWORD_AT_END=true
+        else
+            log_success "Using your custom password"
+            SHOW_PASSWORD_AT_END=false
+        fi
+        
+        # Generate JWT secret
         local JWT_SEC=$(openssl rand -hex 32)
 
         cat > "$env_file" << EOF
@@ -341,6 +386,11 @@ JWT_SECRET=$JWT_SEC
 BASE_URL=http://$(hostname -I | awk '{print $1}'):$PWA_PORT
 EOF
         log_success "Created .env file"
+        
+        # Store password for display at end if it was auto-generated
+        if [[ "$SHOW_PASSWORD_AT_END" == "true" ]]; then
+            GENERATED_DB_PASSWORD="$DB_PASS"
+        fi
     fi
 }
 
@@ -605,6 +655,25 @@ show_completion() {
     echo "  • Environment: $INSTALL_DIR/.env"
     echo "  • Compose file: $INSTALL_DIR/$compose_file"
     echo ""
+    
+    # Display generated password if one was auto-generated
+    if [[ -n "${GENERATED_DB_PASSWORD:-}" ]]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  🔐 IMPORTANT: Generated Database Password"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        log_warn "A secure random password was auto-generated for your database."
+        log_warn "Please save this password in a secure location!"
+        log_warn "⚠️  WARNING: This password will be visible in your terminal."
+        log_warn "⚠️  Clear your terminal history if needed for security."
+        echo ""
+        echo "  Database Password: $GENERATED_DB_PASSWORD"
+        echo ""
+        log_info "You can also find this password in: $INSTALL_DIR/.env"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+    fi
+    
     echo "Useful commands:"
     echo "  • View logs: docker logs hailmary-pwa"
     echo "  • Restart: docker compose -f $INSTALL_DIR/$compose_file restart"

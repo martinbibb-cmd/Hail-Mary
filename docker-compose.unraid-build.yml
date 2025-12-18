@@ -92,6 +92,8 @@ services:
     depends_on:
       hailmary-postgres:
         condition: service_healthy
+      # Note: Removed migrator dependency to prevent boot-loop on slow migrations
+      # The API will start as soon as postgres is healthy, allowing migrations to complete independently
     networks:
       - hailmary-network
     expose:

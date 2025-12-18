@@ -10,6 +10,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../auth';
 import type { AuthUser } from '@hail-mary/shared';
 import { APP_VERSION } from '../../../constants';
@@ -18,6 +19,7 @@ import './ProfileApp.css';
 type ViewMode = 'login' | 'register' | 'profile' | 'forgot-password' | 'reset-sent' | 'admin-users' | 'nas-management';
 
 export const ProfileApp: React.FC = () => {
+  const navigate = useNavigate();
   const { user, loading, error, login, register, logout, requestPasswordReset, clearError } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>(user ? 'profile' : 'login');
   const [formData, setFormData] = useState({
@@ -34,6 +36,17 @@ export const ProfileApp: React.FC = () => {
   const [adminSuccess, setAdminSuccess] = useState<string | null>(null);
   const [nasStatus, setNasStatus] = useState<any>(null);
   const [nasOutput, setNasOutput] = useState<string>('');
+
+  // Helper function for admin navigation with fallback
+  const navigateToAdmin = (path: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try {
+      navigate(path);
+    } catch (err) {
+      console.error('Navigation failed:', err);
+      window.location.href = path;
+    }
+  };
 
   // Update view mode when user state changes
   React.useEffect(() => {
@@ -369,12 +382,27 @@ export const ProfileApp: React.FC = () => {
         <div className="profile-actions">
           {user.role === 'admin' && (
             <>
-              <button className="btn-primary" onClick={handleManageUsers}>
+              <a
+                href="/admin/users"
+                className="btn-primary admin-action-link"
+                onClick={navigateToAdmin('/admin/users')}
+              >
                 👥 Manage Users
-              </button>
-              <button className="btn-primary" onClick={handleNasManagement}>
+              </a>
+              <a
+                href="/admin/nas"
+                className="btn-primary admin-action-link"
+                onClick={navigateToAdmin('/admin/nas')}
+              >
                 🖥️ NAS Management
-              </button>
+              </a>
+              <a
+                href="/admin/knowledge"
+                className="btn-primary admin-action-link"
+                onClick={navigateToAdmin('/admin/knowledge')}
+              >
+                📚 Knowledge Management
+              </a>
             </>
           )}
           <button className="btn-secondary btn-logout" onClick={handleLogout}>

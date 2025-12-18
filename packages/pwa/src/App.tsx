@@ -17,6 +17,7 @@ import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useDeviceLayout } from './hooks/useDeviceLayout'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { RockyTool, SarahTool } from './modules'
+import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
 
 // Simple API client
 const api = {
@@ -722,6 +723,9 @@ function App() {
           <Route path="/leads/:id" element={<LeadWorkspace />} />
           <Route path="/rocky" element={<RockyTool />} />
           <Route path="/sarah" element={<SarahTool />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/nas" element={<AdminNasPage />} />
+          <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
         </Routes>
       </main>
     </>

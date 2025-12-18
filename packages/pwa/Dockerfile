@@ -15,6 +15,12 @@ WORKDIR /app
 # Security mitigations: package-lock.json ensures integrity of installed packages.
 RUN npm config set strict-ssl false
 
+# Force native modules to compile from source with generic x86-64 instructions
+# This prevents SIGILL errors on CPUs without AVX (like Intel Celeron N5105)
+ENV npm_config_build_from_source=true
+ENV CFLAGS="-march=x86-64"
+ENV CXXFLAGS="-march=x86-64"
+
 # Copy root package files for workspace setup
 COPY package.json package-lock.json .npmrc ./
 

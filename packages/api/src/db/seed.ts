@@ -53,7 +53,7 @@ async function main() {
     .where(eq(leads.accountId, accountId))
     .limit(1);
 
-  let shouldSeedDemoData = false;
+  const shouldSeedDemoData = !existingLead;
   if (existingLead) {
     console.log(`Leads already exist for account ${accountId}. Skipping demo data seed to preserve user data.`);
   } else {
@@ -72,7 +72,6 @@ async function main() {
     }).returning();
     const leadId = insertedLead.id;
     console.log(`Seeded Test Lead (id: ${leadId})`);
-    shouldSeedDemoData = true;
 
     // 2a. Seed linked lead workspace records for the test lead
     await db.insert(leadContacts).values({
@@ -132,13 +131,6 @@ async function main() {
   // 3. Seed sample boiler products only if demo lead was created
   // This prevents overwriting product catalogs if user has already started
   if (shouldSeedDemoData) {
-    const [existingProduct] = await db
-      .select()
-      .from(products)
-      .where(eq(products.accountId, accountId))
-      .limit(1);
-
-    if (!existingProduct) {
     console.log("Seeding sample boiler products...");
 
     const sampleProducts = [
@@ -265,11 +257,8 @@ async function main() {
       },
     ];
 
-      await db.insert(products).values(sampleProducts);
-      console.log(`✅ Seeded ${sampleProducts.length} sample boiler products`);
-    } else {
-      console.log(`Products already exist for account ${accountId}, skipping product seed`);
-    }
+    await db.insert(products).values(sampleProducts);
+    console.log(`✅ Seeded ${sampleProducts.length} sample boiler products`);
   } else {
     console.log(`Skipping product seed - user data exists`);
   }

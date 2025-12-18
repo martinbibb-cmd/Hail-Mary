@@ -3,9 +3,8 @@
  * 
  * Provides NAS management interface for admin users:
  * - System status overview
- * - Check for updates
- * - Pull and deploy updates
- * - Run database migrations
+ * - Host-side deployment playbooks for Unraid
+ * - Manual database migration fallback
  */
 
 import React, { useState, useEffect } from 'react';
@@ -30,9 +29,8 @@ export const AdminNasPage: React.FC = () => {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [output, setOutput] = useState<string>('');
-  const [processing, setProcessing] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<{ success: boolean; message: string; output?: string } | null>(null);
+  const [runningMigration, setRunningMigration] = useState(false);
 
   useEffect(() => {
     loadSystemStatus();
@@ -62,79 +60,14 @@ export const AdminNasPage: React.FC = () => {
     }
   };
 
-  const handleCheckUpdates = async () => {
-    setProcessing(true);
-    setError(null);
-    setSuccess(null);
-    setOutput('');
-
-    try {
-      const res = await fetch('/api/admin/nas/check-updates', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json();
-      
-      if (res.status === 401 || res.status === 403) {
-        setError('Access denied. Admin privileges required.');
-      } else if (data.success) {
-        setSuccess(data.message);
-        setOutput(data.output || '');
-      } else {
-        setError(data.error || 'Failed to check for updates');
-        setOutput(data.details || '');
-      }
-    } catch (err) {
-      setError('Failed to check for updates');
-      console.error('Error checking updates:', err);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handlePullUpdates = async () => {
-    if (!confirm('This will pull the latest Docker images and restart containers. Continue?')) {
-      return;
-    }
-
-    setProcessing(true);
-    setError(null);
-    setSuccess(null);
-    setOutput('');
-
-    try {
-      const res = await fetch('/api/admin/nas/pull-updates', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json();
-      
-      if (res.status === 401 || res.status === 403) {
-        setError('Access denied. Admin privileges required.');
-      } else if (data.success) {
-        setSuccess(data.message);
-        setOutput(data.output || '');
-      } else {
-        setError(data.error || 'Failed to pull updates');
-        setOutput(data.output || data.details || '');
-      }
-    } catch (err) {
-      setError('Failed to pull updates');
-      console.error('Error pulling updates:', err);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   const handleRunMigrations = async () => {
     if (!confirm('This will run database migrations. Continue?')) {
       return;
     }
 
-    setProcessing(true);
+    setRunningMigration(true);
     setError(null);
-    setSuccess(null);
-    setOutput('');
+    setMigrationResult(null);
 
     try {
       const res = await fetch('/api/admin/system/migrate', {
@@ -146,17 +79,23 @@ export const AdminNasPage: React.FC = () => {
       if (res.status === 401 || res.status === 403) {
         setError('Access denied. Admin privileges required.');
       } else if (data.success) {
-        setSuccess(data.message);
-        setOutput(data.output || '');
+        setMigrationResult({
+          success: true,
+          message: data.message,
+          output: data.output || '',
+        });
       } else {
-        setError(data.error || 'Failed to run migrations');
-        setOutput(data.output || data.details || '');
+        setMigrationResult({
+          success: false,
+          message: data.error || 'Failed to run migrations',
+          output: data.output || data.details || '',
+        });
       }
     } catch (err) {
       setError('Failed to run migrations');
       console.error('Error running migrations:', err);
     } finally {
-      setProcessing(false);
+      setRunningMigration(false);
     }
   };
 
@@ -178,14 +117,10 @@ export const AdminNasPage: React.FC = () => {
           <Link to="/" className="btn-secondary">← Back to Dashboard</Link>
         </div>
 
-        <p className="page-subtitle">Manage updates and migrations for the NAS deployment</p>
+        <p className="page-subtitle">Review NAS health and follow the host-level deployment playbooks.</p>
 
         {error && (
           <div className="alert alert-error">{error}</div>
-        )}
-
-        {success && (
-          <div className="alert alert-success">{success}</div>
         )}
 
         {status && (
@@ -278,40 +213,61 @@ export const AdminNasPage: React.FC = () => {
         )}
 
         <div className="actions-section">
-          <h2>Actions</h2>
-          <div className="actions-grid">
-            <button
-              className="btn-primary btn-block"
-              onClick={handleCheckUpdates}
-              disabled={processing}
-            >
-              {processing ? '🔄 Checking...' : '🔍 Check for Updates'}
-            </button>
+          <div className="alert alert-warning">
+            <strong>Host-first deployment</strong>
+            <div>Updates now run on the NAS itself using the safe update/auto-update scripts. The web UI stays read-only to avoid docker-in-docker failures.</div>
+          </div>
 
-            <button
-              className="btn-primary btn-block"
-              onClick={handlePullUpdates}
-              disabled={processing}
-            >
-              {processing ? '🔄 Updating...' : '⬇️ Pull & Deploy Updates'}
-            </button>
+          <h2>Deployment Playbooks</h2>
+          <div className="playbooks-grid">
+            <div className="playbook-card">
+              <h3>⭐ Safe update (Unraid)</h3>
+              <p className="playbook-copy">Run the end-to-end updater that pulls images, runs migrations, restarts services, and performs health checks.</p>
+              <ol className="playbook-steps">
+                <li>Open an Unraid terminal or SSH into your NAS</li>
+                <li>cd /mnt/user/appdata/hailmary</li>
+                <li>bash ./scripts/unraid-safe-update.sh</li>
+              </ol>
+              <p className="playbook-note">Use after pushing new images or when you need a manual refresh.</p>
+            </div>
 
-            <button
-              className="btn-primary btn-block"
-              onClick={handleRunMigrations}
-              disabled={processing}
-            >
-              {processing ? '🔄 Running...' : '🗄️ Run Database Migrations'}
-            </button>
+            <div className="playbook-card">
+              <h3>♻️ Enable scheduled auto-updates</h3>
+              <p className="playbook-copy">Keep the NAS aligned with the roadmap by checking for fresh images on a schedule.</p>
+              <ol className="playbook-steps">
+                <li>cd /mnt/user/appdata/hailmary</li>
+                <li>bash ./scripts/setup-unraid-autoupdate.sh --interval "0 * * * *"</li>
+              </ol>
+              <p className="playbook-note">Installs the cron-backed updater that applies images and migrations hourly.</p>
+            </div>
           </div>
         </div>
 
-        {output && (
-          <div className="output-section">
-            <h3>Output</h3>
-            <pre className="output-display">{output}</pre>
-          </div>
-        )}
+        <div className="actions-section">
+          <h2>Database Migrations</h2>
+          <p className="playbook-copy">Safe update already runs migrations automatically. Use this button only for troubleshooting or if you need to re-run the latest migration set.</p>
+
+          {migrationResult && (
+            <div className={`alert ${migrationResult.success ? 'alert-success' : 'alert-error'}`}>
+              {migrationResult.message}
+            </div>
+          )}
+
+          <button
+            className="btn-primary btn-block"
+            onClick={handleRunMigrations}
+            disabled={runningMigration}
+          >
+            {runningMigration ? '🔄 Running...' : '🗄️ Run Database Migrations'}
+          </button>
+
+          {migrationResult?.output && (
+            <div className="output-section">
+              <h3>Migration Output</h3>
+              <pre className="output-display">{migrationResult.output}</pre>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

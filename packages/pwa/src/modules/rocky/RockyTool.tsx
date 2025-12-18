@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import type { RockyProcessResult } from '@hail-mary/shared'
+import { aiService } from '../../services/ai.service'
 
 /**
  * Rocky Tool Page
@@ -12,6 +13,16 @@ export const RockyTool: React.FC = () => {
   const [result, setResult] = useState<RockyProcessResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [workerStatus, setWorkerStatus] = useState<'checking' | 'available' | 'degraded' | 'unavailable'>('checking')
+
+  // Check Worker health on mount
+  useEffect(() => {
+    const checkHealth = async () => {
+      const health = await aiService.checkHealth()
+      setWorkerStatus(health.status)
+    }
+    checkHealth()
+  }, [])
 
   const handleProcess = async () => {
     if (!transcript.trim()) {
@@ -23,28 +34,22 @@ export const RockyTool: React.FC = () => {
     setError(null)
 
     try {
-      // Use AI gateway which proxies to Cloudflare Worker
-      const response = await fetch('/api/ai/rocky', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          transcript,
-          mode: 'extract',
-        }),
+      // Use AI service which calls the gateway
+      const data = await aiService.callRocky({
+        transcript,
+        mode: 'extract',
       })
-
-      const data = await response.json()
 
       if (data.success && data.data) {
         setResult(data.data)
+        setWorkerStatus('available')
       } else {
         setError(data.error || 'Failed to process transcript')
+        setWorkerStatus('degraded')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to process transcript')
+      setWorkerStatus('unavailable')
     } finally {
       setLoading(false)
     }
@@ -82,7 +87,19 @@ ${basics.actions.map(a => `- ${a}`).join('\n')}
 
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <h1>🪨 Rocky - Fact Extraction Tool</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h1 style={{ margin: 0 }}>🪨 Rocky - Fact Extraction Tool</h1>
+        <div style={{
+          padding: '4px 12px',
+          borderRadius: '12px',
+          fontSize: '13px',
+          fontWeight: 'bold',
+          backgroundColor: workerStatus === 'available' ? '#d4edda' : workerStatus === 'degraded' ? '#fff3cd' : workerStatus === 'unavailable' ? '#f8d7da' : '#e7e7e7',
+          color: workerStatus === 'available' ? '#155724' : workerStatus === 'degraded' ? '#856404' : workerStatus === 'unavailable' ? '#721c24' : '#666',
+        }}>
+          {workerStatus === 'available' ? '✓ Worker Available' : workerStatus === 'degraded' ? '⚠ Degraded' : workerStatus === 'unavailable' ? '✗ Unavailable' : '⏳ Checking...'}
+        </div>
+      </div>
       <p style={{ color: '#666', marginBottom: '20px' }}>
         Rocky analyzes voice transcripts and extracts structured facts using deterministic rules.
       </p>

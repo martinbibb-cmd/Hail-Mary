@@ -84,9 +84,9 @@ export async function callLLM(options: {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error("GEMINI_API_KEY is not set. LLM functionality is unavailable.");
+    console.warn("GEMINI_API_KEY is not set. Operating in manual mode.");
     return {
-      text: "I'm sorry, but the AI assistant is not configured. Please contact the administrator.",
+      text: "✅ Observation logged. (AI analysis unavailable - manual mode)",
     };
   }
 

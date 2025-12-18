@@ -8,6 +8,20 @@
       "when": 1733467200000,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1734307200000,
+      "tag": "0001_add_lead_workspace_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1734393600000,
+      "tag": "0002_add_knowledge_system",
+      "breakpoints": true
     }
   ]
 }

@@ -20,9 +20,9 @@ services:
     container_name: hailmary-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: hailmary
-      POSTGRES_USER: postgres
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: ${POSTGRES_DB:-hailmary}
+      POSTGRES_USER: ${POSTGRES_USER:-hailmary}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
     volumes:
       # unRAID appdata path for persistent PostgreSQL data
       - ${APPDATA_PATH:-/mnt/user/appdata/hailmary}/postgres:/var/lib/postgresql/data
@@ -45,7 +45,7 @@ services:
     image: ghcr.io/martinbibb-cmd/hail-mary-api:latest
     container_name: hailmary-migrator
     environment:
-      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
       NODE_ENV: production
       # Initial admin credentials for seeding
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
@@ -75,7 +75,7 @@ services:
     restart: unless-stopped
     environment:
       PORT: 3001
-      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
       # 🔴 CRITICAL SECURITY: JWT_SECRET must be set in your .env file!
       # The application will refuse to start without a secure JWT_SECRET.
       # Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -114,7 +114,7 @@ services:
       API_BASE_URL: http://hailmary-api:3001
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
-      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
       NODE_ENV: production
     depends_on:
       - hailmary-api

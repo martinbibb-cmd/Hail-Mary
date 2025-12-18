@@ -1,0 +1,339 @@
+/**
+ * Tablet Cockpit Layout Styles
+ * 
+ * Styles for the advanced tablet layout with bottom dock,
+ * resizable panels, and split view support.
+ */
+
+.tablet-cockpit {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+/* ============================================
+   Header
+   ============================================ */
+
+.cockpit-header {
+  flex-shrink: 0;
+  height: 56px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+.cockpit-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.cockpit-visit-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.cockpit-visit-name {
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+  flex: 1;
+}
+
+.cockpit-split-button {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cockpit-split-button:hover {
+  background: #0056b3;
+}
+
+.cockpit-split-button:active {
+  transform: scale(0.98);
+}
+
+/* ============================================
+   Workspace
+   ============================================ */
+
+.cockpit-workspace {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+.cockpit-workspace--none {
+  flex-direction: column;
+}
+
+.cockpit-workspace--two-up {
+  flex-direction: row;
+}
+
+/* Main content (when no panels) */
+.cockpit-main-content {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+/* Background content (behind half panels) */
+.cockpit-background-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+  padding: 20px;
+  z-index: 1;
+}
+
+/* ============================================
+   Panels
+   ============================================ */
+
+.cockpit-panel {
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Panel sizes */
+.cockpit-panel--min {
+  display: none;
+}
+
+.cockpit-panel--half {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  right: 20px;
+  height: 50%;
+}
+
+.cockpit-panel--full {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 80px;
+  border-radius: 0;
+}
+
+/* Two-up split positioning */
+.cockpit-workspace--two-up .cockpit-panel--left {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  border-radius: 0;
+  bottom: auto;
+  left: auto;
+  right: auto;
+}
+
+.cockpit-workspace--two-up .cockpit-panel--right {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  border-radius: 0;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  border-left: 1px solid #e0e0e0;
+}
+
+/* Panel header */
+.cockpit-panel-header {
+  flex-shrink: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+}
+
+.cockpit-panel-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.cockpit-panel-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.cockpit-panel-control {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cockpit-panel-control:hover {
+  background: #f0f0f0;
+  border-color: #ccc;
+}
+
+.cockpit-panel-control:disabled {
+  background: #e8f4f8;
+  border-color: #b3d9e8;
+  color: #007bff;
+  cursor: default;
+}
+
+.cockpit-panel-control:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* Panel content */
+.cockpit-panel-content {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+/* ============================================
+   Bottom Dock
+   ============================================ */
+
+.cockpit-dock {
+  flex-shrink: 0;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  z-index: 1000;
+}
+
+.cockpit-dock-container {
+  display: flex;
+  gap: 12px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.cockpit-dock-item {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.cockpit-dock-item:hover {
+  background: #e8e8e8;
+  transform: scale(1.1) translateY(-4px);
+}
+
+.cockpit-dock-item:active {
+  transform: scale(1.05) translateY(-2px);
+}
+
+.cockpit-dock-item--active {
+  background: #e8f4f8;
+  border-color: #007bff;
+}
+
+.cockpit-dock-item--open {
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.cockpit-dock-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.cockpit-dock-indicator {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: #007bff;
+  border-radius: 50%;
+}
+
+/* ============================================
+   Responsive adjustments
+   ============================================ */
+
+@media (max-width: 768px) {
+  .cockpit-header {
+    padding: 0 16px;
+    height: 48px;
+  }
+  
+  .cockpit-split-button {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  
+  .cockpit-panel--half {
+    left: 12px;
+    right: 12px;
+    height: 55%;
+  }
+  
+  .cockpit-dock {
+    height: 70px;
+    padding: 0 12px;
+  }
+  
+  .cockpit-dock-item {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .cockpit-dock-icon {
+    font-size: 24px;
+  }
+}

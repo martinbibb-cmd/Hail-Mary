@@ -33,6 +33,9 @@ import transcriptionRouter from './routes/transcription';
 import depotNotesRouter from './routes/depotNotes';
 import surveyHelperRouter from './routes/surveyHelper';
 import voiceNotesRouter from './routes/voiceNotes';
+import rockyRouter from './routes/rocky';
+import sarahRouter from './routes/sarah';
+import voiceTransformRouter from './routes/voiceTransform';
 
 // API version - kept in sync with package.json
 export const API_VERSION = '0.2.0';
@@ -197,6 +200,9 @@ app.use('/api/transcription', transcriptionRouter);
 app.use('/api/depot-notes', depotNotesRouter);
 app.use('/api/survey-helper', surveyHelperRouter);
 app.use('/api/voice-notes', voiceNotesRouter); // Rocky & Sarah architecture
+app.use('/api/rocky', rockyRouter); // Rocky standalone endpoint
+app.use('/api/sarah', sarahRouter); // Sarah standalone endpoint
+app.use('/api/voice', voiceTransformRouter); // Voice transform endpoint
 
 // 404 handler
 app.use((_req, res) => {

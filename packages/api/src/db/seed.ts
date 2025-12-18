@@ -45,15 +45,19 @@ async function main() {
     console.log(`Seeded Test Account (id: ${accountId})`);
   }
 
-  // 2. Ensure there is at least one lead for this account
+  // 2. Check if user has already started making changes
+  // If ANY leads exist, skip all demo data seeding to preserve user data
   const [existingLead] = await db
     .select()
     .from(leads)
     .where(eq(leads.accountId, accountId))
     .limit(1);
 
-  let leadId: number;
-  if (!existingLead) {
+  let shouldSeedDemoData = false;
+  if (existingLead) {
+    console.log(`Leads already exist for account ${accountId}. Skipping demo data seed to preserve user data.`);
+  } else {
+    // Only create demo lead if no leads exist
     const [insertedLead] = await db.insert(leads).values({
       accountId,
       firstName: "Test",
@@ -66,22 +70,11 @@ async function main() {
       country: "UK",
       status: "new",
     }).returning();
-    leadId = insertedLead.id;
+    const leadId = insertedLead.id;
     console.log(`Seeded Test Lead (id: ${leadId})`);
-  } else {
-    leadId = existingLead.id;
-    console.log(`Lead already exists for account ${accountId}: ${existingLead.firstName} ${existingLead.lastName} (id: ${leadId}), no seed needed`);
-  }
+    shouldSeedDemoData = true;
 
-  // 2a. Seed linked lead workspace records for the test lead
-  // Only seed if they don't already exist
-  const [existingContact] = await db
-    .select()
-    .from(leadContacts)
-    .where(eq(leadContacts.leadId, leadId))
-    .limit(1);
-
-  if (!existingContact) {
+    // 2a. Seed linked lead workspace records for the test lead
     await db.insert(leadContacts).values({
       leadId,
       name: "Test Lead",
@@ -134,18 +127,18 @@ async function main() {
     console.log(`Seeded lead_future_plans for lead ${leadId}`);
 
     console.log(`✅ Seeded all lead workspace records for lead ${leadId}`);
-  } else {
-    console.log(`Lead workspace records already exist for lead ${leadId}, skipping workspace seed`);
   }
 
-  // 3. Seed sample boiler products if none exist
-  const [existingProduct] = await db
-    .select()
-    .from(products)
-    .where(eq(products.accountId, accountId))
-    .limit(1);
+  // 3. Seed sample boiler products only if demo lead was created
+  // This prevents overwriting product catalogs if user has already started
+  if (shouldSeedDemoData) {
+    const [existingProduct] = await db
+      .select()
+      .from(products)
+      .where(eq(products.accountId, accountId))
+      .limit(1);
 
-  if (!existingProduct) {
+    if (!existingProduct) {
     console.log("Seeding sample boiler products...");
 
     const sampleProducts = [
@@ -272,10 +265,13 @@ async function main() {
       },
     ];
 
-    await db.insert(products).values(sampleProducts);
-    console.log(`✅ Seeded ${sampleProducts.length} sample boiler products`);
+      await db.insert(products).values(sampleProducts);
+      console.log(`✅ Seeded ${sampleProducts.length} sample boiler products`);
+    } else {
+      console.log(`Products already exist for account ${accountId}, skipping product seed`);
+    }
   } else {
-    console.log(`Products already exist for account ${accountId}, skipping product seed`);
+    console.log(`Skipping product seed - user data exists`);
   }
 
   // 4. Create initial admin user if env vars are set

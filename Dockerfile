@@ -1,8 +1,13 @@
 # syntax=docker/dockerfile:1
 
+# Main Dockerfile for Hail-Mary (all services)
+# CPU Compatibility: Optimized for non-AVX x86_64 CPUs (SSE4.2 only)
+# Compatible with Intel Celeron N5105 (Jasper Lake) and similar CPUs
+# Uses Debian-based image (glibc) for better native module compatibility
+
 # Adjust NODE_VERSION as desired
 ARG NODE_VERSION=20.18.0
-FROM node:${NODE_VERSION}-slim AS base
+FROM node:${NODE_VERSION}-bookworm-slim AS base
 
 LABEL fly_launch_runtime="NodeJS"
 
@@ -17,8 +22,18 @@ FROM base AS build
 ENV NODE_ENV=development
 
 # Install packages needed to build node modules
+# python3, make, g++: Required for node-gyp to compile native addons
+# pkg-config: Used by some native modules to find system libraries
+# ca-certificates: For SSL/TLS connections
 RUN apt-get update -qq && \
-    apt-get install -y python-is-python3 pkg-config build-essential ca-certificates && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    python-is-python3 \
+    make \
+    g++ \
+    pkg-config \
+    build-essential \
+    ca-certificates && \
     update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
@@ -30,6 +45,19 @@ RUN apt-get update -qq && \
 # - This setting only affects the build stage, not the final runtime image
 # - Build environments are typically isolated and controlled
 RUN npm config set strict-ssl false
+
+# Force ALL native modules to compile from source (no prebuilt binaries)
+# This prevents SIGILL errors from prebuilt binaries compiled with AVX/AVX2
+ENV npm_config_build_from_source=true
+ENV npm_config_prefer_binary=false
+
+# Compiler flags to ensure compatibility with non-AVX x86_64 CPUs
+# -O2: Optimize for performance while maintaining compatibility
+# -pipe: Use pipes rather than temporary files for compilation
+# -march=x86-64: Target baseline x86-64 architecture (no AVX/AVX2)
+# -mno-avx -mno-avx2: Explicitly disable AVX instructions
+ENV CFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
+ENV CXXFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
 
 # Copy package files
 COPY package.json package-lock.json .npmrc ./
@@ -61,8 +89,23 @@ FROM base
 # Set production environment
 ENV NODE_ENV=production
 
+# Install minimal runtime dependencies
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates && \
+    update-ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 # Configure npm to handle SSL certificate issues (needed for npm ci in production stage)
 RUN npm config set strict-ssl false
+
+# Force ALL native modules to compile from source (no prebuilt binaries)
+ENV npm_config_build_from_source=true
+ENV npm_config_prefer_binary=false
+
+# Compiler flags to ensure compatibility with non-AVX x86_64 CPUs
+ENV CFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
+ENV CXXFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
 
 # Copy package files for production install (only API and shared needed at runtime)
 COPY package.json package-lock.json .npmrc ./

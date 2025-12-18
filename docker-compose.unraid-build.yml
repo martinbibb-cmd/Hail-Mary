@@ -44,6 +44,8 @@ services:
       net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/postgres.png"
 
   # Database Migrator Service - Runs once to set up database
+  # NOTE: This is an independent one-off job that should NOT block API startup
+  # The API can handle database initialization independently if needed
   hailmary-migrator:
     build:
       context: .
@@ -62,10 +64,7 @@ services:
       GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
       GUEST_PASSWORD: ${GUEST_PASSWORD:-guestpass}
     command: npm run db:init -w packages/api
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
+    restart: no
     depends_on:
       hailmary-postgres:
         condition: service_healthy
@@ -92,8 +91,10 @@ services:
     depends_on:
       hailmary-postgres:
         condition: service_healthy
-      # Note: Removed migrator dependency to prevent boot-loop on slow migrations
-      # The API will start as soon as postgres is healthy, allowing migrations to complete independently
+      # REMOVED: migrator dependency to prevent boot-loop
+      # The migrator runs independently as a one-off job
+      # The API can start even if migrations are still running
+      # If migrations are needed, run them manually or use the migrator service separately
     networks:
       - hailmary-network
     expose:

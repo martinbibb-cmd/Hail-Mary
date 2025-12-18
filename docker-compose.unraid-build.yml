@@ -23,9 +23,9 @@ services:
     container_name: hailmary-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: hailmary
-      POSTGRES_USER: postgres
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: ${POSTGRES_DB:-hailmary}
+      POSTGRES_USER: ${POSTGRES_USER:-hailmary}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
     volumes:
       # unRAID appdata path for persistent PostgreSQL data
       - ${APPDATA_PATH:-/mnt/user/appdata/hailmary}/postgres:/var/lib/postgresql/data
@@ -34,7 +34,7 @@ services:
     networks:
       - hailmary-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hailmary}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -50,8 +50,10 @@ services:
       dockerfile: packages/api/Dockerfile
     container_name: hailmary-migrator
     environment:
-      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
       NODE_ENV: production
+      # JWT_SECRET is required for security checks during initialization
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       # Initial admin credentials for seeding
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
@@ -82,14 +84,14 @@ services:
     restart: unless-stopped
     environment:
       PORT: 3001
-      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
-      JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
+      DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       NODE_ENV: production
     command: npm run start -w packages/api
     depends_on:
-      hailmary-migrator:
-        condition: service_completed_successfully
+      hailmary-postgres:
+        condition: service_healthy
     networks:
       - hailmary-network
     expose:
@@ -110,7 +112,7 @@ services:
       API_BASE_URL: http://hailmary-api:3001
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
-      DATABASE_URL: postgres://postgres@hailmary-postgres:5432/hailmary
+      DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
       NODE_ENV: production
     depends_on:
       - hailmary-api

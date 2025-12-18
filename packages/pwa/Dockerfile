@@ -1,5 +1,7 @@
 # Dockerfile for hailmary-pwa
 # Multi-stage build: Node for building, nginx for serving
+# CPU Compatibility: Uses standard node:20-alpine and nginx:alpine (no AVX/SSE optimizations)
+# Compatible with Intel Celeron N5105 (Jasper Lake) and SSE4.2-only CPUs
 
 # Build stage
 FROM node:20-alpine AS builder
@@ -23,6 +25,7 @@ COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
 
 # Install dependencies 
 # Note: Optional deps are required for Rollup 4.x native bindings
+# No native CPU optimizations (no -march=native flags)
 RUN npm ci
 
 # Copy source files

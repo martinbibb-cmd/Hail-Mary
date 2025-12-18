@@ -1,5 +1,7 @@
 # Dockerfile for hailmary-assistant
 # Base image: Node 20
+# CPU Compatibility: Uses standard node:20-alpine (no AVX/SSE optimizations)
+# Compatible with Intel Celeron N5105 (Jasper Lake) and SSE4.2-only CPUs
 FROM node:20-alpine AS builder
 
 # Set working directory
@@ -20,6 +22,7 @@ COPY packages/shared/package.json ./packages/shared/
 
 # Install dependencies
 # Note: Optional deps are required for Rollup 4.x native bindings
+# No native CPU optimizations (no -march=native flags)
 RUN npm ci
 
 # Copy source files

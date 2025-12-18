@@ -352,7 +352,7 @@ setup_environment() {
         echo ""
         
         local DB_PASS=""
-        read -p "Enter PostgreSQL password (or press Enter to auto-generate): " -r DB_PASS
+        read -s -p "Enter PostgreSQL password (or press Enter to auto-generate): " -r DB_PASS
         echo ""
         
         # If user didn't provide a password, generate one
@@ -664,6 +664,8 @@ show_completion() {
         echo ""
         log_warn "A secure random password was auto-generated for your database."
         log_warn "Please save this password in a secure location!"
+        log_warn "⚠️  WARNING: This password will be visible in your terminal."
+        log_warn "⚠️  Clear your terminal history if needed for security."
         echo ""
         echo "  Database Password: $GENERATED_DB_PASSWORD"
         echo ""

@@ -145,7 +145,8 @@ This change allows:
 3. **Verify CPU flags in binaries:**
    ```bash
    # Check if AVX instructions are present (should return nothing)
-   docker run --rm hailmary-api strings /app/node_modules/esbuild/bin/esbuild 2>/dev/null | grep -i avx
+   # Note: esbuild path may vary; use find if needed
+   docker run --rm hailmary-api sh -c 'find /app/node_modules -name "esbuild" -type f -executable | xargs strings 2>/dev/null | grep -i avx || echo "No AVX found"'
    ```
 
 4. **Run on target hardware:**

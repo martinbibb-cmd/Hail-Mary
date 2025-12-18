@@ -64,7 +64,7 @@ services:
       GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
       GUEST_PASSWORD: ${GUEST_PASSWORD:-guestpass}
     command: npm run db:init -w packages/api
-    restart: "no"
+    restart: no
     depends_on:
       hailmary-postgres:
         condition: service_healthy

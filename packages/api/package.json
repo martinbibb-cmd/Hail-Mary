@@ -36,6 +36,8 @@
     "multer": "^2.0.2",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+    "pdf-parse": "^2.4.5",
+    "pdf-to-png-converter": "^3.11.0",
     "pg": "^8.16.3",
     "uuid": "^9.0.1"
   },
@@ -48,6 +50,7 @@
     "@types/jest": "^29.5.11",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.10.0",
+    "@types/pdf-parse": "^1.1.5",
     "@types/pg": "^8.15.6",
     "@types/uuid": "^9.0.7",
     "drizzle-kit": "^0.31.8",

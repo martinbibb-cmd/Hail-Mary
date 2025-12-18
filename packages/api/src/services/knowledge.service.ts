@@ -47,12 +47,28 @@ export interface SearchResult {
   metadata?: any;
 }
 
+export interface PageSearchResult {
+  pageId: number;
+  documentId: number;
+  title: string;
+  pageNumber: number;
+  snippet: string;
+  score: number;
+}
+
 export interface Citation {
   chunkId: number;
   documentId: number;
   title: string;
   pageNumber: number;
   textSnippet: string;
+}
+
+export interface PageCitation {
+  documentId: number;
+  title: string;
+  pageNumber: number;
+  textSnippet?: string;
 }
 
 /**
@@ -259,6 +275,110 @@ export async function getCitations(chunkIds: number[]): Promise<Citation[]> {
     pageNumber: r.pageNumber,
     textSnippet: r.text.substring(0, 200) + (r.text.length > 200 ? '...' : ''),
   }));
+}
+
+/**
+ * Search pages using simple text matching (v1 - page-level search)
+ * This is the primary search method for v1, searching knowledge_pages.text
+ */
+export async function searchPages(
+  accountId: number,
+  query: string,
+  topK: number = 10
+): Promise<PageSearchResult[]> {
+  // Search knowledge_pages instead of chunks for v1
+  const results = await db.select({
+    pageId: knowledgePages.id,
+    documentId: knowledgePages.documentId,
+    title: knowledgeDocuments.title,
+    pageNumber: knowledgePages.pageNumber,
+    text: knowledgePages.text,
+  })
+    .from(knowledgePages)
+    .innerJoin(knowledgeDocuments, eq(knowledgePages.documentId, knowledgeDocuments.id))
+    .where(and(
+      eq(knowledgeDocuments.accountId, accountId),
+      sql`${knowledgePages.text} IS NOT NULL AND ${knowledgePages.text} != ''`,
+      sql`${knowledgePages.text} ILIKE ${'%' + query + '%'}`
+    ))
+    .limit(topK);
+
+  return results.map(r => {
+    const text = r.text || '';
+    const queryLower = query.toLowerCase();
+    const textLower = text.toLowerCase();
+    const matchIndex = textLower.indexOf(queryLower);
+    
+    // Extract a snippet around the match
+    let snippet = '';
+    if (matchIndex !== -1) {
+      const start = Math.max(0, matchIndex - 50);
+      const end = Math.min(text.length, matchIndex + query.length + 150);
+      snippet = (start > 0 ? '...' : '') + text.substring(start, end) + (end < text.length ? '...' : '');
+    } else {
+      // If no match found (shouldn't happen), just take the first 200 chars
+      snippet = text.substring(0, 200) + (text.length > 200 ? '...' : '');
+    }
+
+    return {
+      pageId: r.pageId,
+      documentId: r.documentId,
+      title: r.title,
+      pageNumber: r.pageNumber,
+      snippet,
+      score: 0.5, // Placeholder score for v1
+    };
+  });
+}
+
+/**
+ * Get page citations by document ID and page number (v1 - page-level citations)
+ */
+export async function getPageCitations(
+  docIdPagePairs: Array<{ docId: number; pageNo: number }>
+): Promise<PageCitation[]> {
+  const citations: PageCitation[] = [];
+
+  for (const pair of docIdPagePairs) {
+    const result = await db.select({
+      documentId: knowledgeDocuments.id,
+      title: knowledgeDocuments.title,
+      pageNumber: knowledgePages.pageNumber,
+      text: knowledgePages.text,
+    })
+      .from(knowledgeDocuments)
+      .innerJoin(knowledgePages, eq(knowledgePages.documentId, knowledgeDocuments.id))
+      .where(and(
+        eq(knowledgeDocuments.id, pair.docId),
+        eq(knowledgePages.pageNumber, pair.pageNo)
+      ))
+      .limit(1);
+
+    if (result.length > 0) {
+      const r = result[0];
+      citations.push({
+        documentId: r.documentId,
+        title: r.title,
+        pageNumber: r.pageNumber,
+        textSnippet: r.text ? r.text.substring(0, 200) + (r.text.length > 200 ? '...' : '') : undefined,
+      });
+    }
+  }
+
+  return citations;
+}
+
+/**
+ * Get page by document ID and page number
+ */
+export async function getPage(documentId: number, pageNumber: number) {
+  const [page] = await db.select()
+    .from(knowledgePages)
+    .where(and(
+      eq(knowledgePages.documentId, documentId),
+      eq(knowledgePages.pageNumber, pageNumber)
+    ));
+  return page;
 }
 
 /**

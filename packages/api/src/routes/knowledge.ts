@@ -15,6 +15,7 @@ import { Router, Request, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import multer from 'multer';
 import * as knowledgeService from '../services/knowledge.service';
+import * as pdfProcessor from '../services/pdf-processor.service';
 import * as fs from 'fs/promises';
 
 const router = Router();
@@ -91,15 +92,35 @@ router.post('/upload', requireAdmin, upload.single('pdf'), async (req: Request, 
       }
     );
 
-    // TODO: Trigger background job to process PDF (extract pages, text, embeddings)
-    // For now, just return the document ID
+    // Process PDF synchronously: extract text and render page images
+    // This is required for v1 so Sarah/Rocky can cite pages immediately
+    console.log(`Processing PDF for document ${result.documentId}...`);
+    const pdfResult = await pdfProcessor.processPDF(req.file.buffer);
+    
+    // Store each page with image and text
+    for (const page of pdfResult.pages) {
+      await knowledgeService.storePage(
+        result.documentId,
+        page.pageNumber,
+        page.imageBuffer,
+        page.text
+      );
+    }
+
+    // Update document with page count
+    await knowledgeService.updatePageCount(result.documentId, pdfResult.totalPages);
+
+    console.log(`PDF processing complete for document ${result.documentId}: ${pdfResult.totalPages} pages`);
+
+    // TODO: Trigger background job for heavy processing (OCR fallback, chunking, embeddings)
+    // For now, pages are immediately searchable
 
     return res.json({
       success: true,
-      message: 'Document uploaded successfully. Processing will begin shortly.',
+      message: 'Document uploaded and processed successfully.',
       data: {
         docId: result.documentId,
-        pageCount: result.pageCount,
+        pageCount: pdfResult.totalPages,
       },
     });
   } catch (error: any) {
@@ -265,7 +286,7 @@ router.get('/:docId/pages/:pageNo/image', async (req: Request, res: Response) =>
 
 /**
  * POST /api/knowledge/search
- * Search for knowledge chunks
+ * Search for knowledge pages (v1 - page-level search)
  */
 router.post('/search', async (req: Request, res: Response) => {
   try {
@@ -288,7 +309,9 @@ router.post('/search', async (req: Request, res: Response) => {
         error: 'User account not properly configured',
       });
     }
-    const results = await knowledgeService.searchChunks(accountId, query, validatedTopK);
+    
+    // Use page-level search for v1
+    const results = await knowledgeService.searchPages(accountId, query, validatedTopK);
 
     return res.json({
       success: true,
@@ -306,36 +329,83 @@ router.post('/search', async (req: Request, res: Response) => {
 
 /**
  * GET /api/knowledge/citations
- * Get citations for chunk IDs
+ * Get citations for page references (v1) or chunk IDs (future)
+ * 
+ * v1 usage: ?docId=1&pageNo=5 or ?pages=[{"docId":1,"pageNo":5},{"docId":2,"pageNo":3}]
+ * future: ?chunkIds=1,2,3
  */
 router.get('/citations', async (req: Request, res: Response) => {
   try {
-    const chunkIds = req.query.chunkIds;
+    const { chunkIds, docId, pageNo, pages } = req.query;
 
-    if (!chunkIds) {
-      return res.status(400).json({
-        success: false,
-        error: 'Chunk IDs are required',
+    // v1: Support page-level citations (docId + pageNo or pages array)
+    if (docId || pages) {
+      let pagePairs: Array<{ docId: number; pageNo: number }> = [];
+
+      if (pages) {
+        // Parse pages JSON array
+        try {
+          const parsedPages = typeof pages === 'string' ? JSON.parse(pages) : pages;
+          if (Array.isArray(parsedPages)) {
+            pagePairs = parsedPages.map((p: any) => ({
+              docId: parseInt(p.docId, 10),
+              pageNo: parseInt(p.pageNo, 10),
+            }));
+          }
+        } catch (e) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid pages parameter format',
+          });
+        }
+      } else if (docId && pageNo) {
+        // Single page reference
+        pagePairs = [{
+          docId: parseInt(docId as string, 10),
+          pageNo: parseInt(pageNo as string, 10),
+        }];
+      }
+
+      if (pagePairs.length === 0 || pagePairs.some(p => isNaN(p.docId) || isNaN(p.pageNo))) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid page references',
+        });
+      }
+
+      const citations = await knowledgeService.getPageCitations(pagePairs);
+
+      return res.json({
+        success: true,
+        data: citations,
       });
     }
 
-    // Parse chunk IDs (can be comma-separated string or array)
-    const ids = Array.isArray(chunkIds)
-      ? chunkIds.map(id => parseInt(id as string, 10))
-      : (chunkIds as string).split(',').map(id => parseInt(id.trim(), 10));
+    // Future: Support chunk-level citations
+    if (chunkIds) {
+      // Parse chunk IDs (can be comma-separated string or array)
+      const ids = Array.isArray(chunkIds)
+        ? chunkIds.map(id => parseInt(id as string, 10))
+        : (chunkIds as string).split(',').map(id => parseInt(id.trim(), 10));
 
-    if (ids.some(isNaN)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid chunk IDs',
+      if (ids.some(isNaN)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid chunk IDs',
+        });
+      }
+
+      const citations = await knowledgeService.getCitations(ids);
+
+      return res.json({
+        success: true,
+        data: citations,
       });
     }
 
-    const citations = await knowledgeService.getCitations(ids);
-
-    return res.json({
-      success: true,
-      data: citations,
+    return res.status(400).json({
+      success: false,
+      error: 'Either chunkIds or page references (docId+pageNo or pages) are required',
     });
   } catch (error: any) {
     console.error('Error getting citations:', error);

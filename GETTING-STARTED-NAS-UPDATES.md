@@ -32,15 +32,17 @@ A single script that handles everything: pull, migrate, restart, and health chec
 
 See [Unraid Safe Update Guide](./docs/UNRAID-SAFE-UPDATE.md) for detailed instructions.
 
-### Option 3: Manual Web Interface
-For admin users, you can now manage updates directly from the web interface:
+### Option 3: Admin NAS Page (status + migrations fallback)
+Admins can still use the NAS page, but it is now **status-first**:
 
 1. Login at `http://nas.cloudbibb.uk/login`
 2. Open your profile and click "🖥️ NAS Management"
-3. Use the buttons to:
-   - Check for updates
-   - Deploy updates
-   - Run database migrations
+3. Use it to:
+   - Confirm DB/API health and NAS auth mode
+   - Re-run migrations if needed (safe update already runs them)
+   - Copy the host-side commands for the safe update / auto-update scripts
+
+> Updates now run directly on the NAS using scripts to avoid docker-in-docker failures.
 
 See [NAS Admin Management Guide](./docs/NAS-ADMIN-MANAGEMENT.md) for detailed instructions.
 
@@ -105,8 +107,9 @@ Force an immediate update without waiting for the next cron cycle:
 # SSH to your NAS
 ssh admin@your-nas
 
-# Run the update script manually
-/opt/hail-mary/scripts/nas-deploy.sh
+# Run the safe update script (pulls images, migrates, health-checks)
+cd /mnt/user/appdata/hailmary
+bash ./scripts/unraid-safe-update.sh
 ```
 
 Or trigger a GitHub Actions build manually:
@@ -154,8 +157,8 @@ docker-compose -f docker-compose.prod.yml logs -f
 # Check container status
 docker-compose -f docker-compose.prod.yml ps
 
-# Force immediate update
-/opt/hail-mary/scripts/nas-deploy.sh
+# Force immediate update (full safe update)
+cd /mnt/user/appdata/hailmary && bash ./scripts/unraid-safe-update.sh
 
 # Restart services
 docker-compose -f docker-compose.prod.yml restart

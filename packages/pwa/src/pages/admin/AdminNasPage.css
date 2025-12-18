@@ -108,6 +108,51 @@
   text-align: center;
 }
 
+.playbooks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.playbook-card {
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.05));
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.15));
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.playbook-card h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+}
+
+.playbook-copy {
+  margin: 0;
+  color: var(--text-secondary, rgba(60, 50, 40, 0.7));
+  line-height: 1.4;
+}
+
+.playbook-steps {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-primary, rgba(60, 50, 40, 0.9));
+}
+
+.playbook-steps li {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.playbook-note {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: var(--text-muted, rgba(60, 50, 40, 0.65));
+}
+
 /* Output Section */
 .output-section {
   margin-top: 24px;

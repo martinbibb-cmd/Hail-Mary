@@ -5,7 +5,7 @@
  * These endpoints provide status information without requiring authentication
  * to support monitoring and health checks from load balancers or orchestrators.
  * 
- * For admin-only operations (updates, migrations), see /api/admin/nas/* routes.
+ * For admin-only system actions (like migrations), see /api/admin/system routes.
  */
 
 import { Router, Request, Response } from 'express';
@@ -22,7 +22,7 @@ const router = Router();
 /**
  * GET /api/nas/status
  * Get current NAS deployment status (public health check)
- * Similar to /api/admin/nas/status but without admin auth requirement
+ * Mirrors the admin system status data but without requiring auth for monitors
  */
 router.get('/status', async (_req: Request, res: Response) => {
   try {

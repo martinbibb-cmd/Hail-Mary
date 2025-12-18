@@ -53,6 +53,12 @@ app.set('trust proxy', 1);
 // Initialize database (PostgreSQL via Drizzle ORM)
 initializeDatabase();
 
+// Initialize knowledge storage (create directories for PDF storage)
+import { initializeStorage } from './services/knowledge.service';
+initializeStorage().catch(err => {
+  console.error('Failed to initialize knowledge storage:', err);
+});
+
 // Initialize STT provider based on environment configuration
 // Try to get OpenAI API key from worker, fallback to environment variable
 const initializeSttProvider = async () => {
@@ -309,6 +315,7 @@ app.listen(PORT, HOST, async () => {
   console.log(`   /api/admin, /api/customers, /api/products, /api/quotes`);
   console.log(`   /api/leads, /api/appointments, /api/visit-sessions`);
   console.log(`   /api/files, /api/transcription, /api/depot-notes, /api/survey-helper`);
+  console.log(`   /api/knowledge (PDF upload, search, citations)`);
   console.log('');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 });

@@ -36,6 +36,7 @@ import voiceNotesRouter from './routes/voiceNotes';
 import rockyRouter from './routes/rocky';
 import sarahRouter from './routes/sarah';
 import voiceTransformRouter from './routes/voiceTransform';
+import knowledgeRouter from './routes/knowledge';
 
 // API version - kept in sync with package.json
 export const API_VERSION = '0.2.0';
@@ -203,6 +204,7 @@ app.use('/api/voice-notes', voiceNotesRouter); // Rocky & Sarah architecture
 app.use('/api/rocky', rockyRouter); // Rocky standalone endpoint
 app.use('/api/sarah', sarahRouter); // Sarah standalone endpoint
 app.use('/api/voice', voiceTransformRouter); // Voice transform endpoint
+app.use('/api/knowledge', knowledgeRouter); // Knowledge ingest system
 
 // 404 handler
 app.use((_req, res) => {

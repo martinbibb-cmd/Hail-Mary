@@ -413,6 +413,21 @@ export const ProfileApp: React.FC = () => {
               >
                 🖥️ NAS Management
               </a>
+              <a
+                href="/admin/knowledge"
+                className="btn-primary admin-action-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  try {
+                    navigate('/admin/knowledge');
+                  } catch (err) {
+                    console.error('Navigation failed:', err);
+                    window.location.href = '/admin/knowledge';
+                  }
+                }}
+              >
+                📚 Knowledge Management
+              </a>
             </>
           )}
           <button className="btn-secondary btn-logout" onClick={handleLogout}>

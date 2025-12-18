@@ -622,3 +622,62 @@ export const sarahExplanations = pgTable("sarah_explanations", {
     .defaultNow()
     .notNull(),
 });
+
+// ============================================
+// Knowledge Ingest System (PDF → Citations)
+// ============================================
+
+// Knowledge documents - uploaded PDF manuals, guides, compliance docs
+export const knowledgeDocuments = pgTable("knowledge_documents", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id")
+    .references(() => accounts.id)
+    .notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  source: varchar("source", { length: 100 }).default("upload").notNull(), // upload, manual, scraped
+  tags: jsonb("tags"), // array of tags for categorization
+  manufacturer: varchar("manufacturer", { length: 255 }), // e.g. Worcester, Vaillant
+  modelRange: varchar("model_range", { length: 255 }), // e.g. 4000 series
+  documentType: varchar("document_type", { length: 100 }), // manual, installation_guide, compliance_doc
+  originalFilePath: text("original_file_path"), // path to original PDF file
+  pageCount: integer("page_count"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Knowledge pages - individual pages from documents with extracted text
+export const knowledgePages = pgTable("knowledge_pages", {
+  id: serial("id").primaryKey(),
+  documentId: integer("document_id")
+    .references(() => knowledgeDocuments.id, { onDelete: "cascade" })
+    .notNull(),
+  pageNumber: integer("page_number").notNull(),
+  text: text("text"), // extracted text from page
+  imagePath: text("image_path"), // path to page image (PNG/JPEG)
+  imageUrl: text("image_url"), // public URL to page image
+  hasText: boolean("has_text").default(false), // whether native text was extracted
+  isOcred: boolean("is_ocred").default(false), // whether OCR was performed
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Knowledge chunks - text chunks with embeddings for semantic search
+export const knowledgeChunks = pgTable("knowledge_chunks", {
+  id: serial("id").primaryKey(),
+  documentId: integer("document_id")
+    .references(() => knowledgeDocuments.id, { onDelete: "cascade" })
+    .notNull(),
+  pageNumber: integer("page_number").notNull(),
+  chunkIndex: integer("chunk_index").notNull(), // sequence within page
+  text: text("text").notNull(), // chunk content
+  embedding: jsonb("embedding"), // vector embedding (stored as JSON array for now, migrate to pgvector later)
+  metadata: jsonb("metadata"), // { section: "Flue", model: "Worcester 4000", ... }
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

@@ -98,19 +98,25 @@ Rules:
 `;
 }
 
+/**
+ * Call Gemini for Rocky analysis
+ * Uses configuration from env: ROCKY_MODEL, ROCKY_TEMPERATURE, ROCKY_MAX_TOKENS
+ */
 async function callGemini(env: Env, prompt: string): Promise<Omit<RockyResponse, "providerUsed">> {
   if (!env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
-  // Gemini API format varies by endpoint; this is a generic REST pattern.
-  // If your Worker already uses a specific Gemini client, swap it in here.
+  
+  const model = env.ROCKY_MODEL || "gemini-1.5-pro";
+  const temperature = parseFloat(env.ROCKY_TEMPERATURE || "0.2");
+  const maxTokens = parseInt(env.ROCKY_MAX_TOKENS || "600", 10);
+  
   const res = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=" +
-      env.GEMINI_API_KEY,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2 },
+        generationConfig: { temperature, maxOutputTokens: maxTokens },
       }),
     }
   );
@@ -124,8 +130,17 @@ async function callGemini(env: Env, prompt: string): Promise<Omit<RockyResponse,
   return JSON.parse(text);
 }
 
+/**
+ * Call OpenAI for Rocky analysis (fallback)
+ * Uses ROCKY_TEMPERATURE and ROCKY_MAX_TOKENS, but hardcodes model (gpt-4o-mini)
+ * as model names are provider-specific
+ */
 async function callOpenAI(env: Env, prompt: string): Promise<Omit<RockyResponse, "providerUsed">> {
   if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY missing");
+  
+  const temperature = parseFloat(env.ROCKY_TEMPERATURE || "0.2");
+  const maxTokens = parseInt(env.ROCKY_MAX_TOKENS || "600", 10);
+  
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -134,7 +149,8 @@ async function callOpenAI(env: Env, prompt: string): Promise<Omit<RockyResponse,
     },
     body: JSON.stringify({
       model: "gpt-4o-mini",
-      temperature: 0.2,
+      temperature,
+      max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -146,8 +162,17 @@ async function callOpenAI(env: Env, prompt: string): Promise<Omit<RockyResponse,
   return JSON.parse(text);
 }
 
+/**
+ * Call Anthropic for Rocky analysis (fallback)
+ * Uses ROCKY_TEMPERATURE and ROCKY_MAX_TOKENS, but hardcodes model (claude-3-5-sonnet-latest)
+ * as model names are provider-specific
+ */
 async function callAnthropic(env: Env, prompt: string): Promise<Omit<RockyResponse, "providerUsed">> {
   if (!env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY missing");
+  
+  const temperature = parseFloat(env.ROCKY_TEMPERATURE || "0.2");
+  const maxTokens = parseInt(env.ROCKY_MAX_TOKENS || "600", 10);
+  
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -157,8 +182,8 @@ async function callAnthropic(env: Env, prompt: string): Promise<Omit<RockyRespon
     },
     body: JSON.stringify({
       model: "claude-3-5-sonnet-latest",
-      max_tokens: 600,
-      temperature: 0.2,
+      max_tokens: maxTokens,
+      temperature,
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -258,6 +283,10 @@ Return ONLY the explanation text, nothing else.`;
 /**
  * Call Sarah to generate human-friendly explanation
  * Uses the same provider fallback as Rocky
+ * 
+ * Note: SARAH_MODEL only applies to Gemini. OpenAI and Anthropic fallbacks
+ * use their own suitable models (gpt-4o-mini, claude-3-5-sonnet) since
+ * model names are provider-specific and not interchangeable.
  */
 async function explainWithSarah(env: Env, request: SarahExplainRequest): Promise<SarahExplainResponse> {
   const prompt = buildSarahPrompt(request);

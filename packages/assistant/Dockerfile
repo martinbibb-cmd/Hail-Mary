@@ -1,11 +1,26 @@
 # Dockerfile for hailmary-assistant
-# Base image: Node 20
-# CPU Compatibility: Uses standard node:20-alpine (no AVX/SSE optimizations)
-# Compatible with Intel Celeron N5105 (Jasper Lake) and SSE4.2-only CPUs
-FROM node:20-alpine AS builder
+# Base image: Node 20 Bookworm Slim
+# CPU Compatibility: Optimized for non-AVX x86_64 CPUs (SSE4.2 only)
+# Compatible with Intel Celeron N5105 (Jasper Lake) and similar CPUs
+# Uses Debian-based image (glibc) for better native module compatibility vs Alpine (musl)
+FROM node:20-bookworm-slim AS builder
 
 # Set working directory
 WORKDIR /app
+
+# Install build dependencies for native modules
+# python3, make, g++: Required for node-gyp to compile native addons
+# pkg-config: Used by some native modules to find system libraries
+# ca-certificates: For SSL/TLS connections
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    pkg-config \
+    ca-certificates && \
+    update-ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Configure npm to handle SSL certificate issues in some cloud build environments.
 # This is needed because some CI/CD environments (including fly.io builders) may have
@@ -13,11 +28,18 @@ WORKDIR /app
 # Security mitigations: package-lock.json ensures integrity of installed packages.
 RUN npm config set strict-ssl false
 
-# Force native modules to compile from source with generic x86-64 instructions
-# This prevents SIGILL errors on CPUs without AVX (like Intel Celeron N5105)
+# Force ALL native modules to compile from source (no prebuilt binaries)
+# This prevents SIGILL errors from prebuilt binaries compiled with AVX/AVX2
 ENV npm_config_build_from_source=true
-ENV CFLAGS="-march=x86-64"
-ENV CXXFLAGS="-march=x86-64"
+ENV npm_config_prefer_binary=false
+
+# Compiler flags to ensure compatibility with non-AVX x86_64 CPUs
+# -O2: Optimize for performance while maintaining compatibility
+# -pipe: Use pipes rather than temporary files for compilation
+# -march=x86-64: Target baseline x86-64 architecture (no AVX/AVX2)
+# -mno-avx -mno-avx2: Explicitly disable AVX instructions
+ENV CFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
+ENV CXXFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
 
 # Copy root package files for workspace setup
 COPY package.json package-lock.json .npmrc ./
@@ -41,18 +63,27 @@ RUN npm run build -w packages/shared
 RUN npm run build -w packages/assistant
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:20-bookworm-slim AS production
 
 WORKDIR /app
+
+# Install runtime dependencies for native modules
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates && \
+    update-ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Configure npm to handle SSL certificate issues (needed for npm ci)
 RUN npm config set strict-ssl false
 
-# Force native modules to compile from source with generic x86-64 instructions
-# This prevents SIGILL errors on CPUs without AVX (like Intel Celeron N5105)
+# Force ALL native modules to compile from source (no prebuilt binaries)
 ENV npm_config_build_from_source=true
-ENV CFLAGS="-march=x86-64"
-ENV CXXFLAGS="-march=x86-64"
+ENV npm_config_prefer_binary=false
+
+# Compiler flags to ensure compatibility with non-AVX x86_64 CPUs
+ENV CFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
+ENV CXXFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
 
 # Copy package files
 COPY package.json package-lock.json .npmrc ./

@@ -2,6 +2,20 @@
 
 This guide explains how to deploy Hail-Mary on unRAID using Docker Compose with an unRAID-optimized configuration.
 
+## CPU Compatibility Notice
+
+**✅ Hail-Mary is compatible with older/low-power CPUs that do NOT support AVX/AVX2 instructions.**
+
+If you're running on:
+- Intel Celeron N5105 (Jasper Lake) or similar
+- Intel Atom processors
+- Older AMD processors
+- Low-power embedded CPUs
+
+The Docker images are built to avoid SIGILL (Illegal Instruction) errors by compiling all native modules from source with conservative CPU flags. See [CPU Compatibility Guide](./CPU-COMPATIBILITY.md) for technical details.
+
+**Note:** Local builds will take longer (2-5 minutes for npm to compile native modules) but ensure compatibility.
+
 ## Features of unRAID Configuration
 
 - **Automatic installation**: One-line install script with intelligent fallback
@@ -12,6 +26,7 @@ This guide explains how to deploy Hail-Mary on unRAID using Docker Compose with 
 - **WebUI integration**: Containers include unRAID labels for Docker tab WebUI links
 - **Compose Manager compatible**: Works seamlessly with the Docker Compose Manager plugin
 - **Default port 8080**: Avoids conflicts with common unRAID services
+- **CPU compatibility**: Works on non-AVX CPUs (Intel Celeron N5105, Atom, etc.)
 
 ## Quick Start (Recommended)
 

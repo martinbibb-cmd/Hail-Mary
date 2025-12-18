@@ -291,9 +291,15 @@ setup_repository() {
     log_info "Setting up repository at $INSTALL_DIR..."
 
     if [[ -d "$INSTALL_DIR/.git" ]]; then
-        log_info "Repository already exists. Pulling latest changes..."
+        log_info "Repository already exists. Updating code..."
         cd "$INSTALL_DIR"
-        git pull
+        git fetch --all
+        git reset --hard origin/main
+    elif [[ -d "$INSTALL_DIR" ]]; then
+        log_warn "Folder exists but is not a git repo. Cleaning and re-cloning..."
+        rm -rf "$INSTALL_DIR"
+        git clone "$REPO_URL" "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
     else
         log_info "Cloning repository..."
         mkdir -p "$(dirname "$INSTALL_DIR")"
@@ -307,46 +313,34 @@ setup_repository() {
 # Setup environment file
 setup_environment() {
     log_info "Setting up environment configuration..."
-
     local env_file="$INSTALL_DIR/.env"
 
     if [[ -f "$env_file" ]]; then
         log_warn ".env file already exists, skipping creation"
-        log_info "You can edit it at: $env_file"
     else
         log_info "Creating .env file with default configuration..."
+        # Generate secrets
+        local DB_PASS=$(openssl rand -hex 24)
+        local JWT_SEC=$(openssl rand -hex 32)
+        
         cat > "$env_file" << EOF
-# Hail-Mary Environment Configuration for unRAID
-# Generated on $(date)
-
-# unRAID appdata path
+# Hail-Mary Environment Configuration
 APPDATA_PATH=/mnt/user/appdata/hailmary
-
-# Port configuration
 PWA_PORT=$PWA_PORT
 
-# Database configuration
+# Database
 POSTGRES_DB=hailmary
 POSTGRES_USER=hailmary
-POSTGRES_PASSWORD=$(openssl rand -hex 24)
-DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@hailmary-postgres:5432/${POSTGRES_DB}
+POSTGRES_PASSWORD=$DB_PASS
+DATABASE_URL=postgres://hailmary:$DB_PASS@hailmary-postgres:5432/hailmary
 
-# Security (CHANGE THESE IN PRODUCTION!)
-JWT_SECRET=$(openssl rand -hex 32)
+# Security
+JWT_SECRET=$JWT_SEC
 
-# Base URL (update this if using a custom domain)
+# Base URL
 BASE_URL=http://$(hostname -I | awk '{print $1}'):$PWA_PORT
-
-# AI Assistant (optional - leave empty if not using)
-# GEMINI_API_KEY=your-gemini-api-key-here
-# GEMINI_MODEL=gemini-1.5-flash
-
-# Initial admin user (optional - will be created on first run)
-# INITIAL_ADMIN_EMAIL=admin@example.com
-# INITIAL_ADMIN_PASSWORD=change-this-password
 EOF
         log_success "Created .env file"
-        log_warn "Remember to update JWT_SECRET and other settings in $env_file"
     fi
 }
 

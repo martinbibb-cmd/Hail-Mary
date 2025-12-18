@@ -47,6 +47,29 @@
   font-size: 12px;
 }
 
+/* Rocky Status Badge */
+.rocky-status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.rocky-status-badge.rocky-connected {
+  background: var(--success-soft, rgba(39, 168, 68, 0.15));
+  color: var(--success, #27a844);
+}
+
+.rocky-status-badge.rocky-degraded {
+  background: var(--warning-soft, rgba(255, 193, 7, 0.15));
+  color: var(--warning, #ffc107);
+}
+
+.rocky-status-badge.rocky-blocked {
+  background: var(--error-soft, rgba(220, 53, 69, 0.15));
+  color: var(--error, #dc3545);
+}
+
 /* Customer List */
 .visit-customer-list {
   flex: 1;
@@ -134,6 +157,11 @@
   border-left: 3px solid var(--success, #27a844);
 }
 
+.visit-entry-rocky {
+  background: var(--info-soft, rgba(23, 162, 184, 0.1));
+  border-left: 3px solid var(--info, #17a2b8);
+}
+
 .visit-entry-header {
   display: flex;
   justify-content: space-between;
@@ -150,6 +178,59 @@
 .visit-entry-time {
   font-size: 11px;
   color: var(--text-disabled, rgba(60, 50, 40, 0.5));
+}
+
+.visit-entry-provider {
+  font-size: 10px;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
+  font-style: italic;
+  margin: 0 8px;
+}
+
+.visit-entry-details {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.visit-entry-details summary {
+  cursor: pointer;
+  color: var(--text-muted, rgba(60, 50, 40, 0.7));
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.visit-entry-details summary:hover {
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+}
+
+.visit-entry-details p {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--text-secondary, rgba(60, 50, 40, 0.8));
+}
+
+.visit-entry-blockers {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--warning-soft, rgba(255, 193, 7, 0.1));
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.visit-entry-blockers strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--warning, #ffc107);
+}
+
+.visit-entry-blockers ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-secondary, rgba(60, 50, 40, 0.8));
+}
+
+.visit-entry-blockers li {
+  margin: 2px 0;
 }
 
 .visit-entry-text {

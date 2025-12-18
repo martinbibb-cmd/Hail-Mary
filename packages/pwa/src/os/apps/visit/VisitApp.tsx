@@ -6,6 +6,12 @@ import type {
   ApiResponse, 
   PaginatedResponse 
 } from '@hail-mary/shared'
+import { 
+  initializeRocky, 
+  getRockyStatus, 
+  analyseWithRocky,
+  type RockyStatus 
+} from '../../../services/rockyClient'
 import './VisitApp.css'
 
 // Simple API client
@@ -84,13 +90,17 @@ declare global {
 /** 
  * Timeline entry representing a message in the visit conversation
  * - 'user': A logged observation from the user (typed or spoken)
- * - 'system': A response from the assistant service
+ * - 'system': A response from the assistant service (Rocky)
+ * - 'rocky': Rocky analysis with technical details
  */
 interface TimelineEntry {
   id: string
-  type: 'user' | 'system'
+  type: 'user' | 'system' | 'rocky'
   text: string
   timestamp: Date
+  technicalRationale?: string
+  blockers?: string[]
+  providerUsed?: string
 }
 
 type ViewMode = 'list' | 'active'
@@ -110,6 +120,16 @@ export const VisitApp: React.FC = () => {
   const [transcript, setTranscript] = useState('')
   const [sttSupported, setSttSupported] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+
+  // Rocky state
+  const [rockyStatus, setRockyStatus] = useState<RockyStatus>('blocked')
+
+  // Initialize Rocky on mount
+  useEffect(() => {
+    initializeRocky().then(status => {
+      setRockyStatus(status)
+    })
+  }, [])
 
   // Check for STT support
   useEffect(() => {
@@ -219,21 +239,37 @@ export const VisitApp: React.FC = () => {
     setTimeline(prev => [...prev, userEntry])
     
     try {
-      const res = await api.post<ApiResponse<{ assistantReply: string }>>('/assistant/message', {
+      // Call Rocky for AI analysis
+      const rockyResponse = await analyseWithRocky({
+        visitId: String(activeSession.id),
+        transcriptChunk: messageText,
+        snapshot: {},
+      })
+
+      // Update Rocky status
+      setRockyStatus(getRockyStatus())
+
+      // Add Rocky response to timeline
+      const rockyEntry: TimelineEntry = {
+        id: `rocky-${Date.now()}`,
+        type: 'rocky',
+        text: rockyResponse.plainEnglishSummary || 'Observation logged.',
+        technicalRationale: rockyResponse.technicalRationale,
+        blockers: rockyResponse.blockers,
+        providerUsed: rockyResponse.providerUsed,
+        timestamp: new Date(),
+      }
+      setTimeline(prev => [...prev, rockyEntry])
+
+      // Still log to backend (for persistence)
+      await api.post('/assistant/message', {
         sessionId: activeSession.id,
         leadId: selectedCustomer.id,
         text: messageText,
+      }).catch(err => {
+        console.warn('Backend logging failed (non-blocking):', err)
       })
-      
-      if (res.success && res.data) {
-        const systemEntry: TimelineEntry = {
-          id: `system-${Date.now()}`,
-          type: 'system',
-          text: res.data.assistantReply,
-          timestamp: new Date(),
-        }
-        setTimeline(prev => [...prev, systemEntry])
-      }
+
     } catch (error) {
       console.error('Failed to send message:', error)
       const errorEntry: TimelineEntry = {
@@ -360,6 +396,9 @@ export const VisitApp: React.FC = () => {
           <div className="visit-app-header-info">
             <h2>🎙️ {selectedCustomer.firstName} {selectedCustomer.lastName}</h2>
             <span className="visit-status-badge">Active Visit</span>
+            <span className={`rocky-status-badge rocky-${rockyStatus}`}>
+              Rocky: {rockyStatus === 'connected' ? '✅' : rockyStatus === 'degraded' ? '⚠️ Degraded' : '❌ Offline'}
+            </span>
           </div>
           <button className="btn-secondary" onClick={endVisit}>
             End Visit
@@ -376,13 +415,32 @@ export const VisitApp: React.FC = () => {
               <div key={entry.id} className={`visit-entry visit-entry-${entry.type}`}>
                 <div className="visit-entry-header">
                   <span className="visit-entry-label">
-                    {entry.type === 'user' ? '🎤 You:' : '🤖 System:'}
+                    {entry.type === 'user' ? '🎤 You:' : entry.type === 'rocky' ? '🤖 Rocky:' : '🤖 System:'}
                   </span>
+                  {entry.providerUsed && (
+                    <span className="visit-entry-provider">({entry.providerUsed})</span>
+                  )}
                   <span className="visit-entry-time">
                     {entry.timestamp.toLocaleTimeString()}
                   </span>
                 </div>
                 <p className="visit-entry-text">{entry.text}</p>
+                {entry.technicalRationale && (
+                  <details className="visit-entry-details">
+                    <summary>Technical Details</summary>
+                    <p>{entry.technicalRationale}</p>
+                  </details>
+                )}
+                {entry.blockers && entry.blockers.length > 0 && (
+                  <div className="visit-entry-blockers">
+                    <strong>⚠️ Blockers:</strong>
+                    <ul>
+                      {entry.blockers.map((blocker, idx) => (
+                        <li key={idx}>{blocker}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             ))
           )}

@@ -10,6 +10,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../auth';
 import type { AuthUser } from '@hail-mary/shared';
 import { APP_VERSION } from '../../../constants';
@@ -18,8 +19,10 @@ import './ProfileApp.css';
 type ViewMode = 'login' | 'register' | 'profile' | 'forgot-password' | 'reset-sent' | 'admin-users' | 'nas-management';
 
 export const ProfileApp: React.FC = () => {
+  const navigate = useNavigate();
   const { user, loading, error, login, register, logout, requestPasswordReset, clearError } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>(user ? 'profile' : 'login');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -34,6 +37,12 @@ export const ProfileApp: React.FC = () => {
   const [adminSuccess, setAdminSuccess] = useState<string | null>(null);
   const [nasStatus, setNasStatus] = useState<any>(null);
   const [nasOutput, setNasOutput] = useState<string>('');
+
+  // Show toast message for 3 seconds
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   // Update view mode when user state changes
   React.useEffect(() => {
@@ -341,6 +350,11 @@ export const ProfileApp: React.FC = () => {
   if (viewMode === 'profile' && user) {
     return (
       <div className="profile-app">
+        {toastMessage && (
+          <div className="toast-message">
+            {toastMessage}
+          </div>
+        )}
         <div className="profile-header">
           <div className="profile-avatar">
             {user.name.charAt(0).toUpperCase()}
@@ -369,12 +383,36 @@ export const ProfileApp: React.FC = () => {
         <div className="profile-actions">
           {user.role === 'admin' && (
             <>
-              <button className="btn-primary" onClick={handleManageUsers}>
+              <a
+                href="/admin/users"
+                className="btn-primary admin-action-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  try {
+                    navigate('/admin/users');
+                  } catch (err) {
+                    console.error('Navigation failed:', err);
+                    window.location.href = '/admin/users';
+                  }
+                }}
+              >
                 👥 Manage Users
-              </button>
-              <button className="btn-primary" onClick={handleNasManagement}>
+              </a>
+              <a
+                href="/admin/nas"
+                className="btn-primary admin-action-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  try {
+                    navigate('/admin/nas');
+                  } catch (err) {
+                    console.error('Navigation failed:', err);
+                    window.location.href = '/admin/nas';
+                  }
+                }}
+              >
                 🖥️ NAS Management
-              </button>
+              </a>
             </>
           )}
           <button className="btn-secondary btn-logout" onClick={handleLogout}>

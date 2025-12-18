@@ -345,6 +345,43 @@
   gap: 12px;
 }
 
+/* Admin Action Links - Prevent iOS text selection */
+.admin-action-link {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Toast Message */
+.toast-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40, 167, 69, 0.95);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  animation: slideDown 0.3s ease-out;
+  font-weight: 500;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;

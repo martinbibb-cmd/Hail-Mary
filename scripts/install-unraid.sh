@@ -322,7 +322,7 @@ setup_environment() {
         # Generate secrets
         local DB_PASS=$(openssl rand -hex 24)
         local JWT_SEC=$(openssl rand -hex 32)
-        
+
         cat > "$env_file" << EOF
 # Hail-Mary Environment Configuration
 APPDATA_PATH=/mnt/user/appdata/hailmary

@@ -1,5 +1,5 @@
 /**
- * Simple test script for Rocky Worker endpoints
+ * Test script for Hail-Mary Worker endpoints (Rocky + Sarah)
  * Run with: node test-worker.js [worker-url]
  */
 
@@ -106,15 +106,148 @@ async function testInvalidRequest() {
   }
 }
 
+async function testSarahExplainCustomer() {
+  console.log('\n🔍 Testing POST /sarah/explain (customer context)...');
+  try {
+    const rockyResult = {
+      providerUsed: 'gemini',
+      plainEnglishSummary: 'Boiler has a whistling noise issue that needs attention.',
+      technicalRationale: 'Likely a pressure relief valve issue or air in the system.',
+      keyDetailsDelta: {},
+      checklistDelta: {},
+      blockers: ['Need to confirm boiler model and age'],
+    };
+    
+    const response = await fetch(`${WORKER_URL}/sarah/explain`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rockyResult,
+        context: 'customer',
+      }),
+    });
+    
+    const data = await response.json();
+    console.log('✅ Sarah (customer) response:', JSON.stringify(data, null, 2));
+    
+    if (!data.ok) {
+      console.error('❌ Sarah explain failed: ok is not true');
+      return false;
+    }
+    
+    if (!data.message) {
+      console.error('❌ Sarah explain failed: no message field');
+      return false;
+    }
+    
+    console.log('✅ Customer explanation:', data.message);
+    console.log('✅ Sarah (customer) test passed');
+    return true;
+  } catch (error) {
+    console.error('❌ Sarah (customer) error:', error.message);
+    return false;
+  }
+}
+
+async function testSarahExplainEngineer() {
+  console.log('\n🔍 Testing POST /sarah/explain (engineer context)...');
+  try {
+    const rockyResult = {
+      providerUsed: 'gemini',
+      plainEnglishSummary: 'Boiler has a whistling noise issue that needs attention.',
+      technicalRationale: 'Likely a pressure relief valve issue or air in the system.',
+      keyDetailsDelta: { pressure: '1.5 bar', temperature: '65°C' },
+      checklistDelta: { 'check_prv': true, 'bleed_radiators': true },
+      blockers: ['Need to confirm boiler model and age'],
+    };
+    
+    const response = await fetch(`${WORKER_URL}/sarah/explain`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rockyResult,
+        context: 'engineer',
+      }),
+    });
+    
+    const data = await response.json();
+    console.log('✅ Sarah (engineer) response:', JSON.stringify(data, null, 2));
+    
+    if (!data.ok) {
+      console.error('❌ Sarah explain failed: ok is not true');
+      return false;
+    }
+    
+    if (!data.message) {
+      console.error('❌ Sarah explain failed: no message field');
+      return false;
+    }
+    
+    console.log('✅ Engineer explanation:', data.message);
+    console.log('✅ Sarah (engineer) test passed');
+    return true;
+  } catch (error) {
+    console.error('❌ Sarah (engineer) error:', error.message);
+    return false;
+  }
+}
+
+async function testSarahInvalidContext() {
+  console.log('\n🔍 Testing Sarah with invalid context...');
+  try {
+    const response = await fetch(`${WORKER_URL}/sarah/explain`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rockyResult: {
+          providerUsed: 'gemini',
+          plainEnglishSummary: 'Test',
+          technicalRationale: 'Test',
+          keyDetailsDelta: {},
+          checklistDelta: {},
+          blockers: [],
+        },
+        context: 'invalid_context',
+      }),
+    });
+    
+    const data = await response.json();
+    
+    if (response.status === 400) {
+      console.log('✅ Correctly returns 400 for invalid context');
+      console.log('✅ Error message:', data.error);
+      return true;
+    } else {
+      console.error('❌ Should return 400 for invalid context, got:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Invalid context test error:', error.message);
+    return false;
+  }
+}
+
 async function runTests() {
-  console.log('🚀 Testing Rocky Worker at:', WORKER_URL);
+  console.log('🚀 Testing Hail-Mary Worker (Rocky + Sarah) at:', WORKER_URL);
   console.log('═══════════════════════════════════════════════════\n');
   
   const results = [];
   
+  // Core functionality tests
   results.push(await testHealth());
   results.push(await testAnalyse());
   results.push(await testInvalidRequest());
+  
+  // Sarah endpoint tests
+  results.push(await testSarahExplainCustomer());
+  results.push(await testSarahExplainEngineer());
+  results.push(await testSarahInvalidContext());
   
   console.log('\n═══════════════════════════════════════════════════');
   const passed = results.filter(r => r).length;

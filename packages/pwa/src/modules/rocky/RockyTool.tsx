@@ -23,7 +23,8 @@ export const RockyTool: React.FC = () => {
     setError(null)
 
     try {
-      const response = await fetch('/api/rocky/run', {
+      // Use AI gateway which proxies to Cloudflare Worker
+      const response = await fetch('/api/ai/rocky', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -31,6 +32,7 @@ export const RockyTool: React.FC = () => {
         credentials: 'include',
         body: JSON.stringify({
           transcript,
+          mode: 'extract',
         }),
       })
 

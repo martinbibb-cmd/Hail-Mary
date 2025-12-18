@@ -28,7 +28,8 @@ export const SarahTool: React.FC = () => {
       // Parse Rocky output
       const rockyFacts = JSON.parse(rockyOutput)
 
-      const response = await fetch('/api/sarah/explain', {
+      // Use AI gateway which proxies to Cloudflare Worker
+      const response = await fetch('/api/ai/sarah', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

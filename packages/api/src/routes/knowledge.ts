@@ -60,7 +60,13 @@ router.post('/upload', requireAdmin, upload.single('pdf'), async (req: Request, 
     }
 
     // Get account ID from authenticated user
-    const accountId = req.user?.accountId || 1; // Default to account 1 if not set
+    const accountId = req.user?.accountId;
+    if (!accountId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User account not properly configured',
+      });
+    }
 
     // Parse tags if provided as JSON string
     let parsedTags: string[] | undefined;
@@ -112,7 +118,13 @@ router.post('/upload', requireAdmin, upload.single('pdf'), async (req: Request, 
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const accountId = req.user?.accountId || 1;
+    const accountId = req.user?.accountId;
+    if (!accountId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User account not properly configured',
+      });
+    }
     const documents = await knowledgeService.listDocuments(accountId);
 
     return res.json({
@@ -153,7 +165,13 @@ router.get('/:docId', async (req: Request, res: Response) => {
     }
 
     // Check if user has access to this document
-    const accountId = req.user?.accountId || 1;
+    const accountId = req.user?.accountId;
+    if (!accountId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User account not properly configured',
+      });
+    }
     if (document.accountId !== accountId && req.user?.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -200,7 +218,14 @@ router.get('/:docId/pages/:pageNo/image', async (req: Request, res: Response) =>
       });
     }
 
-    const accountId = req.user?.accountId || 1;
+    const accountId = req.user?.accountId;
+    if (!accountId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User account not properly configured',
+      });
+    }
+    
     if (document.accountId !== accountId && req.user?.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -253,8 +278,17 @@ router.post('/search', async (req: Request, res: Response) => {
       });
     }
 
-    const accountId = req.user?.accountId || 1;
-    const results = await knowledgeService.searchChunks(accountId, query, topK);
+    // Validate topK parameter
+    const validatedTopK = Math.min(Math.max(1, topK), 100);
+
+    const accountId = req.user?.accountId;
+    if (!accountId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User account not properly configured',
+      });
+    }
+    const results = await knowledgeService.searchChunks(accountId, query, validatedTopK);
 
     return res.json({
       success: true,

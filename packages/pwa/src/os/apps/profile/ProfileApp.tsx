@@ -22,7 +22,6 @@ export const ProfileApp: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading, error, login, register, logout, requestPasswordReset, clearError } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>(user ? 'profile' : 'login');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -38,10 +37,15 @@ export const ProfileApp: React.FC = () => {
   const [nasStatus, setNasStatus] = useState<any>(null);
   const [nasOutput, setNasOutput] = useState<string>('');
 
-  // Show toast message for 3 seconds
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(null), 3000);
+  // Helper function for admin navigation with fallback
+  const navigateToAdmin = (path: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try {
+      navigate(path);
+    } catch (err) {
+      console.error('Navigation failed:', err);
+      window.location.href = path;
+    }
   };
 
   // Update view mode when user state changes
@@ -350,11 +354,6 @@ export const ProfileApp: React.FC = () => {
   if (viewMode === 'profile' && user) {
     return (
       <div className="profile-app">
-        {toastMessage && (
-          <div className="toast-message">
-            {toastMessage}
-          </div>
-        )}
         <div className="profile-header">
           <div className="profile-avatar">
             {user.name.charAt(0).toUpperCase()}
@@ -386,45 +385,21 @@ export const ProfileApp: React.FC = () => {
               <a
                 href="/admin/users"
                 className="btn-primary admin-action-link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  try {
-                    navigate('/admin/users');
-                  } catch (err) {
-                    console.error('Navigation failed:', err);
-                    window.location.href = '/admin/users';
-                  }
-                }}
+                onClick={navigateToAdmin('/admin/users')}
               >
                 👥 Manage Users
               </a>
               <a
                 href="/admin/nas"
                 className="btn-primary admin-action-link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  try {
-                    navigate('/admin/nas');
-                  } catch (err) {
-                    console.error('Navigation failed:', err);
-                    window.location.href = '/admin/nas';
-                  }
-                }}
+                onClick={navigateToAdmin('/admin/nas')}
               >
                 🖥️ NAS Management
               </a>
               <a
                 href="/admin/knowledge"
                 className="btn-primary admin-action-link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  try {
-                    navigate('/admin/knowledge');
-                  } catch (err) {
-                    console.error('Navigation failed:', err);
-                    window.location.href = '/admin/knowledge';
-                  }
-                }}
+                onClick={navigateToAdmin('/admin/knowledge')}
               >
                 📚 Knowledge Management
               </a>

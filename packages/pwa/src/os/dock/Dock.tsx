@@ -19,7 +19,6 @@ const dockApps: DockApp[] = [
   { id: 'files', name: 'Files', icon: '📂' },
   { id: 'survey', name: 'Survey', icon: '🧩' },
   { id: 'quote', name: 'Quote', icon: '£' },
-  { id: 'customers', name: 'Customers', icon: '📁' },
   { id: 'leads', name: 'Leads', icon: '🧲' },
   { id: 'rocky', name: 'Rocky', icon: '🪨' },
   { id: 'sarah', name: 'Sarah', icon: '🧠' },

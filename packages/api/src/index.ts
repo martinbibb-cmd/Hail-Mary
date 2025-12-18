@@ -9,6 +9,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import { generateCsrfToken, csrfProtection, csrfErrorHandler } from './middleware/csrf.middleware';
 import { initializeDatabase } from './db/schema';
 import { db } from './db/drizzle-client';
 import { users } from './db/drizzle-schema';
@@ -126,6 +127,14 @@ app.use('/api', limiter); // Apply rate limiting to API routes
 // to check service health frequently without being blocked.
 // These endpoints only expose non-sensitive status information.
 
+// CSRF token endpoint (public, no auth required)
+app.get('/api/csrf-token', generateCsrfToken, (req, res) => {
+  res.json({
+    success: true,
+    csrfToken: res.locals.csrfToken,
+  });
+});
+
 // Health check endpoint
 app.get('/health', (_req, res) => {
   res.json({ 
@@ -218,6 +227,9 @@ app.use('/api/ai', aiRouter); // AI Gateway (server-side proxy to Cloudflare Wor
 app.use((_req, res) => {
   res.status(404).json({ success: false, error: 'Not found' });
 });
+
+// CSRF error handler (before general error handler)
+app.use(csrfErrorHandler);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

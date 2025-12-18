@@ -374,7 +374,7 @@ export const LeadsApp: React.FC = () => {
   return (
     <div className="leads-app">
       <div className="leads-app-header">
-        <h2>🧲 Leads</h2>
+        <h2>🧲 Leads & Customers</h2>
         <button className="btn-primary" onClick={handleNewLead}>
           + New Lead
         </button>

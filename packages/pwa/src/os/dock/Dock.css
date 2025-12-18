@@ -23,6 +23,42 @@
   border: 1px solid var(--dock-border);
   box-shadow: var(--dock-shadow);
   pointer-events: auto;
+  max-width: 95vw;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.os-dock-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile view adjustments */
+@media (max-width: 768px) {
+  .os-dock {
+    height: 80px;
+    padding-bottom: 12px;
+  }
+
+  .os-dock-container {
+    padding: 12px;
+    border-radius: 16px;
+    justify-content: flex-start;
+    max-width: calc(100vw - 16px);
+    margin: 0 8px;
+  }
+
+  .os-dock-item {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+  }
+
+  .os-dock-icon {
+    font-size: 26px;
+  }
 }
 
 .os-dock-item {

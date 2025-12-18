@@ -18,6 +18,8 @@ import { useDeviceLayout } from './hooks/useDeviceLayout'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { RockyTool, SarahTool } from './modules'
 import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
+import { ProfileApp } from './os/apps/profile/ProfileApp'
+import { FilesApp } from './os/apps/files/FilesApp'
 
 // Simple API client
 const api = {
@@ -723,6 +725,8 @@ function App() {
           <Route path="/leads/:id" element={<LeadWorkspace />} />
           <Route path="/rocky" element={<RockyTool />} />
           <Route path="/sarah" element={<SarahTool />} />
+          <Route path="/profile" element={<ProfileApp />} />
+          <Route path="/files" element={<FilesApp />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/nas" element={<AdminNasPage />} />
           <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />

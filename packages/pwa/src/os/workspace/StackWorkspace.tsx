@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useWindowStore } from '../window-manager/windowStore'
 import type { DeviceLayout } from '../../hooks/useDeviceLayout'
 import { ProfileApp } from '../apps/profile/ProfileApp'
@@ -44,6 +45,8 @@ interface StackWorkspaceProps {
 }
 
 export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children }) => {
+  const navigate = useNavigate()
+  const location = useLocation()
   const windows = useWindowStore((state) => state.windows)
   const openWindow = useWindowStore((state) => state.openWindow)
   const focusWindow = useWindowStore((state) => state.focusWindow)
@@ -116,29 +119,6 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
   
   const isMobile = layout === 'mobile'
   const isTablet = layout === 'tablet'
-  
-  // Maximum number of items to show in mobile bottom navigation
-  const MAX_MOBILE_NAV_ITEMS = 5
-  
-  // Map app IDs to icons for better visual representation
-  const appIcons: Record<string, string> = {
-    profile: '👤',
-    visit: '🏠',
-    diary: '📅',
-    customers: '👥',
-    leads: '📋',
-    photos: '📷',
-    survey: '📝',
-    quote: '💰',
-    settings: '⚙️',
-    files: '📁',
-    browser: '🌐',
-    about: 'ℹ️',
-    rocky: '🪨',
-    sarah: '🧠',
-  }
-  
-  const getAppIcon = (appId: string) => appIcons[appId] || '📱'
   
   const handleOpenApp = (appId: string, appName: string) => {
     const existingWindow = windows.find(w => w.appId === appId)
@@ -228,47 +208,59 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
             {children}
           </div>
           
-          {/* Navigation - positioned differently for tablet vs mobile */}
-          {windows.length > 0 && (
-            <nav className={`stack-nav ${isMobile ? 'stack-nav--bottom' : 'stack-nav--tabs'}`}>
-              {isTablet && (
-                <div className="stack-tabs">
-                  {windows.filter(w => w.state !== 'minimized').map(window => (
+          {/* Persistent Bottom Navigation for mobile */}
+          {isMobile && (
+            <nav className="stack-nav stack-nav--bottom stack-nav--persistent">
+              <div className="stack-bottom-nav">
+                <button
+                  className={`stack-nav-item ${location.pathname === '/' ? 'stack-nav-item--active' : ''}`}
+                  onClick={() => navigate('/')}
+                >
+                  <span className="stack-nav-icon">🏠</span>
+                  <span className="stack-nav-label">Home</span>
+                </button>
+                <button
+                  className={`stack-nav-item ${location.pathname === '/profile' ? 'stack-nav-item--active' : ''}`}
+                  onClick={() => navigate('/profile')}
+                >
+                  <span className="stack-nav-icon">👤</span>
+                  <span className="stack-nav-label">Profile</span>
+                </button>
+                <button
+                  className={`stack-nav-item ${location.pathname === '/files' ? 'stack-nav-item--active' : ''}`}
+                  onClick={() => navigate('/files')}
+                >
+                  <span className="stack-nav-icon">📁</span>
+                  <span className="stack-nav-label">Files</span>
+                </button>
+              </div>
+            </nav>
+          )}
+          
+          {/* Tablet tabs for open windows */}
+          {isTablet && windows.length > 0 && (
+            <nav className="stack-nav stack-nav--tabs">
+              <div className="stack-tabs">
+                {windows.filter(w => w.state !== 'minimized').map(window => (
+                  <button
+                    key={window.id}
+                    className={`stack-tab ${window.isActive ? 'stack-tab--active' : ''}`}
+                    onClick={() => handleSelectWindow(window.id)}
+                  >
+                    {window.title}
                     <button
-                      key={window.id}
-                      className={`stack-tab ${window.isActive ? 'stack-tab--active' : ''}`}
-                      onClick={() => handleSelectWindow(window.id)}
+                      className="stack-tab-close"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        closeWindow(window.id)
+                      }}
+                      aria-label={`Close ${window.title}`}
                     >
-                      {window.title}
-                      <button
-                        className="stack-tab-close"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          closeWindow(window.id)
-                        }}
-                        aria-label={`Close ${window.title}`}
-                      >
-                        ✕
-                      </button>
+                      ✕
                     </button>
-                  ))}
-                </div>
-              )}
-              
-              {isMobile && (
-                <div className="stack-bottom-nav">
-                  {windows.filter(w => w.state !== 'minimized').slice(0, MAX_MOBILE_NAV_ITEMS).map(window => (
-                    <button
-                      key={window.id}
-                      className={`stack-nav-item ${window.isActive ? 'stack-nav-item--active' : ''}`}
-                      onClick={() => handleSelectWindow(window.id)}
-                    >
-                      <span className="stack-nav-icon">{getAppIcon(window.appId)}</span>
-                      <span className="stack-nav-label">{window.title}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                  </button>
+                ))}
+              </div>
             </nav>
           )}
         </>

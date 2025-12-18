@@ -121,10 +121,21 @@ export const AdminKnowledgePage: React.FC = () => {
         credentials: 'include',
         body: uploadFormData,
       });
-      const data = await res.json();
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseError) {
+        // If response is not JSON, show raw text
+        const text = await res.text();
+        setError(`Upload failed (HTTP ${res.status}): ${text.substring(0, 500)}`);
+        return;
+      }
       
       if (res.status === 401 || res.status === 403) {
         setError('Access denied. Admin privileges required.');
+      } else if (res.status === 413) {
+        setError('File too large. Maximum upload size is 50MB.');
       } else if (data.success) {
         setSuccess(data.message || 'Document uploaded successfully');
         // Reset form
@@ -142,7 +153,9 @@ export const AdminKnowledgePage: React.FC = () => {
         // Reload documents
         loadDocuments();
       } else {
-        setError(data.error || 'Failed to upload document');
+        // Show detailed error with status code
+        const errorDetails = data.details ? ` (${data.details})` : '';
+        setError(`Upload failed (HTTP ${res.status}): ${data.error || 'Unknown error'}${errorDetails}`);
       }
     } catch (err) {
       setError('Failed to upload document');

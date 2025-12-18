@@ -50,6 +50,11 @@ services:
     build:
       context: .
       dockerfile: packages/api/Dockerfile
+      platforms:
+        - linux/amd64
+      args:
+        BUILDPLATFORM: linux/amd64
+        TARGETPLATFORM: linux/amd64
     container_name: hailmary-migrator
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
@@ -79,6 +84,11 @@ services:
     build:
       context: .
       dockerfile: packages/api/Dockerfile
+      platforms:
+        - linux/amd64
+      args:
+        BUILDPLATFORM: linux/amd64
+        TARGETPLATFORM: linux/amd64
     container_name: hailmary-api
     restart: unless-stopped
     environment:
@@ -108,6 +118,11 @@ services:
     build:
       context: .
       dockerfile: packages/assistant/Dockerfile
+      platforms:
+        - linux/amd64
+      args:
+        BUILDPLATFORM: linux/amd64
+        TARGETPLATFORM: linux/amd64
     container_name: hailmary-assistant
     restart: unless-stopped
     environment:
@@ -132,6 +147,11 @@ services:
     build:
       context: .
       dockerfile: packages/pwa/Dockerfile
+      platforms:
+        - linux/amd64
+      args:
+        BUILDPLATFORM: linux/amd64
+        TARGETPLATFORM: linux/amd64
     container_name: hailmary-pwa
     restart: unless-stopped
     depends_on:

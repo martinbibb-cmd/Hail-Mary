@@ -120,29 +120,6 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
   const isMobile = layout === 'mobile'
   const isTablet = layout === 'tablet'
   
-  // Maximum number of items to show in mobile bottom navigation
-  const MAX_MOBILE_NAV_ITEMS = 5
-  
-  // Map app IDs to icons for better visual representation
-  const appIcons: Record<string, string> = {
-    profile: '👤',
-    visit: '🏠',
-    diary: '📅',
-    customers: '👥',
-    leads: '📋',
-    photos: '📷',
-    survey: '📝',
-    quote: '💰',
-    settings: '⚙️',
-    files: '📁',
-    browser: '🌐',
-    about: 'ℹ️',
-    rocky: '🪨',
-    sarah: '🧠',
-  }
-  
-  const getAppIcon = (appId: string) => appIcons[appId] || '📱'
-  
   const handleOpenApp = (appId: string, appName: string) => {
     const existingWindow = windows.find(w => w.appId === appId)
     if (existingWindow) {

@@ -34,7 +34,7 @@ export const SarahTool: React.FC = () => {
   useEffect(() => {
     const checkHealth = async () => {
       const health = await aiService.checkHealth()
-      setWorkerStatus(health.status)
+      setWorkerStatus(health.status || (health.success ? 'available' : 'unavailable'))
     }
     checkHealth()
   }, [])
@@ -50,16 +50,23 @@ export const SarahTool: React.FC = () => {
       return
     }
 
+    let parsedFacts: unknown
+    try {
+      parsedFacts = JSON.parse(rockyOutput)
+    } catch (err) {
+      setError('Rocky output must be valid JSON')
+      setWorkerStatus('degraded')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
       // Parse Rocky output
-      const rockyFacts = JSON.parse(rockyOutput)
-
       // Use AI service which calls the gateway
       const data = await aiService.callSarah({
-        rockyFacts,
+        rockyFacts: parsedFacts,
         audience,
         tone,
       })

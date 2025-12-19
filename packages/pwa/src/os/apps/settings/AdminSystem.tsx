@@ -9,46 +9,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { AdminApiStatus } from '../../../components/AdminApiStatus';
+import type { AdminSystemStatus, AdminSystemStatusResponse } from '../../../types/admin';
 import './AdminSystem.css';
-
-interface SystemStatus {
-  api: {
-    version: string;
-    nodeVersion: string;
-    uptimeSeconds: number;
-  };
-  db: {
-    ok: boolean;
-    urlMasked: string;
-    latencyMs?: number;
-  };
-  migrations: {
-    ok: boolean;
-    lastRunAt?: string | null;
-    notes?: string | null;
-  };
-  config: {
-    depotSchemaLoadedFrom: string;
-    depotSchemaUsedFallback: boolean;
-    checklistConfigLoadedFrom: string;
-    checklistConfigUsedFallback: boolean;
-  };
-  // degraded is the full map of subsystem states from appStatus
-  // degradedSubsystems is the filtered list of only degraded subsystems
-  // degradedNotes contains timestamped error messages
-  degraded?: {
-    [key: string]: boolean;
-  };
-  degradedSubsystems?: string[];
-  degradedNotes?: string[];
-  warnings: string[];
-}
-
-interface StatusResponse {
-  success: boolean;
-  data?: SystemStatus;
-  error?: string;
-}
 
 interface MigrateResponse {
   success: boolean;
@@ -62,7 +25,7 @@ interface MigrateResponse {
 const REFRESH_DELAY_MS = 1000;
 
 export const AdminSystem: React.FC = () => {
-  const [status, setStatus] = useState<SystemStatus | null>(null);
+  const [status, setStatus] = useState<AdminSystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [migrating, setMigrating] = useState(false);
@@ -76,7 +39,7 @@ export const AdminSystem: React.FC = () => {
       const res = await fetch('/api/admin/system/status', {
         credentials: 'include',
       });
-      const data: StatusResponse = await res.json();
+      const data: AdminSystemStatusResponse = await res.json();
       
       if (data.success && data.data) {
         setStatus(data.data);
@@ -170,7 +133,17 @@ export const AdminSystem: React.FC = () => {
   }
 
   // Helper to check if configuration is fully healthy
-  const isConfigHealthy = !status.config.depotSchemaUsedFallback && !status.config.checklistConfigUsedFallback;
+  const configStatus = status.config || {
+    depotSchemaLoadedFrom: 'unknown',
+    depotSchemaUsedFallback: false,
+    checklistConfigLoadedFrom: 'unknown',
+    checklistConfigUsedFallback: false,
+  };
+  const isConfigHealthy = !configStatus.depotSchemaUsedFallback && !configStatus.checklistConfigUsedFallback;
+  const warnings = status.warnings || [];
+  const apiInfo = status.api || { version: 'Unknown', nodeVersion: 'n/a', uptimeSeconds: 0 };
+  const dbInfo = status.db || { ok: false, urlMasked: 'not configured' };
+  const migrationsInfo = status.migrations || { ok: false };
 
   return (
     <div className="admin-system">
@@ -184,6 +157,13 @@ export const AdminSystem: React.FC = () => {
           🔄 Refresh
         </button>
       </div>
+
+      <AdminApiStatus
+        status={status}
+        onRefresh={fetchStatus}
+        fetchOnMount={false}
+        compact
+      />
 
       {/* Degraded Subsystems Banner */}
       {status.degradedSubsystems && status.degradedSubsystems.length > 0 && (
@@ -208,11 +188,11 @@ export const AdminSystem: React.FC = () => {
       )}
 
       {/* Warnings Banner */}
-      {status.warnings.length > 0 && (
+      {warnings.length > 0 && (
         <div className="admin-warnings">
           <p className="admin-warnings-title">⚠️ System Warnings</p>
           <ul className="admin-warnings-list">
-            {status.warnings.map((warning, idx) => (
+            {warnings.map((warning, idx) => (
               <li key={idx}>{warning}</li>
             ))}
           </ul>
@@ -227,69 +207,69 @@ export const AdminSystem: React.FC = () => {
           <div className="admin-card-content">
             <div className="admin-stat">
               <span className="admin-stat-label">Version:</span>
-              <span className="admin-stat-value">{status.api.version}</span>
+              <span className="admin-stat-value">{apiInfo.version}</span>
             </div>
             <div className="admin-stat">
               <span className="admin-stat-label">Node.js:</span>
-              <span className="admin-stat-value">{status.api.nodeVersion}</span>
+              <span className="admin-stat-value">{apiInfo.nodeVersion}</span>
             </div>
             <div className="admin-stat">
               <span className="admin-stat-label">Uptime:</span>
-              <span className="admin-stat-value">{formatUptime(status.api.uptimeSeconds)}</span>
+              <span className="admin-stat-value">{formatUptime(apiInfo.uptimeSeconds || 0)}</span>
             </div>
           </div>
         </div>
 
         {/* Database Card */}
-        <div className={`admin-card ${status.db.ok ? 'healthy' : 'unhealthy'}`}>
+        <div className={`admin-card ${dbInfo.ok ? 'healthy' : 'unhealthy'}`}>
           <h4 className="admin-card-title">
-            {status.db.ok ? '✅' : '❌'} Database
+            {dbInfo.ok ? '✅' : '❌'} Database
           </h4>
           <div className="admin-card-content">
             <div className="admin-stat">
               <span className="admin-stat-label">Status:</span>
               <span className="admin-stat-value">
-                {status.db.ok ? 'Connected' : 'Disconnected'}
+                {dbInfo.ok ? 'Connected' : 'Disconnected'}
               </span>
             </div>
-            {status.db.latencyMs !== undefined && (
+            {dbInfo.latencyMs !== undefined && (
               <div className="admin-stat">
                 <span className="admin-stat-label">Latency:</span>
-                <span className="admin-stat-value">{status.db.latencyMs}ms</span>
+                <span className="admin-stat-value">{dbInfo.latencyMs}ms</span>
               </div>
             )}
             <div className="admin-stat">
               <span className="admin-stat-label">URL:</span>
-              <span className="admin-stat-value admin-stat-mono">{status.db.urlMasked}</span>
+              <span className="admin-stat-value admin-stat-mono">{dbInfo.urlMasked}</span>
             </div>
           </div>
         </div>
 
         {/* Migrations Card */}
-        <div className={`admin-card ${status.migrations.ok ? 'healthy' : 'warning'}`}>
+        <div className={`admin-card ${migrationsInfo.ok ? 'healthy' : 'warning'}`}>
           <h4 className="admin-card-title">
-            {status.migrations.ok ? '✅' : '⚠️'} Migrations
+            {migrationsInfo.ok ? '✅' : '⚠️'} Migrations
           </h4>
           <div className="admin-card-content">
             <div className="admin-stat">
               <span className="admin-stat-label">Status:</span>
               <span className="admin-stat-value">
-                {status.migrations.ok ? 'Initialized' : 'Not initialized'}
+                {migrationsInfo.ok ? 'Initialized' : 'Not initialized'}
               </span>
             </div>
-            {status.migrations.lastRunAt && (
+            {migrationsInfo.lastRunAt && (
               <div className="admin-stat">
                 <span className="admin-stat-label">Last run:</span>
                 <span className="admin-stat-value">
-                  {new Date(status.migrations.lastRunAt).toLocaleString()}
+                  {new Date(migrationsInfo.lastRunAt).toLocaleString()}
                 </span>
               </div>
             )}
-            {status.migrations.notes && (
+            {migrationsInfo.notes && (
               <div className="admin-stat">
                 <span className="admin-stat-label">Notes:</span>
                 <span className="admin-stat-value admin-stat-notes">
-                  {status.migrations.notes}
+                  {migrationsInfo.notes}
                 </span>
               </div>
             )}
@@ -305,15 +285,15 @@ export const AdminSystem: React.FC = () => {
             <div className="admin-stat">
               <span className="admin-stat-label">Depot Schema:</span>
               <span className="admin-stat-value">
-                {status.config.depotSchemaLoadedFrom}
-                {status.config.depotSchemaUsedFallback && ' (fallback)'}
+                {configStatus.depotSchemaLoadedFrom}
+                {configStatus.depotSchemaUsedFallback && ' (fallback)'}
               </span>
             </div>
             <div className="admin-stat">
               <span className="admin-stat-label">Checklist Config:</span>
               <span className="admin-stat-value">
-                {status.config.checklistConfigLoadedFrom}
-                {status.config.checklistConfigUsedFallback && ' (fallback)'}
+                {configStatus.checklistConfigLoadedFrom}
+                {configStatus.checklistConfigUsedFallback && ' (fallback)'}
               </span>
             </div>
           </div>

@@ -33,6 +33,7 @@ interface AIHealthStatus {
   worker?: any;
   responseTime?: number;
   error?: string;
+  providers?: any;
 }
 
 class AIService {
@@ -52,17 +53,30 @@ class AIService {
     }
 
     try {
+      const startTime = Date.now();
       const response = await fetch('/api/ai/health', {
         method: 'GET',
         credentials: 'include',
       });
 
       const data = await response.json();
-      
-      this.healthStatus = data;
+      const derivedStatus: AIHealthStatus['status'] =
+        data.status && ['available', 'degraded', 'unavailable'].includes(data.status)
+          ? data.status
+          : (data.ok || data.success || response.ok) ? 'available' : 'unavailable';
+
+      const normalized: AIHealthStatus = {
+        ...data,
+        success: Boolean(data.success ?? data.ok ?? response.ok),
+        status: derivedStatus,
+        worker: data.worker ?? data.providers,
+        providers: data.providers,
+        responseTime: Date.now() - startTime,
+      };
+      this.healthStatus = normalized;
       this.lastHealthCheck = now;
       
-      return data;
+      return normalized;
     } catch (error) {
       const errorStatus: AIHealthStatus = {
         success: false,
@@ -122,7 +136,7 @@ class AIService {
    */
   async callSarah(request: SarahRequest): Promise<any> {
     try {
-      const response = await fetch('/api/ai/sarah', {
+      const response = await fetch('/api/sarah/explain', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -133,9 +147,16 @@ class AIService {
 
       const data = await response.json();
       
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         throw new Error(data.error || `Sarah request failed with status ${response.status}`);
       }
+
+      this.healthStatus = {
+        success: true,
+        status: 'available',
+        worker: this.healthStatus?.worker,
+        responseTime: this.healthStatus?.responseTime,
+      };
 
       return data;
     } catch (error) {

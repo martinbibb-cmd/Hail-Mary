@@ -18,6 +18,7 @@ import { useDeviceLayout } from './hooks/useDeviceLayout'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { RockyTool, SarahTool } from './modules'
 import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
+import { HomePage } from './pages/HomePage'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
 import { ActiveCustomerBar } from './components/ActiveCustomerBar'
@@ -47,52 +48,6 @@ const api = {
     })
     return res.json()
   },
-}
-
-// Dashboard Component
-function Dashboard() {
-  const [stats, setStats] = useState({ customers: 0, quotes: 0, leads: 0 })
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    Promise.all([
-      api.get<PaginatedResponse<Customer>>('/api/customers?limit=1'),
-      api.get<PaginatedResponse<Quote>>('/api/quotes?limit=1'),
-      api.get<PaginatedResponse<Lead>>('/api/leads?limit=1'),
-    ]).then(([customers, quotes, leads]) => {
-      setStats({
-        customers: customers.pagination?.total || 0,
-        quotes: quotes.pagination?.total || 0,
-        leads: leads.pagination?.total || 0,
-      })
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
-
-  if (loading) return <div className="loading">Loading...</div>
-
-  return (
-    <div className="dashboard">
-      <h1>Dashboard</h1>
-      <div className="stats-grid">
-        <div className="stat-card">
-          <h3>Customers</h3>
-          <p className="stat-number">{stats.customers}</p>
-          <Link to="/customers">View all →</Link>
-        </div>
-        <div className="stat-card">
-          <h3>Quotes</h3>
-          <p className="stat-number">{stats.quotes}</p>
-          <Link to="/quotes">View all →</Link>
-        </div>
-        <div className="stat-card">
-          <h3>Leads</h3>
-          <p className="stat-number">{stats.leads}</p>
-          <Link to="/leads">View all →</Link>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // Customers List Component
@@ -707,7 +662,7 @@ function App() {
             <h2>🔥 Hail-Mary</h2>
           </div>
           <ul className="nav-links">
-            <li><Link to="/">Dashboard</Link></li>
+            <li><Link to="/">Home</Link></li>
             <li><Link to="/customers">Customers</Link></li>
             <li><Link to="/quotes">Quotes</Link></li>
             <li><Link to="/leads">Leads</Link></li>
@@ -725,7 +680,7 @@ function App() {
           </div>
         )}
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<HomePage layout={layout} />} />
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<NewCustomer />} />
           <Route path="/customers/:id" element={<CustomerDetail />} />

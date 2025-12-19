@@ -7,7 +7,7 @@
  * - General preferences
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAuth } from '../../../auth';
 import { useWallpaper, builtInWallpapers, Wallpaper } from '../../wallpaper';
 import { cognitiveProfiles, useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext';
@@ -25,6 +25,8 @@ export const SettingsApp: React.FC = () => {
   } = useWallpaper();
   const { profile, settings, setProfile, updateSettings } = useCognitiveProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [updateState, setUpdateState] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
+  const [updateMessage, setUpdateMessage] = useState<string | null>(null);
 
   const handleLogout = async () => {
     await logout();
@@ -53,6 +55,33 @@ export const SettingsApp: React.FC = () => {
       URL.revokeObjectURL(wallpaper.imageUrl);
     }
     removeCustomWallpaper(wallpaper.id);
+  };
+
+  const handleUpdate = async () => {
+    setUpdateState('working');
+    setUpdateMessage('Clearing cached data and checking for the latest build...');
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+      }
+
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+
+      localStorage.clear();
+      sessionStorage.clear();
+
+      setUpdateState('done');
+      setUpdateMessage('Update applied. Reloading...');
+      window.location.reload();
+    } catch (err) {
+      setUpdateState('error');
+      setUpdateMessage(err instanceof Error ? err.message : 'Failed to refresh the app');
+    }
   };
 
   return (
@@ -211,6 +240,30 @@ export const SettingsApp: React.FC = () => {
       </div>
 
       <div className="settings-section">
+        <h3>Updates</h3>
+        <p className="settings-section-desc">Clear cached assets and reload the newest admin/API build.</p>
+        <div className="settings-update-card">
+          <div>
+            <p className="settings-update-copy">
+              Removes offline cache, unregisters service workers, and reloads the PWA so you get the freshest version.
+            </p>
+            {updateMessage && (
+              <p className={`settings-update-message ${updateState === 'error' ? 'error' : 'success'}`}>
+                {updateMessage}
+              </p>
+            )}
+          </div>
+          <button
+            className="settings-update-btn"
+            onClick={handleUpdate}
+            disabled={updateState === 'working'}
+          >
+            {updateState === 'working' ? 'Updating…' : '🔄 Update & Reload'}
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-section">
         <h3>About</h3>
         <div className="settings-about">
           <p><strong>Hail-Mary</strong></p>
@@ -231,4 +284,3 @@ export const SettingsApp: React.FC = () => {
     </div>
   );
 };
-

@@ -5,7 +5,7 @@
  * Receives answers and outputs the next question based on logic rules.
  */
 
-import { SurveyNode, SurveyState, InputType, ValidationRule, NextLogic, LogicComparison } from './types';
+import { SurveyNode, SurveyState, NextLogic, LogicComparison } from './types';
 
 export class SurveyEngine {
   private schema: SurveyNode[] = [];

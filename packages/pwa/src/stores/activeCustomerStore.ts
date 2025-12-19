@@ -55,7 +55,7 @@ const loadFromStorage = (): { leadId: string | null; lead: Lead | null } => {
   return { leadId: null, lead: null };
 };
 
-export const useActiveCustomerStore = create<ActiveCustomerStore>((set, get) => ({
+export const useActiveCustomerStore = create<ActiveCustomerStore>((set, _get) => ({
   // Initial state
   activeLeadId: null,
   activeLead: null,

@@ -163,14 +163,24 @@ export async function analyseWithCloudAI(request: RockyAnalyseRequest): Promise<
 /**
  * Call Rocky to analyse a transcript chunk
  * Uses local extraction (primary) or optionally Cloud AI if configured
+ * 
+ * Note: This is a legacy compatibility function. 
+ * New code should use the local extractor directly from rockyExtractor.ts
  */
 export async function analyseWithRocky(request: RockyAnalyseRequest): Promise<RockyAnalyseResponse> {
-  // Rocky always uses local extraction now
-  // This function kept for backward compatibility but delegates to local extraction
+  // Rocky now uses local extraction in VisitApp via rockyExtractor.ts
+  // This function is kept for backward compatibility with other parts of the app
+  // that may still call it (e.g., RockyTool component)
+  
+  // Try Cloud AI if available, otherwise return local placeholder
+  if (cloudAIStatus === 'available') {
+    return analyseWithCloudAI(request);
+  }
+  
   return {
     ok: true,
     providerUsed: 'local',
-    plainEnglishSummary: 'Observation logged locally.',
+    plainEnglishSummary: 'Observation logged. Using local extraction.',
   };
 }
 

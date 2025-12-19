@@ -84,7 +84,8 @@ export function extractFromTranscript(context: ExtractionContext): RockyResult {
     if (/\bfamily\b/i.test(lowerTranscript)) {
       const childrenMatch = lowerTranscript.match(/(\d+)\s*child(ren)?/);
       if (childrenMatch) {
-        result.facts.occupancy = `Family with ${childrenMatch[1]} child${parseInt(childrenMatch[1]) > 1 ? 'ren' : ''}`;
+        const childCount = parseInt(childrenMatch[1]);
+        result.facts.occupancy = `Family with ${childCount} child${childCount > 1 ? 'ren' : ''}`;
       } else {
         result.facts.occupancy = 'Family';
       }

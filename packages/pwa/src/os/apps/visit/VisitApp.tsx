@@ -236,7 +236,7 @@ export const VisitApp: React.FC = () => {
     // Update facts
     const newlyFilledFields: string[] = []
     for (const [key, value] of Object.entries(result.facts)) {
-      if (value && !keyDetails[key] && key !== 'issues') {
+      if (value !== undefined && keyDetails[key] === undefined && key !== 'issues') {
         newlyFilledFields.push(key)
       }
     }

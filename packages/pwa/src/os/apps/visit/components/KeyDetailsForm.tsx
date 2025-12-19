@@ -140,7 +140,7 @@ export const KeyDetailsForm: React.FC<KeyDetailsFormProps> = ({
             <textarea
               id="issues"
               value={details.issues?.join('\n') || ''}
-              onChange={(e) => handleChange('issues', e.target.value.split('\n').filter(Boolean))}
+              onChange={(e) => handleChange('issues', e.target.value.split('\n').filter(line => line.trim()))}
               placeholder="List any issues or concerns..."
               rows={3}
               className={isAutoFilled('issues') ? 'auto-filled' : ''}

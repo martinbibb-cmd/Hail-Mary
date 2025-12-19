@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { EyeOpenIcon, EyeClosedIcon } from './PasswordToggleIcons';
 import './ResetPasswordPage.css';
 
 export const ResetPasswordPage: React.FC = () => {
@@ -15,6 +16,8 @@ export const ResetPasswordPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     // Get token from URL params
@@ -89,28 +92,48 @@ export const ResetPasswordPage: React.FC = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="newPassword">New Password</label>
-            <input
-              type="password"
-              id="newPassword"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              required
-              minLength={8}
-              autoFocus
-            />
+            <div className="password-wrapper">
+              <input
+                type={showNewPassword ? "text" : "password"}
+                id="newPassword"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                required
+                minLength={8}
+                autoFocus
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                aria-label={showNewPassword ? "Hide password" : "Show password"}
+              >
+                {showNewPassword ? <EyeClosedIcon /> : <EyeOpenIcon />}
+              </button>
+            </div>
           </div>
 
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm your new password"
-              required
-            />
+            <div className="password-wrapper">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your new password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeClosedIcon /> : <EyeOpenIcon />}
+              </button>
+            </div>
           </div>
 
           <button 

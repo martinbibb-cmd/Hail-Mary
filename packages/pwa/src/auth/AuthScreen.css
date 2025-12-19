@@ -5,6 +5,8 @@
  * Light theme with smooth natural tones
  */
 
+@import './PasswordToggle.css';
+
 .auth-screen {
   position: fixed;
   top: 0;

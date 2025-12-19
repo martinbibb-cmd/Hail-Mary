@@ -42,53 +42,28 @@ class AIService {
   private readonly HEALTH_CHECK_INTERVAL = 60000; // 1 minute
 
   /**
-   * Check if AI Worker is available
+   * Check if AI services (Rocky/Sarah) are available
+   * Rocky and Sarah run locally - no external worker needed
    */
   async checkHealth(force = false): Promise<AIHealthStatus> {
     const now = Date.now();
-    
+
     // Use cached status if recent (unless forced)
     if (!force && this.healthStatus && (now - this.lastHealthCheck) < this.HEALTH_CHECK_INTERVAL) {
       return this.healthStatus;
     }
 
-    try {
-      const startTime = Date.now();
-      const response = await fetch('/api/ai/health', {
-        method: 'GET',
-        credentials: 'include',
-      });
+    // Rocky and Sarah are local services - always available
+    const healthStatus: AIHealthStatus = {
+      success: true,
+      status: 'available',
+      responseTime: 0,
+    };
 
-      const data = await response.json();
-      const derivedStatus: AIHealthStatus['status'] =
-        data.status && ['available', 'degraded', 'unavailable'].includes(data.status)
-          ? data.status
-          : (data.ok || data.success || response.ok) ? 'available' : 'unavailable';
+    this.healthStatus = healthStatus;
+    this.lastHealthCheck = now;
 
-      const normalized: AIHealthStatus = {
-        ...data,
-        success: Boolean(data.success ?? data.ok ?? response.ok),
-        status: derivedStatus,
-        worker: data.worker ?? data.providers,
-        providers: data.providers,
-        responseTime: Date.now() - startTime,
-      };
-      this.healthStatus = normalized;
-      this.lastHealthCheck = now;
-      
-      return normalized;
-    } catch (error) {
-      const errorStatus: AIHealthStatus = {
-        success: false,
-        status: 'unavailable',
-        error: error instanceof Error ? error.message : 'Health check failed',
-      };
-      
-      this.healthStatus = errorStatus;
-      this.lastHealthCheck = now;
-      
-      return errorStatus;
-    }
+    return healthStatus;
   }
 
   /**
@@ -103,7 +78,7 @@ class AIService {
    */
   async callRocky(request: RockyRequest): Promise<any> {
     try {
-      const response = await fetch('/api/ai/rocky', {
+      const response = await fetch('/api/rocky/run', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +88,7 @@ class AIService {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || `Rocky request failed with status ${response.status}`);
       }
@@ -126,7 +101,7 @@ class AIService {
         status: 'degraded',
         error: error instanceof Error ? error.message : 'Rocky request failed',
       };
-      
+
       throw error;
     }
   }

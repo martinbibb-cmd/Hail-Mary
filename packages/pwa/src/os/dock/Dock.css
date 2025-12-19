@@ -56,26 +56,35 @@
     justify-content: flex-start;
     max-width: calc(100vw - var(--mobile-padding) * 2);
     margin: 0 var(--mobile-padding);
-    gap: var(--spacing-sm);
+    gap: 8px;
   }
 
   .os-dock-item {
-    /* Larger touch targets for mobile */
-    width: var(--mobile-touch-target);
-    height: var(--mobile-touch-target);
-    min-width: var(--mobile-touch-target);
+    /* iOS-style large button with icon and label */
+    width: 70px;
+    height: auto;
+    min-width: 70px;
+    min-height: 70px;
     flex-shrink: 0;
     border-radius: var(--radius-md);
+    padding: 8px 4px;
+    gap: 4px;
   }
 
   .os-dock-icon {
-    font-size: 26px;
+    font-size: 32px;
   }
 
-  /* Adjust tooltip position on mobile */
+  /* Show iOS-style label on mobile */
+  .os-dock-label {
+    display: block;
+    font-size: 10px;
+    max-width: 62px;
+  }
+
+  /* Hide tooltip on mobile - we have visible label now */
   .os-dock-item::before {
-    top: -42px;
-    font-size: var(--mobile-font-xs);
+    display: none;
   }
 
   .os-dock-minimized {
@@ -94,13 +103,34 @@
 
   .os-dock-container {
     padding: 10px 14px;
-    gap: var(--spacing-xs);
+    gap: 10px;
   }
 
   .os-dock-item {
-    width: 54px;
-    height: 54px;
+    /* iOS-style large button with icon and label */
+    width: 80px;
+    height: auto;
+    min-width: 80px;
+    min-height: 80px;
     border-radius: var(--radius-md);
+    padding: 10px 6px;
+    gap: 5px;
+  }
+
+  .os-dock-icon {
+    font-size: 36px;
+  }
+
+  /* Show iOS-style label on tablet */
+  .os-dock-label {
+    display: block;
+    font-size: 11px;
+    max-width: 72px;
+  }
+
+  /* Hide tooltip on tablet - we have visible label now */
+  .os-dock-item::before {
+    display: none;
   }
 }
 
@@ -109,6 +139,7 @@
   width: 52px;
   height: 52px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: var(--surface-secondary);
@@ -116,6 +147,8 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all var(--transition-fast);
+  gap: 4px;
+  padding: 4px;
 }
 
 .os-dock-item:hover {
@@ -130,6 +163,20 @@
 .os-dock-icon {
   font-size: 24px;
   line-height: 1;
+}
+
+/* iOS-style label under icon - hidden on desktop, shown on mobile/tablet */
+.os-dock-label {
+  display: none;
+  font-size: 9px;
+  line-height: 1;
+  text-align: center;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Indicator dot for open apps */

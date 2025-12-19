@@ -89,6 +89,7 @@ export const Dock: React.FC = () => {
             title={app.name}
           >
             <span className="os-dock-icon">{app.icon}</span>
+            <span className="os-dock-label">{app.name}</span>
             {isAppOpen(app.id) && (
               <span className={`os-dock-indicator ${isAppMinimized(app.id) ? 'minimized' : ''}`} />
             )}

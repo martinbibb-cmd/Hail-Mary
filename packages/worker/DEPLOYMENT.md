@@ -2,7 +2,50 @@
 
 This guide walks through deploying the Hail-Mary Worker (Rocky + Sarah) to Cloudflare.
 
-## Prerequisites
+## Deployment Methods
+
+There are two ways to deploy the worker:
+
+1. **Automatic (Recommended)**: GitHub Actions automatically deploys when you push changes to main
+2. **Manual**: Deploy directly from your local machine using Wrangler CLI
+
+## Automatic Deployment (GitHub Actions)
+
+The repository includes a GitHub Actions workflow that automatically deploys the worker when you push changes to the `main` branch.
+
+### Setup GitHub Secrets
+
+Before the automatic deployment can work, you need to add these secrets to your GitHub repository:
+
+1. Go to your repository settings → Secrets and variables → Actions
+2. Add the following secrets:
+   - **CLOUDFLARE_API_TOKEN**: Create an API token at https://dash.cloudflare.com/profile/api-tokens
+     - Click "Create Token"
+     - Use the "Edit Cloudflare Workers" template
+     - Copy the token and save it as a secret
+   - **CLOUDFLARE_ACCOUNT_ID**: Find your account ID at https://dash.cloudflare.com/
+     - Copy the Account ID from the right sidebar
+     - Save it as a secret
+
+### Trigger Automatic Deployment
+
+The workflow automatically runs when:
+- You push changes to `main` branch that affect `packages/worker/**`
+- You manually trigger it from the Actions tab
+
+The workflow includes retry logic (3 attempts with 10 second wait between retries) for reliable deployments.
+
+### Manual Trigger
+
+You can also manually trigger a deployment from GitHub:
+1. Go to the "Actions" tab in your repository
+2. Select "Deploy Cloudflare Worker" workflow
+3. Click "Run workflow"
+4. Select the branch and click "Run workflow"
+
+## Manual Deployment
+
+### Prerequisites
 
 1. **Cloudflare Account**: Sign up at https://cloudflare.com
 2. **Wrangler CLI**: Already installed in this project

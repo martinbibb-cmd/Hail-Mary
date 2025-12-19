@@ -13,7 +13,7 @@ import './ActiveCustomerBar.css';
 
 export function ActiveCustomerBar() {
   const navigate = useNavigate();
-  const { activeLead, saveStatus, clearActiveLead } = useActiveCustomerStore();
+  const { activeLead, saveStatus, setActiveLead, clearActiveLead } = useActiveCustomerStore();
   const [showSelector, setShowSelector] = useState(false);
 
   // Get save status indicator
@@ -41,7 +41,8 @@ export function ActiveCustomerBar() {
   };
 
   const handleSelectLead = (lead: Lead) => {
-    navigate(`/leads/${lead.id}`);
+    setActiveLead(lead);
+    navigate('/');
     setShowSelector(false);
   };
 

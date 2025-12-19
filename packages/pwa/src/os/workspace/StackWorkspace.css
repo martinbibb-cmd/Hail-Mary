@@ -231,6 +231,75 @@
   padding-bottom: calc(80px + env(safe-area-inset-bottom));
 }
 
+/* Tablet dock styles */
+.tablet-dock {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--divider, #e0e0e0);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.tablet-dock-items {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  max-width: 900px;
+  margin: 0 auto;
+  overflow-x: auto;
+  padding: 0.5rem;
+}
+
+.tablet-dock-item {
+  position: relative;
+  min-width: 56px;
+  max-width: 56px;
+  min-height: 56px;
+  max-height: 56px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: var(--surface-secondary, #f5f5f5);
+  border: 2px solid transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tablet-dock-item:hover {
+  background: var(--surface-tertiary, #e8e8e8);
+  transform: scale(1.1) translateY(-4px);
+}
+
+.tablet-dock-item:active {
+  transform: scale(1.05) translateY(-2px);
+}
+
+.tablet-dock-item--open {
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.tablet-dock-item.stack-nav-item--active {
+  background: var(--accent-soft, #e8f4f8);
+  border-color: var(--accent, #007bff);
+}
+
+.tablet-dock-indicator {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: var(--accent, #007bff);
+  border-radius: 50%;
+}
+
+.tablet-dock-item .stack-nav-icon {
+  font-size: 1.75rem;
+}
+
+/* Adjust main content padding for tablet dock */
+.stack-workspace--tablet .stack-main-content {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
 /* Responsive adjustments */
 @media (max-width: 899px) {
   .stack-panel-header {

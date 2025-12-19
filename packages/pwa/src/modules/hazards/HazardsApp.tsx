@@ -4,7 +4,7 @@
  * Phase: 1 (Live)
  * 
  * Purpose:
- * - Log scary stuff: asbestos, monkey muck, legacy materials, access restrictions
+ * - Log scary stuff: asbestos, legacy materials, access restrictions
  * - Critical for safety - affects CH outcomes
  */
 
@@ -55,12 +55,10 @@ export const HazardsApp: React.FC<HazardsAppProps> = ({
   // Check if any hazards are flagged
   const hasHazards = () => {
     const suspected = asbestos.suspectedLocations || [];
-    const monkeyMuck = asbestos.monkeyMuckObserved;
     const legacy = hazards.legacyMaterials || [];
     const access = hazards.accessRestrictions || [];
     
     return suspected.length > 0 || 
-           (monkeyMuck && monkeyMuck !== 'no') ||
            legacy.length > 0 ||
            access.length > 0;
   };
@@ -138,48 +136,7 @@ export const HazardsApp: React.FC<HazardsAppProps> = ({
         </div>
       </div>
 
-      {/* Monkey Muck Section - Rare Hazard */}
-      <div className="hazard-section monkey-muck">
-        <div className="section-header">
-          <h3>🧪 Monkey Muck</h3>
-          <span className="section-badge rare">Rare Hazard</span>
-        </div>
 
-        <p className="section-description">
-          Asbestos-containing paste sometimes found on old heating systems.
-          <strong> Only show this if you've observed or suspect it.</strong>
-        </p>
-
-        <div className="hazard-field">
-          <div className="field-header">
-            <label>Monkey Muck Observed?</label>
-            <button 
-              className="helper-btn"
-              onClick={() => showHelper('haz.asbestos.monkey_muck')}
-              disabled={readOnly}
-            >
-              Confirm
-            </button>
-          </div>
-          <div className="chip-options">
-            {[
-              { value: 'confirmed', label: '✓ Yes, Confirmed' },
-              { value: 'suspected', label: '? Suspected Only' },
-              { value: 'no', label: '✗ No' },
-              { value: null, label: 'Not Checked' },
-            ].map((opt, idx) => (
-              <button
-                key={idx}
-                className={`chip ${asbestos.monkeyMuckObserved === opt.value ? 'selected' : ''} ${opt.value === 'confirmed' ? 'danger' : ''} ${opt.value === 'suspected' ? 'warning' : ''}`}
-                onClick={() => updateField('hazards.asbestos.monkeyMuckObserved', opt.value)}
-                disabled={readOnly}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* Legacy Materials Section */}
       <div className="hazard-section">

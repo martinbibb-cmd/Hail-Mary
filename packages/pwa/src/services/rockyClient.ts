@@ -6,9 +6,13 @@
  * 
  * Architectural Rule: Rocky decides. Sarah explains.
  * Rocky is NOT degraded just because Worker is offline - local extraction is the core.
+ * 
+ * NOTE: This client now uses the API gateway (/api/ai/*) instead of calling the Worker directly.
+ * The API server proxies requests to the Cloudflare Worker for security and logging.
  */
 
-const WORKER_URL = import.meta.env.VITE_WORKER_URL || 'https://hail-mary.martinbibb.workers.dev';
+// API base URL - uses relative paths which work in both dev and production
+const API_BASE_URL = '/api/ai';
 
 export type RockyStatus = 'connected' | 'degraded' | 'blocked';
 export type CloudAIStatus = 'available' | 'unavailable' | 'not-configured';
@@ -46,7 +50,7 @@ let lastHealthCheck = 0;
 const HEALTH_CHECK_INTERVAL = 60000; // 1 minute
 
 /**
- * Check Cloud AI (Worker) health status
+ * Check Cloud AI (Worker) health status via API gateway
  * This is separate from Rocky status - Rocky works locally regardless
  */
 export async function checkCloudAIHealth(): Promise<CloudAIStatus> {
@@ -58,11 +62,12 @@ export async function checkCloudAIHealth(): Promise<CloudAIStatus> {
   }
 
   try {
-    const response = await fetch(`${WORKER_URL}/health`, {
+    const response = await fetch(`${API_BASE_URL}/health`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
       },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -75,7 +80,7 @@ export async function checkCloudAIHealth(): Promise<CloudAIStatus> {
     const data: RockyHealthResponse = await response.json();
     
     // Check if at least one provider is available
-    const hasProvider = data.providers.gemini || data.providers.openai || data.providers.anthropic;
+    const hasProvider = data.providers && (data.providers.gemini || data.providers.openai || data.providers.anthropic);
     cloudAIStatus = hasProvider ? 'available' : 'unavailable';
     lastHealthCheck = now;
     return cloudAIStatus;
@@ -113,17 +118,18 @@ export function getCloudAIStatus(): CloudAIStatus {
 }
 
 /**
- * Call Cloud AI Worker to analyse a transcript chunk (optional enhancement)
+ * Call Cloud AI Worker to analyse a transcript chunk via API gateway (optional enhancement)
  * This is supplementary to local extraction, not required
  */
 export async function analyseWithCloudAI(request: RockyAnalyseRequest): Promise<RockyAnalyseResponse> {
   try {
-    const response = await fetch(`${WORKER_URL}/rocky/analyse`, {
+    const response = await fetch(`${API_BASE_URL}/rocky`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify(request),
     });
 
@@ -135,7 +141,7 @@ export async function analyseWithCloudAI(request: RockyAnalyseRequest): Promise<
         ok: false,
         error: `Cloud AI analysis failed: ${response.status}`,
         plainEnglishSummary: 'Cloud AI unavailable. Using local extraction.',
-        blockers: [`Worker returned ${response.status}`],
+        blockers: [`API returned ${response.status}`],
       };
     }
 
@@ -155,7 +161,7 @@ export async function analyseWithCloudAI(request: RockyAnalyseRequest): Promise<
       ok: false,
       error: String(error),
       plainEnglishSummary: 'Cloud AI unavailable. Using local extraction.',
-      blockers: ['Network error or Worker unavailable'],
+      blockers: ['Network error or API unavailable'],
     };
   }
 }

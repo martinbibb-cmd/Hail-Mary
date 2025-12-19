@@ -1,0 +1,22 @@
+name = "hail-mary"
+main = "packages/worker/src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Environment variables (secrets should be set via: wrangler secret put <KEY_NAME>)
+# GEMINI_API_KEY
+# OPENAI_API_KEY
+# ANTHROPIC_API_KEY
+
+# AI Configuration
+[vars]
+# Default AI model for Sarah (LLM explanation layer)
+SARAH_MODEL = "gemini-1.5-flash"
+# Temperature for Sarah's responses (0.0-1.0, higher = more creative)
+SARAH_TEMPERATURE = "0.3"
+# Maximum tokens for Sarah's responses
+SARAH_MAX_TOKENS = "500"
+
+# Rocky Configuration
+ROCKY_MODEL = "gemini-1.5-pro"
+ROCKY_TEMPERATURE = "0.2"
+ROCKY_MAX_TOKENS = "600"

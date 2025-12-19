@@ -25,21 +25,23 @@ interface ActiveCustomerStore {
   hydrate: () => Promise<void>;
 }
 
-const STORAGE_KEY = 'hail-mary:active-customer';
+// Storage key for localStorage persistence
+// Shared constant to avoid duplication across the application
+export const ACTIVE_CUSTOMER_STORAGE_KEY = 'hail-mary:active-customer';
 
 // Helper to persist to localStorage
 const persistToStorage = (leadId: string | null, lead: Lead | null) => {
   if (leadId && lead) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ leadId, lead }));
+    localStorage.setItem(ACTIVE_CUSTOMER_STORAGE_KEY, JSON.stringify({ leadId, lead }));
   } else {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(ACTIVE_CUSTOMER_STORAGE_KEY);
   }
 };
 
 // Helper to load from localStorage
 const loadFromStorage = (): { leadId: string | null; lead: Lead | null } => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(ACTIVE_CUSTOMER_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
@@ -102,23 +104,38 @@ export const useActiveCustomerStore = create<ActiveCustomerStore>((set, get) => 
           credentials: 'include',
         });
         
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            set({
-              activeLeadId: leadId,
-              activeLead: result.data,
-            });
-            persistToStorage(leadId, result.data);
-            return;
-          }
+        if (!response.ok) {
+          // API returned error - could be 404 (deleted), 401 (auth), or 500 (server error)
+          console.warn(`Failed to validate active customer (HTTP ${response.status}). Clearing stored data.`);
+          persistToStorage(null, null);
+          set({ activeLeadId: null, activeLead: null });
+          return;
+        }
+        
+        const result = await response.json();
+        if (result.success && result.data) {
+          set({
+            activeLeadId: leadId,
+            activeLead: result.data,
+          });
+          persistToStorage(leadId, result.data);
+          return;
+        } else {
+          // API returned unsuccessful response (e.g., lead not found)
+          console.warn('Active customer validation failed - lead may have been deleted');
+          persistToStorage(null, null);
         }
       } catch (error) {
-        console.error('Failed to validate active customer:', error);
+        // Network error or other fetch failure
+        console.error('Network error validating active customer:', error);
+        // In case of network error, keep the cached data but don't fail
+        // User can still see who they were working with
+        set({
+          activeLeadId: leadId,
+          activeLead: lead,
+        });
+        return;
       }
-      
-      // If validation failed, clear the stored data
-      persistToStorage(null, null);
     }
     
     set({

@@ -16,7 +16,13 @@ const router = Router();
 router.use(requireAuth);
 
 // In-memory storage for active lead by user ID
-// In production, this should be moved to Redis or database for persistence across restarts
+// ⚠️ WARNING: This is ephemeral storage that will not persist across server restarts
+// ⚠️ WARNING: Does not scale in multi-instance/cluster deployments
+// TODO: Before production deployment, replace with Redis or database-backed storage
+// Implementation options:
+//   1. Redis: Fast, distributed, TTL support
+//   2. Database: Persistent, existing infrastructure
+//   3. Memcached: Alternative to Redis
 const activeLeadStore = new Map<number, string>();
 
 /**

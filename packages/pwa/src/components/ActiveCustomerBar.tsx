@@ -172,7 +172,7 @@ function CustomerSelectorModal({ onSelect, onClose }: CustomerSelectorModalProps
                   onClick={() => onSelect(lead)}
                 >
                   <div className="customer-item-name">
-                    {lead.firstName} {lead.lastName}
+                    {lead.firstName || 'Unknown'} {lead.lastName || ''}
                   </div>
                   <div className="customer-item-details">
                     {lead.address?.line1 ? (

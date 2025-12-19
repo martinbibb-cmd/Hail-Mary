@@ -187,7 +187,12 @@ Hail-Mary supports Google OAuth for seamless authentication. Users can sign in w
    - Add your callback URL: `https://your-domain.com/api/auth/google/callback`
    - For local development: `http://localhost:3001/api/auth/google/callback`
 
-4. **Restart the Application** to apply changes
+4. **Verify Configuration** (optional):
+   ```bash
+   bash scripts/verify-google-oauth.sh
+   ```
+
+5. **Restart the Application** to apply changes
 
 #### How It Works
 

@@ -5,6 +5,8 @@
  * Light theme with smooth natural tones
  */
 
+@import './PasswordToggle.css';
+
 .auth-screen {
   position: fixed;
   top: 0;
@@ -121,39 +123,6 @@
 
 .auth-form-group input::placeholder {
   color: rgba(60, 50, 40, 0.4);
-}
-
-.auth-password-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.auth-password-wrapper input {
-  padding-right: 48px;
-}
-
-.auth-password-toggle {
-  position: absolute;
-  right: 12px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(60, 50, 40, 0.5);
-  transition: color 0.2s ease;
-}
-
-.auth-password-toggle:hover {
-  color: rgba(60, 50, 40, 0.8);
-}
-
-.auth-password-toggle:focus {
-  outline: none;
-  color: #6b8e23;
 }
 
 .auth-btn {

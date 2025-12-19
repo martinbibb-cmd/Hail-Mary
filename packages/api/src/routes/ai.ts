@@ -14,7 +14,7 @@ import { requireAuth } from '../middleware/auth.middleware';
 const router = Router();
 
 // Get Worker URL from environment or use fallback
-const ROCKY_WORKER_URL = process.env.ROCKY_WORKER_URL || '';
+const WORKER_URL = process.env.WORKER_URL || process.env.ROCKY_WORKER_URL || '';
 
 /**
  * GET /api/ai/health
@@ -23,49 +23,39 @@ const ROCKY_WORKER_URL = process.env.ROCKY_WORKER_URL || '';
 router.get('/health', async (_req: Request, res: Response) => {
   const startTime = Date.now();
   
-  if (!ROCKY_WORKER_URL) {
-    console.warn('⚠️  AI Gateway: ROCKY_WORKER_URL not configured');
-    return res.status(503).json({
-      success: false,
-      error: 'AI Worker URL not configured',
-      status: 'unavailable',
+  if (!WORKER_URL) {
+    console.warn('⚠️  AI Gateway: WORKER_URL not configured');
+    return res.status(500).json({
+      error: 'WORKER_URL not set',
     });
   }
 
   try {
-    const workerHealthUrl = `${ROCKY_WORKER_URL}/health`;
-    console.log(`🔍 AI Gateway: Checking Worker health at ${workerHealthUrl}`);
+    const workerHealthUrl = `${WORKER_URL}/health`;
+    console.log(`🔍 AI Gateway: GET /health -> ${workerHealthUrl}`);
     
     const response = await fetch(workerHealthUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(5000), // 5 second timeout
+      signal: AbortSignal.timeout(10000), // 10 second timeout
     });
 
     const duration = Date.now() - startTime;
     const data = await response.json();
 
-    console.log(`✅ AI Gateway: Worker health check completed in ${duration}ms - status: ${response.status}`);
+    console.log(`✅ AI Gateway: GET /health completed - status: ${response.status}, duration: ${duration}ms`);
 
-    return res.status(response.status).json({
-      success: response.ok,
-      status: response.ok ? 'available' : 'degraded',
-      worker: data,
-      responseTime: duration,
-    });
+    return res.status(response.status).json(data);
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Worker health check failed';
     
-    console.error(`❌ AI Gateway: Worker health check failed after ${duration}ms:`, errorMessage);
+    console.error(`❌ AI Gateway: GET /health failed - duration: ${duration}ms, error: ${errorMessage}`);
 
     return res.status(503).json({
-      success: false,
       error: errorMessage,
-      status: 'unavailable',
-      responseTime: duration,
     });
   }
 });
@@ -77,17 +67,16 @@ router.get('/health', async (_req: Request, res: Response) => {
 router.post('/rocky', requireAuth, async (req: Request, res: Response) => {
   const startTime = Date.now();
   
-  if (!ROCKY_WORKER_URL) {
-    console.warn('⚠️  AI Gateway: ROCKY_WORKER_URL not configured');
-    return res.status(503).json({
-      success: false,
-      error: 'AI Worker URL not configured',
+  if (!WORKER_URL) {
+    console.warn('⚠️  AI Gateway: WORKER_URL not configured');
+    return res.status(500).json({
+      error: 'WORKER_URL not set',
     });
   }
 
   try {
-    const workerUrl = `${ROCKY_WORKER_URL}/rocky`;
-    console.log(`🪨 AI Gateway: Forwarding Rocky request to ${workerUrl}`);
+    const workerUrl = `${WORKER_URL}/rocky/analyse`;
+    console.log(`🪨 AI Gateway: POST /rocky -> ${workerUrl}`);
     
     const response = await fetch(workerUrl, {
       method: 'POST',
@@ -95,23 +84,22 @@ router.post('/rocky', requireAuth, async (req: Request, res: Response) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(req.body),
-      signal: AbortSignal.timeout(30000), // 30 second timeout
+      signal: AbortSignal.timeout(10000), // 10 second timeout
     });
 
     const duration = Date.now() - startTime;
     const data = await response.json();
 
-    console.log(`✅ AI Gateway: Rocky request completed in ${duration}ms - status: ${response.status}`);
+    console.log(`✅ AI Gateway: POST /rocky completed - status: ${response.status}, duration: ${duration}ms`);
 
     return res.status(response.status).json(data);
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Rocky request failed';
     
-    console.error(`❌ AI Gateway: Rocky request failed after ${duration}ms:`, errorMessage);
+    console.error(`❌ AI Gateway: POST /rocky failed - duration: ${duration}ms, error: ${errorMessage}`);
 
     return res.status(503).json({
-      success: false,
       error: errorMessage,
     });
   }
@@ -124,17 +112,16 @@ router.post('/rocky', requireAuth, async (req: Request, res: Response) => {
 router.post('/sarah', requireAuth, async (req: Request, res: Response) => {
   const startTime = Date.now();
   
-  if (!ROCKY_WORKER_URL) {
-    console.warn('⚠️  AI Gateway: ROCKY_WORKER_URL not configured');
-    return res.status(503).json({
-      success: false,
-      error: 'AI Worker URL not configured',
+  if (!WORKER_URL) {
+    console.warn('⚠️  AI Gateway: WORKER_URL not configured');
+    return res.status(500).json({
+      error: 'WORKER_URL not set',
     });
   }
 
   try {
-    const workerUrl = `${ROCKY_WORKER_URL}/sarah`;
-    console.log(`🧠 AI Gateway: Forwarding Sarah request to ${workerUrl}`);
+    const workerUrl = `${WORKER_URL}/sarah/explain`;
+    console.log(`🧠 AI Gateway: POST /sarah -> ${workerUrl}`);
     
     const response = await fetch(workerUrl, {
       method: 'POST',
@@ -142,23 +129,22 @@ router.post('/sarah', requireAuth, async (req: Request, res: Response) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(req.body),
-      signal: AbortSignal.timeout(30000), // 30 second timeout
+      signal: AbortSignal.timeout(10000), // 10 second timeout
     });
 
     const duration = Date.now() - startTime;
     const data = await response.json();
 
-    console.log(`✅ AI Gateway: Sarah request completed in ${duration}ms - status: ${response.status}`);
+    console.log(`✅ AI Gateway: POST /sarah completed - status: ${response.status}, duration: ${duration}ms`);
 
     return res.status(response.status).json(data);
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Sarah request failed';
     
-    console.error(`❌ AI Gateway: Sarah request failed after ${duration}ms:`, errorMessage);
+    console.error(`❌ AI Gateway: POST /sarah failed - duration: ${duration}ms, error: ${errorMessage}`);
 
     return res.status(503).json({
-      success: false,
       error: errorMessage,
     });
   }

@@ -19,13 +19,15 @@ Enable Google authentication in 3 minutes!
 
 ### 2. Configure Environment Variables
 
-Copy `.env.example` to `.env` and set:
+Copy `.env.example` to `.env` and uncomment/set:
 
 ```env
 GOOGLE_AUTH_ENABLED=true
 GOOGLE_CLIENT_ID=1010895939308-oa69f1h1brjjdfpkum66fqhcouvcqrqc.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-actual-client-secret-here
 ```
+
+**Important:** Replace `your-actual-client-secret-here` with the real Client Secret from step 1!
 
 ### 3. Configure Redirect URIs
 

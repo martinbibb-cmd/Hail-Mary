@@ -66,7 +66,7 @@ fi
 echo ""
 echo "Checking GOOGLE_CLIENT_SECRET..."
 if [ -n "$GOOGLE_CLIENT_SECRET" ]; then
-    if [ "$GOOGLE_CLIENT_SECRET" = "your-client-secret-here" ] || [ "$GOOGLE_CLIENT_SECRET" = "your-actual-client-secret-here" ]; then
+    if [ "$GOOGLE_CLIENT_SECRET" = "your-client-secret-here" ] || [ "$GOOGLE_CLIENT_SECRET" = "your-actual-client-secret-here" ] || [ "$GOOGLE_CLIENT_SECRET" = "REPLACE_WITH_YOUR_ACTUAL_CLIENT_SECRET" ]; then
         echo "❌ GOOGLE_CLIENT_SECRET is set to placeholder value"
         echo ""
         echo "📋 To fix this:"
@@ -92,16 +92,21 @@ fi
 # Check BASE_URL
 echo ""
 echo "Checking BASE_URL..."
+# Check what the default is from the backend code (see packages/api/src/routes/auth.ts)
+DEFAULT_BASE_URL="https://hail_mary.cloudbibb.uk"
 if [ -n "$BASE_URL" ]; then
     echo "✅ BASE_URL is set: $BASE_URL"
     echo ""
     echo "📋 Ensure this redirect URI is configured in Google Cloud Console:"
     echo "   ${BASE_URL}/api/auth/google/callback"
 else
-    echo "⚠️  BASE_URL is not set (will default to https://hail_mary.cloudbibb.uk)"
+    echo "⚠️  BASE_URL is not set (will default to ${DEFAULT_BASE_URL})"
     echo ""
-    echo "📋 For production, set BASE_URL in .env to your domain:"
+    echo "📋 For production, set BASE_URL in .env to your actual domain:"
     echo "   BASE_URL=https://your-domain.com"
+    echo ""
+    echo "📋 Default redirect URI that will be used:"
+    echo "   ${DEFAULT_BASE_URL}/api/auth/google/callback"
 fi
 
 # Summary
@@ -122,7 +127,7 @@ if [ -z "$GOOGLE_CLIENT_ID" ] || [ "$GOOGLE_CLIENT_ID" != "1010895939308-oa69f1h
     issues=$((issues + 1))
 fi
 
-if [ -z "$GOOGLE_CLIENT_SECRET" ] || [ "$GOOGLE_CLIENT_SECRET" = "your-client-secret-here" ] || [ "$GOOGLE_CLIENT_SECRET" = "your-actual-client-secret-here" ]; then
+if [ -z "$GOOGLE_CLIENT_SECRET" ] || [ "$GOOGLE_CLIENT_SECRET" = "your-client-secret-here" ] || [ "$GOOGLE_CLIENT_SECRET" = "your-actual-client-secret-here" ] || [ "$GOOGLE_CLIENT_SECRET" = "REPLACE_WITH_YOUR_ACTUAL_CLIENT_SECRET" ]; then
     issues=$((issues + 1))
 fi
 

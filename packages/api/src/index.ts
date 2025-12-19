@@ -39,6 +39,7 @@ import sarahRouter from './routes/sarah';
 import voiceTransformRouter from './routes/voiceTransform';
 import knowledgeRouter from './routes/knowledge';
 import aiRouter from './routes/ai';
+import sessionRouter from './routes/session';
 
 // API version - kept in sync with package.json
 export const API_VERSION = '0.2.0';
@@ -222,6 +223,7 @@ app.use('/api/sarah', sarahRouter); // Sarah standalone endpoint
 app.use('/api/voice', voiceTransformRouter); // Voice transform endpoint
 app.use('/api/knowledge', knowledgeRouter); // Knowledge ingest system
 app.use('/api/ai', aiRouter); // AI Gateway (server-side proxy to Cloudflare Worker)
+app.use('/api/session', sessionRouter); // Session management (active lead persistence)
 
 // 404 handler
 app.use((_req, res) => {

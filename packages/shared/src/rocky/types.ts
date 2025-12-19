@@ -243,3 +243,49 @@ export interface RockyConfig {
     boilerTypes: { pattern: RegExp; normalized: string }[];
   };
 }
+
+// ============================================
+// Rocky Real-time Extraction Types (for Voice Notes UI)
+// ============================================
+
+/**
+ * Rocky extraction result for real-time voice notes processing
+ * This is the lightweight result that updates the UI as transcription happens
+ */
+export interface RockyResult {
+  // Extracted facts (key-value pairs for the form)
+  facts: {
+    propertyType?: string;
+    occupancy?: string;
+    bedrooms?: number;
+    currentSystem?: string;
+    boilerAge?: number;
+    issues?: string[];
+    proposedSystem?: string;
+    [key: string]: any;
+  };
+  
+  // Checklist items that should be ticked/updated
+  checklistUpdates: Array<{
+    id: string;
+    checked: boolean;
+    note?: string;
+  }>;
+  
+  // Flags/warnings raised during extraction
+  flags: Array<{
+    type: 'warning' | 'error' | 'info';
+    message: string;
+    timestamp: Date;
+  }>;
+  
+  // Open questions that need follow-up
+  openQuestions: string[];
+  
+  // Raw pattern matches (for debugging/transparency)
+  rawMatches?: Array<{
+    pattern: string;
+    match: string;
+    confidence: number;
+  }>;
+}

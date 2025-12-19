@@ -2,16 +2,18 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { 
   Customer, 
   VisitSession,
-  VisitObservation,
   ApiResponse, 
   PaginatedResponse 
 } from '@hail-mary/shared'
 import { 
-  initializeRocky, 
-  getRockyStatus, 
-  analyseWithRocky,
-  type RockyStatus 
-} from '../../../services/rockyClient'
+  TranscriptFeed, 
+  InstallChecklist, 
+  KeyDetailsForm,
+  type TranscriptSegment,
+  type ChecklistItem,
+  type KeyDetails
+} from './components'
+import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import './VisitApp.css'
 
 // Simple API client
@@ -87,49 +89,47 @@ declare global {
   }
 }
 
-/** 
- * Timeline entry representing a message in the visit conversation
- * - 'user': A logged observation from the user (typed or spoken)
- * - 'system': A response from the assistant service (Rocky)
- * - 'rocky': Rocky analysis with technical details
- */
-interface TimelineEntry {
-  id: string
-  type: 'user' | 'system' | 'rocky'
-  text: string
-  timestamp: Date
-  technicalRationale?: string
-  blockers?: string[]
-  providerUsed?: string
-}
-
 type ViewMode = 'list' | 'active'
+
+// Default checklist items (from checklist-config.json)
+const DEFAULT_CHECKLIST_ITEMS: ChecklistItem[] = [
+  { id: 'boiler_replacement', label: 'Boiler Replacement', checked: false },
+  { id: 'system_flush', label: 'System Flush/Cleanse', checked: false },
+  { id: 'pipework_modification', label: 'Pipework Modifications', checked: false },
+  { id: 'radiator_upgrade', label: 'Radiator Upgrade/Addition', checked: false },
+  { id: 'cylinder_replacement', label: 'Hot Water Cylinder Replacement', checked: false },
+  { id: 'controls_upgrade', label: 'Controls Upgrade', checked: false },
+  { id: 'gas_work', label: 'Gas Supply Work', checked: false },
+  { id: 'electrical_work', label: 'Electrical Work', checked: false },
+  { id: 'flue_modification', label: 'Flue Modifications', checked: false },
+  { id: 'filter_installation', label: 'Magnetic Filter Installation', checked: false },
+]
 
 export const VisitApp: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [activeSession, setActiveSession] = useState<VisitSession | null>(null)
-  const [timeline, setTimeline] = useState<TimelineEntry[]>([])
-  const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(true)
-  const [sending, setSending] = useState(false)
+  
+  // New state for 3-panel layout
+  const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
+  const [keyDetails, setKeyDetails] = useState<KeyDetails>({})
+  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([])
+  const [exceptions, setExceptions] = useState<string[]>([])
   
   // STT state
   const [isListening, setIsListening] = useState(false)
-  const [transcript, setTranscript] = useState('')
+  const [liveTranscript, setLiveTranscript] = useState('')
   const [sttSupported, setSttSupported] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  
+  // Accumulated final transcript for Rocky processing
+  const accumulatedTranscriptRef = useRef<string>('')
 
-  // Rocky state
-  const [rockyStatus, setRockyStatus] = useState<RockyStatus>('blocked')
-
-  // Initialize Rocky on mount
-  useEffect(() => {
-    initializeRocky().then(status => {
-      setRockyStatus(status)
-    })
-  }, [])
+  // Rocky status (always 'connected' for local extraction)
+  const [rockyStatus] = useState<'connected' | 'degraded' | 'blocked'>(getLocalRockyStatus())
 
   // Check for STT support
   useEffect(() => {
@@ -150,8 +150,8 @@ export const VisitApp: React.FC = () => {
     }
   }, [])
 
+  // Load customers
   useEffect(() => {
-    // Load customers
     api.get<PaginatedResponse<Customer>>('/api/customers')
       .then(res => {
         setCustomers(res.data || [])
@@ -172,7 +172,13 @@ export const VisitApp: React.FC = () => {
         setSelectedCustomer(customer)
         setActiveSession(res.data)
         setViewMode('active')
-        setTimeline([])
+        // Reset state for new visit
+        setTranscriptSegments([])
+        setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
+        setKeyDetails({})
+        setAutoFilledFields([])
+        setExceptions([])
+        accumulatedTranscriptRef.current = ''
       }
     } catch (error) {
       console.error('Failed to start visit:', error)
@@ -191,19 +197,14 @@ export const VisitApp: React.FC = () => {
         const session = sessionsRes.data[0]
         setSelectedCustomer(customer)
         setActiveSession(session)
-        
-        // Load observations
-        const observationsRes = await api.get<ApiResponse<VisitObservation[]>>(`/api/visit-sessions/${session.id}/observations`)
-        if (observationsRes.success && observationsRes.data) {
-          const entries: TimelineEntry[] = observationsRes.data.map((obs: VisitObservation) => ({
-            id: `obs-${obs.id}`,
-            type: 'user' as const,
-            text: obs.text,
-            timestamp: new Date(obs.createdAt),
-          }))
-          setTimeline(entries)
-        }
         setViewMode('active')
+        // Reset state (in future, could load previous data)
+        setTranscriptSegments([])
+        setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
+        setKeyDetails({})
+        setAutoFilledFields([])
+        setExceptions([])
+        accumulatedTranscriptRef.current = ''
       } else {
         // No active session, start new one
         startVisit(customer)
@@ -216,79 +217,67 @@ export const VisitApp: React.FC = () => {
     }
   }
 
-  const handleSendMessage = async (messageOverride?: string) => {
-    const isFromTranscript = !!messageOverride
-    const messageText = (messageOverride || inputText).trim()
-    if (!messageText || !activeSession || !selectedCustomer) return
-    
-    setSending(true)
-    // Only clear the input source that was used
-    if (isFromTranscript) {
-      setTranscript('')
-    } else {
-      setInputText('')
-    }
-    
-    // Add user message to timeline immediately
-    const userEntry: TimelineEntry = {
-      id: `user-${Date.now()}`,
-      type: 'user',
-      text: messageText,
-      timestamp: new Date(),
-    }
-    setTimeline(prev => [...prev, userEntry])
-    
-    try {
-      // Call Rocky for AI analysis
-      const rockyResponse = await analyseWithRocky({
-        visitId: String(activeSession.id),
-        transcriptChunk: messageText,
-        snapshot: {},
-      })
+  // Process transcript with Rocky (deterministic/local)
+  const processWithRocky = useCallback((newTranscript: string) => {
+    if (!newTranscript.trim()) return
 
-      // Update Rocky status
-      setRockyStatus(getRockyStatus())
+    // Add to accumulated transcript
+    accumulatedTranscriptRef.current = accumulatedTranscriptRef.current 
+      ? `${accumulatedTranscriptRef.current} ${newTranscript}` 
+      : newTranscript
 
-      // Add Rocky response to timeline
-      const rockyEntry: TimelineEntry = {
-        id: `rocky-${Date.now()}`,
-        type: 'rocky',
-        text: rockyResponse.plainEnglishSummary || 'Observation logged.',
-        technicalRationale: rockyResponse.technicalRationale,
-        blockers: rockyResponse.blockers,
-        providerUsed: rockyResponse.providerUsed,
-        timestamp: new Date(),
+    // Run Rocky extraction
+    const result = extractFromTranscript({
+      transcript: accumulatedTranscriptRef.current,
+      previousFacts: keyDetails,
+      previousChecklist: checklistItems,
+    })
+
+    // Update facts
+    const newlyFilledFields: string[] = []
+    for (const [key, value] of Object.entries(result.facts)) {
+      if (value && !keyDetails[key] && key !== 'issues') {
+        newlyFilledFields.push(key)
       }
-      setTimeline(prev => [...prev, rockyEntry])
-
-      // Still log to backend (for persistence)
-      await api.post('/assistant/message', {
-        sessionId: activeSession.id,
-        leadId: selectedCustomer.id,
-        text: messageText,
-      }).catch(err => {
-        console.warn('Backend logging failed (non-blocking):', err)
-      })
-
-    } catch (error) {
-      console.error('Failed to send message:', error)
-      const errorEntry: TimelineEntry = {
-        id: `error-${Date.now()}`,
-        type: 'system',
-        text: '⚠️ Failed to log observation. Please try again.',
-        timestamp: new Date(),
-      }
-      setTimeline(prev => [...prev, errorEntry])
-    } finally {
-      setSending(false)
     }
-  }
+    
+    if (newlyFilledFields.length > 0) {
+      setAutoFilledFields(prev => [...new Set([...prev, ...newlyFilledFields])])
+    }
+    
+    setKeyDetails(result.facts)
+
+    // Update checklist
+    if (result.checklistUpdates.length > 0) {
+      setChecklistItems(prev => {
+        const updated = [...prev]
+        for (const update of result.checklistUpdates) {
+          const index = updated.findIndex(item => item.id === update.id)
+          if (index !== -1) {
+            updated[index] = {
+              ...updated[index],
+              checked: update.checked,
+              note: update.note,
+              autoDetected: true,
+            }
+          }
+        }
+        return updated
+      })
+    }
+
+    // Update exceptions/flags
+    if (result.flags.length > 0) {
+      const newExceptions = result.flags.map(flag => `${flag.type.toUpperCase()}: ${flag.message}`)
+      setExceptions(prev => [...new Set([...prev, ...newExceptions])])
+    }
+  }, [keyDetails, checklistItems])
 
   // STT Functions
   const startListening = useCallback(() => {
     if (!recognitionRef.current || isListening) return
     
-    setTranscript('')
+    setLiveTranscript('')
     
     recognitionRef.current.onstart = () => {
       setIsListening(true)
@@ -308,19 +297,23 @@ export const VisitApp: React.FC = () => {
       }
       
       if (finalTranscript) {
-        // Properly join final transcripts with trimming to avoid extra spaces
-        setTranscript(prev => {
-          const trimmedPrev = prev.trim()
-          const trimmedNew = finalTranscript.trim()
-          return trimmedPrev ? `${trimmedPrev} ${trimmedNew}` : trimmedNew
-        })
+        // Add as a new transcript segment
+        const segment: TranscriptSegment = {
+          id: `segment-${Date.now()}`,
+          timestamp: new Date(),
+          speaker: 'user',
+          text: finalTranscript.trim(),
+        }
+        setTranscriptSegments(prev => [...prev, segment])
+        
+        // Process with Rocky
+        processWithRocky(finalTranscript.trim())
+        
+        // Clear live transcript
+        setLiveTranscript('')
       } else if (interimTranscript) {
-        // For interim results, append to existing final content
-        setTranscript(prev => {
-          const trimmedPrev = prev.trim()
-          const trimmedInterim = interimTranscript.trim()
-          return trimmedPrev ? `${trimmedPrev} ${trimmedInterim}` : trimmedInterim
-        })
+        // Update live transcript
+        setLiveTranscript(interimTranscript.trim())
       }
     }
     
@@ -328,17 +321,13 @@ export const VisitApp: React.FC = () => {
       console.error('Speech recognition error:', event.error)
       setIsListening(false)
       if (event.error !== 'aborted') {
-        setTimeline(prev => [...prev, {
-          id: `error-${Date.now()}`,
-          type: 'system',
-          text: `🎤 Microphone error: ${event.error}. Please try again.`,
-          timestamp: new Date(),
-        }])
+        setExceptions(prev => [...prev, `Microphone error: ${event.error}`])
       }
     }
     
     recognitionRef.current.onend = () => {
       setIsListening(false)
+      setLiveTranscript('')
     }
     
     try {
@@ -346,26 +335,14 @@ export const VisitApp: React.FC = () => {
     } catch (error) {
       console.error('Failed to start speech recognition:', error)
     }
-  }, [isListening])
+  }, [isListening, processWithRocky])
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) return
     
     recognitionRef.current.stop()
     setIsListening(false)
-    
-    // Send the transcript if we have content
-    if (transcript.trim()) {
-      handleSendMessage(transcript.trim())
-    }
-  }, [transcript])
-
-  const cancelListening = useCallback(() => {
-    if (!recognitionRef.current) return
-    
-    recognitionRef.current.abort()
-    setIsListening(false)
-    setTranscript('')
+    setLiveTranscript('')
   }, [])
 
   const endVisit = async () => {
@@ -379,7 +356,12 @@ export const VisitApp: React.FC = () => {
       setViewMode('list')
       setActiveSession(null)
       setSelectedCustomer(null)
-      setTimeline([])
+      setTranscriptSegments([])
+      setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
+      setKeyDetails({})
+      setAutoFilledFields([])
+      setExceptions([])
+      accumulatedTranscriptRef.current = ''
     } catch (error) {
       console.error('Failed to end visit:', error)
     }
@@ -391,13 +373,13 @@ export const VisitApp: React.FC = () => {
 
   if (viewMode === 'active' && activeSession && selectedCustomer) {
     return (
-      <div className="visit-app">
+      <div className="visit-app visit-app-active">
         <div className="visit-app-header">
           <div className="visit-app-header-info">
             <h2>🎙️ {selectedCustomer.firstName} {selectedCustomer.lastName}</h2>
             <span className="visit-status-badge">Active Visit</span>
             <span className={`rocky-status-badge rocky-${rockyStatus}`}>
-              Rocky: {rockyStatus === 'connected' ? '✅' : rockyStatus === 'degraded' ? '⚠️ Degraded' : '❌ Offline'}
+              Rocky: {rockyStatus === 'connected' ? '✅ Local' : rockyStatus === 'degraded' ? '⚠️ Degraded' : '❌ Offline'}
             </span>
           </div>
           <button className="btn-secondary" onClick={endVisit}>
@@ -405,97 +387,46 @@ export const VisitApp: React.FC = () => {
           </button>
         </div>
 
-        <div className="visit-timeline">
-          {timeline.length === 0 ? (
-            <p className="visit-empty">
-              Start recording your visit notes below. Speak or type your observations!
-            </p>
-          ) : (
-            timeline.map(entry => (
-              <div key={entry.id} className={`visit-entry visit-entry-${entry.type}`}>
-                <div className="visit-entry-header">
-                  <span className="visit-entry-label">
-                    {entry.type === 'user' ? '🎤 You:' : entry.type === 'rocky' ? '🤖 Rocky:' : '🤖 System:'}
-                  </span>
-                  {entry.providerUsed && (
-                    <span className="visit-entry-provider">({entry.providerUsed})</span>
-                  )}
-                  <span className="visit-entry-time">
-                    {entry.timestamp.toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className="visit-entry-text">{entry.text}</p>
-                {entry.technicalRationale && (
-                  <details className="visit-entry-details">
-                    <summary>Technical Details</summary>
-                    <p>{entry.technicalRationale}</p>
-                  </details>
-                )}
-                {entry.blockers && entry.blockers.length > 0 && (
-                  <div className="visit-entry-blockers">
-                    <strong>⚠️ Blockers:</strong>
-                    <ul>
-                      {entry.blockers.map((blocker, idx) => (
-                        <li key={idx}>{blocker}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
+        <div className="visit-three-panel">
+          <div className="visit-panel visit-panel-left">
+            <TranscriptFeed 
+              segments={transcriptSegments}
+              isRecording={isListening}
+              liveTranscript={liveTranscript}
+            />
+          </div>
+
+          <div className="visit-panel visit-panel-center">
+            <InstallChecklist 
+              items={checklistItems}
+              onItemToggle={(id, checked) => {
+                setChecklistItems(prev => 
+                  prev.map(item => item.id === id ? { ...item, checked } : item)
+                )
+              }}
+              exceptions={exceptions}
+            />
+          </div>
+
+          <div className="visit-panel visit-panel-right">
+            <KeyDetailsForm 
+              details={keyDetails}
+              onChange={setKeyDetails}
+              autoFilledFields={autoFilledFields}
+            />
+          </div>
         </div>
 
-        <div className="visit-input-area">
-          {/* Live transcript display */}
-          {isListening && (
-            <div className="visit-transcript">
-              <div className="transcript-header">
-                <span className="transcript-recording">🔴 Recording...</span>
-                <button className="btn-cancel" onClick={cancelListening}>✕ Cancel</button>
-              </div>
-              <p className="transcript-text">
-                {transcript || 'Listening... Speak now.'}
-              </p>
-            </div>
-          )}
-          
-          <div className="visit-input-row">
-            {/* Mic button */}
-            {sttSupported && (
-              <button
-                className={`btn-mic ${isListening ? 'recording' : ''}`}
-                onClick={isListening ? stopListening : startListening}
-                disabled={sending}
-                title={isListening ? 'Stop & Send' : 'Start Recording'}
-              >
-                {isListening ? '⏹️' : '🎤'}
-              </button>
-            )}
-            
-            <input
-              type="text"
-              placeholder={isListening ? 'Recording...' : 'Type your observation...'}
-              value={inputText}
-              onChange={e => setInputText(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSendMessage()
-                }
-              }}
-              disabled={sending || isListening}
-            />
-            <button 
-              className="btn-primary"
-              onClick={() => handleSendMessage()}
-              disabled={sending || !inputText.trim() || isListening}
+        <div className="visit-controls">
+          {sttSupported ? (
+            <button
+              className={`btn-mic ${isListening ? 'recording' : ''}`}
+              onClick={isListening ? stopListening : startListening}
+              title={isListening ? 'Stop Recording' : 'Start Recording'}
             >
-              {sending ? '...' : '📝 Log'}
+              {isListening ? '⏹️ Stop Recording' : '🎤 Start Recording'}
             </button>
-          </div>
-          
-          {!sttSupported && (
+          ) : (
             <p className="stt-unsupported">
               ℹ️ Voice input requires Chrome, Edge, or Safari
             </p>

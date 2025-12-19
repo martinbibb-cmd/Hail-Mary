@@ -21,6 +21,19 @@ interface NasUser {
   email: string;
 }
 
+const EyeOpenIcon: React.FC = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 5C5.63636 5 2 12 2 12s3.63636 7 10 7 10-7 10-7-3.63636-7-10-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const EyeClosedIcon: React.FC = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 3l18 18M10.5 10.677a2 2 0 002.823 2.823M7.362 7.561C5.68 8.74 4.279 10.42 3 12c1.889 2.991 5.282 6 9 6 1.55 0 3.043-.523 4.395-1.35M12 6c4.008 0 6.701 3.158 9 6a15.66 15.66 0 01-1.507 1.952" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export const AuthScreen: React.FC = () => {
   const { error, login, register, requestPasswordReset, clearError, nasMode, getNasUsers, nasLogin } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('login');
@@ -34,6 +47,8 @@ export const AuthScreen: React.FC = () => {
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [nasUsers, setNasUsers] = useState<NasUser[]>([]);
   const [loadingNasUsers, setLoadingNasUsers] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Load NAS users when mode changes
   useEffect(() => {
@@ -321,29 +336,49 @@ export const AuthScreen: React.FC = () => {
 
               <div className="auth-form-group">
                 <label htmlFor="password">Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="At least 8 characters"
-                  required
-                  minLength={8}
-                />
+                <div className="auth-password-wrapper">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="At least 8 characters"
+                    required
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                  </button>
+                </div>
               </div>
 
               <div className="auth-form-group">
                 <label htmlFor="confirmPassword">Confirm Password</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Confirm your password"
-                  required
-                />
+                <div className="auth-password-wrapper">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Confirm your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                  </button>
+                </div>
               </div>
 
               <button
@@ -416,15 +451,25 @@ export const AuthScreen: React.FC = () => {
 
             <div className="auth-form-group">
               <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Your password"
-                required
-              />
+              <div className="auth-password-wrapper">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Your password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                </button>
+              </div>
             </div>
 
             <button

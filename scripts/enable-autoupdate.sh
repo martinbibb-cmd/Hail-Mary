@@ -101,98 +101,23 @@ fi
 # Set up cron job
 echo -e "${BLUE}Setting up automatic updates (checks every $CHECK_INTERVAL minutes)...${NC}"
 
-# Create the check-updates script
+# Ensure the check-updates script exists in the deployment directory
 mkdir -p "$DEPLOY_DIR/scripts"
-cat > "$DEPLOY_DIR/scripts/check-updates.sh" << 'SCRIPT'
-#!/bin/bash
-# Automatic update checker for Hail-Mary
 
-# Auto-detect unRAID
-if [[ -d "/mnt/user" ]]; then
-    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
-    COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.unraid.yml"
+# Get the script directory (where this script is located)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Copy the check-updates script if it exists in the repo, otherwise download it
+if [[ -f "$SCRIPT_DIR/check-updates.sh" ]]; then
+    echo -e "${BLUE}Copying check-updates.sh from repository...${NC}"
+    cp "$SCRIPT_DIR/check-updates.sh" "$DEPLOY_DIR/scripts/check-updates.sh"
 else
-    DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
-    COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.prod.yml"
+    echo -e "${YELLOW}Downloading check-updates.sh from GitHub...${NC}"
+    curl -fsSL https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/check-updates.sh -o "$DEPLOY_DIR/scripts/check-updates.sh"
 fi
-
-LOG_FILE="/var/log/hail-mary-updates.log"
-
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | tee -a "$LOG_FILE"
-}
-
-cd "$DEPLOY_DIR" || exit 1
-
-# Get current running container image ID
-get_container_image_id() {
-    docker inspect --format='{{.Image}}' "hailmary-$1" 2>/dev/null || echo "none"
-}
-
-# Get image ID from compose config (what would be used if we deploy)
-get_compose_image_id() {
-    local image_name
-    image_name=$(docker-compose -f "$COMPOSE_FILE" config | grep -A5 "hailmary-$1:" | grep "image:" | awk '{print $2}')
-    if [[ -n "$image_name" ]]; then
-        docker image inspect --format='{{.Id}}' "$image_name" 2>/dev/null || echo "none"
-    else
-        echo "none"
-    fi
-}
-
-# Store current running image IDs
-api_old=$(get_container_image_id api)
-pwa_old=$(get_container_image_id pwa)
-assistant_old=$(get_container_image_id assistant)
-
-# Pull latest images and capture output
-pull_output=$(docker-compose -f "$COMPOSE_FILE" pull 2>&1)
-
-# Check if any new images were downloaded
-if echo "$pull_output" | grep -q "Downloaded\|Pulling\|Pull complete"; then
-    log "Updates detected, checking what changed..."
-    
-    # Get new image IDs from what was pulled
-    api_new=$(get_compose_image_id api)
-    pwa_new=$(get_compose_image_id pwa)
-    assistant_new=$(get_compose_image_id assistant)
-    
-    # Check what changed
-    updates_found=false
-    if [[ "$api_old" != "$api_new" ]] && [[ "$api_new" != "none" ]]; then
-        log "  → API service updated"
-        updates_found=true
-    fi
-    if [[ "$pwa_old" != "$pwa_new" ]] && [[ "$pwa_new" != "none" ]]; then
-        log "  → PWA service updated"
-        updates_found=true
-    fi
-    if [[ "$assistant_old" != "$assistant_new" ]] && [[ "$assistant_new" != "none" ]]; then
-        log "  → Assistant service updated"
-        updates_found=true
-    fi
-    
-    if [[ "$updates_found" == "true" ]]; then
-        # Restart with new images
-        log "Restarting containers with new images..."
-        if docker-compose -f "$COMPOSE_FILE" up -d --remove-orphans 2>&1 | tee -a "$LOG_FILE"; then
-            log "✓ Update completed successfully"
-            
-            # Cleanup old images
-            docker image prune -f &> /dev/null
-        else
-            log "✗ Update failed - check logs"
-        fi
-    else
-        log "Images pulled but no version changes detected"
-    fi
-else
-    log "No updates available"
-fi
-SCRIPT
 
 chmod +x "$DEPLOY_DIR/scripts/check-updates.sh"
-echo -e "${GREEN}✓ Update script created${NC}"
+echo -e "${GREEN}✓ Update script installed${NC}"
 
 # Add to crontab
 CRON_ENTRY="*/$CHECK_INTERVAL * * * * $DEPLOY_DIR/scripts/check-updates.sh"

@@ -40,7 +40,7 @@ HTTP_CODE=$(curl -fsS -w "%{http_code}" -o /tmp/ai-health-response.json "${API_U
 if [ "$HTTP_CODE" = "200" ]; then
   echo -e "${GREEN}OK${NC}"
   echo "Response:"
-  cat /tmp/ai-health-response.json | python3 -m json.tool 2>/dev/null || cat /tmp/ai-health-response.json
+  python3 -m json.tool < /tmp/ai-health-response.json 2>/dev/null || cat /tmp/ai-health-response.json
   echo ""
   echo -e "${GREEN}✅ AI Gateway smoke test PASSED${NC}"
   echo "The API is properly wired to the Cloudflare Worker"

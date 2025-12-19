@@ -13,7 +13,7 @@ import './ActiveCustomerBar.css';
 
 export function ActiveCustomerBar() {
   const navigate = useNavigate();
-  const { activeLeadId, activeLead, saveStatus, clearActiveLead } = useActiveCustomerStore();
+  const { activeLead, saveStatus, clearActiveLead } = useActiveCustomerStore();
   const [showSelector, setShowSelector] = useState(false);
 
   // Get save status indicator

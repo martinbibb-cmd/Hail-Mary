@@ -6,6 +6,7 @@ import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
 import { visitSessions, visitObservations } from "../db/drizzle-schema";
 import { eq, desc, count } from "drizzle-orm";
+import { requireLeadId } from "../middleware/leadId.middleware";
 import type {
   ApiResponse,
   VisitSession,
@@ -121,15 +122,17 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 // POST /visit-sessions - Create visit session (Start a visit)
-router.post("/", async (req: Request, res: Response) => {
+// Requires leadId to ensure visits are always linked to a customer
+router.post("/", requireLeadId, async (req: Request, res: Response) => {
   try {
     const dto: CreateVisitSessionDto = req.body;
 
+    // leadId is required and validated by middleware
     const [inserted] = await db
       .insert(visitSessions)
       .values({
         accountId: dto.accountId,
-        leadId: dto.leadId,
+        leadId: dto.leadId!,
         status: "in_progress",
       })
       .returning();

@@ -65,14 +65,14 @@ jobs:
         run: |
           echo "### 🚀 Worker Deployed Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Worker URL**: \`https://hail-mary.martinbibb.workers.dev\`" >> $GITHUB_STEP_SUMMARY
+          echo "The Cloudflare Worker has been deployed successfully." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Test health endpoint: \`curl https://hail-mary.martinbibb.workers.dev/health\`" >> $GITHUB_STEP_SUMMARY
+          echo "1. Test health endpoint: \`GET /health\`" >> $GITHUB_STEP_SUMMARY
           echo "2. Test Rocky endpoint: \`POST /rocky/analyse\`" >> $GITHUB_STEP_SUMMARY
           echo "3. Test Sarah endpoint: \`POST /sarah/explain\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "See \`packages/worker/DEPLOYMENT.md\` for testing details." >> $GITHUB_STEP_SUMMARY
+          echo "See \`packages/worker/DEPLOYMENT.md\` for detailed testing instructions." >> $GITHUB_STEP_SUMMARY
 
       - name: Deployment failed
         if: failure()

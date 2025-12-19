@@ -20,6 +20,8 @@ import { RockyTool, SarahTool } from './modules'
 import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
+import { ActiveCustomerBar } from './components/ActiveCustomerBar'
+import { useActiveCustomerStore } from './stores/activeCustomerStore'
 
 // Simple API client
 const api = {
@@ -685,6 +687,12 @@ function App() {
   const { profile } = useCognitiveProfile()
   const isFocusProfile = profile === 'focus'
   const layout = useDeviceLayout()
+  const { hydrate } = useActiveCustomerStore()
+
+  // Hydrate active customer from localStorage on mount
+  useEffect(() => {
+    hydrate()
+  }, [hydrate])
 
   // Determine if using desktop or touch workspace
   const isDesktop = layout === 'desktop'
@@ -707,6 +715,9 @@ function App() {
         </nav>
       )}
       <main className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`}>
+        {/* Active Customer Bar - always visible at the top */}
+        <ActiveCustomerBar />
+        
         {isFocusProfile && (
           <div className="focus-mode-banner">
             <p className="focus-mode-title">Focus Mode</p>

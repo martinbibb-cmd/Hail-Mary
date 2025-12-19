@@ -25,6 +25,7 @@ import type {
   TranscriptSessionWithDetails,
 } from '@hail-mary/shared';
 import { enqueueSttJob } from '../services/stt.service';
+import { requireLeadId } from '../middleware/leadId.middleware';
 
 const router = Router();
 
@@ -134,14 +135,16 @@ function mapRowToSegment(row: typeof transcriptSegments.$inferSelect): Transcrip
 }
 
 // POST /sessions - Create a new transcript session
-router.post('/sessions', async (req: Request, res: Response) => {
+// Requires leadId to ensure transcripts are always linked to a customer
+router.post('/sessions', requireLeadId, async (req: Request, res: Response) => {
   try {
     const dto: CreateTranscriptSessionDto = req.body;
 
+    // leadId is required and validated by middleware
     const [inserted] = await db
       .insert(transcriptSessions)
       .values({
-        leadId: dto.leadId || null,
+        leadId: dto.leadId!,
         status: 'recording',
         language: dto.language || 'en-GB',
         notes: dto.notes || null,

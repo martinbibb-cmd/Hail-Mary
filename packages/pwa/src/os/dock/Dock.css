@@ -3,23 +3,25 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 70px;
+  height: var(--desktop-dock-height);
   display: flex;
   justify-content: center;
   align-items: flex-end;
   padding-bottom: 8px;
-  z-index: 10000;
+  /* iOS safe area support for home indicator */
+  padding-bottom: max(8px, var(--safe-area-inset-bottom));
+  z-index: var(--z-sticky);
   pointer-events: none;
 }
 
 .os-dock-container {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
   padding: 8px 16px;
   background: var(--dock-bg);
   backdrop-filter: blur(var(--dock-blur));
   -webkit-backdrop-filter: blur(var(--dock-blur));
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--dock-border);
   box-shadow: var(--dock-shadow);
   pointer-events: auto;
@@ -28,6 +30,8 @@
   overflow-y: hidden;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
+  /* Smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -35,29 +39,68 @@
   display: none;
 }
 
-/* Mobile view adjustments */
-@media (max-width: 768px) {
+/* ========================================
+ * RESPONSIVE - Mobile (iPhone-inspired)
+ * ======================================== */
+
+@media (max-width: 767px) {
   .os-dock {
-    height: 80px;
-    padding-bottom: 12px;
+    height: var(--mobile-nav-height);
+    /* Extra padding for iOS home indicator on newer iPhones */
+    padding-bottom: max(12px, var(--safe-area-inset-bottom));
   }
 
   .os-dock-container {
     padding: 12px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     justify-content: flex-start;
-    max-width: calc(100vw - 16px);
-    margin: 0 8px;
+    max-width: calc(100vw - var(--mobile-padding) * 2);
+    margin: 0 var(--mobile-padding);
+    gap: var(--spacing-sm);
   }
 
   .os-dock-item {
-    width: 56px;
-    height: 56px;
+    /* Larger touch targets for mobile */
+    width: var(--mobile-touch-target);
+    height: var(--mobile-touch-target);
+    min-width: var(--mobile-touch-target);
     flex-shrink: 0;
+    border-radius: var(--radius-md);
   }
 
   .os-dock-icon {
     font-size: 26px;
+  }
+
+  /* Adjust tooltip position on mobile */
+  .os-dock-item::before {
+    top: -42px;
+    font-size: var(--mobile-font-xs);
+  }
+
+  .os-dock-minimized {
+    display: none; /* Hide minimized windows on mobile */
+  }
+}
+
+/* ========================================
+ * RESPONSIVE - Tablet (iPad)
+ * ======================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .os-dock {
+    height: var(--tablet-nav-height);
+  }
+
+  .os-dock-container {
+    padding: 10px 14px;
+    gap: var(--spacing-xs);
+  }
+
+  .os-dock-item {
+    width: 54px;
+    height: 54px;
+    border-radius: var(--radius-md);
   }
 }
 

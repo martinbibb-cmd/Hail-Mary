@@ -177,10 +177,88 @@
   font-size: 13px;
 }
 
-@media (max-width: 1024px) {
+/* ========================================
+ * RESPONSIVE - Mobile (iPhone-inspired)
+ * ======================================== */
+
+@media (max-width: 767px) {
+  .home-page {
+    gap: var(--spacing-md);
+  }
+
   .home-hero {
     flex-direction: column;
     align-items: flex-start;
+    padding: var(--mobile-padding);
+    border-radius: var(--radius-lg);
+  }
+
+  .home-hero__title {
+    font-size: var(--mobile-font-xl);
+  }
+
+  .home-hero__chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .home-chip {
+    border-radius: var(--radius-md);
+    /* Minimum touch target */
+    min-height: var(--mobile-touch-target);
+    display: flex;
+    align-items: center;
+  }
+
+  .home-grid--desktop {
+    grid-template-columns: 1fr;
+  }
+
+  .home-section {
+    padding: var(--mobile-padding);
+    border-radius: var(--radius-md);
+  }
+
+  .home-shortcut--icon {
+    align-items: flex-start;
+    flex-direction: row;
+    min-height: auto;
+    /* Larger touch target */
+    min-height: var(--mobile-touch-target);
+  }
+
+  .home-shortcut {
+    border-radius: var(--radius-md);
+  }
+
+  .home-section__shortcuts--desktop {
+    grid-template-columns: 1fr;
+  }
+
+  .home-section__shortcuts--tiles {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+ * RESPONSIVE - Tablet (iPad)
+ * ======================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .home-page {
+    gap: var(--spacing-lg);
+  }
+
+  .home-hero {
+    padding: var(--tablet-padding);
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-hero__title {
+    font-size: var(--tablet-font-xl);
   }
 
   .home-hero__chips {
@@ -192,16 +270,27 @@
   .home-grid--desktop {
     grid-template-columns: 1fr;
   }
+
+  .home-section {
+    padding: var(--tablet-padding);
+  }
 }
 
-@media (max-width: 640px) {
-  .home-shortcut--icon {
-    align-items: flex-start;
-    flex-direction: row;
-    min-height: auto;
+/* ========================================
+ * RESPONSIVE - Desktop (macOS-inspired)
+ * ======================================== */
+
+@media (min-width: 1024px) {
+  .home-hero {
+    padding: var(--desktop-padding);
+    border-radius: var(--radius-xl);
   }
 
-  .home-section__shortcuts--desktop {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  .home-hero__title {
+    font-size: var(--desktop-font-2xl);
+  }
+
+  .home-section {
+    border-radius: var(--radius-lg);
   }
 }

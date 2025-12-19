@@ -1,17 +1,17 @@
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import type { 
-  Customer, 
-  Quote, 
-  Lead, 
-  ApiResponse, 
+import type {
+  Customer,
+  Quote,
+  Lead,
+  ApiResponse,
   PaginatedResponse,
   VisitSession,
   VisitObservation,
   AssistantMessageResponse,
 } from '@hail-mary/shared'
 import { Desktop, DesktopWorkspace, StackWorkspace } from './os'
-import { AuthProvider, AuthGuard, ResetPasswordPage } from './auth'
+import { AuthProvider, AuthGuard, ResetPasswordPage, useAuth } from './auth'
 import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useDeviceLayout } from './hooks/useDeviceLayout'
@@ -363,6 +363,7 @@ function NewLead() {
 function CustomerDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
   const [startingVisit, setStartingVisit] = useState(false)
@@ -381,12 +382,12 @@ function CustomerDetail() {
   }, [id])
 
   const handleStartVisit = async () => {
-    if (!customer) return
+    if (!customer || !user) return
     setStartingVisit(true)
-    
+
     try {
       const res = await api.post<ApiResponse<VisitSession>>('/api/visit-sessions', {
-        accountId: 1, // TODO: Get from auth context
+        accountId: user.accountId,
         leadId: customer.id,
       })
       

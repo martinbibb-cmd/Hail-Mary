@@ -292,6 +292,21 @@ router.get('/me', (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/auth/config
+ * Get authentication configuration (which auth methods are enabled)
+ * Public endpoint - does not require authentication
+ */
+router.get('/config', (_req: Request, res: Response) => {
+  return res.json({
+    success: true,
+    data: {
+      googleAuthEnabled: isGoogleAuthEnabled(),
+      nasAuthMode: process.env.NAS_AUTH_MODE === 'true',
+    },
+  });
+});
+
+/**
  * POST /api/auth/request-password-reset
  * Start password reset flow - sends reset email
  */

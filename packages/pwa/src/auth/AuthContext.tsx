@@ -14,11 +14,18 @@ interface NasUser {
   email: string;
 }
 
+interface AuthConfig {
+  googleAuthEnabled: boolean;
+  nasAuthMode: boolean;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
-  /** Whether NAS quick login mode is available */
+  /** Auth configuration (Google OAuth, NAS mode availability) */
+  authConfig: AuthConfig | null;
+  /** @deprecated Use authConfig.nasAuthMode instead */
   nasMode: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
@@ -98,18 +105,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [nasMode, setNasMode] = useState(false);
+  const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
+  const [nasMode, setNasMode] = useState(false); // Deprecated, kept for backwards compatibility
 
-  // Check if NAS mode is available on mount
+  // Fetch auth configuration on mount
   useEffect(() => {
-    authApi.get<{ success: boolean }>('/api/auth/nas/users')
+    authApi.get<{ success: boolean; data?: AuthConfig }>('/api/auth/config')
       .then(res => {
-        if (res.success) {
-          setNasMode(true);
+        if (res.success && res.data) {
+          setAuthConfig(res.data);
+          setNasMode(res.data.nasAuthMode); // For backwards compatibility
         }
       })
       .catch(() => {
-        // NAS mode not available, that's fine
+        // Config endpoint not available, use defaults
+        setAuthConfig({ googleAuthEnabled: false, nasAuthMode: false });
       });
   }, []);
 
@@ -281,7 +291,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         loading,
         error,
-        nasMode,
+        authConfig,
+        nasMode, // Deprecated, kept for backwards compatibility
         login,
         register,
         logout,

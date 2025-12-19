@@ -81,27 +81,59 @@ Generates human-friendly explanations of Rocky's analysis results. Sarah never a
 ## Deployment
 
 ### Prerequisites
-- Wrangler CLI installed: `npm install -g wrangler`
-- Cloudflare account with Workers enabled
 
-### Set Secrets
-```bash
-# Navigate to worker directory
-cd packages/worker
+1. Install Wrangler CLI:
+   ```bash
+   npm install -g wrangler
+   ```
 
-# Set API keys as secrets
-wrangler secret put GEMINI_API_KEY
-wrangler secret put OPENAI_API_KEY
-wrangler secret put ANTHROPIC_API_KEY
-```
+2. Login to Cloudflare:
+   ```bash
+   wrangler login
+   ```
+
+3. Ensure secrets are configured (run once):
+   ```bash
+   cd packages/worker
+   wrangler secret put GEMINI_API_KEY
+   wrangler secret put OPENAI_API_KEY
+   wrangler secret put ANTHROPIC_API_KEY
+   ```
 
 ### Deploy
-```bash
-# Development
-npm run dev
 
-# Production
-npm run deploy
+```bash
+cd packages/worker
+wrangler deploy
+```
+
+This deploys to: `https://hail-mary.martinbibb.workers.dev`
+
+### Verify Deployment
+
+After deployment, verify the endpoints work:
+
+```bash
+# Check health endpoint
+curl -i https://hail-mary.martinbibb.workers.dev/health
+
+# Expected response:
+# HTTP/2 200
+# {
+#   "ok": true,
+#   "providers": {
+#     "gemini": true,
+#     "openai": false,
+#     "anthropic": false
+#   }
+# }
+```
+
+### Check Logs
+
+View real-time logs:
+```bash
+wrangler tail
 ```
 
 ## Architecture
@@ -137,22 +169,20 @@ CORS can be tightened in production by modifying the `corsHeaders` function.
 
 ## Configuration
 
+AI configuration is set in `wrangler.toml`:
+- `SARAH_MODEL`: Model for explanations (default: gemini-1.5-flash)
+- `SARAH_TEMPERATURE`: Temperature for Sarah (default: 0.3)
+- `SARAH_MAX_TOKENS`: Max tokens for Sarah (default: 500)
+- `ROCKY_MODEL`: Model for analysis (default: gemini-1.5-pro)
+- `ROCKY_TEMPERATURE`: Temperature for Rocky (default: 0.2)
+- `ROCKY_MAX_TOKENS`: Max tokens for Rocky (default: 600)
+
+**Never** add API keys to wrangler.toml - use `wrangler secret put` instead.
+
 ### Secrets (via `wrangler secret put`)
 - `GEMINI_API_KEY` - Google Gemini API key
 - `OPENAI_API_KEY` - OpenAI API key
 - `ANTHROPIC_API_KEY` - Anthropic API key
-
-### Variables (in wrangler.toml)
-
-**Sarah Configuration:**
-- `SARAH_MODEL` - Model to use (default: `gemini-1.5-flash`)
-- `SARAH_TEMPERATURE` - Creativity level 0.0-1.0 (default: `0.3`)
-- `SARAH_MAX_TOKENS` - Maximum response length (default: `500`)
-
-**Rocky Configuration:**
-- `ROCKY_MODEL` - Model to use (default: `gemini-1.5-pro`)
-- `ROCKY_TEMPERATURE` - Creativity level 0.0-1.0 (default: `0.2`)
-- `ROCKY_MAX_TOKENS` - Maximum response length (default: `600`)
 
 ## Development
 

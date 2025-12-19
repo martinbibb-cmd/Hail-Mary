@@ -1,7 +1,8 @@
 /**
  * Session Routes - Active lead/customer persistence
  * 
- * Provides endpoints for persisting the active customer/lead in the user session.
+ * Provides endpoints for persisting the active customer/lead.
+ * Uses in-memory storage per user (can be extended to database or session storage later).
  * This allows the active customer to follow the user across devices.
  */
 
@@ -14,13 +15,26 @@ const router = Router();
 // Apply authentication middleware
 router.use(requireAuth);
 
+// In-memory storage for active lead by user ID
+// In production, this should be moved to Redis or database for persistence across restarts
+const activeLeadStore = new Map<number, string>();
+
 /**
  * POST /api/session/active-lead
- * Store the active lead ID in the session
+ * Store the active lead ID for the current user
  */
 router.post('/active-lead', async (req: Request, res: Response) => {
   try {
     const { leadId } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'User not authenticated',
+      };
+      return res.status(401).json(response);
+    }
 
     if (!leadId) {
       const response: ApiResponse<null> = {
@@ -30,19 +44,17 @@ router.post('/active-lead', async (req: Request, res: Response) => {
       return res.status(400).json(response);
     }
 
-    // Store in session
-    if (req.session) {
-      req.session.activeLeadId = String(leadId);
-    }
+    // Store in memory
+    activeLeadStore.set(userId, String(leadId));
 
     const response: ApiResponse<{ leadId: string }> = {
       success: true,
       data: { leadId: String(leadId) },
-      message: 'Active lead saved to session',
+      message: 'Active lead saved',
     };
     res.json(response);
   } catch (error) {
-    console.error('Error saving active lead to session:', error);
+    console.error('Error saving active lead:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,
@@ -53,11 +65,21 @@ router.post('/active-lead', async (req: Request, res: Response) => {
 
 /**
  * GET /api/session/active-lead
- * Retrieve the active lead ID from the session
+ * Retrieve the active lead ID for the current user
  */
 router.get('/active-lead', async (req: Request, res: Response) => {
   try {
-    const leadId = req.session?.activeLeadId || null;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'User not authenticated',
+      };
+      return res.status(401).json(response);
+    }
+
+    const leadId = activeLeadStore.get(userId) || null;
 
     const response: ApiResponse<{ leadId: string | null }> = {
       success: true,
@@ -65,7 +87,7 @@ router.get('/active-lead', async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error('Error retrieving active lead from session:', error);
+    console.error('Error retrieving active lead:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,
@@ -76,21 +98,29 @@ router.get('/active-lead', async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/session/active-lead
- * Clear the active lead from the session
+ * Clear the active lead for the current user
  */
 router.delete('/active-lead', async (req: Request, res: Response) => {
   try {
-    if (req.session) {
-      req.session.activeLeadId = undefined;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'User not authenticated',
+      };
+      return res.status(401).json(response);
     }
+
+    activeLeadStore.delete(userId);
 
     const response: ApiResponse<null> = {
       success: true,
-      message: 'Active lead cleared from session',
+      message: 'Active lead cleared',
     };
     res.json(response);
   } catch (error) {
-    console.error('Error clearing active lead from session:', error);
+    console.error('Error clearing active lead:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,

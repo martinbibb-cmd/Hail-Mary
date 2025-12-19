@@ -103,10 +103,12 @@ curl -fsSL https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scrip
 
 ### Login Options
 
-1. **Admin User** - Full access to all features
-2. **Regular User** - Access to all features for their account
-3. **Guest User** - Read-only demo access (no customer/lead data)
-4. **NAS Quick Login** - Password-free login on trusted networks (optional)
+1. **Email/Password** - Standard authentication with email and password
+2. **Google OAuth** - Sign in with your Google account (when enabled)
+3. **Admin User** - Full access to all features
+4. **Regular User** - Access to all features for their account
+5. **Guest User** - Read-only demo access (no customer/lead data)
+6. **NAS Quick Login** - Password-free login on trusted networks (optional)
 
 ### Default Credentials
 
@@ -157,6 +159,55 @@ GUEST_EMAIL=guest@yourcompany.com
 GUEST_PASSWORD=guest123
 GUEST_NAME=Guest User
 ```
+
+### Google OAuth Authentication
+
+Hail-Mary supports Google OAuth for seamless authentication. Users can sign in with their Google accounts.
+
+#### Setup Google OAuth
+
+1. **Obtain Client Secret** from Google Cloud Console:
+   - Visit [Google Cloud Console - Credentials](https://console.cloud.google.com/apis/credentials)
+   - Find OAuth 2.0 Client ID: `1010895939308-oa69f1h1brjjdfpkum66fqhcouvcqrqc`
+   - Click on it and copy the **Client Secret**
+
+2. **Configure Environment Variables** in your `.env` file:
+   ```env
+   # Enable Google OAuth
+   GOOGLE_AUTH_ENABLED=true
+   
+   # Google OAuth Client ID (already configured)
+   GOOGLE_CLIENT_ID=1010895939308-oa69f1h1brjjdfpkum66fqhcouvcqrqc.apps.googleusercontent.com
+   
+   # Google OAuth Client Secret (REQUIRED - obtain from Google Cloud Console)
+   GOOGLE_CLIENT_SECRET=your-actual-client-secret-here
+   ```
+
+3. **Configure Authorized Redirect URIs** in Google Cloud Console:
+   - Add your callback URL: `https://your-domain.com/api/auth/google/callback`
+   - For local development: `http://localhost:3001/api/auth/google/callback`
+
+4. **Verify Configuration** (optional):
+   ```bash
+   bash scripts/verify-google-oauth.sh
+   ```
+
+5. **Restart the Application** to apply changes
+
+#### How It Works
+
+- When enabled, a "Sign in with Google" button appears on the login page
+- Users are redirected to Google's authentication page
+- After successful authentication, users are automatically logged in
+- First-time users are automatically created in the database
+- Existing users with matching email addresses are linked to their Google accounts
+
+#### Security Notes
+
+- ⚠️ Never commit `GOOGLE_CLIENT_SECRET` to version control
+- 🔒 Client Secret must be kept secure and private
+- 🌐 Callback URLs must match exactly what's configured in Google Cloud Console
+- 🔐 Users authenticated via Google don't need to set passwords
 
 ## 📦 Core Features
 

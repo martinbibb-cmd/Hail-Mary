@@ -306,8 +306,24 @@ input:focus, select:focus, textarea:focus {
   text-align: center;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* ========================================
+ * RESPONSIVE DESIGN SYSTEM
+ * Three distinct UX patterns: Mobile, Tablet, Desktop
+ * ======================================== */
+
+/* ========================================
+ * MOBILE (iPhone-inspired) - 320px to 767px
+ * ======================================== */
+
+@media (max-width: 767px) {
+  body {
+    /* iOS safe area support */
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
+    padding-left: var(--safe-area-inset-left);
+    padding-right: var(--safe-area-inset-right);
+  }
+
   .app {
     flex-direction: column;
   }
@@ -317,6 +333,10 @@ input:focus, select:focus, textarea:focus {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    padding: var(--mobile-padding);
+    /* Support for notched devices */
+    padding-left: max(var(--mobile-padding), var(--safe-area-inset-left));
+    padding-right: max(var(--mobile-padding), var(--safe-area-inset-right));
   }
 
   .logo {
@@ -325,12 +345,14 @@ input:focus, select:focus, textarea:focus {
 
   .logo h2 {
     margin-bottom: 0;
-    font-size: 1.25rem;
+    font-size: var(--mobile-font-lg);
   }
 
   .nav-links {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   }
 
   .nav-links li {
@@ -339,7 +361,110 @@ input:focus, select:focus, textarea:focus {
 
   .nav-links a {
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    font-size: var(--mobile-font-sm);
+    /* Minimum touch target for iOS */
+    min-height: var(--mobile-touch-target);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .content {
+    padding: var(--mobile-padding);
+  }
+
+  .content-stack {
+    padding: var(--mobile-padding);
+  }
+
+  /* Larger touch targets for mobile buttons */
+  .btn-primary,
+  .btn-secondary {
+    min-height: var(--mobile-touch-target);
+    padding: 12px 20px;
+    font-size: var(--mobile-font-base);
+  }
+
+  /* Mobile-optimized forms */
+  input, select, textarea {
+    min-height: var(--mobile-touch-target);
+    font-size: var(--mobile-font-base);
+    border-radius: var(--radius-md);
+  }
+
+  /* Mobile-optimized cards */
+  .stat-card,
+  .list-item,
+  .detail-card {
+    border-radius: var(--radius-md);
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+}
+
+/* ========================================
+ * TABLET (iPad-inspired) - 768px to 1023px
+ * ======================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar {
+    width: var(--tablet-sidebar-width);
+    padding: var(--tablet-padding);
+  }
+
+  .content {
+    padding: var(--tablet-padding);
+  }
+
+  .logo h2 {
+    font-size: var(--tablet-font-lg);
+  }
+
+  /* iPad split-view support */
+  .stat-card,
+  .list-item,
+  .detail-card {
+    transition: all var(--transition-normal);
+  }
+
+  /* Adaptive typography for tablet */
+  body {
+    font-size: var(--tablet-font-base);
+  }
+}
+
+/* ========================================
+ * DESKTOP (macOS-inspired) - 1024px and up
+ * ======================================== */
+
+@media (min-width: 1024px) {
+  .sidebar {
+    width: var(--desktop-sidebar-width);
+    padding: var(--desktop-padding);
+  }
+
+  .content {
+    padding: var(--desktop-padding);
+  }
+
+  .logo h2 {
+    font-size: var(--desktop-font-xl);
+  }
+
+  /* Desktop-optimized spacing */
+  .stat-card,
+  .list-item,
+  .detail-card {
+    border-radius: var(--radius-lg);
+  }
+
+  /* macOS-style hover effects */
+  .nav-links a:hover {
+    transform: translateX(2px);
   }
 }
 

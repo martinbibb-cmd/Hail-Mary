@@ -10,23 +10,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { APP_VERSION } from '../../constants';
+import { AdminApiStatus } from '../../components/AdminApiStatus';
+import type { AdminSystemStatus, AdminSystemStatusResponse } from '../../types/admin';
 import './AdminNasPage.css';
 
-interface SystemStatus {
-  db?: { ok: boolean; latencyMs?: number };
-  api?: { version?: string; nodeVersion?: string; uptimeSeconds?: number };
-  app?: { version?: string };
-  migrations?: { ok: boolean };
-  isDocker?: boolean;
-  nasAuthMode?: boolean;
-  timestamp?: string;
-  degradedSubsystems?: string[];
-  degradedNotes?: string[];
-  warnings?: string[];
-}
-
 export const AdminNasPage: React.FC = () => {
-  const [status, setStatus] = useState<SystemStatus | null>(null);
+  const [status, setStatus] = useState<AdminSystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [migrationResult, setMigrationResult] = useState<{ success: boolean; message: string; output?: string } | null>(null);
@@ -43,12 +32,12 @@ export const AdminNasPage: React.FC = () => {
       const res = await fetch('/api/admin/system/status', {
         credentials: 'include',
       });
-      const data = await res.json();
+      const data: AdminSystemStatusResponse = await res.json();
       
       if (res.status === 401 || res.status === 403) {
         setError('Access denied. Admin privileges required.');
       } else if (data.success) {
-        setStatus(data.data);
+        setStatus(data.data || null);
       } else {
         setError(data.error || 'Failed to get system status');
       }
@@ -122,6 +111,14 @@ export const AdminNasPage: React.FC = () => {
         {error && (
           <div className="alert alert-error">{error}</div>
         )}
+
+        <AdminApiStatus
+          status={status}
+          loading={loading}
+          error={error}
+          onRefresh={loadSystemStatus}
+          fetchOnMount={false}
+        />
 
         {status && (
           <div className="status-section">

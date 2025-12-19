@@ -3,6 +3,12 @@
   flex-direction: column;
   height: 100%;
   padding: 16px;
+  background: var(--surface-primary, #ffffff);
+}
+
+.visit-app-active {
+  padding: 12px;
+  gap: 12px;
 }
 
 .visit-app-loading {
@@ -120,7 +126,57 @@
   font-size: 18px;
 }
 
-/* Timeline */
+/* Three-Panel Layout */
+.visit-three-panel {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.visit-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Responsive Layout */
+@media (max-width: 1200px) {
+  .visit-three-panel {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  
+  .visit-panel-left {
+    grid-column: 1 / -1;
+  }
+  
+  .visit-panel-center {
+    grid-column: 1;
+  }
+  
+  .visit-panel-right {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .visit-three-panel {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  
+  .visit-panel-left,
+  .visit-panel-center,
+  .visit-panel-right {
+    grid-column: 1;
+  }
+}
+
+/* Timeline (legacy - kept for backward compatibility) */
 .visit-timeline {
   flex: 1;
   overflow-y: auto;
@@ -240,7 +296,19 @@
   color: var(--text-primary, rgba(60, 50, 40, 0.95));
 }
 
-/* Input Area */
+/* Controls Area */
+.visit-controls {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+  background: var(--surface-secondary, rgba(0, 0, 0, 0.04));
+  border-radius: 8px;
+  border: 1px solid var(--window-border, rgba(0, 0, 0, 0.08));
+}
+
+/* Input Area (legacy) */
 .visit-input-area {
   flex-shrink: 0;
 }
@@ -309,28 +377,32 @@
 
 /* STT Microphone Button */
 .btn-mic {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--surface-secondary, rgba(139, 119, 91, 0.1));
-  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.2));
+  padding: 12px 24px;
+  border-radius: 24px;
+  background: var(--accent, #007AFF);
+  color: white;
+  border: none;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 14px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   transition: all 0.15s;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 }
 
 .btn-mic:hover {
-  background: var(--surface-hover, rgba(139, 119, 91, 0.15));
-  border-color: var(--accent, #6b8e23);
+  background: var(--accent-hover, #0051D5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
 }
 
 .btn-mic.recording {
-  background: var(--accent-soft, rgba(107, 142, 35, 0.3));
-  border-color: var(--accent, #6b8e23);
+  background: var(--error, #FF3B30);
+  box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3);
   animation: pulse 1.5s infinite;
 }
 
@@ -341,13 +413,13 @@
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(107, 142, 35, 0.4);
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3), 0 0 0 0 rgba(255, 59, 48, 0.4);
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(107, 142, 35, 0);
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3), 0 0 0 10px rgba(255, 59, 48, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(107, 142, 35, 0);
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3), 0 0 0 0 rgba(255, 59, 48, 0);
   }
 }
 

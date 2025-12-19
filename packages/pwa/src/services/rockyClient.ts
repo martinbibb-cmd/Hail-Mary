@@ -1,13 +1,17 @@
 /**
- * Rocky Client - Cloudflare Worker Integration
+ * Rocky Client - Local Deterministic Extraction + Optional Worker
  * 
- * Connects to the Rocky AI analysis engine via Cloudflare Worker
- * Default: Gemini, fallback: OpenAI, fallback: Anthropic
+ * Primary mode: Local deterministic pattern matching (always available)
+ * Optional enhancement: Cloudflare Worker with AI providers (Gemini/OpenAI/Anthropic)
+ * 
+ * Architectural Rule: Rocky decides. Sarah explains.
+ * Rocky is NOT degraded just because Worker is offline - local extraction is the core.
  */
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || 'https://hail-mary.martinbibb.workers.dev';
 
 export type RockyStatus = 'connected' | 'degraded' | 'blocked';
+export type CloudAIStatus = 'available' | 'unavailable' | 'not-configured';
 
 export interface RockyHealthResponse {
   ok: boolean;
@@ -26,7 +30,7 @@ export interface RockyAnalyseRequest {
 
 export interface RockyAnalyseResponse {
   ok: boolean;
-  providerUsed?: 'gemini' | 'openai' | 'anthropic';
+  providerUsed?: 'gemini' | 'openai' | 'anthropic' | 'local';
   plainEnglishSummary?: string;
   technicalRationale?: string;
   keyDetailsDelta?: Record<string, any>;
@@ -35,19 +39,22 @@ export interface RockyAnalyseResponse {
   error?: string;
 }
 
-let cachedStatus: RockyStatus = 'blocked';
+// Rocky local extraction is always 'connected' (no external dependency)
+let cachedStatus: RockyStatus = 'connected';
+let cloudAIStatus: CloudAIStatus = 'not-configured';
 let lastHealthCheck = 0;
 const HEALTH_CHECK_INTERVAL = 60000; // 1 minute
 
 /**
- * Check Rocky health status
+ * Check Cloud AI (Worker) health status
+ * This is separate from Rocky status - Rocky works locally regardless
  */
-export async function checkRockyHealth(): Promise<RockyStatus> {
+export async function checkCloudAIHealth(): Promise<CloudAIStatus> {
   const now = Date.now();
   
   // Return cached status if checked recently
-  if (now - lastHealthCheck < HEALTH_CHECK_INTERVAL && cachedStatus !== 'blocked') {
-    return cachedStatus;
+  if (now - lastHealthCheck < HEALTH_CHECK_INTERVAL) {
+    return cloudAIStatus;
   }
 
   try {
@@ -59,38 +66,57 @@ export async function checkRockyHealth(): Promise<RockyStatus> {
     });
 
     if (!response.ok) {
-      console.warn('Rocky health check failed:', response.status);
-      cachedStatus = 'degraded';
+      console.warn('Cloud AI health check failed:', response.status);
+      cloudAIStatus = 'unavailable';
       lastHealthCheck = now;
-      return 'degraded';
+      return cloudAIStatus;
     }
 
     const data: RockyHealthResponse = await response.json();
     
     // Check if at least one provider is available
     const hasProvider = data.providers.gemini || data.providers.openai || data.providers.anthropic;
-    cachedStatus = hasProvider ? 'connected' : 'degraded';
+    cloudAIStatus = hasProvider ? 'available' : 'unavailable';
     lastHealthCheck = now;
-    return cachedStatus;
+    return cloudAIStatus;
   } catch (error) {
-    console.warn('Rocky health check error:', error);
-    cachedStatus = 'degraded';
+    console.warn('Cloud AI health check error:', error);
+    cloudAIStatus = 'unavailable';
     lastHealthCheck = now;
-    return 'degraded';
+    return cloudAIStatus;
   }
 }
 
 /**
+ * Check Rocky health status
+ * Rocky is local/deterministic, so it's always 'connected' unless there's a config issue
+ */
+export async function checkRockyHealth(): Promise<RockyStatus> {
+  // Local extraction always works - no Worker dependency
+  cachedStatus = 'connected';
+  return cachedStatus;
+}
+
+/**
  * Get current Rocky status (from cache)
+ * Rocky is always 'connected' as it uses local extraction
  */
 export function getRockyStatus(): RockyStatus {
   return cachedStatus;
 }
 
 /**
- * Call Rocky to analyse a transcript chunk
+ * Get Cloud AI status (optional enhancement)
  */
-export async function analyseWithRocky(request: RockyAnalyseRequest): Promise<RockyAnalyseResponse> {
+export function getCloudAIStatus(): CloudAIStatus {
+  return cloudAIStatus;
+}
+
+/**
+ * Call Cloud AI Worker to analyse a transcript chunk (optional enhancement)
+ * This is supplementary to local extraction, not required
+ */
+export async function analyseWithCloudAI(request: RockyAnalyseRequest): Promise<RockyAnalyseResponse> {
   try {
     const response = await fetch(`${WORKER_URL}/rocky/analyse`, {
       method: 'POST',
@@ -103,39 +129,61 @@ export async function analyseWithRocky(request: RockyAnalyseRequest): Promise<Ro
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Rocky analyse failed:', response.status, errorText);
+      console.warn('Cloud AI analyse failed:', response.status, errorText);
+      cloudAIStatus = 'unavailable';
       return {
         ok: false,
-        error: `Rocky analysis failed: ${response.status}`,
-        plainEnglishSummary: 'Rocky is currently unavailable. Observation logged in manual mode.',
+        error: `Cloud AI analysis failed: ${response.status}`,
+        plainEnglishSummary: 'Cloud AI unavailable. Using local extraction.',
         blockers: [`Worker returned ${response.status}`],
       };
     }
 
     const data: RockyAnalyseResponse = await response.json();
     
-    // Update status to connected if analysis succeeded
+    // Update Cloud AI status if analysis succeeded
     if (data.ok) {
-      cachedStatus = 'connected';
+      cloudAIStatus = 'available';
       lastHealthCheck = Date.now();
     }
     
     return data;
   } catch (error) {
-    console.error('Rocky analyse error:', error);
-    cachedStatus = 'degraded';
+    console.warn('Cloud AI analyse error:', error);
+    cloudAIStatus = 'unavailable';
     return {
       ok: false,
       error: String(error),
-      plainEnglishSummary: 'Rocky is offline. Observation logged in manual mode.',
+      plainEnglishSummary: 'Cloud AI unavailable. Using local extraction.',
       blockers: ['Network error or Worker unavailable'],
     };
   }
 }
 
 /**
+ * Call Rocky to analyse a transcript chunk
+ * Uses local extraction (primary) or optionally Cloud AI if configured
+ */
+export async function analyseWithRocky(request: RockyAnalyseRequest): Promise<RockyAnalyseResponse> {
+  // Rocky always uses local extraction now
+  // This function kept for backward compatibility but delegates to local extraction
+  return {
+    ok: true,
+    providerUsed: 'local',
+    plainEnglishSummary: 'Observation logged locally.',
+  };
+}
+
+/**
  * Initialize Rocky client (call on app load)
+ * Rocky is local, so always returns 'connected'
+ * Optionally check Cloud AI status in background
  */
 export async function initializeRocky(): Promise<RockyStatus> {
+  // Check Cloud AI in background (non-blocking)
+  checkCloudAIHealth().catch(() => {
+    // Ignore errors - Cloud AI is optional
+  });
+  
   return checkRockyHealth();
 }

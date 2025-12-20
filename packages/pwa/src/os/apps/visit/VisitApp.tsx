@@ -17,6 +17,7 @@ import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './
 import { useLeadStore } from '../../../stores/leadStore'
 import { processTranscriptSegment, trackAutoFilledFields } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
+import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
 import './VisitApp.css'
 
 /**
@@ -441,15 +442,7 @@ export const VisitApp: React.FC = () => {
   const handleExportJson = useCallback(() => {
     if (!currentLeadId) return
     const json = exportLeadAsJson(currentLeadId)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `lead-${currentLeadId}-${Date.now()}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    exportLeadAsJsonFile(currentLeadId, json)
   }, [currentLeadId, exportLeadAsJson])
 
   const endVisit = async () => {
@@ -498,12 +491,6 @@ export const VisitApp: React.FC = () => {
     const failures = currentLeadId ? (saveFailuresByLeadId[currentLeadId] || 0) : 0
     const isDirty = currentLeadId ? dirtyByLeadId[currentLeadId] : false
     const lastSaved = currentLeadId ? lastSavedAtByLeadId[currentLeadId] : null
-
-    const formatSaveTime = (timestamp: string | null) => {
-      if (!timestamp) return ''
-      const date = new Date(timestamp)
-      return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-    }
 
     return (
       <div className="visit-app visit-app-active">

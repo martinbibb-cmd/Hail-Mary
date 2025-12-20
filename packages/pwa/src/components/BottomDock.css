@@ -1,0 +1,145 @@
+/**
+ * Bottom Dock Styles
+ * 
+ * Fixed bottom navigation dock, always visible on all breakpoints.
+ */
+
+.bottom-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+  padding: 0.5rem 0;
+}
+
+.bottom-dock-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 0.5rem;
+}
+
+.bottom-dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #666;
+  min-width: 64px;
+  border-radius: 8px;
+}
+
+.bottom-dock-item:hover {
+  background: #f5f5f5;
+  color: #333;
+  transform: translateY(-2px);
+}
+
+.bottom-dock-item-active {
+  color: #667eea;
+  background: #e3f2fd;
+}
+
+.bottom-dock-item-active:hover {
+  color: #5a6fd8;
+}
+
+.bottom-dock-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.bottom-dock-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Desktop - wider spacing */
+@media (min-width: 1025px) {
+  .bottom-dock-container {
+    max-width: 600px;
+    gap: 1rem;
+  }
+
+  .bottom-dock-item {
+    padding: 0.75rem 1.5rem;
+  }
+
+  .bottom-dock-icon {
+    font-size: 1.75rem;
+  }
+
+  .bottom-dock-label {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Tablet - medium spacing */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .bottom-dock-container {
+    gap: 0.5rem;
+  }
+
+  .bottom-dock-item {
+    padding: 0.625rem 1.25rem;
+  }
+
+  .bottom-dock-icon {
+    font-size: 1.625rem;
+  }
+}
+
+/* Mobile - compact */
+@media (max-width: 768px) {
+  .bottom-dock {
+    padding: 0.375rem 0;
+  }
+
+  .bottom-dock-container {
+    padding: 0 0.25rem;
+  }
+
+  .bottom-dock-item {
+    padding: 0.5rem 0.75rem;
+    min-width: 56px;
+    gap: 0.125rem;
+  }
+
+  .bottom-dock-icon {
+    font-size: 1.375rem;
+  }
+
+  .bottom-dock-label {
+    font-size: 0.6875rem;
+  }
+}
+
+/* Small mobile - extra compact */
+@media (max-width: 375px) {
+  .bottom-dock-item {
+    padding: 0.375rem 0.5rem;
+    min-width: 48px;
+  }
+
+  .bottom-dock-icon {
+    font-size: 1.25rem;
+  }
+
+  .bottom-dock-label {
+    font-size: 0.625rem;
+  }
+}

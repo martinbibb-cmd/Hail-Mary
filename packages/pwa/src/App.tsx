@@ -21,8 +21,11 @@ import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
 import { HomePage } from './pages/HomePage'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
-import { ActiveCustomerBar } from './components/ActiveCustomerBar'
-import { useActiveCustomerStore } from './stores/activeCustomerStore'
+import { LeadContextBanner } from './components/LeadContextBanner'
+import { LeadDrawer } from './components/LeadDrawer'
+import { BottomDock } from './components/BottomDock'
+import { MoreDrawer } from './components/MoreDrawer'
+import { useLeadStore } from './stores/leadStore'
 
 // Simple API client
 const api = {
@@ -643,9 +646,13 @@ function App() {
   const { profile } = useCognitiveProfile()
   const isFocusProfile = profile === 'focus'
   const layout = useDeviceLayout()
-  const { hydrate } = useActiveCustomerStore()
+  const { hydrate } = useLeadStore()
+  
+  // Drawer states
+  const [isLeadDrawerOpen, setIsLeadDrawerOpen] = useState(false)
+  const [isMoreDrawerOpen, setIsMoreDrawerOpen] = useState(false)
 
-  // Hydrate active customer from localStorage on mount
+  // Hydrate lead store from localStorage on mount
   useEffect(() => {
     hydrate()
   }, [hydrate])
@@ -670,9 +677,9 @@ function App() {
           </ul>
         </nav>
       )}
-      <main className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`}>
-        {/* Active Customer Bar - always visible at the top */}
-        <ActiveCustomerBar />
+      <main className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`} style={{ paddingBottom: isFocusProfile ? '0' : '80px' }}>
+        {/* Lead Context Banner - always visible at the top */}
+        <LeadContextBanner onOpenLeadDrawer={() => setIsLeadDrawerOpen(true)} />
         
         {isFocusProfile && (
           <div className="focus-mode-banner">
@@ -699,6 +706,15 @@ function App() {
           <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
         </Routes>
       </main>
+      
+      {/* Bottom Dock - always visible except in focus mode */}
+      {!isFocusProfile && (
+        <BottomDock onOpenMoreDrawer={() => setIsMoreDrawerOpen(true)} />
+      )}
+      
+      {/* Drawers */}
+      <LeadDrawer isOpen={isLeadDrawerOpen} onClose={() => setIsLeadDrawerOpen(false)} />
+      <MoreDrawer isOpen={isMoreDrawerOpen} onClose={() => setIsMoreDrawerOpen(false)} />
     </>
   )
 

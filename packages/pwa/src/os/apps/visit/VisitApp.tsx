@@ -19,6 +19,21 @@ import { processTranscriptSegment, trackAutoFilledFields } from '../../../servic
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import './VisitApp.css'
 
+/**
+ * Visit App - Voice-driven survey tool with save reliability
+ * 
+ * Save Boundaries (automatic + manual):
+ * 1. Process Recording - Saves after each transcript segment is processed
+ * 2. Stop Recording - Saves when user stops the microphone
+ * 3. End Visit - Saves when visit is completed
+ * 4. Manual Save - User clicks Save button in header or banner
+ * 
+ * Save Reliability:
+ * - All saves go through retry queue (3 attempts)
+ * - Save status shown in real-time (Syncing/Unsaved/Saved/Failed)
+ * - After 3 failures, Export JSON button appears for offline backup
+ */
+
 // Simple API client
 const api = {
   async get<T>(url: string): Promise<T> {

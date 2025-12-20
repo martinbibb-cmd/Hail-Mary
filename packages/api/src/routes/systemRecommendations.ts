@@ -24,6 +24,9 @@ router.use(blockGuest);
 /**
  * POST /api/v1/leads/:leadId/system-recommendation
  * Save a new system recommendation for a lead
+ * 
+ * Note: Currently uses basic lead existence check. Future enhancement should add
+ * accountId-based access control when multi-tenancy is fully implemented.
  */
 router.post('/:leadId/system-recommendation', async (req: Request, res: Response) => {
   try {
@@ -104,8 +107,8 @@ router.post('/:leadId/system-recommendation', async (req: Request, res: Response
       .values({
         leadId,
         rulesetVersion: RULESET_VERSION,
-        inputJson: input as any,
-        outputJson: output as any,
+        inputJson: input as unknown as typeof leadSystemRecommendations.$inferInsert.inputJson,
+        outputJson: output as unknown as typeof leadSystemRecommendations.$inferInsert.outputJson,
         createdByUserId: req.user?.id || null,
       })
       .returning();
@@ -139,6 +142,9 @@ router.post('/:leadId/system-recommendation', async (req: Request, res: Response
 /**
  * GET /api/v1/leads/:leadId/system-recommendation/latest
  * Get the most recent system recommendation for a lead
+ * 
+ * Note: Currently uses basic lead access pattern. Future enhancement should add
+ * accountId-based access control when multi-tenancy is fully implemented.
  */
 router.get('/:leadId/system-recommendation/latest', async (req: Request, res: Response) => {
   try {
@@ -199,6 +205,9 @@ router.get('/:leadId/system-recommendation/latest', async (req: Request, res: Re
 /**
  * GET /api/v1/leads/:leadId/system-recommendation
  * Get list of system recommendations for a lead (history)
+ * 
+ * Note: Currently uses basic lead access pattern. Future enhancement should add
+ * accountId-based access control when multi-tenancy is fully implemented.
  */
 router.get('/:leadId/system-recommendation', async (req: Request, res: Response) => {
   try {

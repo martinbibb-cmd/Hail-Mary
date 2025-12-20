@@ -12,6 +12,13 @@
 export const RULESET_VERSION = '1.0.0';
 
 /**
+ * Business rule constants
+ */
+const SYSTEM_REPLACEMENT_AGE_THRESHOLD = 12; // years
+const URGENT_REPLACEMENT_AGE_THRESHOLD = 15; // years
+const BOILER_UPGRADE_SCHEME_GRANT = 7500; // £
+
+/**
  * Property size category
  */
 export type PropertySize = 'small' | 'medium' | 'large' | 'very_large';
@@ -193,7 +200,7 @@ function generateRecommendations(
   const multiplier = sizeCostMultiplier[propertySize];
   
   // Check if replacement is needed
-  const needsReplacement = !input.systemAge || input.systemAge > 12;
+  const needsReplacement = !input.systemAge || input.systemAge > SYSTEM_REPLACEMENT_AGE_THRESHOLD;
   
   // Gas boiler recommendation (if gas available)
   if (input.hasGasConnection) {
@@ -242,10 +249,10 @@ function generateRecommendations(
     high: Math.round(14000 * multiplier),
   };
   
-  const heatPumpGrants = ['Boiler Upgrade Scheme (£7,500)'];
+  const heatPumpGrants = [`Boiler Upgrade Scheme (£${BOILER_UPGRADE_SCHEME_GRANT.toLocaleString()})`];
   const heatPumpNetCost = {
-    low: Math.max(500, heatPumpCost.low - 7500),
-    high: Math.max(6500, heatPumpCost.high - 7500),
+    low: Math.max(500, heatPumpCost.low - BOILER_UPGRADE_SCHEME_GRANT),
+    high: Math.max(6500, heatPumpCost.high - BOILER_UPGRADE_SCHEME_GRANT),
   };
   
   const heatPumpPriority: RecommendationPriority = 
@@ -438,9 +445,9 @@ function generateInsights(input: SystemRecInput, primary: SystemRecommendation):
   
   // Age-based insight
   if (input.systemAge) {
-    if (input.systemAge > 15) {
+    if (input.systemAge > URGENT_REPLACEMENT_AGE_THRESHOLD) {
       insights.push(`Your current system is ${input.systemAge} years old - replacement is strongly recommended for safety and efficiency`);
-    } else if (input.systemAge > 12) {
+    } else if (input.systemAge > SYSTEM_REPLACEMENT_AGE_THRESHOLD) {
       insights.push(`At ${input.systemAge} years old, your system is nearing end of life - plan for replacement soon`);
     }
   }

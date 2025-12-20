@@ -677,7 +677,7 @@ function App() {
           </ul>
         </nav>
       )}
-      <main className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`} style={{ paddingBottom: isFocusProfile ? '0' : '80px' }}>
+      <main className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`} style={{ paddingBottom: '80px' }}>
         {/* Lead Context Banner - always visible at the top */}
         <LeadContextBanner onOpenLeadDrawer={() => setIsLeadDrawerOpen(true)} />
         
@@ -707,12 +707,10 @@ function App() {
           <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
         </Routes>
       </main>
-      
-      {/* Bottom Dock - always visible except in focus mode */}
-      {!isFocusProfile && (
-        <BottomDock onOpenMoreDrawer={() => setIsMoreDrawerOpen(true)} />
-      )}
-      
+
+      {/* Bottom Dock - always visible across all breakpoints */}
+      <BottomDock onOpenMoreDrawer={() => setIsMoreDrawerOpen(true)} />
+
       {/* Drawers */}
       <LeadDrawer isOpen={isLeadDrawerOpen} onClose={() => setIsLeadDrawerOpen(false)} />
       <MoreDrawer isOpen={isMoreDrawerOpen} onClose={() => setIsMoreDrawerOpen(false)} />

@@ -208,58 +208,6 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
             {children}
           </div>
           
-          {/* Persistent Bottom Navigation for mobile */}
-          {isMobile && (
-            <nav className="stack-nav stack-nav--bottom stack-nav--persistent">
-              <div className="stack-bottom-nav">
-                <button
-                  className={`stack-nav-item ${location.pathname === '/' ? 'stack-nav-item--active' : ''}`}
-                  onClick={() => navigate('/')}
-                >
-                  <span className="stack-nav-icon">🏠</span>
-                  <span className="stack-nav-label">Home</span>
-                </button>
-                <button
-                  className={`stack-nav-item ${location.pathname === '/profile' ? 'stack-nav-item--active' : ''}`}
-                  onClick={() => navigate('/profile')}
-                >
-                  <span className="stack-nav-icon">👤</span>
-                  <span className="stack-nav-label">Profile</span>
-                </button>
-                <button
-                  className={`stack-nav-item ${location.pathname === '/files' ? 'stack-nav-item--active' : ''}`}
-                  onClick={() => navigate('/files')}
-                >
-                  <span className="stack-nav-icon">📁</span>
-                  <span className="stack-nav-label">Files</span>
-                </button>
-              </div>
-            </nav>
-          )}
-          
-          {/* Dock for tablets */}
-          {isTablet && (
-            <nav className="stack-nav stack-nav--bottom stack-nav--persistent tablet-dock">
-              <div className="stack-bottom-nav tablet-dock-items">
-                {getAllDockApps().filter(app => !app.isSurveyModule).map(app => {
-                  const isOpen = windows.some(w => w.appId === app.id);
-                  const isActive = windows.some(w => w.appId === app.id && w.isActive && w.state !== 'minimized');
-                  return (
-                    <button
-                      key={app.id}
-                      className={`stack-nav-item tablet-dock-item ${isOpen ? 'tablet-dock-item--open' : ''} ${isActive ? 'stack-nav-item--active' : ''}`}
-                      onClick={() => handleOpenApp(app.id, app.name)}
-                      title={app.name}
-                    >
-                      <span className="stack-nav-icon">{app.icon}</span>
-                      {isOpen && <span className="tablet-dock-indicator" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
-          )}
-          
           {/* Tablet tabs for open windows */}
           {isTablet && windows.length > 0 && (
             <nav className="stack-nav stack-nav--tabs">

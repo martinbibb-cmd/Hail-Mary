@@ -14,6 +14,7 @@ import {
   type KeyDetails
 } from './components'
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
+import { useLeadStore } from '../../../stores/leadStore'
 import './VisitApp.css'
 
 // Simple API client
@@ -111,6 +112,11 @@ export const VisitApp: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [activeSession, setActiveSession] = useState<VisitSession | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Lead store for save triggers
+  const currentLeadId = useLeadStore((state) => state.currentLeadId)
+  const enqueueSave = useLeadStore((state) => state.enqueueSave)
+  const markDirty = useLeadStore((state) => state.markDirty)
   
   // New state for 3-panel layout
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
@@ -271,7 +277,26 @@ export const VisitApp: React.FC = () => {
       const newExceptions = result.flags.map(flag => `${flag.type.toUpperCase()}: ${flag.message}`)
       setExceptions(prev => [...new Set([...prev, ...newExceptions])])
     }
-  }, [keyDetails, checklistItems])
+    
+    // Mark lead as dirty after processing
+    if (currentLeadId) {
+      markDirty(currentLeadId)
+    }
+    
+    // Trigger save after processing recording
+    if (currentLeadId) {
+      enqueueSave({
+        leadId: currentLeadId,
+        reason: 'process_recording',
+        payload: {
+          transcript: accumulatedTranscriptRef.current,
+          keyDetails: result.facts,
+          checklistItems,
+          timestamp: new Date().toISOString(),
+        },
+      })
+    }
+  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave])
 
   // STT Functions
   const startListening = useCallback(() => {
@@ -343,10 +368,40 @@ export const VisitApp: React.FC = () => {
     recognitionRef.current.stop()
     setIsListening(false)
     setLiveTranscript('')
-  }, [])
+    
+    // Trigger save when stopping recording
+    if (currentLeadId && accumulatedTranscriptRef.current) {
+      enqueueSave({
+        leadId: currentLeadId,
+        reason: 'stop_recording',
+        payload: {
+          transcript: accumulatedTranscriptRef.current,
+          keyDetails,
+          checklistItems,
+          timestamp: new Date().toISOString(),
+        },
+      })
+    }
+  }, [currentLeadId, enqueueSave, keyDetails, checklistItems])
 
   const endVisit = async () => {
     if (!activeSession) return
+    
+    // Trigger save on end visit
+    if (currentLeadId) {
+      enqueueSave({
+        leadId: currentLeadId,
+        reason: 'end_visit',
+        payload: {
+          visitSessionId: activeSession.id,
+          transcript: accumulatedTranscriptRef.current,
+          keyDetails,
+          checklistItems,
+          exceptions,
+          timestamp: new Date().toISOString(),
+        },
+      })
+    }
     
     try {
       await api.put<ApiResponse<VisitSession>>(`/api/visit-sessions/${activeSession.id}`, {

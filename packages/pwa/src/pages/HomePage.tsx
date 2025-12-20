@@ -31,7 +31,6 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   const openWindow = useWindowStore((state) => state.openWindow);
 
   const isDesktop = layout === 'desktop';
-  const isTablet = layout === 'tablet';
 
   const openAppWindow = (appId: string, title: string) => {
     const existing = windows.find((w) => w.appId === appId);
@@ -107,19 +106,7 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
       <div className="home-hero">
         <div className="home-hero__text">
           <p className="home-hero__eyebrow">Welcome back{user?.name ? `, ${user.name}` : ''}</p>
-          <h1 className="home-hero__title">Pick a module to start your next job</h1>
-          <p className="home-hero__copy">
-            Desktop view uses classic icons. Tablets and mobile switch to touch-friendly tiles.
-          </p>
-          <p className="home-hero__hint">
-            Active lead/customer stays pinned in the banner above so you never lose context.
-          </p>
-        </div>
-        <div className="home-hero__chips">
-          <span className="home-chip">
-            {isDesktop ? '🖥️ Desktop workspace' : isTablet ? '📱 Tablet cockpit' : '📞 Mobile stack'}
-          </span>
-          <span className="home-chip">Shortcuts for every module</span>
+          <h1 className="home-hero__title">Workspace</h1>
         </div>
       </div>
 
@@ -127,7 +114,6 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
         <section className="home-section">
           <div className="home-section__header">
             <h2>Core workspace</h2>
-            <p>Jump into your customer, lead, and quoting flows.</p>
           </div>
           <div className={`home-section__shortcuts ${isDesktop ? 'home-section__shortcuts--desktop' : 'home-section__shortcuts--tiles'}`}>
             {coreShortcuts.map(renderShortcut)}
@@ -137,7 +123,6 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
         <section className="home-section">
           <div className="home-section__header">
             <h2>Survey modules</h2>
-            <p>Open any survey tile directly. Ideal for quick site capture.</p>
           </div>
           <div className={`home-section__shortcuts ${isDesktop ? 'home-section__shortcuts--desktop' : 'home-section__shortcuts--tiles'}`}>
             {surveyShortcuts.map(renderShortcut)}
@@ -147,7 +132,6 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
         <section className="home-section">
           <div className="home-section__header">
             <h2>Tools</h2>
-            <p>AI assistance, diary, and photos in one tap.</p>
           </div>
           <div className={`home-section__shortcuts ${isDesktop ? 'home-section__shortcuts--desktop' : 'home-section__shortcuts--tiles'}`}>
             {toolShortcuts.map(renderShortcut)}
@@ -158,7 +142,6 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
           <section className="home-section">
             <div className="home-section__header">
               <h2>Admin</h2>
-              <p>NAS health, users, and knowledge uploads.</p>
             </div>
             <div className={`home-section__shortcuts ${isDesktop ? 'home-section__shortcuts--desktop' : 'home-section__shortcuts--tiles'}`}>
               {adminShortcuts.map(renderShortcut)}

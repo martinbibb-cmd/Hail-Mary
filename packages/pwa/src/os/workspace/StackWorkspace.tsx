@@ -8,7 +8,6 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { useWindowStore } from '../window-manager/windowStore'
 import type { DeviceLayout } from '../../hooks/useDeviceLayout'
 import { ProfileApp } from '../apps/profile/ProfileApp'
@@ -45,8 +44,6 @@ interface StackWorkspaceProps {
 }
 
 export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children }) => {
-  const navigate = useNavigate()
-  const location = useLocation()
   const windows = useWindowStore((state) => state.windows)
   const openWindow = useWindowStore((state) => state.openWindow)
   const focusWindow = useWindowStore((state) => state.focusWindow)

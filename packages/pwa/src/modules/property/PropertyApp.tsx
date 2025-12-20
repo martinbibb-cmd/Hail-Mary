@@ -9,43 +9,90 @@
  * - Ask helper questions for property/fabric
  */
 
-import React, { useState } from 'react';
-import type { 
+import React, { useState, useEffect } from 'react';
+import type {
   SystemSpecDraft,
   SurveySlot,
 } from '@hail-mary/shared';
+import { useLeadStore } from '../../stores/leadStore';
+import { clearAutoFilledField } from '../../services/visitCaptureOrchestrator';
 import './PropertyApp.css';
 
 interface PropertyAppProps {
-  /** Current spec draft (if available) */
+  /** Current spec draft (if available) - DEPRECATED, use Lead store */
   specDraft?: SystemSpecDraft;
-  /** Callback when spec is updated */
+  /** Callback when spec is updated - DEPRECATED, use Lead store */
   onSpecUpdate?: (path: string, value: unknown) => void;
   /** Whether in read-only mode */
   readOnly?: boolean;
 }
 
-// Default empty spec
-const emptySpec: SystemSpecDraft = {
-  activeModules: ['core'],
-  property: {},
-  occupancyPattern: {},
-};
-
 export const PropertyApp: React.FC<PropertyAppProps> = ({
-  specDraft = emptySpec,
-  onSpecUpdate,
   readOnly = false,
 }) => {
   const [currentSlot, setCurrentSlot] = useState<SurveySlot | null>(null);
 
-  const property = specDraft.property || {};
-  const occupancy = specDraft.occupancyPattern || {};
+  // Connect to Lead store
+  const currentLeadId = useLeadStore((state) => state.currentLeadId);
+  const leadById = useLeadStore((state) => state.leadById);
+  const updateLeadData = useLeadStore((state) => state.updateLeadData);
 
-  // Helper to update a field
-  const updateField = (path: string, value: unknown) => {
-    if (onSpecUpdate && !readOnly) {
-      onSpecUpdate(path, value);
+  const currentLead = currentLeadId ? leadById[currentLeadId] : null;
+
+  // Extract property-related fields from lead
+  const [localPropertyData, setLocalPropertyData] = useState({
+    propertyType: currentLead?.propertyType || '',
+    buildYearApprox: '',
+    glazingType: '',
+    loftInsulationDepthMm: '',
+    homeAllDay: null as boolean | null,
+    hotWaterProfile: '',
+  });
+
+  // Sync local state with lead when it changes
+  useEffect(() => {
+    if (currentLead) {
+      setLocalPropertyData({
+        propertyType: currentLead.propertyType || '',
+        buildYearApprox: '',
+        glazingType: '',
+        loftInsulationDepthMm: '',
+        homeAllDay: null,
+        hotWaterProfile: '',
+      });
+    }
+  }, [currentLead]);
+
+  const property = localPropertyData;
+  const occupancy = { homeAllDay: localPropertyData.homeAllDay, hotWaterProfile: localPropertyData.hotWaterProfile };
+
+  // Helper to update a field - wired to Lead store
+  const updateField = (fieldName: string, value: unknown) => {
+    if (readOnly || !currentLeadId) return;
+
+    // Update local state immediately for instant feedback
+    setLocalPropertyData(prev => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+
+    // Update Lead store (this triggers save queue + marks dirty)
+    updateLeadData(currentLeadId, {
+      propertyType: fieldName === 'propertyType' ? String(value) : currentLead?.propertyType,
+      // Additional property fields can be added here as they're added to Lead schema
+    });
+
+    // Mark field as manual (prevents auto-extraction from overwriting)
+    clearAutoFilledField(currentLeadId, fieldName);
+
+    // Store manual field marker in localStorage
+    const manualFieldsKey = `lead-${currentLeadId}-manual-fields`;
+    const existingManual = localStorage.getItem(manualFieldsKey);
+    const manualFields = existingManual ? JSON.parse(existingManual) : [];
+
+    if (!manualFields.includes(fieldName)) {
+      manualFields.push(fieldName);
+      localStorage.setItem(manualFieldsKey, JSON.stringify(manualFields));
     }
   };
 
@@ -128,7 +175,7 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
               <button
                 key={opt}
                 className={`chip ${property.propertyType === opt ? 'selected' : ''}`}
-                onClick={() => updateField('property.propertyType', opt)}
+                onClick={() => updateField('propertyType', opt)}
                 disabled={readOnly}
               >
                 {opt.charAt(0).toUpperCase() + opt.slice(1)}
@@ -154,7 +201,7 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
               <button
                 key={opt}
                 className={`chip ${property.buildYearApprox === opt ? 'selected' : ''}`}
-                onClick={() => updateField('property.buildYearApprox', opt)}
+                onClick={() => updateField('buildYearApprox', opt)}
                 disabled={readOnly}
               >
                 {opt}
@@ -180,7 +227,7 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
               <button
                 key={opt}
                 className={`chip ${property.glazingType === opt ? 'selected' : ''}`}
-                onClick={() => updateField('property.glazingType', opt)}
+                onClick={() => updateField('glazingType', opt)}
                 disabled={readOnly}
               >
                 {opt.charAt(0).toUpperCase() + opt.slice(1)}
@@ -212,7 +259,7 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
               <button
                 key={opt.label}
                 className={`chip ${property.loftInsulationDepthMm === opt.value ? 'selected' : ''}`}
-                onClick={() => updateField('property.loftInsulationDepthMm', opt.value)}
+                onClick={() => updateField('loftInsulationDepthMm', opt.value)}
                 disabled={readOnly}
               >
                 {opt.label}
@@ -242,7 +289,7 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
               <button
                 key={String(opt.value)}
                 className={`chip ${occupancy.homeAllDay === opt.value ? 'selected' : ''}`}
-                onClick={() => updateField('occupancyPattern.homeAllDay', opt.value)}
+                onClick={() => updateField('homeAllDay', opt.value)}
                 disabled={readOnly}
               >
                 {opt.label}
@@ -268,7 +315,7 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
               <button
                 key={opt}
                 className={`chip ${occupancy.hotWaterProfile === opt ? 'selected' : ''}`}
-                onClick={() => updateField('occupancyPattern.hotWaterProfile', opt)}
+                onClick={() => updateField('hotWaterProfile', opt)}
                 disabled={readOnly}
               >
                 {opt.charAt(0).toUpperCase() + opt.slice(1)}

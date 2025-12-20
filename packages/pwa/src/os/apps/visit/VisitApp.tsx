@@ -15,6 +15,8 @@ import {
 } from './components'
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
+import { processTranscriptSegment, trackAutoFilledFields } from '../../../services/visitCaptureOrchestrator'
+import { correctTranscript } from '../../../utils/transcriptCorrector'
 import './VisitApp.css'
 
 // Simple API client
@@ -223,35 +225,53 @@ export const VisitApp: React.FC = () => {
     }
   }
 
-  // Process transcript with Rocky (deterministic/local)
+  // Process transcript with Rocky (deterministic/local) + correction + live extraction
   const processWithRocky = useCallback((newTranscript: string) => {
     if (!newTranscript.trim()) return
 
-    // Add to accumulated transcript
-    accumulatedTranscriptRef.current = accumulatedTranscriptRef.current 
-      ? `${accumulatedTranscriptRef.current} ${newTranscript}` 
-      : newTranscript
+    // Step 1: Apply corrections (flu → flue, etc.)
+    const correction = correctTranscript(newTranscript)
+    const correctedText = correction.corrected
 
-    // Run Rocky extraction
+    // Log corrections for debugging
+    if (correction.corrections.length > 0) {
+      console.log('Transcript corrections:', correction.corrections)
+    }
+
+    // Step 2: Use orchestrator for live extraction
+    if (currentLeadId) {
+      const captureResult = processTranscriptSegment(correctedText, {
+        currentLeadId,
+        accumulatedTranscript: accumulatedTranscriptRef.current,
+        previousFacts: keyDetails,
+      })
+
+      // Update accumulated transcript with corrected version
+      accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
+        ? `${accumulatedTranscriptRef.current} ${correctedText}`
+        : correctedText
+
+      // Track auto-filled fields
+      if (captureResult.autoFilledFields.length > 0) {
+        setAutoFilledFields(prev => [...new Set([...prev, ...captureResult.autoFilledFields])])
+        trackAutoFilledFields(currentLeadId, captureResult.autoFilledFields)
+      }
+
+      // Update local state (Key Details now synced with Lead store)
+      setKeyDetails(captureResult.extractedFields)
+    } else {
+      // Fallback: no active lead, just accumulate
+      accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
+        ? `${accumulatedTranscriptRef.current} ${correctedText}`
+        : correctedText
+    }
+
+    // Run local extraction for checklist updates
     const result = extractFromTranscript({
       transcript: accumulatedTranscriptRef.current,
       previousFacts: keyDetails,
       previousChecklist: checklistItems,
     })
-
-    // Update facts
-    const newlyFilledFields: string[] = []
-    for (const [key, value] of Object.entries(result.facts)) {
-      if (value !== undefined && keyDetails[key] === undefined && key !== 'issues') {
-        newlyFilledFields.push(key)
-      }
-    }
-    
-    if (newlyFilledFields.length > 0) {
-      setAutoFilledFields(prev => [...new Set([...prev, ...newlyFilledFields])])
-    }
-    
-    setKeyDetails(result.facts)
 
     // Update checklist
     if (result.checklistUpdates.length > 0) {
@@ -277,19 +297,16 @@ export const VisitApp: React.FC = () => {
       const newExceptions = result.flags.map(flag => `${flag.type.toUpperCase()}: ${flag.message}`)
       setExceptions(prev => [...new Set([...prev, ...newExceptions])])
     }
-    
-    // Mark lead as dirty after processing
-    if (currentLeadId) {
-      markDirty(currentLeadId)
-    }
-    
+
     // Trigger save after processing recording
     if (currentLeadId) {
       enqueueSave({
         leadId: currentLeadId,
         reason: 'process_recording',
         payload: {
-          transcript: accumulatedTranscriptRef.current,
+          rawTranscript: newTranscript,
+          correctedTranscript: correctedText,
+          fullTranscript: accumulatedTranscriptRef.current,
           keyDetails: result.facts,
           checklistItems,
           timestamp: new Date().toISOString(),
@@ -364,18 +381,18 @@ export const VisitApp: React.FC = () => {
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) return
-    
+
     recognitionRef.current.stop()
     setIsListening(false)
     setLiveTranscript('')
-    
-    // Trigger save when stopping recording
+
+    // Trigger save when stopping recording (with corrected transcript)
     if (currentLeadId && accumulatedTranscriptRef.current) {
       enqueueSave({
         leadId: currentLeadId,
         reason: 'stop_recording',
         payload: {
-          transcript: accumulatedTranscriptRef.current,
+          correctedTranscript: accumulatedTranscriptRef.current, // Already corrected during processing
           keyDetails,
           checklistItems,
           timestamp: new Date().toISOString(),
@@ -386,15 +403,15 @@ export const VisitApp: React.FC = () => {
 
   const endVisit = async () => {
     if (!activeSession) return
-    
-    // Trigger save on end visit
+
+    // Trigger save on end visit (with corrected transcript)
     if (currentLeadId) {
       enqueueSave({
         leadId: currentLeadId,
         reason: 'end_visit',
         payload: {
           visitSessionId: activeSession.id,
-          transcript: accumulatedTranscriptRef.current,
+          correctedTranscript: accumulatedTranscriptRef.current, // Already corrected during processing
           keyDetails,
           checklistItems,
           exceptions,

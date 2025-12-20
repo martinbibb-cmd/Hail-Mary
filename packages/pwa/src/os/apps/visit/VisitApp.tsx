@@ -17,7 +17,23 @@ import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './
 import { useLeadStore } from '../../../stores/leadStore'
 import { processTranscriptSegment, trackAutoFilledFields } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
+import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
 import './VisitApp.css'
+
+/**
+ * Visit App - Voice-driven survey tool with save reliability
+ * 
+ * Save Boundaries (automatic + manual):
+ * 1. Process Recording - Saves after each transcript segment is processed
+ * 2. Stop Recording - Saves when user stops the microphone
+ * 3. End Visit - Saves when visit is completed
+ * 4. Manual Save - User clicks Save button in header or banner
+ * 
+ * Save Reliability:
+ * - All saves go through retry queue (3 attempts)
+ * - Save status shown in real-time (Syncing/Unsaved/Saved/Failed)
+ * - After 3 failures, Export JSON button appears for offline backup
+ */
 
 // Simple API client
 const api = {
@@ -119,6 +135,11 @@ export const VisitApp: React.FC = () => {
   const currentLeadId = useLeadStore((state) => state.currentLeadId)
   const enqueueSave = useLeadStore((state) => state.enqueueSave)
   const markDirty = useLeadStore((state) => state.markDirty)
+  const isSyncing = useLeadStore((state) => state.isSyncing)
+  const saveFailuresByLeadId = useLeadStore((state) => state.saveFailuresByLeadId)
+  const dirtyByLeadId = useLeadStore((state) => state.dirtyByLeadId)
+  const lastSavedAtByLeadId = useLeadStore((state) => state.lastSavedAtByLeadId)
+  const exportLeadAsJson = useLeadStore((state) => state.exportLeadAsJson)
   
   // New state for 3-panel layout
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
@@ -401,6 +422,29 @@ export const VisitApp: React.FC = () => {
     }
   }, [currentLeadId, enqueueSave, keyDetails, checklistItems])
 
+  const handleManualSave = useCallback(() => {
+    if (!currentLeadId) return
+
+    enqueueSave({
+      leadId: currentLeadId,
+      reason: 'manual_save',
+      payload: {
+        visitSessionId: activeSession?.id,
+        correctedTranscript: accumulatedTranscriptRef.current,
+        keyDetails,
+        checklistItems,
+        exceptions,
+        timestamp: new Date().toISOString(),
+      },
+    })
+  }, [currentLeadId, enqueueSave, activeSession, keyDetails, checklistItems, exceptions])
+
+  const handleExportJson = useCallback(() => {
+    if (!currentLeadId) return
+    const json = exportLeadAsJson(currentLeadId)
+    exportLeadAsJsonFile(currentLeadId, json)
+  }, [currentLeadId, exportLeadAsJson])
+
   const endVisit = async () => {
     if (!activeSession) return
 
@@ -444,6 +488,10 @@ export const VisitApp: React.FC = () => {
   }
 
   if (viewMode === 'active' && activeSession && selectedCustomer) {
+    const failures = currentLeadId ? (saveFailuresByLeadId[currentLeadId] || 0) : 0
+    const isDirty = currentLeadId ? dirtyByLeadId[currentLeadId] : false
+    const lastSaved = currentLeadId ? lastSavedAtByLeadId[currentLeadId] : null
+
     return (
       <div className="visit-app visit-app-active">
         <div className="visit-app-header">
@@ -454,9 +502,58 @@ export const VisitApp: React.FC = () => {
               Rocky: {rockyStatus === 'connected' ? '✅ Local' : rockyStatus === 'degraded' ? '⚠️ Degraded' : '❌ Offline'}
             </span>
           </div>
-          <button className="btn-secondary" onClick={endVisit}>
-            End Visit
-          </button>
+          <div className="visit-header-actions">
+            {/* Save Status Indicator */}
+            <div className="visit-save-status">
+              {isSyncing && (
+                <span className="visit-status-chip visit-status-syncing">
+                  ⏳ Syncing...
+                </span>
+              )}
+              
+              {!isSyncing && failures >= 3 && (
+                <span className="visit-status-chip visit-status-error">
+                  ⚠️ Save Failed
+                </span>
+              )}
+              
+              {!isSyncing && failures < 3 && isDirty && (
+                <span className="visit-status-chip visit-status-dirty">
+                  ● Unsaved
+                </span>
+              )}
+              
+              {!isSyncing && failures < 3 && !isDirty && lastSaved && (
+                <span className="visit-status-chip visit-status-saved">
+                  ✓ Saved {formatSaveTime(lastSaved)}
+                </span>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            {failures >= 3 && (
+              <button 
+                className="btn-export"
+                onClick={handleExportJson}
+                title="Export visit data as JSON"
+              >
+                Export JSON
+              </button>
+            )}
+            
+            <button 
+              className="btn-save"
+              onClick={handleManualSave}
+              disabled={isSyncing}
+              title="Manually save visit data"
+            >
+              Save
+            </button>
+            
+            <button className="btn-secondary" onClick={endVisit}>
+              End Visit
+            </button>
+          </div>
         </div>
 
         <div className="visit-three-panel">

@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { useLeadStore } from '../stores/leadStore';
+import { formatSaveTime, exportLeadAsJsonFile } from '../utils/saveHelpers';
 import './LeadContextBanner.css';
 
 interface LeadContextBannerProps {
@@ -41,21 +42,7 @@ export const LeadContextBanner: React.FC<LeadContextBannerProps> = ({ onOpenLead
   const handleExportJson = () => {
     if (!currentLeadId) return;
     const json = exportLeadAsJson(currentLeadId);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lead-${currentLeadId}-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const formatSaveTime = (timestamp: string | null) => {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    exportLeadAsJsonFile(currentLeadId, json);
   };
 
   const getCustomerName = () => {

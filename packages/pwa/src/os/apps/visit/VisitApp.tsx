@@ -15,7 +15,7 @@ import {
 } from './components'
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
-import { processTranscriptSegment, trackAutoFilledFields } from '../../../services/visitCaptureOrchestrator'
+import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
 import './VisitApp.css'
@@ -250,27 +250,23 @@ export const VisitApp: React.FC = () => {
   const processWithRocky = useCallback((newTranscript: string) => {
     if (!newTranscript.trim()) return
 
-    // Step 1: Apply corrections (flu → flue, etc.)
-    const correction = correctTranscript(newTranscript)
-    const correctedText = correction.corrected
-
-    // Log corrections for debugging
-    if (correction.corrections.length > 0) {
-      console.log('Transcript corrections:', correction.corrections)
-    }
-
-    // Step 2: Use orchestrator for live extraction
+    let correctedText = newTranscript // Default to raw if no correction applied
+    
+    // Step 1: Use orchestrator for live extraction (applies corrections internally)
     if (currentLeadId) {
-      const captureResult = processTranscriptSegment(correctedText, {
+      const captureResult = processTranscriptSegment(newTranscript, {
         currentLeadId,
         accumulatedTranscript: accumulatedTranscriptRef.current,
         previousFacts: keyDetails,
       })
 
-      // Update accumulated transcript with corrected version
-      accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
-        ? `${accumulatedTranscriptRef.current} ${correctedText}`
-        : correctedText
+      // Get corrected text from orchestrator result
+      correctedText = captureResult.transcriptCorrection.corrected
+
+      // Log corrections for debugging
+      if (captureResult.transcriptCorrection.corrections.length > 0) {
+        console.log('Transcript corrections:', captureResult.transcriptCorrection.corrections)
+      }
 
       // Track auto-filled fields
       if (captureResult.autoFilledFields.length > 0) {
@@ -281,13 +277,21 @@ export const VisitApp: React.FC = () => {
       // Update local state (Key Details now synced with Lead store)
       setKeyDetails(captureResult.extractedFields)
     } else {
-      // Fallback: no active lead, just accumulate
-      accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
-        ? `${accumulatedTranscriptRef.current} ${correctedText}`
-        : correctedText
+      // Fallback: no active lead, apply corrections manually
+      const correction = correctTranscript(newTranscript)
+      correctedText = correction.corrected
     }
 
+    // Update accumulated transcript with corrected version
+    accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
+      ? `${accumulatedTranscriptRef.current} ${correctedText}`
+      : correctedText
+
     // Run local extraction for checklist updates
+    // Note: We reprocess the full transcript each time because:
+    // 1. Rocky extraction is deterministic and fast (no LLM)
+    // 2. New context can change interpretation of previous statements
+    // 3. This ensures consistency and accuracy in field extraction
     const result = extractFromTranscript({
       transcript: accumulatedTranscriptRef.current,
       previousFacts: keyDetails,
@@ -445,6 +449,31 @@ export const VisitApp: React.FC = () => {
     exportLeadAsJsonFile(currentLeadId, json)
   }, [currentLeadId, exportLeadAsJson])
 
+  const handleKeyDetailsChange = useCallback((newDetails: KeyDetails) => {
+    // Update local state
+    setKeyDetails(newDetails)
+
+    // Clear auto-fill indicators for changed fields
+    // Only check fields that were auto-filled for efficiency
+    if (currentLeadId && autoFilledFields.length > 0) {
+      autoFilledFields.forEach(field => {
+        const newValue = newDetails[field]
+        const oldValue = keyDetails[field]
+        
+        // Consider it changed if values differ (using JSON for deep comparison of arrays/objects)
+        const hasChanged = JSON.stringify(newValue) !== JSON.stringify(oldValue)
+        
+        if (hasChanged) {
+          clearAutoFilledField(currentLeadId, field)
+          setAutoFilledFields(prev => prev.filter(f => f !== field))
+        }
+      })
+
+      // Mark lead as dirty to trigger save
+      markDirty(currentLeadId)
+    }
+  }, [currentLeadId, keyDetails, autoFilledFields, markDirty])
+
   const endVisit = async () => {
     if (!activeSession) return
 
@@ -580,7 +609,7 @@ export const VisitApp: React.FC = () => {
           <div className="visit-panel visit-panel-right">
             <KeyDetailsForm 
               details={keyDetails}
-              onChange={setKeyDetails}
+              onChange={handleKeyDetailsChange}
               autoFilledFields={autoFilledFields}
             />
           </div>

@@ -9,11 +9,19 @@
  */
 
 import pdfParse from 'pdf-parse';
+import { pdfToPng, PngPageOutput } from 'pdf-to-png-converter';
 
 type PdfParseResult = { numpages: number; text: string };
 type PdfParseFn = (dataBuffer: Buffer, options?: unknown) => Promise<PdfParseResult>;
+
+// Ensure pdfParse is correctly imported as a function
+// This prevents runtime errors like "pdfParse is not a function"
 const parsePdf = pdfParse as unknown as PdfParseFn;
-import { pdfToPng, PngPageOutput } from 'pdf-to-png-converter';
+
+// Defensive check: Verify import is valid at module load time
+if (typeof parsePdf !== 'function') {
+  throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
+}
 
 export interface PageData {
   pageNumber: number;
@@ -32,9 +40,12 @@ export interface PDFProcessingResult {
  */
 export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult> {
   try {
-    // Safeguard: Verify pdfParse is a function
-    if (typeof parsePdf !== 'function') {
-      throw new Error('pdfParse import is invalid - expected a function');
+    // Validate input
+    if (!Buffer.isBuffer(pdfBuffer)) {
+      throw new Error('Invalid input: expected Buffer, got ' + typeof pdfBuffer);
+    }
+    if (pdfBuffer.length === 0) {
+      throw new Error('Invalid input: PDF buffer is empty');
     }
 
     // Step 1: Extract text from PDF using pdf-parse (function-based API)
@@ -97,9 +108,12 @@ export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult
  * For now, this is a placeholder
  */
 export async function extractPageText(pdfBuffer: Buffer, pageNumber: number): Promise<string> {
-  // Safeguard: Verify pdfParse is a function
-  if (typeof parsePdf !== 'function') {
-    throw new Error('pdfParse import is invalid - expected a function');
+  // Validate input
+  if (!Buffer.isBuffer(pdfBuffer)) {
+    throw new Error('Invalid input: expected Buffer');
+  }
+  if (pageNumber < 1) {
+    throw new Error('Invalid page number: must be >= 1');
   }
 
   // This would require pdf.js canvas API for proper per-page extraction

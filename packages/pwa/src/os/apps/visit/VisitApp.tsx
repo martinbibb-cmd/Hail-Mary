@@ -250,27 +250,23 @@ export const VisitApp: React.FC = () => {
   const processWithRocky = useCallback((newTranscript: string) => {
     if (!newTranscript.trim()) return
 
-    // Step 1: Apply corrections (flu → flue, etc.)
-    const correction = correctTranscript(newTranscript)
-    const correctedText = correction.corrected
-
-    // Log corrections for debugging
-    if (correction.corrections.length > 0) {
-      console.log('Transcript corrections:', correction.corrections)
-    }
-
-    // Step 2: Use orchestrator for live extraction
+    let correctedText = newTranscript // Default to raw if no correction applied
+    
+    // Step 1: Use orchestrator for live extraction (applies corrections internally)
     if (currentLeadId) {
-      const captureResult = processTranscriptSegment(correctedText, {
+      const captureResult = processTranscriptSegment(newTranscript, {
         currentLeadId,
         accumulatedTranscript: accumulatedTranscriptRef.current,
         previousFacts: keyDetails,
       })
 
-      // Update accumulated transcript with corrected version
-      accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
-        ? `${accumulatedTranscriptRef.current} ${correctedText}`
-        : correctedText
+      // Get corrected text from orchestrator result
+      correctedText = captureResult.transcriptCorrection.corrected
+
+      // Log corrections for debugging
+      if (captureResult.transcriptCorrection.corrections.length > 0) {
+        console.log('Transcript corrections:', captureResult.transcriptCorrection.corrections)
+      }
 
       // Track auto-filled fields
       if (captureResult.autoFilledFields.length > 0) {
@@ -281,11 +277,15 @@ export const VisitApp: React.FC = () => {
       // Update local state (Key Details now synced with Lead store)
       setKeyDetails(captureResult.extractedFields)
     } else {
-      // Fallback: no active lead, just accumulate
-      accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
-        ? `${accumulatedTranscriptRef.current} ${correctedText}`
-        : correctedText
+      // Fallback: no active lead, apply corrections manually
+      const correction = correctTranscript(newTranscript)
+      correctedText = correction.corrected
     }
+
+    // Update accumulated transcript with corrected version
+    accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
+      ? `${accumulatedTranscriptRef.current} ${correctedText}`
+      : correctedText
 
     // Run local extraction for checklist updates
     const result = extractFromTranscript({

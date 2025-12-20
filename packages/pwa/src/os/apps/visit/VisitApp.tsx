@@ -15,7 +15,7 @@ import {
 } from './components'
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
-import { processTranscriptSegment, trackAutoFilledFields } from '../../../services/visitCaptureOrchestrator'
+import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
 import './VisitApp.css'
@@ -445,6 +445,27 @@ export const VisitApp: React.FC = () => {
     exportLeadAsJsonFile(currentLeadId, json)
   }, [currentLeadId, exportLeadAsJson])
 
+  const handleKeyDetailsChange = useCallback((newDetails: KeyDetails) => {
+    // Update local state
+    setKeyDetails(newDetails)
+
+    // Clear auto-fill indicators for changed fields
+    if (currentLeadId) {
+      const changedFields = Object.keys(newDetails).filter(
+        key => newDetails[key] !== keyDetails[key]
+      )
+      changedFields.forEach(field => {
+        if (autoFilledFields.includes(field)) {
+          clearAutoFilledField(currentLeadId, field)
+          setAutoFilledFields(prev => prev.filter(f => f !== field))
+        }
+      })
+
+      // Mark lead as dirty to trigger save
+      markDirty(currentLeadId)
+    }
+  }, [currentLeadId, keyDetails, autoFilledFields, markDirty])
+
   const endVisit = async () => {
     if (!activeSession) return
 
@@ -580,7 +601,7 @@ export const VisitApp: React.FC = () => {
           <div className="visit-panel visit-panel-right">
             <KeyDetailsForm 
               details={keyDetails}
-              onChange={setKeyDetails}
+              onChange={handleKeyDetailsChange}
               autoFilledFields={autoFilledFields}
             />
           </div>

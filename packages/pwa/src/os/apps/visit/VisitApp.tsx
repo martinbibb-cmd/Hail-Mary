@@ -454,17 +454,16 @@ export const VisitApp: React.FC = () => {
     setKeyDetails(newDetails)
 
     // Clear auto-fill indicators for changed fields
-    if (currentLeadId) {
-      const changedFields = Object.keys(newDetails).filter(
-        key => {
-          // Only consider it changed if the new value exists and differs from old
-          const newValue = newDetails[key]
-          const oldValue = keyDetails[key]
-          return newValue !== undefined && newValue !== oldValue
-        }
-      )
-      changedFields.forEach(field => {
-        if (autoFilledFields.includes(field)) {
+    // Only check fields that were auto-filled for efficiency
+    if (currentLeadId && autoFilledFields.length > 0) {
+      autoFilledFields.forEach(field => {
+        const newValue = newDetails[field]
+        const oldValue = keyDetails[field]
+        
+        // Consider it changed if values differ (using JSON for deep comparison of arrays/objects)
+        const hasChanged = JSON.stringify(newValue) !== JSON.stringify(oldValue)
+        
+        if (hasChanged) {
           clearAutoFilledField(currentLeadId, field)
           setAutoFilledFields(prev => prev.filter(f => f !== field))
         }

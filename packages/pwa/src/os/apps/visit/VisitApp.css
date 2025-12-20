@@ -126,11 +126,12 @@
   font-size: 18px;
 }
 
-/* Three-Panel Layout */
+/* Three-Panel Layout - 2 columns on tablet/desktop (Checklist on RIGHT) */
 .visit-three-panel {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 400px; /* Transcript | Details | Checklist(RIGHT) */
+  grid-template-rows: 1fr;
   gap: 12px;
   min-height: 0;
   overflow: hidden;
@@ -143,23 +144,28 @@
   overflow: hidden;
 }
 
-/* Responsive Layout */
+/* Tablet - 2 column layout (Checklist on RIGHT) */
 @media (max-width: 1200px) {
   .visit-three-panel {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 350px; /* Main content | Checklist(RIGHT) */
     grid-template-rows: 1fr 1fr;
   }
-  
+
   .visit-panel-left {
-    grid-column: 1 / -1;
-  }
-  
-  .visit-panel-center {
     grid-column: 1;
+    grid-row: 1;
   }
-  
+
   .visit-panel-right {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .visit-panel-center {
     grid-column: 2;
+    grid-row: 1 / -1; /* Checklist spans full height on RIGHT */
+    position: sticky;
+    top: 0;
   }
 }
 

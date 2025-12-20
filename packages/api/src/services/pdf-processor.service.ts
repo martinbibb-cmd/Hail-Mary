@@ -8,8 +8,16 @@
  * Heavy operations (OCR, chunking, embeddings) are deferred to background jobs
  */
 
-import pdfParse = require('pdf-parse');
 import { pdfToPng, PngPageOutput } from 'pdf-to-png-converter';
+
+// Import pdf-parse as CommonJS module
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pdfParse = require('pdf-parse') as (dataBuffer: Buffer, options?: any) => Promise<{
+  numpages: number;
+  text: string;
+  info: any;
+  metadata: any;
+}>;
 
 export interface PageData {
   pageNumber: number;

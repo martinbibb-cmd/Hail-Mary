@@ -8,3 +8,4 @@ export * from './transcriptEngine';
 export * from './specStore';
 export * from './surveyHelper';
 export * from './upgradeEngine';
+export * from './systemRecommendation';

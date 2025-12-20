@@ -16,12 +16,8 @@ type PdfParseFn = (dataBuffer: Buffer, options?: unknown) => Promise<PdfParseRes
 
 // Ensure pdfParse is correctly imported as a function
 // This prevents runtime errors like "pdfParse is not a function"
+// The double cast is needed because pdf-parse's default export type doesn't match its runtime behavior
 const parsePdf = pdfParse as unknown as PdfParseFn;
-
-// Defensive check: Verify import is valid at module load time
-if (typeof parsePdf !== 'function') {
-  throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
-}
 
 export interface PageData {
   pageNumber: number;
@@ -46,6 +42,11 @@ export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult
     }
     if (pdfBuffer.length === 0) {
       throw new Error('Invalid input: PDF buffer is empty');
+    }
+
+    // Defensive check: Verify pdfParse is a function
+    if (typeof parsePdf !== 'function') {
+      throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
     }
 
     // Step 1: Extract text from PDF using pdf-parse (function-based API)
@@ -110,10 +111,15 @@ export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult
 export async function extractPageText(pdfBuffer: Buffer, pageNumber: number): Promise<string> {
   // Validate input
   if (!Buffer.isBuffer(pdfBuffer)) {
-    throw new Error('Invalid input: expected Buffer');
+    throw new Error('Invalid input: expected Buffer, got ' + typeof pdfBuffer);
   }
   if (pageNumber < 1) {
-    throw new Error('Invalid page number: must be >= 1');
+    throw new Error('Invalid page number: must be >= 1, got ' + pageNumber);
+  }
+
+  // Defensive check: Verify pdfParse is a function
+  if (typeof parsePdf !== 'function') {
+    throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
   }
 
   // This would require pdf.js canvas API for proper per-page extraction

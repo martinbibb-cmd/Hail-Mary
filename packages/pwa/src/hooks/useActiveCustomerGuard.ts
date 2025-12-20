@@ -5,10 +5,18 @@
  * before allowing capture actions (notes, photos, transcripts, etc.)
  */
 
-import { useActiveCustomerStore } from '../stores/activeCustomerStore';
+import { useMemo } from 'react';
+import { useLeadStore } from '../stores/leadStore';
 
 export function useActiveCustomerGuard() {
-  const { activeLeadId, activeLead } = useActiveCustomerStore();
+  const leadStore = useLeadStore();
+  const activeLeadId = leadStore.currentLeadId;
+  const leadById = leadStore.leadById;
+  
+  const activeLead = useMemo(() => 
+    activeLeadId ? leadById[activeLeadId] : null,
+    [activeLeadId, leadById]
+  );
 
   /**
    * Check if an active customer is selected

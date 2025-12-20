@@ -5,15 +5,24 @@
  * Visible on all screens to provide context for all capture actions.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useActiveCustomerStore } from '../stores/activeCustomerStore';
+import { useLeadStore } from '../stores/leadStore';
 import type { Lead } from '@hail-mary/shared';
 import './ActiveCustomerBar.css';
 
 export function ActiveCustomerBar() {
   const navigate = useNavigate();
-  const { activeLead, saveStatus, setActiveLead, clearActiveLead } = useActiveCustomerStore();
+  const leadStore = useLeadStore();
+  const currentLeadId = leadStore.currentLeadId;
+  const leadById = leadStore.leadById;
+  const activeLead = useMemo(() => 
+    currentLeadId ? leadById[currentLeadId] : null,
+    [currentLeadId, leadById]
+  );
+  const saveStatus = leadStore.saveStatus;
+  const setActiveLead = leadStore.setCurrentLead;
+  const clearActiveLead = leadStore.clearCurrentLead;
   const [showSelector, setShowSelector] = useState(false);
 
   // Get save status indicator

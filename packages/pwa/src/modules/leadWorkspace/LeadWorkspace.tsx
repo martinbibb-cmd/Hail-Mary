@@ -14,7 +14,7 @@ import { PropertyTab } from './tabs/PropertyTab';
 import { InterestsTab } from './tabs/InterestsTab';
 import { QuotesTab } from './tabs/QuotesTab';
 import { RecommendationsTab } from './tabs/RecommendationsTab';
-import { useActiveCustomerStore } from '../../stores/activeCustomerStore';
+import { useLeadStore } from '../../stores/leadStore';
 import './LeadWorkspace.css';
 
 type TabType = 'customer' | 'occupancy' | 'property' | 'interests' | 'quotes' | 'recommendations';
@@ -25,7 +25,7 @@ export function LeadWorkspace() {
   const [activeTab, setActiveTab] = useState<TabType>('customer');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { setActiveLead } = useActiveCustomerStore();
+  const { setCurrentLead } = useLeadStore();
 
   useEffect(() => {
     loadWorkspace();
@@ -43,7 +43,7 @@ export function LeadWorkspace() {
       if (data.success && data.data) {
         setWorkspace(data.data);
         // Set this lead as the active customer
-        setActiveLead(data.data.lead);
+        setCurrentLead(data.data.lead);
       } else {
         setError(data.error || 'Failed to load workspace');
       }

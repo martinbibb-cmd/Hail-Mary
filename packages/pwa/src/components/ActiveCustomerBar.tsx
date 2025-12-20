@@ -5,7 +5,7 @@
  * Visible on all screens to provide context for all capture actions.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLeadStore } from '../stores/leadStore';
 import type { Lead } from '@hail-mary/shared';
@@ -14,7 +14,12 @@ import './ActiveCustomerBar.css';
 export function ActiveCustomerBar() {
   const navigate = useNavigate();
   const leadStore = useLeadStore();
-  const activeLead = leadStore.currentLeadId ? leadStore.leadById[leadStore.currentLeadId] : null;
+  const currentLeadId = leadStore.currentLeadId;
+  const leadById = leadStore.leadById;
+  const activeLead = useMemo(() => 
+    currentLeadId ? leadById[currentLeadId] : null,
+    [currentLeadId, leadById]
+  );
   const saveStatus = leadStore.saveStatus;
   const setActiveLead = leadStore.setCurrentLead;
   const clearActiveLead = leadStore.clearCurrentLead;

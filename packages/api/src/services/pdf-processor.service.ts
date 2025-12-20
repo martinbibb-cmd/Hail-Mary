@@ -8,7 +8,11 @@
  * Heavy operations (OCR, chunking, embeddings) are deferred to background jobs
  */
 
-import pdfParse = require('pdf-parse');
+import pdfParse from 'pdf-parse';
+
+type PdfParseResult = { numpages: number; text: string };
+type PdfParseFn = (dataBuffer: Buffer, options?: unknown) => Promise<PdfParseResult>;
+const parsePdf = pdfParse as unknown as PdfParseFn;
 import { pdfToPng, PngPageOutput } from 'pdf-to-png-converter';
 
 export interface PageData {
@@ -29,12 +33,12 @@ export interface PDFProcessingResult {
 export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult> {
   try {
     // Safeguard: Verify pdfParse is a function
-    if (typeof pdfParse !== 'function') {
+    if (typeof parsePdf !== 'function') {
       throw new Error('pdfParse import is invalid - expected a function');
     }
 
     // Step 1: Extract text from PDF using pdf-parse (function-based API)
-    const pdfData = await pdfParse(pdfBuffer);
+    const pdfData = await parsePdf(pdfBuffer);
     const totalPages = pdfData.numpages;
 
     // Step 2: Render all pages to PNG images
@@ -94,13 +98,13 @@ export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult
  */
 export async function extractPageText(pdfBuffer: Buffer, pageNumber: number): Promise<string> {
   // Safeguard: Verify pdfParse is a function
-  if (typeof pdfParse !== 'function') {
+  if (typeof parsePdf !== 'function') {
     throw new Error('pdfParse import is invalid - expected a function');
   }
 
   // This would require pdf.js canvas API for proper per-page extraction
   // For v1, we extract all text at once
-  const pdfData = await pdfParse(pdfBuffer);
+  const pdfData = await parsePdf(pdfBuffer);
   return pdfData.text; // Return full text for now
 }
 

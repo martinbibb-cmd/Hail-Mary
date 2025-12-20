@@ -23,7 +23,7 @@ const CONTEXTUAL_CORRECTIONS: Array<{ pattern: RegExp; replacement: string; cont
   // Common HVAC misrecognitions
   { pattern: /\bboyla\b/gi, replacement: 'boiler' },
   { pattern: /\bboy la\b/gi, replacement: 'boiler' },
-  { pattern: /\brady ate\(or|er)\b/gi, replacement: 'radiator' },
+  { pattern: /\brady ate (?:or|er)\b/gi, replacement: 'radiator' },
   { pattern: /\brady eater\b/gi, replacement: 'radiator' },
 
   // Gas/heating terms

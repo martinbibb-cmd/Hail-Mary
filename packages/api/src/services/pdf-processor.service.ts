@@ -8,7 +8,7 @@
  * Heavy operations (OCR, chunking, embeddings) are deferred to background jobs
  */
 
-import * as pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import { pdfToPng, PngPageOutput } from 'pdf-to-png-converter';
 
 export interface PageData {
@@ -27,11 +27,12 @@ export interface PDFProcessingResult {
  * This runs synchronously during upload to provide immediate results
  */
 export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult> {
+  let parser: PDFParse | undefined;
   try {
-    // Step 1: Extract text from PDF using pdf-parse
-    // @ts-ignore - pdf-parse has incorrect type definitions
-    const pdfData = await pdfParse(pdfBuffer);
-    const totalPages = pdfData.numpages;
+    // Step 1: Extract text from PDF using pdf-parse (v2.4.5+ class-based API)
+    parser = new PDFParse({ data: pdfBuffer });
+    const pdfData = await parser.getText();
+    const totalPages = pdfData.total;
 
     // Step 2: Render all pages to PNG images
     const pngPages: PngPageOutput[] = await pdfToPng(pdfBuffer as any, {
@@ -81,6 +82,11 @@ export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult
   } catch (error) {
     console.error('Error processing PDF:', error);
     throw new Error(`Failed to process PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    // Always cleanup the parser to free memory
+    if (parser) {
+      await parser.destroy();
+    }
   }
 }
 
@@ -89,11 +95,19 @@ export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult
  * For now, this is a placeholder
  */
 export async function extractPageText(pdfBuffer: Buffer, pageNumber: number): Promise<string> {
-  // This would require pdf.js canvas API for proper per-page extraction
-  // For v1, we extract all text at once
-  // @ts-ignore - pdf-parse has incorrect type definitions
-  const pdfData = await pdfParse(pdfBuffer);
-  return pdfData.text; // Return full text for now
+  let parser: PDFParse | undefined;
+  try {
+    // This would require pdf.js canvas API for proper per-page extraction
+    // For v1, we extract all text at once
+    parser = new PDFParse({ data: pdfBuffer });
+    const pdfData = await parser.getText();
+    return pdfData.text; // Return full text for now
+  } finally {
+    // Always cleanup the parser
+    if (parser) {
+      await parser.destroy();
+    }
+  }
 }
 
 /**

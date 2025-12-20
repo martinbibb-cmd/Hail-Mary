@@ -129,34 +129,38 @@ export const AdminKnowledgePage: React.FC = () => {
         // If response is not JSON, show raw text
         const text = await res.text();
         setError(`Upload failed (HTTP ${res.status}): ${text.substring(0, 500)}`);
-        return;
+        return; // Do not reload documents on error
       }
       
       if (res.status === 401 || res.status === 403) {
         setError('Access denied. Admin privileges required.');
+        return; // Do not reload documents on error
       } else if (res.status === 413) {
         setError('File too large. Maximum upload size is 50MB.');
-      } else if (data.success) {
-        setSuccess(data.message || 'Document uploaded successfully');
-        // Reset form
-        setFile(null);
-        setFormData({
-          title: '',
-          manufacturer: '',
-          modelRange: '',
-          documentType: 'manual',
-          tags: '',
-        });
-        // Reset file input
-        const fileInput = document.getElementById('pdf-file-input') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
-        // Reload documents
-        loadDocuments();
-      } else {
-        // Show detailed error with status code
-        const errorDetails = data.details ? ` (${data.details})` : '';
-        setError(`Upload failed (HTTP ${res.status}): ${data.error || 'Unknown error'}${errorDetails}`);
+        return; // Do not reload documents on error
+      } else if (!res.ok || !data.success) {
+        // Handle any non-2xx status or unsuccessful response
+        const errorDetails = data?.details ? ` (${data.details})` : '';
+        setError(`Upload failed (HTTP ${res.status}): ${data?.error || 'Unknown error'}${errorDetails}`);
+        return; // Do not reload documents on error
       }
+      
+      // Only reach here on successful upload
+      setSuccess(data.message || 'Document uploaded successfully');
+      // Reset form
+      setFile(null);
+      setFormData({
+        title: '',
+        manufacturer: '',
+        modelRange: '',
+        documentType: 'manual',
+        tags: '',
+      });
+      // Reset file input
+      const fileInput = document.getElementById('pdf-file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      // Reload documents only on success
+      loadDocuments();
     } catch (err) {
       setError('Failed to upload document');
       console.error('Error uploading document:', err);

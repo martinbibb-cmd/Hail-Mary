@@ -7,26 +7,33 @@
  * - General preferences
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useAuth } from '../../../auth';
 import { useWallpaper, builtInWallpapers, Wallpaper } from '../../wallpaper';
 import { cognitiveProfiles, useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext';
+import { useSttSettings, SttProvider } from '../../../stores/sttSettingsStore';
 import { AdminSystem } from './AdminSystem';
 import './SettingsApp.css';
 
 export const SettingsApp: React.FC = () => {
   const { user, logout } = useAuth();
   const {
-    currentWallpaper, 
-    customWallpapers, 
-    setWallpaper, 
+    currentWallpaper,
+    customWallpapers,
+    setWallpaper,
     addCustomWallpaper,
     removeCustomWallpaper
   } = useWallpaper();
   const { profile, settings, setProfile, updateSettings } = useCognitiveProfile();
+  const { provider, whisperApiKey, setProvider, setWhisperApiKey, hydrate } = useSttSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [updateState, setUpdateState] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+
+  // Hydrate STT settings from localStorage on mount
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   const handleLogout = async () => {
     await logout();
@@ -170,6 +177,66 @@ export const SettingsApp: React.FC = () => {
             </div>
           </label>
         </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>Speech-to-Text</h3>
+        <p className="settings-section-desc">
+          Choose between browser-based speech recognition or OpenAI Whisper for transcription during visits.
+        </p>
+
+        <div className="stt-provider-grid">
+          <label className={`stt-card ${provider === 'browser' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="stt-provider"
+              value="browser"
+              checked={provider === 'browser'}
+              onChange={() => setProvider('browser')}
+            />
+            <div className="stt-card-body">
+              <p className="stt-card-title">🌐 Browser</p>
+              <p className="stt-card-copy">
+                Uses Web Speech API. Free, works offline, but accuracy varies by browser.
+              </p>
+            </div>
+          </label>
+
+          <label className={`stt-card ${provider === 'whisper' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="stt-provider"
+              value="whisper"
+              checked={provider === 'whisper'}
+              onChange={() => setProvider('whisper')}
+            />
+            <div className="stt-card-body">
+              <p className="stt-card-title">🎙️ Whisper</p>
+              <p className="stt-card-copy">
+                OpenAI Whisper API. More accurate, requires API key and internet connection.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        {provider === 'whisper' && (
+          <div className="stt-api-key-section">
+            <label htmlFor="whisper-api-key">
+              <p className="stt-api-key-label">Whisper API Key</p>
+              <p className="stt-api-key-hint">
+                Enter your OpenAI API key. It will be stored securely in your browser's local storage.
+              </p>
+            </label>
+            <input
+              id="whisper-api-key"
+              type="password"
+              className="stt-api-key-input"
+              placeholder="sk-..."
+              value={whisperApiKey || ''}
+              onChange={(e) => setWhisperApiKey(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       <div className="settings-section">

@@ -15,6 +15,8 @@ import {
 } from './components'
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
+import { useSttSettings } from '../../../stores/sttSettingsStore'
+import { startAudioRecording, stopAudioRecording, transcribeWithWhisper } from '../../../services/whisperService'
 import './VisitApp.css'
 
 // Simple API client
@@ -117,19 +119,26 @@ export const VisitApp: React.FC = () => {
   const currentLeadId = useLeadStore((state) => state.currentLeadId)
   const enqueueSave = useLeadStore((state) => state.enqueueSave)
   const markDirty = useLeadStore((state) => state.markDirty)
-  
+
+  // STT Settings
+  const { provider, whisperApiKey } = useSttSettings()
+
   // New state for 3-panel layout
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
   const [keyDetails, setKeyDetails] = useState<KeyDetails>({})
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([])
   const [exceptions, setExceptions] = useState<string[]>([])
-  
+
   // STT state
   const [isListening, setIsListening] = useState(false)
   const [liveTranscript, setLiveTranscript] = useState('')
   const [sttSupported, setSttSupported] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+
+  // Whisper audio recording state
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   
   // Accumulated final transcript for Rocky processing
   const accumulatedTranscriptRef = useRef<string>('')
@@ -299,19 +308,42 @@ export const VisitApp: React.FC = () => {
   }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave])
 
   // STT Functions
-  const startListening = useCallback(() => {
-    if (!recognitionRef.current || isListening) return
-    
+  const startListening = useCallback(async () => {
+    if (isListening) return
+
     setLiveTranscript('')
-    
+
+    // Whisper mode: Start audio recording
+    if (provider === 'whisper') {
+      try {
+        const { mediaRecorder, audioChunks } = await startAudioRecording()
+        mediaRecorderRef.current = mediaRecorder
+        audioChunksRef.current = audioChunks
+
+        mediaRecorder.onstart = () => {
+          setIsListening(true)
+          setLiveTranscript('🎙️ Recording audio for Whisper transcription...')
+        }
+
+        mediaRecorder.start()
+      } catch (error) {
+        console.error('Failed to start Whisper recording:', error)
+        setExceptions(prev => [...prev, `Microphone error: ${error instanceof Error ? error.message : 'Unknown error'}`])
+      }
+      return
+    }
+
+    // Browser mode: Use Web Speech API
+    if (!recognitionRef.current) return
+
     recognitionRef.current.onstart = () => {
       setIsListening(true)
     }
-    
+
     recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
       let interimTranscript = ''
       let finalTranscript = ''
-      
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i]
         if (result.isFinal) {
@@ -320,7 +352,7 @@ export const VisitApp: React.FC = () => {
           interimTranscript += result[0].transcript
         }
       }
-      
+
       if (finalTranscript) {
         // Add as a new transcript segment
         const segment: TranscriptSegment = {
@@ -330,10 +362,10 @@ export const VisitApp: React.FC = () => {
           text: finalTranscript.trim(),
         }
         setTranscriptSegments(prev => [...prev, segment])
-        
+
         // Process with Rocky
         processWithRocky(finalTranscript.trim())
-        
+
         // Clear live transcript
         setLiveTranscript('')
       } else if (interimTranscript) {
@@ -341,7 +373,7 @@ export const VisitApp: React.FC = () => {
         setLiveTranscript(interimTranscript.trim())
       }
     }
-    
+
     recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error)
       setIsListening(false)
@@ -349,26 +381,91 @@ export const VisitApp: React.FC = () => {
         setExceptions(prev => [...prev, `Microphone error: ${event.error}`])
       }
     }
-    
+
     recognitionRef.current.onend = () => {
       setIsListening(false)
       setLiveTranscript('')
     }
-    
+
     try {
       recognitionRef.current.start()
     } catch (error) {
       console.error('Failed to start speech recognition:', error)
     }
-  }, [isListening, processWithRocky])
+  }, [isListening, provider, processWithRocky])
 
-  const stopListening = useCallback(() => {
+  const stopListening = useCallback(async () => {
+    // Whisper mode: Stop recording and upload to API
+    if (provider === 'whisper' && mediaRecorderRef.current) {
+      try {
+        setLiveTranscript('⏳ Processing with Whisper...')
+
+        // Stop recording and get audio blob
+        const audioBlob = await stopAudioRecording(mediaRecorderRef.current, audioChunksRef.current)
+
+        setIsListening(false)
+
+        // Check if API key is configured
+        if (!whisperApiKey) {
+          setExceptions(prev => [...prev, 'Whisper API key not configured. Please add it in Settings.'])
+          setLiveTranscript('')
+          return
+        }
+
+        // Upload to Whisper API
+        const result = await transcribeWithWhisper(audioBlob, whisperApiKey)
+
+        if (result.success && result.text) {
+          // Add as a new transcript segment
+          const segment: TranscriptSegment = {
+            id: `segment-${Date.now()}`,
+            timestamp: new Date(),
+            speaker: 'user',
+            text: result.text.trim(),
+          }
+          setTranscriptSegments(prev => [...prev, segment])
+
+          // Process with Rocky
+          processWithRocky(result.text.trim())
+        } else {
+          setExceptions(prev => [...prev, `Whisper error: ${result.error || 'Unknown error'}`])
+        }
+
+        setLiveTranscript('')
+
+        // Reset audio chunks for next recording
+        audioChunksRef.current = []
+        mediaRecorderRef.current = null
+      } catch (error) {
+        console.error('Failed to process Whisper recording:', error)
+        setExceptions(prev => [...prev, `Whisper error: ${error instanceof Error ? error.message : 'Unknown error'}`])
+        setIsListening(false)
+        setLiveTranscript('')
+      }
+
+      // Trigger save when stopping recording
+      if (currentLeadId && accumulatedTranscriptRef.current) {
+        enqueueSave({
+          leadId: currentLeadId,
+          reason: 'stop_recording',
+          payload: {
+            transcript: accumulatedTranscriptRef.current,
+            keyDetails,
+            checklistItems,
+            timestamp: new Date().toISOString(),
+          },
+        })
+      }
+      return
+    }
+
+    // Browser mode: Stop Web Speech API
     if (!recognitionRef.current) return
-    
+
     recognitionRef.current.stop()
     setIsListening(false)
     setLiveTranscript('')
-    
+
     // Trigger save when stopping recording
     if (currentLeadId && accumulatedTranscriptRef.current) {
       enqueueSave({
@@ -382,7 +479,7 @@ export const VisitApp: React.FC = () => {
         },
       })
     }
-  }, [currentLeadId, enqueueSave, keyDetails, checklistItems])
+  }, [provider, whisperApiKey, currentLeadId, enqueueSave, keyDetails, checklistItems, processWithRocky])
 
   const endVisit = async () => {
     if (!activeSession) return

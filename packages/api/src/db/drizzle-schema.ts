@@ -681,3 +681,23 @@ export const knowledgeChunks = pgTable("knowledge_chunks", {
     .defaultNow()
     .notNull(),
 });
+
+// ============================================
+// System Recommendations (for leads)
+// ============================================
+
+// Lead system recommendations - persisted system recommendation outputs
+export const leadSystemRecommendations = pgTable("lead_system_recommendations", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  rulesetVersion: varchar("ruleset_version", { length: 20 }).notNull(), // version of recommendation logic used
+  inputJson: jsonb("input_json").notNull(), // SystemRecInput data
+  outputJson: jsonb("output_json").notNull(), // SystemRecOutput data
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  createdByUserId: integer("created_by_user_id")
+    .references(() => users.id), // nullable - may be from API or UI
+});

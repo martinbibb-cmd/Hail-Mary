@@ -288,6 +288,10 @@ export const VisitApp: React.FC = () => {
       : correctedText
 
     // Run local extraction for checklist updates
+    // Note: We reprocess the full transcript each time because:
+    // 1. Rocky extraction is deterministic and fast (no LLM)
+    // 2. New context can change interpretation of previous statements
+    // 3. This ensures consistency and accuracy in field extraction
     const result = extractFromTranscript({
       transcript: accumulatedTranscriptRef.current,
       previousFacts: keyDetails,
@@ -452,7 +456,12 @@ export const VisitApp: React.FC = () => {
     // Clear auto-fill indicators for changed fields
     if (currentLeadId) {
       const changedFields = Object.keys(newDetails).filter(
-        key => newDetails[key] !== keyDetails[key]
+        key => {
+          // Only consider it changed if the new value exists and differs from old
+          const newValue = newDetails[key]
+          const oldValue = keyDetails[key]
+          return newValue !== undefined && newValue !== oldValue
+        }
       )
       changedFields.forEach(field => {
         if (autoFilledFields.includes(field)) {

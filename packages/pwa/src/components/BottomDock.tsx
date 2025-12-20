@@ -47,12 +47,8 @@ export const BottomDock: React.FC<BottomDockProps> = ({ onOpenMoreDrawer }) => {
       id: 'photos',
       label: 'Photos',
       icon: '📸',
-      onClick: () => {
-        // Will need to implement photos route or window opening
-        navigate('/');
-        // TODO: Open photos app window
-      },
-      isActive: false,
+      onClick: () => navigate('/photos'),
+      isActive: isActive('/photos'),
     },
     {
       id: 'more',

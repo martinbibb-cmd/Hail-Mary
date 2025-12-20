@@ -16,7 +16,6 @@ import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useDeviceLayout } from './hooks/useDeviceLayout'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
-import { RockyTool, SarahTool } from './modules'
 import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
 import { HomePage } from './pages/HomePage'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
@@ -25,6 +24,7 @@ import { LeadContextBanner } from './components/LeadContextBanner'
 import { LeadDrawer } from './components/LeadDrawer'
 import { BottomDock } from './components/BottomDock'
 import { MoreDrawer } from './components/MoreDrawer'
+import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
 
 // Simple API client
@@ -697,8 +697,9 @@ function App() {
           <Route path="/leads" element={<LeadsList />} />
           <Route path="/leads/new" element={<NewLead />} />
           <Route path="/leads/:id" element={<LeadWorkspace />} />
-          <Route path="/rocky" element={<RockyTool />} />
-          <Route path="/sarah" element={<SarahTool />} />
+          <Route path="/rocky" element={<RockyToolWithGuard />} />
+          <Route path="/sarah" element={<SarahToolWithGuard />} />
+          <Route path="/photos" element={<PhotosAppWithGuard />} />
           <Route path="/profile" element={<ProfileApp />} />
           <Route path="/files" element={<FilesApp />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />

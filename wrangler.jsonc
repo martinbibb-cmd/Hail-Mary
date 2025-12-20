@@ -1,7 +1,7 @@
 {
   // Cloudflare Pages configuration for Hail-Mary PWA
   // This deploys the built PWA from packages/pwa/dist
-  "name": "hail-mary-pwa",
+  "name": "hail-mary",
   "compatibility_date": "2025-12-20",
   "assets": {
     "directory": "./packages/pwa/dist"

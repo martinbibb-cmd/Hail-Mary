@@ -151,7 +151,12 @@ export function clearAutoFilledField(leadId: string, fieldName: string): void {
 export function getManualFields(leadId: string): string[] {
   const storageKey = `lead-${leadId}-manual-fields`;
   const stored = localStorage.getItem(storageKey);
-  return stored ? JSON.parse(stored) : [];
+  try {
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Failed to parse manual fields from localStorage:', error);
+    return [];
+  }
 }
 
 /**
@@ -172,7 +177,14 @@ export function storeExtractionSuggestion(
 ): void {
   const storageKey = `lead-${leadId}-extraction-suggestions`;
   const existing = localStorage.getItem(storageKey);
-  const suggestions = existing ? JSON.parse(existing) : {};
+  let suggestions: Record<string, { value: unknown; timestamp: string }> = {};
+  
+  try {
+    suggestions = existing ? JSON.parse(existing) : {};
+  } catch (error) {
+    console.error('Failed to parse extraction suggestions from localStorage:', error);
+    suggestions = {};
+  }
 
   suggestions[fieldName] = {
     value: suggestedValue,
@@ -188,6 +200,11 @@ export function storeExtractionSuggestion(
 export function getExtractionSuggestions(leadId: string): Record<string, { value: unknown; timestamp: string }> {
   const storageKey = `lead-${leadId}-extraction-suggestions`;
   const stored = localStorage.getItem(storageKey);
-  return stored ? JSON.parse(stored) : {};
+  try {
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('Failed to parse extraction suggestions from localStorage:', error);
+    return {};
+  }
 }
 

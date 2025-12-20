@@ -79,14 +79,14 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
         setOccupancyData(workspace.occupancy || null);
 
         // Update local state with loaded data
-        const construction = workspace.property?.construction as Record<string, any> || {};
+        const construction = (workspace.property?.construction as Record<string, unknown>) || {};
         setLocalPropertyData({
           propertyType: workspace.property?.type || '',
           buildYearApprox: workspace.property?.ageBand || '',
-          glazingType: construction.glazingType || '',
-          loftInsulationDepthMm: construction.loftInsulationDepthMm || '',
-          homeAllDay: construction.homeAllDay !== undefined ? construction.homeAllDay : null,
-          hotWaterProfile: construction.hotWaterProfile || '',
+          glazingType: (construction.glazingType as string) || '',
+          loftInsulationDepthMm: (construction.loftInsulationDepthMm as string) || '',
+          homeAllDay: construction.homeAllDay !== undefined ? (construction.homeAllDay as boolean) : null,
+          hotWaterProfile: (construction.hotWaterProfile as string) || '',
         });
       }
     } catch (error) {
@@ -113,7 +113,14 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
     // Store manual field marker in localStorage
     const manualFieldsKey = `lead-${currentLeadId}-manual-fields`;
     const existingManual = localStorage.getItem(manualFieldsKey);
-    const manualFields = existingManual ? JSON.parse(existingManual) : [];
+    let manualFields: string[] = [];
+    
+    try {
+      manualFields = existingManual ? JSON.parse(existingManual) : [];
+    } catch (error) {
+      console.error('Failed to parse manual fields from localStorage:', error);
+      manualFields = [];
+    }
 
     if (!manualFields.includes(fieldName)) {
       manualFields.push(fieldName);
@@ -124,10 +131,15 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
     setSaving(true);
     try {
       // Build the update payload based on the field being updated
-      let propertyUpdate: any = {};
-      let occupancyUpdate: any = {};
+      interface PropertyUpdate {
+        type?: string;
+        ageBand?: string;
+        construction?: Record<string, unknown>;
+      }
 
-      const construction = propertyData?.construction as Record<string, any> || {};
+      const propertyUpdate: PropertyUpdate = {};
+
+      const construction = (propertyData?.construction as Record<string, unknown>) || {};
 
       if (fieldName === 'propertyType') {
         propertyUpdate.type = String(value);

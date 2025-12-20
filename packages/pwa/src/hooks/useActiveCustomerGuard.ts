@@ -5,10 +5,12 @@
  * before allowing capture actions (notes, photos, transcripts, etc.)
  */
 
-import { useActiveCustomerStore } from '../stores/activeCustomerStore';
+import { useLeadStore } from '../stores/leadStore';
 
 export function useActiveCustomerGuard() {
-  const { activeLeadId, activeLead } = useActiveCustomerStore();
+  const leadStore = useLeadStore();
+  const activeLeadId = leadStore.currentLeadId;
+  const activeLead = activeLeadId ? leadStore.leadById[activeLeadId] : null;
 
   /**
    * Check if an active customer is selected

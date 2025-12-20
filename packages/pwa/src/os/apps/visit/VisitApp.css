@@ -224,11 +224,11 @@
   font-size: 18px;
 }
 
-/* Three-Panel Layout - 2 columns on tablet/desktop (Checklist on RIGHT) */
+/* Three-Panel Layout - Desktop: 3 columns, Tablet: 2 columns (Checklist on RIGHT) */
 .visit-three-panel {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr 400px; /* Transcript | Details | Checklist(RIGHT) */
+  grid-template-columns: 1fr 1fr 400px; /* Desktop: Transcript | Details | Checklist(RIGHT) */
   grid-template-rows: 1fr;
   gap: 12px;
   min-height: 0;
@@ -242,41 +242,59 @@
   overflow: hidden;
 }
 
-/* Tablet - 2 column layout (Checklist on RIGHT) */
+/* Tablet - 2 column layout: Main content (Transcript + Details) on LEFT, Checklist on RIGHT */
 @media (max-width: 1200px) {
   .visit-three-panel {
     grid-template-columns: 1fr 350px; /* Main content | Checklist(RIGHT) */
     grid-template-rows: 1fr 1fr;
   }
 
+  /* Transcript on top left */
   .visit-panel-left {
     grid-column: 1;
     grid-row: 1;
   }
 
+  /* Key Details on bottom left */
   .visit-panel-right {
     grid-column: 1;
     grid-row: 2;
   }
 
+  /* Checklist on RIGHT - sticky, spans full height */
   .visit-panel-center {
     grid-column: 2;
-    grid-row: 1 / -1; /* Checklist spans full height on RIGHT */
+    grid-row: 1 / -1; /* Spans full height on RIGHT */
     position: sticky;
     top: 0;
+    max-height: 100vh;
   }
 }
 
+/* Mobile - 1 column stacked layout */
 @media (max-width: 768px) {
   .visit-three-panel {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
+    gap: 12px;
   }
   
-  .visit-panel-left,
-  .visit-panel-center,
+  /* Stack all panels in order: Transcript -> Checklist -> Details */
+  .visit-panel-left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .visit-panel-center {
+    grid-column: 1;
+    grid-row: 2;
+    position: static; /* Remove sticky on mobile */
+    max-height: none;
+  }
+
   .visit-panel-right {
     grid-column: 1;
+    grid-row: 3;
   }
 
   .visit-app-header {

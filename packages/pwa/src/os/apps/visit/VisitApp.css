@@ -25,6 +25,8 @@
   align-items: center;
   margin-bottom: 16px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .visit-app-header h2 {
@@ -74,6 +76,102 @@
 .rocky-status-badge.rocky-blocked {
   background: var(--error-soft, rgba(220, 53, 69, 0.15));
   color: var(--error, #dc3545);
+}
+
+/* Visit Header Actions */
+.visit-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.visit-save-status {
+  display: flex;
+  align-items: center;
+}
+
+.visit-status-chip {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.visit-status-syncing {
+  background: rgba(0, 122, 255, 0.15);
+  color: #007AFF;
+  animation: pulse-visit 2s ease-in-out infinite;
+}
+
+.visit-status-dirty {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  font-weight: 600;
+}
+
+.visit-status-saved {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
+.visit-status-error {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+  font-weight: 600;
+}
+
+@keyframes pulse-visit {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Save and Export Buttons */
+.btn-save,
+.btn-export {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-save {
+  background: var(--accent, #6b8e23);
+  color: white;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: var(--accent-hover, #556b2f);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(107, 142, 35, 0.3);
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-export {
+  background: rgba(255, 152, 0, 0.9);
+  color: white;
+}
+
+.btn-export:hover {
+  background: rgba(255, 152, 0, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
 }
 
 /* Customer List */
@@ -179,6 +277,27 @@
   .visit-panel-center,
   .visit-panel-right {
     grid-column: 1;
+  }
+
+  .visit-app-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .visit-header-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .visit-save-status {
+    flex: 1;
+  }
+
+  .btn-save,
+  .btn-export,
+  .btn-secondary {
+    font-size: 13px;
+    padding: 6px 12px;
   }
 }
 

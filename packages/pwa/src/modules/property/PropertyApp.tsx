@@ -152,7 +152,9 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
           [fieldName]: value,
         };
       } else if (fieldName === 'homeAllDay' || fieldName === 'hotWaterProfile') {
-        // Store in construction JSONB for now (can be moved to occupancy table later)
+        // TODO: Consider moving to occupancy table in future
+        // Currently stored in construction JSONB as occupancy table has different schema
+        // (occupants, schedule, priorities) vs what we need (homeAllDay, hotWaterProfile)
         propertyUpdate.construction = {
           ...construction,
           [fieldName]: value,

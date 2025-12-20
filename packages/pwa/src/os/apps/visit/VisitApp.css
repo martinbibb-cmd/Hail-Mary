@@ -143,6 +143,27 @@
   overflow: hidden;
 }
 
+/* Right Panel Split (Key Details + Visit Summary) */
+.visit-right-split {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.visit-right-top {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.visit-right-bottom {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Responsive Layout */
 @media (max-width: 1200px) {
   .visit-three-panel {

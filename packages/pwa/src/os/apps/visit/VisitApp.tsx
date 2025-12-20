@@ -5,16 +5,18 @@ import type {
   ApiResponse, 
   PaginatedResponse 
 } from '@hail-mary/shared'
-import { 
-  TranscriptFeed, 
-  InstallChecklist, 
+import {
+  TranscriptFeed,
+  InstallChecklist,
   KeyDetailsForm,
+  VisitSummaryCard,
   type TranscriptSegment,
   type ChecklistItem,
   type KeyDetails
 } from './components'
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
+import { generateVisitSummary, type VisitSummary } from '../../../utils/visitSummaryGenerator'
 import './VisitApp.css'
 
 // Simple API client
@@ -124,7 +126,11 @@ export const VisitApp: React.FC = () => {
   const [keyDetails, setKeyDetails] = useState<KeyDetails>({})
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([])
   const [exceptions, setExceptions] = useState<string[]>([])
-  
+
+  // Visit Summary state
+  const [visitSummary, setVisitSummary] = useState<VisitSummary | null>(null)
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
+
   // STT state
   const [isListening, setIsListening] = useState(false)
   const [liveTranscript, setLiveTranscript] = useState('')
@@ -184,6 +190,7 @@ export const VisitApp: React.FC = () => {
         setKeyDetails({})
         setAutoFilledFields([])
         setExceptions([])
+        setVisitSummary(null)
         accumulatedTranscriptRef.current = ''
       }
     } catch (error) {
@@ -210,6 +217,7 @@ export const VisitApp: React.FC = () => {
         setKeyDetails({})
         setAutoFilledFields([])
         setExceptions([])
+        setVisitSummary(null)
         accumulatedTranscriptRef.current = ''
       } else {
         // No active session, start new one
@@ -222,6 +230,36 @@ export const VisitApp: React.FC = () => {
       setLoading(false)
     }
   }
+
+  // Generate visit summary
+  const handleGenerateSummary = useCallback(() => {
+    setIsGeneratingSummary(true)
+
+    // Small delay to show loading state
+    setTimeout(() => {
+      const summary = generateVisitSummary(
+        accumulatedTranscriptRef.current,
+        keyDetails,
+        checklistItems,
+        exceptions
+      )
+
+      setVisitSummary(summary)
+      setIsGeneratingSummary(false)
+
+      // Save summary to Lead store
+      if (currentLeadId) {
+        enqueueSave({
+          leadId: currentLeadId,
+          reason: 'manual_save',
+          payload: {
+            visitSummary: summary,
+            timestamp: new Date().toISOString(),
+          },
+        })
+      }
+    }, 300)
+  }, [keyDetails, checklistItems, exceptions, currentLeadId, enqueueSave])
 
   // Process transcript with Rocky (deterministic/local)
   const processWithRocky = useCallback((newTranscript: string) => {
@@ -296,7 +334,10 @@ export const VisitApp: React.FC = () => {
         },
       })
     }
-  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave])
+
+    // Auto-generate summary after processing
+    handleGenerateSummary()
+  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, handleGenerateSummary])
 
   // STT Functions
   const startListening = useCallback(() => {
@@ -416,6 +457,7 @@ export const VisitApp: React.FC = () => {
       setKeyDetails({})
       setAutoFilledFields([])
       setExceptions([])
+      setVisitSummary(null)
       accumulatedTranscriptRef.current = ''
     } catch (error) {
       console.error('Failed to end visit:', error)
@@ -464,11 +506,22 @@ export const VisitApp: React.FC = () => {
           </div>
 
           <div className="visit-panel visit-panel-right">
-            <KeyDetailsForm 
-              details={keyDetails}
-              onChange={setKeyDetails}
-              autoFilledFields={autoFilledFields}
-            />
+            <div className="visit-right-split">
+              <div className="visit-right-top">
+                <KeyDetailsForm
+                  details={keyDetails}
+                  onChange={setKeyDetails}
+                  autoFilledFields={autoFilledFields}
+                />
+              </div>
+              <div className="visit-right-bottom">
+                <VisitSummaryCard
+                  summary={visitSummary}
+                  onGenerate={handleGenerateSummary}
+                  isGenerating={isGeneratingSummary}
+                />
+              </div>
+            </div>
           </div>
         </div>
 

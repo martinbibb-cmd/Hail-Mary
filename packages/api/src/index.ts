@@ -40,6 +40,7 @@ import voiceTransformRouter from './routes/voiceTransform';
 import knowledgeRouter from './routes/knowledge';
 import aiRouter from './routes/ai';
 import sessionRouter from './routes/session';
+import systemRecommendationsRouter from './routes/systemRecommendations';
 
 // API version - kept in sync with package.json
 export const API_VERSION = '0.2.0';
@@ -211,6 +212,7 @@ app.use('/api/products', productsRouter);
 app.use('/api/quotes', quotesRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/leads', leadWorkspaceRouter); // Workspace routes (/:id/workspace, etc.)
+app.use('/api/leads', systemRecommendationsRouter); // System recommendation routes (/:id/system-recommendation, etc.)
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
 app.use('/api/files', filesRouter);

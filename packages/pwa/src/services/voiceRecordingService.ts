@@ -241,7 +241,7 @@ class VoiceRecordingService {
         mimeType = 'audio/mpeg'
       }
       if (!MediaRecorder.isTypeSupported(mimeType)) {
-        console.warn('No supported audio MIME type found, using audio/webm as fallback.')
+        console.warn('No supported audio MIME type found. Attempting audio/webm as last resort - recording may fail.')
         mimeType = 'audio/webm'
       }
 
@@ -328,6 +328,8 @@ class VoiceRecordingService {
 
     this.mediaRecorder = null
     this.audioChunks = []
+    // Note: callbacks are not cleared here to allow for service reuse
+    // They will be overwritten when setCallbacks is called again
   }
 
   /**

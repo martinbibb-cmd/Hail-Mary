@@ -180,6 +180,9 @@ export const VisitApp: React.FC = () => {
     }
 
     // Note: We don't clear callbacks on unmount because recording should persist
+    // across navigation. The service manages callback lifecycle globally. Callbacks
+    // are re-registered each time the component mounts with fresh closures to prevent
+    // stale references while maintaining recording continuity.
     return () => {
       // Callbacks remain active to allow recording to continue across navigation
     }

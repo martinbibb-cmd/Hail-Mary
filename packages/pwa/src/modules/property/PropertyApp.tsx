@@ -14,7 +14,6 @@ import type {
   SystemSpecDraft,
   SurveySlot,
   Property,
-  LeadOccupancy,
   ApiResponse,
 } from '@hail-mary/shared';
 import { useLeadStore } from '../../stores/leadStore';
@@ -34,18 +33,15 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
   readOnly = false,
 }) => {
   const [currentSlot, setCurrentSlot] = useState<SurveySlot | null>(null);
-  const [saving, setSaving] = useState(false);
 
   // Connect to Lead store
   const currentLeadId = useLeadStore((state) => state.currentLeadId);
   const leadById = useLeadStore((state) => state.leadById);
-  const updateLeadData = useLeadStore((state) => state.updateLeadData);
 
   const currentLead = currentLeadId ? leadById[currentLeadId] : null;
 
   // Store property data from Property and LeadOccupancy tables
   const [propertyData, setPropertyData] = useState<Property | null>(null);
-  const [occupancyData, setOccupancyData] = useState<LeadOccupancy | null>(null);
 
   // Local state for instant UI updates
   const [localPropertyData, setLocalPropertyData] = useState({
@@ -76,7 +72,6 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
       if (result.success && result.data) {
         const workspace = result.data;
         setPropertyData(workspace.property || null);
-        setOccupancyData(workspace.occupancy || null);
 
         // Update local state with loaded data
         const construction = (workspace.property?.construction as Record<string, unknown>) || {};
@@ -128,7 +123,6 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
     }
 
     // Save to API
-    setSaving(true);
     try {
       // Build the update payload based on the field being updated
       interface PropertyUpdate {
@@ -180,8 +174,6 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
       }
     } catch (error) {
       console.error('Failed to update property field:', error);
-    } finally {
-      setSaving(false);
     }
   };
 

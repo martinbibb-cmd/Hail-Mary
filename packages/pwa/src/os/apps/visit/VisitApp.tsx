@@ -61,6 +61,15 @@ const api = {
   },
 }
 
+// Helper function to get file extension from MIME type
+function getFileExtensionFromMimeType(mimeType: string): string {
+  if (mimeType.includes('mp4')) return '.mp4'
+  if (mimeType.includes('mpeg')) return '.mp3'
+  if (mimeType.includes('wav')) return '.wav'
+  if (mimeType.includes('ogg')) return '.ogg'
+  return '.webm' // default
+}
+
 // Type declarations for Web Speech API
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList
@@ -471,6 +480,14 @@ export const VisitApp: React.FC = () => {
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         mimeType = 'audio/mp4'
       }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mpeg'
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        // Fallback to default, though this may fail
+        console.warn('No supported audio MIME type found, using audio/webm as fallback')
+        mimeType = 'audio/webm'
+      }
       
       const mediaRecorder = new MediaRecorder(stream, { mimeType })
       mediaRecorderRef.current = mediaRecorder
@@ -510,17 +527,8 @@ export const VisitApp: React.FC = () => {
         // Create blob from recorded chunks
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
         
-        // Determine file extension from mimeType
-        let fileExt = '.webm'
-        if (mimeType.includes('mp4')) {
-          fileExt = '.mp4'
-        } else if (mimeType.includes('mpeg')) {
-          fileExt = '.mp3'
-        } else if (mimeType.includes('wav')) {
-          fileExt = '.wav'
-        } else if (mimeType.includes('ogg')) {
-          fileExt = '.ogg'
-        }
+        // Determine file extension from mimeType using helper
+        const fileExt = getFileExtensionFromMimeType(mimeType)
         
         // Upload to Whisper API
         try {
@@ -548,12 +556,13 @@ export const VisitApp: React.FC = () => {
             setTranscriptSegments(prev => [...prev, segment])
             
             // Process with Rocky (correction + extraction)
-            // This will update accumulatedTranscriptRef.current
+            // This will update accumulatedTranscriptRef.current synchronously
             processWithRocky(transcriptText.trim())
             
-            // Trigger save after processing (moved outside finally to ensure transcript is processed)
-            // Use setTimeout to ensure processWithRocky completes first
-            setTimeout(() => {
+            // Trigger save after processing completes
+            // processWithRocky is synchronous, so we can safely access the updated ref
+            // Small delay to ensure React state updates complete
+            requestAnimationFrame(() => {
               if (currentLeadId) {
                 enqueueSave({
                   leadId: currentLeadId,
@@ -566,7 +575,7 @@ export const VisitApp: React.FC = () => {
                   },
                 })
               }
-            }, 100)
+            })
           } else {
             setExceptions(prev => [...prev, `Transcription error: ${result.error || 'Unknown error'}`])
           }

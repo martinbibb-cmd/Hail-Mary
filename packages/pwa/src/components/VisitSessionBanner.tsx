@@ -5,8 +5,11 @@
  * Displays:
  * - Visit status (active/inactive)
  * - Recording status (recording/idle)
- * - Customer name and visit duration
- * - Quick action buttons (stop recording, end visit)
+ * - Customer name and visit session info
+ * - Quick navigation to visit page
+ * 
+ * Note: Recording controls remain in VisitApp. This banner is primarily
+ * informational with navigation shortcuts.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -21,10 +24,10 @@ export const VisitSessionBanner: React.FC = () => {
   const isRecording = useVisitStore((state) => state.isRecording);
   const recordingStartTime = useVisitStore((state) => state.recordingStartTime);
   const transcriptCount = useVisitStore((state) => state.transcriptCount);
-  const stopRecording = useVisitStore((state) => state.stopRecording);
   const clearSession = useVisitStore((state) => state.clearSession);
 
   const [recordingDuration, setRecordingDuration] = useState<string>('0:00');
+  const [error, setError] = useState<string | null>(null);
 
   // Update recording duration every second
   useEffect(() => {
@@ -44,23 +47,15 @@ export const VisitSessionBanner: React.FC = () => {
     return () => clearInterval(interval);
   }, [isRecording, recordingStartTime]);
 
-  const handleStopRecording = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    stopRecording();
-  };
-
   const handleEndVisit = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeSession) return;
 
-    // Stop recording if active
-    if (isRecording) {
-      stopRecording();
-    }
+    setError(null);
 
     // End the visit session via API
     try {
-      await fetch(`/api/visit-sessions/${activeSession.id}`, {
+      const response = await fetch(`/api/visit-sessions/${activeSession.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -68,11 +63,17 @@ export const VisitSessionBanner: React.FC = () => {
           endedAt: new Date(),
         }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to end visit session');
+      }
       
       clearSession();
       navigate('/visit'); // Navigate back to visit list
     } catch (error) {
       console.error('Failed to end visit:', error);
+      setError('Failed to end visit. Please try again from the Visit page.');
+      // Don't clear session on error - keep it active
     }
   };
 
@@ -85,9 +86,9 @@ export const VisitSessionBanner: React.FC = () => {
     return null;
   }
 
-  const customerName = activeCustomer
-    ? `${activeCustomer.firstName || ''} ${activeCustomer.lastName || ''}`.trim() || 'Unnamed'
-    : 'Unknown Customer';
+  const customerName = (activeCustomer?.firstName || activeCustomer?.lastName)
+    ? `${activeCustomer.firstName || ''} ${activeCustomer.lastName || ''}`.trim()
+    : 'Unnamed Customer';
 
   return (
     <div className="visit-session-banner" onClick={handleGoToVisit}>
@@ -117,25 +118,23 @@ export const VisitSessionBanner: React.FC = () => {
 
         {/* Quick Actions */}
         <div className="visit-session-actions" onClick={(e) => e.stopPropagation()}>
-          {isRecording && (
-            <button
-              className="visit-action-btn visit-action-stop-recording"
-              onClick={handleStopRecording}
-              title="Stop Recording"
-            >
-              ⏹️ Stop Recording
-            </button>
-          )}
-          
           <button
             className="visit-action-btn visit-action-end-visit"
             onClick={handleEndVisit}
-            title="End Visit"
+            title="End Visit Session"
+            disabled={isRecording}
           >
             End Visit
           </button>
         </div>
       </div>
+
+      {/* Error message if end visit fails */}
+      {error && (
+        <div className="visit-error-message" onClick={(e) => e.stopPropagation()}>
+          {error}
+        </div>
+      )}
     </div>
   );
 };

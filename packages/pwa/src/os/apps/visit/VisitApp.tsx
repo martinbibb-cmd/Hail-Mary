@@ -16,6 +16,7 @@ import {
 } from './components'
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
+import { useVisitStore } from '../../../stores/visitStore'
 import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
@@ -152,6 +153,13 @@ export const VisitApp: React.FC = () => {
   const lastSavedAtByLeadId = useLeadStore((state) => state.lastSavedAtByLeadId)
   const exportLeadAsJson = useLeadStore((state) => state.exportLeadAsJson)
   
+  // Visit store for session/recording state
+  const setActiveSessionInStore = useVisitStore((state) => state.setActiveSession)
+  const startRecordingInStore = useVisitStore((state) => state.startRecording)
+  const stopRecordingInStore = useVisitStore((state) => state.stopRecording)
+  const incrementTranscriptCount = useVisitStore((state) => state.incrementTranscriptCount)
+  const clearSessionInStore = useVisitStore((state) => state.clearSession)
+  
   // New state for 3-panel layout
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
@@ -227,6 +235,8 @@ export const VisitApp: React.FC = () => {
         setSelectedCustomer(customer)
         setActiveSession(res.data)
         setViewMode('active')
+        // Update visit store with active session
+        setActiveSessionInStore(res.data, customer)
         // Reset state for new visit
         setTranscriptSegments([])
         setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
@@ -254,6 +264,8 @@ export const VisitApp: React.FC = () => {
         setSelectedCustomer(customer)
         setActiveSession(session)
         setViewMode('active')
+        // Update visit store with active session
+        setActiveSessionInStore(session, customer)
         // Reset state (in future, could load previous data)
         setTranscriptSegments([])
         setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
@@ -388,6 +400,7 @@ export const VisitApp: React.FC = () => {
     
     recognitionRef.current.onstart = () => {
       setIsListening(true)
+      startRecordingInStore('browser')
     }
     
     recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
@@ -413,6 +426,9 @@ export const VisitApp: React.FC = () => {
         }
         setTranscriptSegments(prev => [...prev, segment])
         
+        // Increment transcript count in visit store
+        incrementTranscriptCount()
+        
         // Process with Rocky
         processWithRocky(finalTranscript.trim())
         
@@ -427,6 +443,7 @@ export const VisitApp: React.FC = () => {
     recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error)
       setIsListening(false)
+      stopRecordingInStore()
       if (event.error !== 'aborted') {
         setExceptions(prev => [...prev, `Microphone error: ${event.error}`])
       }
@@ -434,6 +451,7 @@ export const VisitApp: React.FC = () => {
     
     recognitionRef.current.onend = () => {
       setIsListening(false)
+      stopRecordingInStore()
       setLiveTranscript('')
     }
     
@@ -442,13 +460,14 @@ export const VisitApp: React.FC = () => {
     } catch (error) {
       console.error('Failed to start speech recognition:', error)
     }
-  }, [isListening, processWithRocky])
+  }, [isListening, processWithRocky, startRecordingInStore, stopRecordingInStore, incrementTranscriptCount])
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) return
 
     recognitionRef.current.stop()
     setIsListening(false)
+    stopRecordingInStore()
     setLiveTranscript('')
 
     // Trigger save when stopping recording (with corrected transcript)
@@ -464,7 +483,7 @@ export const VisitApp: React.FC = () => {
         },
       })
     }
-  }, [currentLeadId, enqueueSave, keyDetails, checklistItems])
+  }, [currentLeadId, enqueueSave, keyDetails, checklistItems, stopRecordingInStore])
 
   // Audio Recording Functions for Whisper mode
   const startRecording = useCallback(async () => {
@@ -501,11 +520,12 @@ export const VisitApp: React.FC = () => {
       
       mediaRecorder.start()
       setIsRecording(true)
+      startRecordingInStore('whisper')
     } catch (error) {
       console.error('Failed to start audio recording:', error)
       setExceptions(prev => [...prev, `Microphone error: ${(error as Error).message}`])
     }
-  }, [])
+  }, [startRecordingInStore])
 
   const stopRecording = useCallback(async () => {
     if (!mediaRecorderRef.current) return
@@ -516,6 +536,7 @@ export const VisitApp: React.FC = () => {
       
       mediaRecorder.onstop = async () => {
         setIsRecording(false)
+        stopRecordingInStore()
         setIsTranscribing(true)
         
         // Stop all tracks to release microphone
@@ -555,6 +576,9 @@ export const VisitApp: React.FC = () => {
             }
             setTranscriptSegments(prev => [...prev, segment])
             
+            // Increment transcript count in visit store
+            incrementTranscriptCount()
+            
             // Process with Rocky (correction + extraction)
             // This will update accumulatedTranscriptRef.current synchronously
             processWithRocky(transcriptText.trim())
@@ -591,7 +615,7 @@ export const VisitApp: React.FC = () => {
       
       mediaRecorder.stop()
     })
-  }, [currentLeadId, enqueueSave, keyDetails, checklistItems, processWithRocky])
+  }, [currentLeadId, enqueueSave, keyDetails, checklistItems, processWithRocky, stopRecordingInStore, incrementTranscriptCount])
 
   const handleManualSave = useCallback(() => {
     if (!currentLeadId) return
@@ -695,6 +719,8 @@ export const VisitApp: React.FC = () => {
       setViewMode('list')
       setActiveSession(null)
       setSelectedCustomer(null)
+      // Clear visit store
+      clearSessionInStore()
       setTranscriptSegments([])
       setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
       setKeyDetails({})

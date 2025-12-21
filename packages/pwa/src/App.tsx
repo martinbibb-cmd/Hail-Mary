@@ -23,6 +23,7 @@ import { FilesApp } from './os/apps/files/FilesApp'
 import { DiaryApp } from './os/apps/diary/DiaryApp'
 import { VisitApp } from './os/apps/visit/VisitApp'
 import { LeadContextBanner } from './components/LeadContextBanner'
+import { VisitSessionBanner } from './components/VisitSessionBanner'
 import { LeadDrawer } from './components/LeadDrawer'
 import { BottomDock } from './components/BottomDock'
 import { MoreDrawer } from './components/MoreDrawer'
@@ -682,6 +683,9 @@ function App() {
       <main className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`} style={{ paddingBottom: '80px' }}>
         {/* Lead Context Banner - always visible at the top */}
         <LeadContextBanner onOpenLeadDrawer={() => setIsLeadDrawerOpen(true)} />
+        
+        {/* Visit Session Banner - shows when visit is active */}
+        <VisitSessionBanner />
         
         {isFocusProfile && (
           <div className="focus-mode-banner">

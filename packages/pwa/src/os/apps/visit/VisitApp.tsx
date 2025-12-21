@@ -121,7 +121,7 @@ export const VisitApp: React.FC = () => {
   // STT state
   const [isListening, setIsListening] = useState(false)
   const [liveTranscript, setLiveTranscript] = useState('')
-  const [sttSupported, setSttSupported] = useState(voiceRecordingService.isSpeechRecognitionSupported())
+  const sttSupported = voiceRecordingService.isSpeechRecognitionSupported()
   
   // Audio recording state for Whisper mode
   const [isRecording, setIsRecording] = useState(false)
@@ -132,6 +132,134 @@ export const VisitApp: React.FC = () => {
 
   // Rocky status (always 'connected' for local extraction)
   const [rockyStatus] = useState<'connected' | 'degraded' | 'blocked'>(getLocalRockyStatus())
+
+  // Helper function to generate summary (used to avoid circular dependency)
+  const generateSummaryForSession = async (sessionId: number) => {
+    setIsGeneratingSummary(true)
+    try {
+      const res = await api.post<ApiResponse<VisitSession>>(
+        `/api/visit-sessions/${sessionId}/generate-summary`,
+        {}
+      )
+      
+      if (res.success && res.data && res.data.summary) {
+        setVisitSummary(res.data.summary)
+        // Update the active session with the new summary
+        setActiveSession(res.data)
+      }
+    } catch (error) {
+      console.error('Failed to generate summary:', error)
+      setExceptions(prev => [...prev, 'Failed to generate summary'])
+    } finally {
+      setIsGeneratingSummary(false)
+    }
+  }
+
+  // Process transcript with Rocky (deterministic/local) + correction + live extraction
+  const processWithRocky = useCallback((newTranscript: string) => {
+    if (!newTranscript.trim()) return
+
+    let correctedText = newTranscript // Default to raw if no correction applied
+    
+    // Step 1: Use orchestrator for live extraction (applies corrections internally)
+    if (currentLeadId) {
+      const captureResult = processTranscriptSegment(newTranscript, {
+        currentLeadId,
+        accumulatedTranscript: accumulatedTranscriptRef.current,
+        previousFacts: keyDetails,
+      })
+
+      // Get corrected text from orchestrator result
+      correctedText = captureResult.transcriptCorrection.corrected
+
+      // Log corrections for debugging
+      if (captureResult.transcriptCorrection.corrections.length > 0) {
+        console.log('Transcript corrections:', captureResult.transcriptCorrection.corrections)
+      }
+
+      // Track auto-filled fields
+      if (captureResult.autoFilledFields.length > 0) {
+        setAutoFilledFields(prev => [...new Set([...prev, ...captureResult.autoFilledFields])])
+        trackAutoFilledFields(currentLeadId, captureResult.autoFilledFields)
+      }
+
+      // Update local state (Key Details now synced with Lead store)
+      setKeyDetails(captureResult.extractedFields)
+    } else {
+      // Fallback: no active lead, apply corrections manually
+      const correction = correctTranscript(newTranscript)
+      correctedText = correction.corrected
+    }
+
+    // Update accumulated transcript with corrected version
+    accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
+      ? `${accumulatedTranscriptRef.current} ${correctedText}`
+      : correctedText
+
+    // Run local extraction for checklist updates
+    // Note: We reprocess the full transcript each time because:
+    // 1. Rocky extraction is deterministic and fast (no LLM)
+    // 2. New context can change interpretation of previous statements
+    // 3. This ensures consistency and accuracy in field extraction
+    const result = extractFromTranscript({
+      transcript: accumulatedTranscriptRef.current,
+      previousFacts: keyDetails,
+      previousChecklist: checklistItems,
+    })
+
+    // Update checklist
+    if (result.checklistUpdates.length > 0) {
+      setChecklistItems(prev => {
+        const updated = [...prev]
+        for (const update of result.checklistUpdates) {
+          const index = updated.findIndex(item => item.id === update.id)
+          if (index !== -1) {
+            updated[index] = {
+              ...updated[index],
+              checked: update.checked,
+              note: update.note,
+              autoDetected: true,
+            }
+          }
+        }
+        return updated
+      })
+    }
+
+    // Update exceptions/flags
+    if (result.flags.length > 0) {
+      const newExceptions = result.flags.map(flag => `${flag.type.toUpperCase()}: ${flag.message}`)
+      setExceptions(prev => [...new Set([...prev, ...newExceptions])])
+    }
+
+    // Trigger save after processing recording
+    if (currentLeadId) {
+      enqueueSave({
+        leadId: currentLeadId,
+        reason: 'process_recording',
+        payload: {
+          rawTranscript: newTranscript,
+          correctedTranscript: correctedText,
+          fullTranscript: accumulatedTranscriptRef.current,
+          keyDetails: result.facts,
+          checklistItems,
+          timestamp: new Date().toISOString(),
+        },
+      })
+      
+      // Auto-generate summary after significant transcript accumulation
+      // Only generate if we have enough content and not already generating
+      const trimmedTranscript = accumulatedTranscriptRef.current.trim()
+      if (trimmedTranscript && trimmedTranscript.length > 0) {
+        const words = trimmedTranscript.split(/\s+/)
+        const wordCount = words.filter(w => w.length > 0).length
+        // Only auto-generate once when threshold is crossed
+        if (wordCount >= 50 && !isGeneratingSummary && activeSession && !visitSummary) {
+          generateSummaryForSession(activeSession.id)
+        }
+      }
+    }
+  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary])
 
   // Setup voice recording callbacks when component mounts
   useEffect(() => {
@@ -260,112 +388,6 @@ export const VisitApp: React.FC = () => {
       setLoading(false)
     }
   }
-
-  // Process transcript with Rocky (deterministic/local) + correction + live extraction
-  const processWithRocky = useCallback((newTranscript: string) => {
-    if (!newTranscript.trim()) return
-
-    let correctedText = newTranscript // Default to raw if no correction applied
-    
-    // Step 1: Use orchestrator for live extraction (applies corrections internally)
-    if (currentLeadId) {
-      const captureResult = processTranscriptSegment(newTranscript, {
-        currentLeadId,
-        accumulatedTranscript: accumulatedTranscriptRef.current,
-        previousFacts: keyDetails,
-      })
-
-      // Get corrected text from orchestrator result
-      correctedText = captureResult.transcriptCorrection.corrected
-
-      // Log corrections for debugging
-      if (captureResult.transcriptCorrection.corrections.length > 0) {
-        console.log('Transcript corrections:', captureResult.transcriptCorrection.corrections)
-      }
-
-      // Track auto-filled fields
-      if (captureResult.autoFilledFields.length > 0) {
-        setAutoFilledFields(prev => [...new Set([...prev, ...captureResult.autoFilledFields])])
-        trackAutoFilledFields(currentLeadId, captureResult.autoFilledFields)
-      }
-
-      // Update local state (Key Details now synced with Lead store)
-      setKeyDetails(captureResult.extractedFields)
-    } else {
-      // Fallback: no active lead, apply corrections manually
-      const correction = correctTranscript(newTranscript)
-      correctedText = correction.corrected
-    }
-
-    // Update accumulated transcript with corrected version
-    accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
-      ? `${accumulatedTranscriptRef.current} ${correctedText}`
-      : correctedText
-
-    // Run local extraction for checklist updates
-    // Note: We reprocess the full transcript each time because:
-    // 1. Rocky extraction is deterministic and fast (no LLM)
-    // 2. New context can change interpretation of previous statements
-    // 3. This ensures consistency and accuracy in field extraction
-    const result = extractFromTranscript({
-      transcript: accumulatedTranscriptRef.current,
-      previousFacts: keyDetails,
-      previousChecklist: checklistItems,
-    })
-
-    // Update checklist
-    if (result.checklistUpdates.length > 0) {
-      setChecklistItems(prev => {
-        const updated = [...prev]
-        for (const update of result.checklistUpdates) {
-          const index = updated.findIndex(item => item.id === update.id)
-          if (index !== -1) {
-            updated[index] = {
-              ...updated[index],
-              checked: update.checked,
-              note: update.note,
-              autoDetected: true,
-            }
-          }
-        }
-        return updated
-      })
-    }
-
-    // Update exceptions/flags
-    if (result.flags.length > 0) {
-      const newExceptions = result.flags.map(flag => `${flag.type.toUpperCase()}: ${flag.message}`)
-      setExceptions(prev => [...new Set([...prev, ...newExceptions])])
-    }
-
-    // Trigger save after processing recording
-    if (currentLeadId) {
-      enqueueSave({
-        leadId: currentLeadId,
-        reason: 'process_recording',
-        payload: {
-          rawTranscript: newTranscript,
-          correctedTranscript: correctedText,
-          fullTranscript: accumulatedTranscriptRef.current,
-          keyDetails: result.facts,
-          checklistItems,
-          timestamp: new Date().toISOString(),
-        },
-      })
-      
-      // Auto-generate summary after significant transcript accumulation
-      // Only generate if we have enough content and not already generating
-      const trimmedTranscript = accumulatedTranscriptRef.current.trim()
-      if (trimmedTranscript && trimmedTranscript.length > 0) {
-        const words = trimmedTranscript.split(/\s+/)
-        const wordCount = words.filter(w => w.length > 0).length
-        // Only auto-generate once when threshold is crossed
-        if (wordCount >= 50 && !isGeneratingSummary && activeSession && !visitSummary) {
-          generateSummaryForSession(activeSession.id)
-        }
-      }
-    }
-  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary])
 
   // STT Functions
   const startListening = useCallback(async () => {
@@ -534,28 +556,6 @@ export const VisitApp: React.FC = () => {
       markDirty(currentLeadId)
     }
   }, [currentLeadId, keyDetails, autoFilledFields, markDirty])
-
-  // Helper function to generate summary (used to avoid circular dependency)
-  const generateSummaryForSession = async (sessionId: number) => {
-    setIsGeneratingSummary(true)
-    try {
-      const res = await api.post<ApiResponse<VisitSession>>(
-        `/api/visit-sessions/${sessionId}/generate-summary`,
-        {}
-      )
-      
-      if (res.success && res.data && res.data.summary) {
-        setVisitSummary(res.data.summary)
-        // Update the active session with the new summary
-        setActiveSession(res.data)
-      }
-    } catch (error) {
-      console.error('Failed to generate summary:', error)
-      setExceptions(prev => [...prev, 'Failed to generate summary'])
-    } finally {
-      setIsGeneratingSummary(false)
-    }
-  }
 
   const generateSummary = useCallback(async () => {
     if (!activeSession) return

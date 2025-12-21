@@ -57,8 +57,8 @@ export function processTranscriptSegment(
     }
   }
 
-  // Step 5: Map extracted fields to Lead schema
-  const leadUpdates: Partial<Lead> = mapFactsToLead(rockyResult.facts);
+  // Step 5: Map extracted fields to Lead schema (pass leadId to check manual fields)
+  const leadUpdates: Partial<Lead> = mapFactsToLead(rockyResult.facts, context.currentLeadId);
 
   // Step 6: Update Lead store
   const leadStore = useLeadStore.getState();
@@ -76,13 +76,18 @@ export function processTranscriptSegment(
 
 /**
  * Map extracted facts to Lead entity fields
+ * Skip manual fields and store suggestions separately
  */
-function mapFactsToLead(facts: Record<string, unknown>): Partial<Lead> {
+function mapFactsToLead(facts: Record<string, unknown>, leadId?: string): Partial<Lead> {
   const updates: Partial<Lead> = {};
 
-  // Map property type
+  // Map property type (skip if manual)
   if (facts.propertyType) {
-    updates.propertyType = String(facts.propertyType);
+    if (leadId && isFieldManual(leadId, 'propertyType')) {
+      storeExtractionSuggestion(leadId, 'propertyType', facts.propertyType);
+    } else {
+      updates.propertyType = String(facts.propertyType);
+    }
   }
 
   // Map notes (append extracted issues/observations)
@@ -139,3 +144,67 @@ export function clearAutoFilledField(leadId: string, fieldName: string): void {
   const updated = autoFilled.filter(f => f !== fieldName);
   localStorage.setItem(storageKey, JSON.stringify(updated));
 }
+
+/**
+ * Get manual fields for a lead (fields that user has manually edited)
+ */
+export function getManualFields(leadId: string): string[] {
+  const storageKey = `lead-${leadId}-manual-fields`;
+  const stored = localStorage.getItem(storageKey);
+  try {
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Failed to parse manual fields from localStorage:', error);
+    return [];
+  }
+}
+
+/**
+ * Check if a field is manual (user-edited)
+ */
+export function isFieldManual(leadId: string, fieldName: string): boolean {
+  const manualFields = getManualFields(leadId);
+  return manualFields.includes(fieldName);
+}
+
+/**
+ * Store extraction suggestions separately when field is manual
+ */
+export function storeExtractionSuggestion(
+  leadId: string,
+  fieldName: string,
+  suggestedValue: unknown
+): void {
+  const storageKey = `lead-${leadId}-extraction-suggestions`;
+  const existing = localStorage.getItem(storageKey);
+  let suggestions: Record<string, { value: unknown; timestamp: string }> = {};
+  
+  try {
+    suggestions = existing ? JSON.parse(existing) : {};
+  } catch (error) {
+    console.error('Failed to parse extraction suggestions from localStorage:', error);
+    suggestions = {};
+  }
+
+  suggestions[fieldName] = {
+    value: suggestedValue,
+    timestamp: new Date().toISOString(),
+  };
+
+  localStorage.setItem(storageKey, JSON.stringify(suggestions));
+}
+
+/**
+ * Get extraction suggestions for manual fields
+ */
+export function getExtractionSuggestions(leadId: string): Record<string, { value: unknown; timestamp: string }> {
+  const storageKey = `lead-${leadId}-extraction-suggestions`;
+  const stored = localStorage.getItem(storageKey);
+  try {
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('Failed to parse extraction suggestions from localStorage:', error);
+    return {};
+  }
+}
+

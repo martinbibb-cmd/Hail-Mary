@@ -13,6 +13,9 @@ import React, { useState, useEffect } from 'react';
 import type {
   SystemSpecDraft,
   SurveySlot,
+  Property,
+  LeadOccupancy,
+  ApiResponse,
 } from '@hail-mary/shared';
 import { useLeadStore } from '../../stores/leadStore';
 import { clearAutoFilledField } from '../../services/visitCaptureOrchestrator';
@@ -31,6 +34,7 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
   readOnly = false,
 }) => {
   const [currentSlot, setCurrentSlot] = useState<SurveySlot | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Connect to Lead store
   const currentLeadId = useLeadStore((state) => state.currentLeadId);
@@ -39,9 +43,13 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
 
   const currentLead = currentLeadId ? leadById[currentLeadId] : null;
 
-  // Extract property-related fields from lead
+  // Store property data from Property and LeadOccupancy tables
+  const [propertyData, setPropertyData] = useState<Property | null>(null);
+  const [occupancyData, setOccupancyData] = useState<LeadOccupancy | null>(null);
+
+  // Local state for instant UI updates
   const [localPropertyData, setLocalPropertyData] = useState({
-    propertyType: currentLead?.propertyType || '',
+    propertyType: '',
     buildYearApprox: '',
     glazingType: '',
     loftInsulationDepthMm: '',
@@ -49,25 +57,48 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
     hotWaterProfile: '',
   });
 
-  // Sync local state with lead when it changes
+  // Load property and occupancy data from API
   useEffect(() => {
-    if (currentLead) {
-      setLocalPropertyData({
-        propertyType: currentLead.propertyType || '',
-        buildYearApprox: '',
-        glazingType: '',
-        loftInsulationDepthMm: '',
-        homeAllDay: null,
-        hotWaterProfile: '',
-      });
+    if (currentLead && currentLeadId) {
+      loadPropertyData();
     }
-  }, [currentLead]);
+  }, [currentLead, currentLeadId]);
+
+  const loadPropertyData = async () => {
+    if (!currentLeadId) return;
+
+    try {
+      const response = await fetch(`/api/leads/${currentLeadId}/workspace`, {
+        credentials: 'include',
+      });
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const workspace = result.data;
+        setPropertyData(workspace.property || null);
+        setOccupancyData(workspace.occupancy || null);
+
+        // Update local state with loaded data
+        const construction = (workspace.property?.construction as Record<string, unknown>) || {};
+        setLocalPropertyData({
+          propertyType: workspace.property?.type || '',
+          buildYearApprox: workspace.property?.ageBand || '',
+          glazingType: (construction.glazingType as string) || '',
+          loftInsulationDepthMm: (construction.loftInsulationDepthMm as string) || '',
+          homeAllDay: construction.homeAllDay !== undefined ? (construction.homeAllDay as boolean) : null,
+          hotWaterProfile: (construction.hotWaterProfile as string) || '',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load property data:', error);
+    }
+  };
 
   const property = localPropertyData;
   const occupancy = { homeAllDay: localPropertyData.homeAllDay, hotWaterProfile: localPropertyData.hotWaterProfile };
 
-  // Helper to update a field - wired to Lead store
-  const updateField = (fieldName: string, value: unknown) => {
+  // Helper to update a field - wired to Property API
+  const updateField = async (fieldName: string, value: unknown) => {
     if (readOnly || !currentLeadId) return;
 
     // Update local state immediately for instant feedback
@@ -76,23 +107,81 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
       [fieldName]: value,
     }));
 
-    // Update Lead store (this triggers save queue + marks dirty)
-    updateLeadData(currentLeadId, {
-      propertyType: fieldName === 'propertyType' ? String(value) : currentLead?.propertyType,
-      // Additional property fields can be added here as they're added to Lead schema
-    });
-
     // Mark field as manual (prevents auto-extraction from overwriting)
     clearAutoFilledField(currentLeadId, fieldName);
 
     // Store manual field marker in localStorage
     const manualFieldsKey = `lead-${currentLeadId}-manual-fields`;
     const existingManual = localStorage.getItem(manualFieldsKey);
-    const manualFields = existingManual ? JSON.parse(existingManual) : [];
+    let manualFields: string[] = [];
+    
+    try {
+      manualFields = existingManual ? JSON.parse(existingManual) : [];
+    } catch (error) {
+      console.error('Failed to parse manual fields from localStorage:', error);
+      manualFields = [];
+    }
 
     if (!manualFields.includes(fieldName)) {
       manualFields.push(fieldName);
       localStorage.setItem(manualFieldsKey, JSON.stringify(manualFields));
+    }
+
+    // Save to API
+    setSaving(true);
+    try {
+      // Build the update payload based on the field being updated
+      interface PropertyUpdate {
+        type?: string;
+        ageBand?: string;
+        construction?: Record<string, unknown>;
+      }
+
+      const propertyUpdate: PropertyUpdate = {};
+
+      const construction = (propertyData?.construction as Record<string, unknown>) || {};
+
+      if (fieldName === 'propertyType') {
+        propertyUpdate.type = String(value);
+      } else if (fieldName === 'buildYearApprox') {
+        propertyUpdate.ageBand = String(value);
+      } else if (fieldName === 'glazingType' || fieldName === 'loftInsulationDepthMm') {
+        // Store in construction JSONB
+        propertyUpdate.construction = {
+          ...construction,
+          [fieldName]: value,
+        };
+      } else if (fieldName === 'homeAllDay' || fieldName === 'hotWaterProfile') {
+        // TODO: Consider moving to occupancy table in future
+        // Currently stored in construction JSONB as occupancy table has different schema
+        // (occupants, schedule, priorities) vs what we need (homeAllDay, hotWaterProfile)
+        propertyUpdate.construction = {
+          ...construction,
+          [fieldName]: value,
+        };
+      }
+
+      // Update property via API
+      if (Object.keys(propertyUpdate).length > 0) {
+        const response = await fetch(`/api/leads/${currentLeadId}/property`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(propertyUpdate),
+        });
+
+        const result: ApiResponse<Property> = await response.json();
+        
+        if (result.success && result.data) {
+          setPropertyData(result.data);
+        } else {
+          console.error('Failed to update property:', result.error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update property field:', error);
+    } finally {
+      setSaving(false);
     }
   };
 

@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 
 export type LayoutMode = 'desktop' | 'tablet' | 'mobile'
 
+// Threshold constants for layout transitions
+const TABLET_THRESHOLD_UP = 900   // Switch from mobile to tablet at 900px
+const TABLET_THRESHOLD_DOWN = 850 // Switch from tablet to mobile at 850px
+
 /**
  * Hook to detect device layout mode based on pointer type and screen width.
  * Includes stability mechanisms to prevent flickering on tablets.
@@ -24,8 +28,8 @@ export type LayoutMode = 'desktop' | 'tablet' | 'mobile'
  * 
  * @returns LayoutMode type:
  *   - 'desktop': pointer:fine (mouse/trackpad) - uses WIMP desktop interface
- *   - 'tablet': pointer:coarse + width >= 900px - uses Stack UI with tabs
- *   - 'mobile': pointer:coarse + width < 900px - uses Stack UI with bottom nav
+ *   - 'tablet': pointer:coarse + width >= 900px (or ≥ 850px when already in tablet) - uses Stack UI with tabs
+ *   - 'mobile': pointer:coarse + width < 850px (or < 900px when already in mobile) - uses Stack UI with bottom nav
  */
 export function useLayoutMode(): LayoutMode {
   const [layout, setLayout] = useState<LayoutMode>(() => {
@@ -94,16 +98,16 @@ function getLayoutMode(currentLayout?: LayoutMode): LayoutMode {
   const width = window.innerWidth
   
   // Implement hysteresis to prevent flickering
-  // Use different thresholds depending on current state
-  const TABLET_THRESHOLD_UP = 900   // Switch from mobile to tablet at 900px
-  const TABLET_THRESHOLD_DOWN = 850 // Switch from tablet to mobile at 850px
-  
   // If we have a current layout, use hysteresis
   if (currentLayout === 'tablet') {
     // Stay in tablet mode until we drop below the lower threshold
     return width >= TABLET_THRESHOLD_DOWN ? 'tablet' : 'mobile'
   } else if (currentLayout === 'mobile') {
     // Stay in mobile mode until we rise above the upper threshold
+    return width >= TABLET_THRESHOLD_UP ? 'tablet' : 'mobile'
+  } else if (currentLayout === 'desktop') {
+    // Transitioning from desktop to touch (unusual but handle it)
+    // Use the upper threshold for initial determination
     return width >= TABLET_THRESHOLD_UP ? 'tablet' : 'mobile'
   }
   

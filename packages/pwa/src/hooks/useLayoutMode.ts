@@ -38,7 +38,7 @@ export function useLayoutMode(): LayoutMode {
   
   // Use ref to track the last layout to implement hysteresis
   const lastLayoutRef = useRef<LayoutMode>(layout)
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const debounceTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     const handleResize = () => {

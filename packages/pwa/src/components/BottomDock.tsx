@@ -40,8 +40,15 @@ export const BottomDock: React.FC<BottomDockProps> = ({ onOpenMoreDrawer }) => {
       id: 'diary',
       label: 'Diary',
       icon: '🗓',
-      onClick: () => navigate('/rocky'),
-      isActive: isActive('/rocky'),
+      onClick: () => navigate('/diary'),
+      isActive: isActive('/diary'),
+    },
+    {
+      id: 'visit',
+      label: 'Visit',
+      icon: '🎙️',
+      onClick: () => navigate('/visit'),
+      isActive: isActive('/visit'),
     },
     {
       id: 'photos',

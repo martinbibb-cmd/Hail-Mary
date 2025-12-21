@@ -25,6 +25,13 @@ export const MoreDrawer: React.FC<MoreDrawerProps> = ({ isOpen, onClose }) => {
 
   const menuItems = [
     {
+      id: 'visit',
+      label: 'Visit Notes',
+      icon: '🎙️',
+      description: 'Voice-driven surveys',
+      path: '/visit',
+    },
+    {
       id: 'leads',
       label: 'Leads',
       icon: '🧲',

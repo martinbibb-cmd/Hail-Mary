@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
-import type { DeviceLayout } from '../hooks/useDeviceLayout';
+import type { LayoutMode } from '../hooks/useLayoutMode';
 import { useWindowStore } from '../os/window-manager';
 import { AdminApiStatus } from '../components/AdminApiStatus';
 import './HomePage.css';
@@ -20,7 +20,7 @@ interface Shortcut {
 }
 
 interface HomePageProps {
-  layout: DeviceLayout;
+  layout: LayoutMode;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ layout }) => {

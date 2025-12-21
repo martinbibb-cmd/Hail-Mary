@@ -20,6 +20,8 @@ import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
 import { HomePage } from './pages/HomePage'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
+import { DiaryApp } from './os/apps/diary/DiaryApp'
+import { VisitApp } from './os/apps/visit/VisitApp'
 import { LeadContextBanner } from './components/LeadContextBanner'
 import { LeadDrawer } from './components/LeadDrawer'
 import { BottomDock } from './components/BottomDock'
@@ -697,6 +699,8 @@ function App() {
           <Route path="/leads" element={<LeadsList />} />
           <Route path="/leads/new" element={<NewLead />} />
           <Route path="/leads/:id" element={<LeadWorkspace />} />
+          <Route path="/diary" element={<DiaryApp />} />
+          <Route path="/visit" element={<VisitApp />} />
           <Route path="/rocky" element={<RockyToolWithGuard />} />
           <Route path="/sarah" element={<SarahToolWithGuard />} />
           <Route path="/photos" element={<PhotosAppWithGuard />} />

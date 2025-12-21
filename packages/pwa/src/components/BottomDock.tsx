@@ -2,7 +2,7 @@
  * Bottom Dock
  * 
  * Always-visible bottom dock across the entire app (all breakpoints).
- * Contains 5 items: Home, Sarah, Diary (Rocky), Photos, More
+ * Contains 6 items: Home, Sarah, Diary, Visit, Photos, More
  */
 
 import React from 'react';
@@ -40,8 +40,15 @@ export const BottomDock: React.FC<BottomDockProps> = ({ onOpenMoreDrawer }) => {
       id: 'diary',
       label: 'Diary',
       icon: '🗓',
-      onClick: () => navigate('/rocky'),
-      isActive: isActive('/rocky'),
+      onClick: () => navigate('/diary'),
+      isActive: isActive('/diary'),
+    },
+    {
+      id: 'visit',
+      label: 'Visit',
+      icon: '🎙️',
+      onClick: () => navigate('/visit'),
+      isActive: isActive('/visit'),
     },
     {
       id: 'photos',

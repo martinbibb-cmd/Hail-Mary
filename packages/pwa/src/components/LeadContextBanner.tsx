@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLeadStore } from '../stores/leadStore';
 import { formatSaveTime, exportLeadAsJsonFile } from '../utils/saveHelpers';
 import './LeadContextBanner.css';
@@ -16,6 +17,7 @@ interface LeadContextBannerProps {
 }
 
 export const LeadContextBanner: React.FC<LeadContextBannerProps> = ({ onOpenLeadDrawer }) => {
+  const navigate = useNavigate();
   const currentLeadId = useLeadStore((state) => state.currentLeadId);
   const leadById = useLeadStore((state) => state.leadById);
   const dirtyByLeadId = useLeadStore((state) => state.dirtyByLeadId);
@@ -43,6 +45,11 @@ export const LeadContextBanner: React.FC<LeadContextBannerProps> = ({ onOpenLead
     if (!currentLeadId) return;
     const json = exportLeadAsJson(currentLeadId);
     exportLeadAsJsonFile(currentLeadId, json);
+  };
+
+  const handleVisitNotes = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate('/visit');
   };
 
   const getCustomerName = () => {
@@ -94,6 +101,14 @@ export const LeadContextBanner: React.FC<LeadContextBannerProps> = ({ onOpenLead
             )}
 
             <div className="lead-context-actions" onClick={(e) => e.stopPropagation()}>
+              <button 
+                className="lead-action-btn lead-action-visit"
+                onClick={handleVisitNotes}
+                title="Open Visit Notes"
+              >
+                🎙️ Visit Notes
+              </button>
+
               {failures >= 3 && (
                 <button 
                   className="lead-action-btn lead-action-export"

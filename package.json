@@ -28,5 +28,8 @@
     "quote",
     "crm"
   ],
-  "license": "ISC"
+  "license": "ISC",
+  "overrides": {
+    "pdfjs-dist": "5.4.449"
+  }
 }

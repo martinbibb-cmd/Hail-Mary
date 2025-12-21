@@ -8,16 +8,28 @@
  * Heavy operations (OCR, chunking, embeddings) are deferred to background jobs
  */
 
-import pdfParse from 'pdf-parse';
 import { pdfToPng, PngPageOutput } from 'pdf-to-png-converter';
 
 type PdfParseResult = { numpages: number; text: string };
 type PdfParseFn = (dataBuffer: Buffer, options?: unknown) => Promise<PdfParseResult>;
 
-// Ensure pdfParse is correctly imported as a function
-// This prevents runtime errors like "pdfParse is not a function"
-// The double cast is needed because pdf-parse's default export type doesn't match its runtime behavior
-const parsePdf = pdfParse as unknown as PdfParseFn;
+let cachedPdfParse: PdfParseFn | null = null;
+
+async function loadPdfParse(): Promise<PdfParseFn> {
+  if (cachedPdfParse) {
+    return cachedPdfParse;
+  }
+
+  const mod = await import('pdf-parse');
+  const parsePdf = (mod as any)?.default ?? (mod as any);
+
+  if (typeof parsePdf !== 'function') {
+    throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
+  }
+
+  cachedPdfParse = parsePdf as PdfParseFn;
+  return cachedPdfParse;
+}
 
 export interface PageData {
   pageNumber: number;
@@ -44,11 +56,7 @@ export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult
       throw new Error('Invalid input: PDF buffer is empty');
     }
 
-    // Defensive check: Verify pdfParse is a function
-    if (typeof parsePdf !== 'function') {
-      throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
-    }
-
+    const parsePdf = await loadPdfParse();
     // Step 1: Extract text from PDF using pdf-parse (function-based API)
     const pdfData = await parsePdf(pdfBuffer);
     const totalPages = pdfData.numpages;
@@ -117,11 +125,7 @@ export async function extractPageText(pdfBuffer: Buffer, pageNumber: number): Pr
     throw new Error('Invalid page number: must be >= 1, got ' + pageNumber);
   }
 
-  // Defensive check: Verify pdfParse is a function
-  if (typeof parsePdf !== 'function') {
-    throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
-  }
-
+  const parsePdf = await loadPdfParse();
   // This would require pdf.js canvas API for proper per-page extraction
   // For v1, we extract all text at once
   const pdfData = await parsePdf(pdfBuffer);

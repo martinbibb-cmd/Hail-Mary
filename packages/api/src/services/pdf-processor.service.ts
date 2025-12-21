@@ -21,11 +21,61 @@ async function loadPdfParse(): Promise<PdfParseFn> {
   }
 
   const mod = await import('pdf-parse');
-  const parsePdf = (mod as any)?.default ?? (mod as any);
 
-  if (typeof parsePdf !== 'function') {
-    throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
+  // Handle different export patterns:
+  // 1. Direct function (mod itself is a function) - old API
+  // 2. Default export (mod.default) - old API with default export
+  // 3. Named export PDFParse (mod.PDFParse) - new v2.4.5+ class-based API
+  let ParseModule: any;
+  
+  if (typeof mod === 'function') {
+    ParseModule = mod;
+  } else if (mod.default && typeof mod.default === 'function') {
+    ParseModule = mod.default;
+  } else if ((mod as any).PDFParse && typeof (mod as any).PDFParse === 'function') {
+    ParseModule = (mod as any).PDFParse;
+  } else {
+    throw new Error(
+      `CRITICAL: pdf-parse import failed. Expected a function but got ${typeof mod}. Check package installation or module system.`
+    );
   }
+
+  // Create a wrapper function that handles both old function-based and new class-based APIs
+  const parsePdf = async (dataBuffer: Buffer, options?: unknown): Promise<PdfParseResult> => {
+    // Check if it's the old function-based API by testing if we can call it directly
+    try {
+      // Try old API: direct function call
+      const result = await ParseModule(dataBuffer, options);
+      if (result && typeof result.numpages === 'number' && typeof result.text === 'string') {
+        return result as PdfParseResult;
+      }
+    } catch (firstError) {
+      // If old API fails, try new class-based API
+      try {
+        // New API: instantiate class and call getText()
+        // The new API expects Uint8Array, not Buffer
+        const uint8Array = new Uint8Array(dataBuffer);
+        const parser = new ParseModule(uint8Array, options);
+        const textResult = await parser.getText();
+        
+        // Convert new API result format to old API format
+        return {
+          numpages: textResult.total || 0,
+          text: textResult.text || '',
+        };
+      } catch (secondError) {
+        // If both APIs fail, throw a detailed error
+        throw new Error(
+          `pdf-parse failed with both old and new API. ` +
+          `Old API error: ${(firstError as Error).message}. ` +
+          `New API error: ${(secondError as Error).message}`
+        );
+      }
+    }
+    
+    // If we got here, the result from the old API was invalid
+    throw new Error('pdf-parse returned unexpected result format');
+  };
 
   cachedPdfParse = parsePdf as PdfParseFn;
   return cachedPdfParse;

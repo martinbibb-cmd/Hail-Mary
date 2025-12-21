@@ -11,6 +11,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './AdminSystemRecommendationPage.css';
 
+// Note: Version is imported from the System Recommendation engine
+// Currently hardcoded to match RULESET_VERSION in @hail-mary/shared
+const ENGINE_VERSION = '1.0.0';
+
 export const AdminSystemRecommendationPage: React.FC = () => {
   const [updating, setUpdating] = useState(false);
   const [initializing, setInitializing] = useState(false);
@@ -140,7 +144,7 @@ export const AdminSystemRecommendationPage: React.FC = () => {
             </div>
             <div className="info-item">
               <span className="info-label">Engine Version:</span>
-              <span className="info-value">1.0.0</span>
+              <span className="info-value">{ENGINE_VERSION}</span>
             </div>
           </div>
         </div>
@@ -215,5 +219,3 @@ export const AdminSystemRecommendationPage: React.FC = () => {
     </div>
   );
 };
-
-export default AdminSystemRecommendationPage;

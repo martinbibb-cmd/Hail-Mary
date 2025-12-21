@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import type { RockyProcessResult } from '@hail-mary/shared'
-import { aiService } from '../../services/ai.service'
 
 interface DebugInfo {
   requestUrl: string
@@ -25,6 +24,7 @@ export const RockyTool: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
   const [showDebug, setShowDebug] = useState(false)
   const [smokeTestRunning, setSmokeTestRunning] = useState(false)
+  const [smokeTestSuccess, setSmokeTestSuccess] = useState<string | null>(null)
 
   // Check Worker health on mount
   useEffect(() => {
@@ -39,6 +39,7 @@ export const RockyTool: React.FC = () => {
     setSmokeTestRunning(true)
     setError(null)
     setLastError(null)
+    setSmokeTestSuccess(null)
 
     const testRequest = {
       transcript: 'Test survey: customer has a Worcester boiler in a 3 bedroom house',
@@ -70,7 +71,7 @@ export const RockyTool: React.FC = () => {
       if (response.ok && data.success) {
         setWorkerStatus('available')
         setLastError(null)
-        alert(`✅ Smoke test passed!\n\nEndpoint: ${requestUrl}\nStatus: ${response.status}\nResponse time: ${responseTime}ms`)
+        setSmokeTestSuccess(`Smoke test passed! Status: ${response.status}, Response time: ${responseTime}ms`)
       } else {
         setWorkerStatus('degraded')
         setLastError(`HTTP ${response.status}: ${data.error || 'Unknown error'}`)
@@ -272,6 +273,37 @@ ${basics.actions.map(a => `- ${a}`).join('\n')}
           </div>
         )}
       </div>
+
+      {smokeTestSuccess && (
+        <div
+          style={{
+            padding: '12px',
+            backgroundColor: '#d4edda',
+            border: '1px solid #c3e6cb',
+            borderRadius: '4px',
+            color: '#155724',
+            marginBottom: '12px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>✅ {smokeTestSuccess}</span>
+          <button
+            onClick={() => setSmokeTestSuccess(null)}
+            style={{
+              padding: '2px 8px',
+              fontSize: '12px',
+              backgroundColor: 'transparent',
+              color: '#155724',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <p style={{ color: '#666', marginBottom: '20px' }}>
         Rocky analyzes voice transcripts and extracts structured facts using deterministic rules.

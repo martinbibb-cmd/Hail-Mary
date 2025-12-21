@@ -2,7 +2,7 @@
  * Bottom Dock
  * 
  * Always-visible bottom dock across the entire app (all breakpoints).
- * Contains 5 items: Home, Sarah, Diary (Rocky), Photos, More
+ * Contains 6 items: Home, Sarah, Diary, Visit, Photos, More
  */
 
 import React from 'react';

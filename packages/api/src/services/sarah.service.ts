@@ -367,6 +367,49 @@ export async function explainRockyFacts(request: SarahExplainRequest): Promise<S
 }
 
 /**
+ * Pattern matching configuration for common questions
+ */
+const CHAT_PATTERNS = {
+  greeting: {
+    patterns: ['hello', 'hi ', 'hi\n', 'hey'],
+    customerResponse: "Hello! I'm Sarah, your AI assistant. I can help explain survey findings, answer questions about your heating system, and guide you through the next steps. What would you like to know?",
+    otherResponse: "Hi there! I'm Sarah. I can help you understand survey data and provide explanations. What can I help you with?"
+  },
+  help: {
+    patterns: ['help', 'what can you'],
+    response: "I can help you with:\n- Explaining survey findings in simple terms\n- Answering questions about your heating system\n- Clarifying technical details\n- Guiding you through next steps\n- Addressing any concerns you might have\n\nWhat would you like to know more about?"
+  },
+  survey: {
+    patterns: ['survey', 'finding'],
+    response: "I can explain survey findings in detail. To give you the most accurate information, please share the survey data with me or ask about specific aspects like the property assessment, system condition, or required actions."
+  },
+  nextSteps: {
+    patterns: ['next', 'step'],
+    requiresBoth: true,
+    response: "The next steps typically include: reviewing the survey findings, getting a detailed quote based on the assessment, and scheduling the installation. Would you like me to explain any specific part of this process?"
+  },
+  thanks: {
+    patterns: ['thank'],
+    response: "You're welcome! Feel free to ask if you have any other questions."
+  }
+}
+
+/**
+ * Check if message matches a pattern
+ */
+function matchesPattern(message: string, pattern: typeof CHAT_PATTERNS[keyof typeof CHAT_PATTERNS]): boolean {
+  const lower = message.toLowerCase()
+  
+  if ('requiresBoth' in pattern && pattern.requiresBoth) {
+    // All patterns must be present
+    return pattern.patterns.every(p => lower.includes(p))
+  }
+  
+  // Any pattern matches
+  return pattern.patterns.some(p => lower.includes(p))
+}
+
+/**
  * Handle chat message
  * Provides conversational responses based on user messages
  */
@@ -379,25 +422,21 @@ export async function handleChatMessage(
   const startTime = Date.now();
   
   try {
-    // Generate a contextual response based on the message
-    // For now, using template-based responses
     let responseText = '';
     
-    const lowerMessage = message.toLowerCase();
-    
-    // Pattern matching for common questions
-    if (lowerMessage.includes('hello') || lowerMessage.includes('hi ') || lowerMessage === 'hi') {
+    // Check patterns in order
+    if (matchesPattern(message, CHAT_PATTERNS.greeting)) {
       responseText = audience === 'customer' 
-        ? "Hello! I'm Sarah, your AI assistant. I can help explain survey findings, answer questions about your heating system, and guide you through the next steps. What would you like to know?"
-        : "Hi there! I'm Sarah. I can help you understand survey data and provide explanations. What can I help you with?";
-    } else if (lowerMessage.includes('survey') || lowerMessage.includes('finding')) {
-      responseText = "I can explain survey findings in detail. To give you the most accurate information, please share the survey data with me or ask about specific aspects like the property assessment, system condition, or required actions.";
-    } else if (lowerMessage.includes('next') && lowerMessage.includes('step')) {
-      responseText = "The next steps typically include: reviewing the survey findings, getting a detailed quote based on the assessment, and scheduling the installation. Would you like me to explain any specific part of this process?";
-    } else if (lowerMessage.includes('help') || lowerMessage.includes('what can you')) {
-      responseText = "I can help you with:\n- Explaining survey findings in simple terms\n- Answering questions about your heating system\n- Clarifying technical details\n- Guiding you through next steps\n- Addressing any concerns you might have\n\nWhat would you like to know more about?";
-    } else if (lowerMessage.includes('thank')) {
-      responseText = "You're welcome! Feel free to ask if you have any other questions.";
+        ? CHAT_PATTERNS.greeting.customerResponse
+        : CHAT_PATTERNS.greeting.otherResponse;
+    } else if (matchesPattern(message, CHAT_PATTERNS.help)) {
+      responseText = CHAT_PATTERNS.help.response;
+    } else if (matchesPattern(message, CHAT_PATTERNS.survey)) {
+      responseText = CHAT_PATTERNS.survey.response;
+    } else if (matchesPattern(message, CHAT_PATTERNS.nextSteps)) {
+      responseText = CHAT_PATTERNS.nextSteps.response;
+    } else if (matchesPattern(message, CHAT_PATTERNS.thanks)) {
+      responseText = CHAT_PATTERNS.thanks.response;
     } else {
       // Generic helpful response
       const contextNote = conversationHistory && conversationHistory.length > 0 

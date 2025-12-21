@@ -12,6 +12,19 @@ interface ChatMessage {
 // Key for localStorage
 const SARAH_CHAT_HISTORY_KEY = 'sarah_chat_history'
 
+// UUID generator with fallback for older browsers
+const generateId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback for browsers without crypto.randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
 interface DebugInfo {
   requestUrl: string
   responseStatus: number | null
@@ -53,7 +66,7 @@ export const SarahTool: React.FC = () => {
         if (stored) {
           const parsed = JSON.parse(stored)
           // Convert timestamp strings back to Date objects
-          const messagesWithDates = parsed.map((msg: any) => ({
+          const messagesWithDates: ChatMessage[] = parsed.map((msg: { id: string; role: 'user' | 'assistant'; content: string; timestamp: string }) => ({
             ...msg,
             timestamp: new Date(msg.timestamp),
           }))
@@ -229,7 +242,7 @@ export const SarahTool: React.FC = () => {
     if (!chatInput.trim()) return
 
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: 'user',
       content: chatInput,
       timestamp: new Date(),
@@ -281,7 +294,7 @@ export const SarahTool: React.FC = () => {
         }
 
         const assistantMessage: ChatMessage = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: 'assistant',
           content: assistantContent,
           timestamp: new Date(),
@@ -299,7 +312,7 @@ export const SarahTool: React.FC = () => {
       
       // Add error message to chat
       const errorMessage: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         role: 'assistant',
         content: `I'm having trouble responding right now. Error: ${errorMsg}`,
         timestamp: new Date(),

@@ -347,13 +347,16 @@ export const VisitApp: React.FC = () => {
       
       // Auto-generate summary after significant transcript accumulation
       // Only generate if we have enough content and not already generating
-      const wordCount = accumulatedTranscriptRef.current.split(/\s+/).length
-      if (wordCount >= 50 && !isGeneratingSummary && activeSession) {
-        // Call the API directly here to avoid circular dependency
-        generateSummaryForSession(activeSession.id)
+      const trimmedTranscript = accumulatedTranscriptRef.current.trim()
+      if (trimmedTranscript) {
+        const wordCount = trimmedTranscript.split(/\s+/).length
+        // Only auto-generate once when threshold is crossed
+        if (wordCount >= 50 && !isGeneratingSummary && activeSession && !visitSummary) {
+          generateSummaryForSession(activeSession.id)
+        }
       }
     }
-  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession])
+  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary])
 
   // STT Functions
   const startListening = useCallback(() => {

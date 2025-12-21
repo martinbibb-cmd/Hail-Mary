@@ -368,7 +368,12 @@ function generateDetailedSummary(transcript: string, observations: Array<{ text:
   const lines: string[] = [];
   
   // Extract key information from transcript
-  const words = transcript.toLowerCase().split(/\s+/);
+  const trimmedTranscript = transcript.trim();
+  if (!trimmedTranscript) {
+    return 'No transcript data available.';
+  }
+  
+  const words = trimmedTranscript.toLowerCase().split(/\s+/);
   
   // Check for common keywords
   const hasBoilerMention = words.some(w => w.includes('boiler'));
@@ -376,23 +381,35 @@ function generateDetailedSummary(transcript: string, observations: Array<{ text:
   const hasRadiatorMention = words.some(w => w.includes('radiator'));
   const hasPipeworkMention = words.some(w => w.includes('pipe') || w.includes('pipework'));
   
-  lines.push('**Visit Summary**\n');
+  lines.push('Visit Summary');
+  lines.push('');
   
+  // Add findings if keywords found
+  const findings: string[] = [];
   if (hasBoilerMention) {
-    lines.push('- Discussed boiler system');
+    findings.push('- Discussed boiler system');
   }
   if (hasCylinderMention) {
-    lines.push('- Reviewed hot water cylinder');
+    findings.push('- Reviewed hot water cylinder');
   }
   if (hasRadiatorMention) {
-    lines.push('- Inspected radiators');
+    findings.push('- Inspected radiators');
   }
   if (hasPipeworkMention) {
-    lines.push('- Assessed pipework');
+    findings.push('- Assessed pipework');
+  }
+  
+  if (findings.length > 0) {
+    lines.push(...findings);
+  } else {
+    // Fallback if no keywords found - show first part of transcript
+    const preview = trimmedTranscript.substring(0, 150);
+    lines.push(`Survey covered: ${preview}${trimmedTranscript.length > 150 ? '...' : ''}`);
   }
   
   if (observations.length > 0) {
-    lines.push('\n**Key Observations:**');
+    lines.push('');
+    lines.push('Key Observations:');
     observations.slice(0, 5).forEach(obs => {
       lines.push(`- ${obs.text}`);
     });
@@ -400,7 +417,8 @@ function generateDetailedSummary(transcript: string, observations: Array<{ text:
   
   // Add a note about the transcript length
   const wordCount = words.length;
-  lines.push(`\n*Based on ${wordCount} words of transcript data*`);
+  lines.push('');
+  lines.push(`Based on ${wordCount} words of transcript data`);
   
   return lines.join('\n');
 }
@@ -411,8 +429,9 @@ function generateDetailedSummary(transcript: string, observations: Array<{ text:
 function generateObservationsSummary(observations: Array<{ text: string }>): string {
   const lines: string[] = [];
   
-  lines.push('**Visit Summary**\n');
-  lines.push('**Observations:**');
+  lines.push('Visit Summary');
+  lines.push('');
+  lines.push('Observations:');
   
   observations.slice(0, 10).forEach(obs => {
     lines.push(`- ${obs.text}`);

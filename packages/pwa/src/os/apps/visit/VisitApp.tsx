@@ -484,8 +484,8 @@ export const VisitApp: React.FC = () => {
         mimeType = 'audio/mpeg'
       }
       if (!MediaRecorder.isTypeSupported(mimeType)) {
-        // Fallback to default, though this may fail
-        console.warn('No supported audio MIME type found, using audio/webm as fallback')
+        // Fallback to default, though recording may fail
+        console.warn('No supported audio MIME type found, recording may fail. Using audio/webm as fallback.')
         mimeType = 'audio/webm'
       }
       
@@ -561,7 +561,7 @@ export const VisitApp: React.FC = () => {
             
             // Trigger save after processing completes
             // processWithRocky is synchronous, so we can safely access the updated ref
-            // Small delay to ensure React state updates complete
+            // Synchronize with browser repaint to ensure React state updates complete
             requestAnimationFrame(() => {
               if (currentLeadId) {
                 enqueueSave({

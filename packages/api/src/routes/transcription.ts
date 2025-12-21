@@ -29,9 +29,10 @@ import { requireLeadId } from '../middleware/leadId.middleware';
 
 const router = Router();
 
-// File storage configuration for audio uploads
+// Configuration constants
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const AUDIO_DIR = path.join(DATA_DIR, 'audio');
+const MAX_AUDIO_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit for audio files
 
 // Ensure audio directory exists
 if (!fs.existsSync(AUDIO_DIR)) {
@@ -73,7 +74,7 @@ const allowedAudioTypes: Record<string, string[]> = {
 const upload = multer({
   storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit per chunk
+    fileSize: MAX_AUDIO_FILE_SIZE,
   },
   fileFilter: (_req, file, cb) => {
     // Check MIME type
@@ -424,7 +425,7 @@ const whisperUpload = multer({
     },
   }),
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
+    fileSize: MAX_AUDIO_FILE_SIZE,
   },
   fileFilter: (_req, file, cb) => {
     // Check MIME type

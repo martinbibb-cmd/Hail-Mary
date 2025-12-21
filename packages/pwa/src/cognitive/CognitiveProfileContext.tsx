@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 export type CognitiveProfile = 'standard' | 'focus' | 'clarity' | 'calm'
+export type SttProvider = 'browser' | 'whisper'
 
 export interface CognitiveProfileSettings {
   profile: CognitiveProfile
   focusTimers: boolean
   bionicReading: boolean
   calmSafeMode: boolean
+  sttProvider: SttProvider
 }
 
 interface CognitiveProfileContextValue {
@@ -23,6 +25,7 @@ const defaultSettings: CognitiveProfileSettings = {
   focusTimers: true,
   bionicReading: true,
   calmSafeMode: true,
+  sttProvider: 'browser',
 }
 
 const CognitiveProfileContext = createContext<CognitiveProfileContextValue | null>(null)

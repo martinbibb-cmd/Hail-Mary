@@ -24,14 +24,15 @@ import type {
   CreateTranscriptSessionDto,
   TranscriptSessionWithDetails,
 } from '@hail-mary/shared';
-import { enqueueSttJob } from '../services/stt.service';
+import { enqueueSttJob, getSttProvider } from '../services/stt.service';
 import { requireLeadId } from '../middleware/leadId.middleware';
 
 const router = Router();
 
-// File storage configuration for audio uploads
+// Configuration constants
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const AUDIO_DIR = path.join(DATA_DIR, 'audio');
+const MAX_AUDIO_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit for audio files
 
 // Ensure audio directory exists
 if (!fs.existsSync(AUDIO_DIR)) {
@@ -73,7 +74,7 @@ const allowedAudioTypes: Record<string, string[]> = {
 const upload = multer({
   storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit per chunk
+    fileSize: MAX_AUDIO_FILE_SIZE,
   },
   fileFilter: (_req, file, cb) => {
     // Check MIME type
@@ -398,6 +399,89 @@ router.get('/sessions', async (req: Request, res: Response) => {
     res.json(response);
   } catch (error) {
     console.error('Error listing transcript sessions:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      error: (error as Error).message,
+    };
+    res.status(500).json(response);
+  }
+});
+
+// POST /whisper-transcribe - Upload audio and transcribe with Whisper immediately
+// This is for "Whisper Mode 1" where audio is uploaded on stop recording
+const whisperUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, _file, cb) => {
+      const tempDir = path.join(AUDIO_DIR, 'temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      cb(null, tempDir);
+    },
+    filename: (_req, file, cb) => {
+      const timestamp = Date.now();
+      const ext = path.extname(file.originalname) || '.webm';
+      cb(null, `whisper_${timestamp}${ext}`);
+    },
+  }),
+  limits: {
+    fileSize: MAX_AUDIO_FILE_SIZE,
+  },
+  fileFilter: (_req, file, cb) => {
+    // Check MIME type
+    if (!allowedAudioTypes[file.mimetype]) {
+      cb(new Error(`Audio type ${file.mimetype} not allowed`));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+router.post('/whisper-transcribe', whisperUpload.single('audio'), async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'No audio file uploaded',
+      };
+      return res.status(400).json(response);
+    }
+
+    const language = req.body.language || 'en-GB';
+
+    // Use Whisper provider directly
+    const sttProvider = getSttProvider();
+
+    // Transcribe the audio file
+    const result = await sttProvider.transcribe(file.path, language);
+
+    // Clean up the temporary file
+    try {
+      fs.unlinkSync(file.path);
+    } catch (error) {
+      console.warn('Failed to delete temporary audio file:', error);
+    }
+
+    if (result.error) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: result.error,
+      };
+      return res.status(500).json(response);
+    }
+
+    const response: ApiResponse<{ text: string; segments?: any[] }> = {
+      success: true,
+      data: {
+        text: result.text,
+        segments: result.segments,
+      },
+      message: 'Audio transcribed successfully',
+    };
+    res.json(response);
+  } catch (error) {
+    console.error('Error transcribing audio with Whisper:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: (error as Error).message,

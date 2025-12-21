@@ -173,6 +173,41 @@ export const SettingsApp: React.FC = () => {
       </div>
 
       <div className="settings-section">
+        <h3>Speech-to-Text Provider</h3>
+        <p className="settings-section-desc">Choose how voice transcription is processed</p>
+        
+        <div className="cognitive-toggle-grid">
+          <label className="toggle-row">
+            <input
+              type="radio"
+              name="stt-provider"
+              value="browser"
+              checked={settings.sttProvider === 'browser'}
+              onChange={(e) => updateSettings({ sttProvider: e.target.checked ? 'browser' : settings.sttProvider })}
+            />
+            <div>
+              <p className="toggle-title">Browser (Real-time)</p>
+              <p className="toggle-copy">Uses your browser's built-in speech recognition for instant transcription.</p>
+            </div>
+          </label>
+
+          <label className="toggle-row">
+            <input
+              type="radio"
+              name="stt-provider"
+              value="whisper"
+              checked={settings.sttProvider === 'whisper'}
+              onChange={(e) => updateSettings({ sttProvider: e.target.checked ? 'whisper' : settings.sttProvider })}
+            />
+            <div>
+              <p className="toggle-title">Whisper (High Accuracy)</p>
+              <p className="toggle-copy">Records audio and uses OpenAI Whisper for more accurate transcription after recording stops.</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div className="settings-section">
         <h3>Appearance & Wallpaper</h3>
         <p className="settings-section-desc">Choose a wallpaper for your desktop</p>
         

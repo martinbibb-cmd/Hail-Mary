@@ -19,6 +19,7 @@ import { useLeadStore } from '../../../stores/leadStore'
 import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
+import { useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext'
 import './VisitApp.css'
 
 /**
@@ -153,11 +154,21 @@ export const VisitApp: React.FC = () => {
   const [visitSummary, setVisitSummary] = useState<string | undefined>(undefined)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
   
+  // Get STT provider setting
+  const { settings } = useCognitiveProfile()
+  const sttProvider = settings.sttProvider
+  
   // STT state
   const [isListening, setIsListening] = useState(false)
   const [liveTranscript, setLiveTranscript] = useState('')
   const [sttSupported, setSttSupported] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  
+  // Audio recording state for Whisper mode
+  const [isRecording, setIsRecording] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   
   // Accumulated final transcript for Rocky processing
   const accumulatedTranscriptRef = useRef<string>('')
@@ -445,6 +456,112 @@ export const VisitApp: React.FC = () => {
     }
   }, [currentLeadId, enqueueSave, keyDetails, checklistItems])
 
+  // Audio Recording Functions for Whisper mode
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      
+      // Create MediaRecorder with appropriate format
+      let mimeType = 'audio/webm;codecs=opus'
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm'
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mp4'
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+      
+      mediaRecorder.start()
+      setIsRecording(true)
+    } catch (error) {
+      console.error('Failed to start audio recording:', error)
+      setExceptions(prev => [...prev, `Microphone error: ${(error as Error).message}`])
+    }
+  }, [])
+
+  const stopRecording = useCallback(async () => {
+    if (!mediaRecorderRef.current) return
+    
+    return new Promise<void>((resolve) => {
+      const mediaRecorder = mediaRecorderRef.current!
+      
+      mediaRecorder.onstop = async () => {
+        setIsRecording(false)
+        setIsTranscribing(true)
+        
+        // Stop all tracks to release microphone
+        mediaRecorder.stream.getTracks().forEach(track => track.stop())
+        
+        // Create blob from recorded chunks
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType })
+        
+        // Upload to Whisper API
+        try {
+          const formData = new FormData()
+          formData.append('audio', audioBlob, 'recording.webm')
+          formData.append('language', 'en-GB')
+          
+          const response = await fetch('/api/transcription/whisper-transcribe', {
+            method: 'POST',
+            body: formData,
+          })
+          
+          const result = await response.json()
+          
+          if (result.success && result.data) {
+            const transcriptText = result.data.text
+            
+            // Add as a new transcript segment
+            const segment: TranscriptSegment = {
+              id: `segment-${Date.now()}`,
+              timestamp: new Date(),
+              speaker: 'user',
+              text: transcriptText.trim(),
+            }
+            setTranscriptSegments(prev => [...prev, segment])
+            
+            // Process with Rocky (correction + extraction)
+            processWithRocky(transcriptText.trim())
+          } else {
+            setExceptions(prev => [...prev, `Transcription error: ${result.error || 'Unknown error'}`])
+          }
+        } catch (error) {
+          console.error('Failed to transcribe audio:', error)
+          setExceptions(prev => [...prev, `Transcription error: ${(error as Error).message}`])
+        } finally {
+          setIsTranscribing(false)
+          
+          // Trigger save when stopping recording
+          if (currentLeadId && accumulatedTranscriptRef.current) {
+            enqueueSave({
+              leadId: currentLeadId,
+              reason: 'stop_recording',
+              payload: {
+                correctedTranscript: accumulatedTranscriptRef.current,
+                keyDetails,
+                checklistItems,
+                timestamp: new Date().toISOString(),
+              },
+            })
+          }
+        }
+        
+        resolve()
+      }
+      
+      mediaRecorder.stop()
+    })
+  }, [currentLeadId, enqueueSave, keyDetails, checklistItems, processWithRocky])
+
   const handleManualSave = useCallback(() => {
     if (!currentLeadId) return
 
@@ -671,7 +788,23 @@ export const VisitApp: React.FC = () => {
         </div>
 
         <div className="visit-controls">
-          {sttSupported ? (
+          {sttProvider === 'whisper' ? (
+            // Whisper mode: record audio and transcribe on stop
+            <button
+              className={`btn-mic ${isRecording ? 'recording' : ''}`}
+              onClick={isRecording ? stopRecording : startRecording}
+              title={isRecording ? 'Stop Recording' : 'Start Recording'}
+              disabled={isTranscribing}
+            >
+              {isTranscribing 
+                ? '⏳ Transcribing...' 
+                : isRecording 
+                ? '⏹️ Stop Recording' 
+                : '🎤 Start Recording (Whisper)'
+              }
+            </button>
+          ) : sttSupported ? (
+            // Browser mode: real-time speech recognition
             <button
               className={`btn-mic ${isListening ? 'recording' : ''}`}
               onClick={isListening ? stopListening : startListening}

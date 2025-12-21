@@ -38,7 +38,7 @@ export function useLayoutMode(): LayoutMode {
   
   // Use ref to track the last layout to implement hysteresis
   const lastLayoutRef = useRef<LayoutMode>(layout)
-  const debounceTimerRef = useRef<number | null>(null)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const handleResize = () => {
@@ -105,12 +105,9 @@ function getLayoutMode(currentLayout?: LayoutMode): LayoutMode {
   } else if (currentLayout === 'mobile') {
     // Stay in mobile mode until we rise above the upper threshold
     return width >= TABLET_THRESHOLD_UP ? 'tablet' : 'mobile'
-  } else if (currentLayout === 'desktop') {
-    // Transitioning from desktop to touch (unusual but handle it)
-    // Use the upper threshold for initial determination
-    return width >= TABLET_THRESHOLD_UP ? 'tablet' : 'mobile'
   }
   
-  // No current layout (initial state), use the upper threshold
+  // No current layout or desktop layout (initial state or transitioning from desktop)
+  // Use the upper threshold for initial determination
   return width >= TABLET_THRESHOLD_UP ? 'tablet' : 'mobile'
 }

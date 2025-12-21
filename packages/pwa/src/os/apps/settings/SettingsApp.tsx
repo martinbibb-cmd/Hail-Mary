@@ -183,7 +183,7 @@ export const SettingsApp: React.FC = () => {
               name="stt-provider"
               value="browser"
               checked={settings.sttProvider === 'browser'}
-              onChange={(e) => updateSettings({ sttProvider: e.target.checked ? 'browser' : settings.sttProvider })}
+              onChange={() => updateSettings({ sttProvider: 'browser' })}
             />
             <div>
               <p className="toggle-title">Browser (Real-time)</p>
@@ -197,7 +197,7 @@ export const SettingsApp: React.FC = () => {
               name="stt-provider"
               value="whisper"
               checked={settings.sttProvider === 'whisper'}
-              onChange={(e) => updateSettings({ sttProvider: e.target.checked ? 'whisper' : settings.sttProvider })}
+              onChange={() => updateSettings({ sttProvider: 'whisper' })}
             />
             <div>
               <p className="toggle-title">Whisper (High Accuracy)</p>

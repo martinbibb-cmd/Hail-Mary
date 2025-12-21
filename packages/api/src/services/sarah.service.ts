@@ -366,11 +366,79 @@ export async function explainRockyFacts(request: SarahExplainRequest): Promise<S
   }
 }
 
+/**
+ * Handle chat message
+ * Provides conversational responses based on user messages
+ */
+export async function handleChatMessage(
+  message: string,
+  conversationHistory?: Array<{ role: string; content: string }>,
+  audience: SarahAudience = 'customer',
+  tone: SarahTone = 'friendly'
+): Promise<SarahProcessResult> {
+  const startTime = Date.now();
+  
+  try {
+    // Generate a contextual response based on the message
+    // For now, using template-based responses
+    let responseText = '';
+    
+    const lowerMessage = message.toLowerCase();
+    
+    // Pattern matching for common questions
+    if (lowerMessage.includes('hello') || lowerMessage.includes('hi ') || lowerMessage === 'hi') {
+      responseText = audience === 'customer' 
+        ? "Hello! I'm Sarah, your AI assistant. I can help explain survey findings, answer questions about your heating system, and guide you through the next steps. What would you like to know?"
+        : "Hi there! I'm Sarah. I can help you understand survey data and provide explanations. What can I help you with?";
+    } else if (lowerMessage.includes('survey') || lowerMessage.includes('finding')) {
+      responseText = "I can explain survey findings in detail. To give you the most accurate information, please share the survey data with me or ask about specific aspects like the property assessment, system condition, or required actions.";
+    } else if (lowerMessage.includes('next') && lowerMessage.includes('step')) {
+      responseText = "The next steps typically include: reviewing the survey findings, getting a detailed quote based on the assessment, and scheduling the installation. Would you like me to explain any specific part of this process?";
+    } else if (lowerMessage.includes('help') || lowerMessage.includes('what can you')) {
+      responseText = "I can help you with:\n- Explaining survey findings in simple terms\n- Answering questions about your heating system\n- Clarifying technical details\n- Guiding you through next steps\n- Addressing any concerns you might have\n\nWhat would you like to know more about?";
+    } else if (lowerMessage.includes('thank')) {
+      responseText = "You're welcome! Feel free to ask if you have any other questions.";
+    } else {
+      // Generic helpful response
+      const contextNote = conversationHistory && conversationHistory.length > 0 
+        ? "Based on our conversation, " 
+        : "";
+      
+      responseText = audience === 'customer'
+        ? `${contextNote}I'd be happy to help with that. To provide you with the most accurate information, could you give me a bit more detail about what you'd like to know? For example, are you asking about the survey results, the heating system, costs, or the installation process?`
+        : `${contextNote}I can assist with that. Please provide more context or specific details so I can give you the most relevant information.`;
+    }
+    
+    // Build explanation structure
+    const explanation: SarahExplanation = {
+      audience,
+      tone,
+      generatedAt: new Date(),
+      rockyFactsVersion: '1.0.0',
+      sections: {
+        summary: responseText,
+      },
+      disclaimer: SARAH_CONFIG.audienceTemplates[audience].disclaimerTemplate,
+    };
+    
+    const processingTimeMs = Date.now() - startTime;
+    
+    return {
+      success: true,
+      explanation,
+      processingTimeMs,
+    };
+  } catch (error) {
+    throw new Error(`Sarah chat failed: ${(error as Error).message}`);
+  }
+}
+
 // ============================================
 // Exports
 // ============================================
 
 export const sarahService = {
   explainRockyFacts,
+  handleChatMessage,
   config: SARAH_CONFIG,
 };

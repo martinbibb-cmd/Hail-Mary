@@ -25,7 +25,27 @@ const router = Router();
  */
 router.post('/explain', async (req: Request, res: Response) => {
   try {
-    const { rockyOutput, rockyFacts, customerContext, tone, audience } = req.body;
+    const { rockyOutput, rockyFacts, customerContext, tone, audience, message, conversationHistory } = req.body;
+    
+    // If this is a chat message (no rocky facts), handle as chat
+    if (message && !rockyFacts && !rockyOutput) {
+      const effectiveAudience: SarahAudience = audience || 'customer';
+      const effectiveTone: SarahTone = tone || 'friendly';
+      
+      const chatResult = await sarahService.handleChatMessage(
+        message,
+        conversationHistory,
+        effectiveAudience,
+        effectiveTone
+      );
+      
+      const response: ApiResponse<SarahProcessResult> = {
+        success: chatResult.success,
+        data: chatResult,
+      };
+      
+      return res.json(response);
+    }
     
     // Accept either rockyOutput or rockyFacts
     const facts = rockyFacts || rockyOutput?.rockyFacts || rockyOutput;

@@ -9,6 +9,22 @@ interface ChatMessage {
   timestamp: Date
 }
 
+// Key for localStorage
+const SARAH_CHAT_HISTORY_KEY = 'sarah_chat_history'
+
+// UUID generator with fallback for older browsers
+const generateId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback for browsers without crypto.randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
 interface DebugInfo {
   requestUrl: string
   responseStatus: number | null
@@ -41,6 +57,36 @@ export const SarahTool: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const loadChatHistory = () => {
+      try {
+        const stored = localStorage.getItem(SARAH_CHAT_HISTORY_KEY)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          // Convert timestamp strings back to Date objects
+          const messagesWithDates: ChatMessage[] = parsed.map((msg: { id: string; role: 'user' | 'assistant'; content: string; timestamp: string }) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }))
+          setMessages(messagesWithDates)
+        }
+      } catch (err) {
+        console.error('Failed to load chat history:', err)
+      }
+    }
+    loadChatHistory()
+  }, [])
+
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    try {
+      localStorage.setItem(SARAH_CHAT_HISTORY_KEY, JSON.stringify(messages))
+    } catch (err) {
+      console.error('Failed to save chat history:', err)
+    }
+  }, [messages])
 
   // Check Worker health on mount
   useEffect(() => {
@@ -196,7 +242,7 @@ export const SarahTool: React.FC = () => {
     if (!chatInput.trim()) return
 
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: 'user',
       content: chatInput,
       timestamp: new Date(),
@@ -208,22 +254,80 @@ export const SarahTool: React.FC = () => {
     setError(null)
 
     try {
-      // Simple echo response for now - can be enhanced with actual AI
-      const assistantMessage: ChatMessage = {
-        id: crypto.randomUUID(),
+      // Build conversation context from recent messages
+      const conversationContext = messages.slice(-5).map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      }))
+
+      // Call Sarah API endpoint with conversation context
+      const response = await fetch('/api/sarah/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: userMessage.content,
+          conversationHistory: conversationContext,
+          audience: audience,
+          tone: tone,
+          // Note: rockyFacts placeholder for future integration
+          // When Rocky analysis results are available in context, they can be passed here
+          // to provide more contextual responses
+          rockyFacts: result?.explanation ? {
+            facts: {},
+            completeness: { overall: 100 },
+            missingData: [],
+            version: '1.0.0',
+          } : undefined,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success && data.data) {
+        // Extract the response from Sarah's explanation
+        let assistantContent = ''
+        if (data.data.explanation?.sections?.summary) {
+          assistantContent = data.data.explanation.sections.summary
+        } else if (typeof data.data === 'string') {
+          assistantContent = data.data
+        } else {
+          assistantContent = 'I processed your message successfully.'
+        }
+
+        const assistantMessage: ChatMessage = {
+          id: generateId(),
+          role: 'assistant',
+          content: assistantContent,
+          timestamp: new Date(),
+        }
+
+        setMessages(prev => [...prev, assistantMessage])
+        setWorkerStatus('available')
+      } else {
+        throw new Error(data.error || 'Failed to get response from Sarah')
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to send message'
+      setError(errorMsg)
+      setWorkerStatus('degraded')
+      
+      // Add error message to chat
+      const errorMessage: ChatMessage = {
+        id: generateId(),
         role: 'assistant',
-        content: `I received your message: "${userMessage.content}". Chat integration is active! In a full implementation, I would process this with the Sarah service to provide contextual explanations.`,
+        content: `I'm having trouble responding right now. Error: ${errorMsg}`,
         timestamp: new Date(),
       }
-
-      setMessages(prev => [...prev, assistantMessage])
-      setWorkerStatus('available')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send message')
-      setWorkerStatus('degraded')
+      setMessages(prev => [...prev, errorMessage])
     } finally {
       setLoading(false)
     }
+  }
+
+  const clearChatHistory = () => {
+    setMessages([])
+    localStorage.removeItem(SARAH_CHAT_HISTORY_KEY)
   }
 
   return (
@@ -389,6 +493,27 @@ export const SarahTool: React.FC = () => {
 
       {mode === 'chat' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '14px', color: '#666' }}>
+              {messages.length > 0 ? `${messages.length} message${messages.length > 1 ? 's' : ''}` : 'No messages yet'}
+            </span>
+            {messages.length > 0 && (
+              <button
+                onClick={clearChatHistory}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: '13px',
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Clear Chat
+              </button>
+            )}
+          </div>
           <div style={{
             flex: 1,
             overflowY: 'auto',

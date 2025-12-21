@@ -21,11 +21,62 @@ async function loadPdfParse(): Promise<PdfParseFn> {
   }
 
   const mod = await import('pdf-parse');
-  const parsePdf = (mod as any)?.default ?? (mod as any);
 
-  if (typeof parsePdf !== 'function') {
-    throw new Error('CRITICAL: pdf-parse import failed. Expected a function but got ' + typeof parsePdf + '. Check package installation.');
+  // Handle different export patterns:
+  // 1. Direct function (mod itself is a function) - old API
+  // 2. Default export (mod.default) - old API with default export
+  // 3. Named export PDFParse (mod.PDFParse) - new v2.4.5+ class-based API
+  let ParseModule: any;
+  let isClassBasedAPI = false;
+  
+  if (typeof mod === 'function') {
+    ParseModule = mod;
+  } else if (mod.default && typeof mod.default === 'function') {
+    ParseModule = mod.default;
+  } else if ((mod as any).PDFParse && typeof (mod as any).PDFParse === 'function') {
+    ParseModule = (mod as any).PDFParse;
+    isClassBasedAPI = true;  // PDFParse is a class constructor
+  } else {
+    throw new Error(
+      `CRITICAL: pdf-parse import failed. Expected a function but got ${typeof mod}. Check package installation or module system.`
+    );
   }
+
+  // Create a wrapper function that handles both old function-based and new class-based APIs
+  const parsePdf = async (dataBuffer: Buffer, options?: unknown): Promise<PdfParseResult> => {
+    if (isClassBasedAPI) {
+      // New class-based API: instantiate class and call getText()
+      // The new API expects Uint8Array, not Buffer
+      const uint8Array = new Uint8Array(dataBuffer);
+      const parser = new ParseModule(uint8Array, options);
+      const textResult = await parser.getText();
+      
+      // Convert new API result format to old API format
+      // Validate the result structure before mapping
+      if (!textResult || typeof textResult.total !== 'number' || typeof textResult.text !== 'string') {
+        throw new Error(
+          `pdf-parse new API returned unexpected result format. Expected {total: number, text: string}, got ${JSON.stringify(textResult)}`
+        );
+      }
+      
+      return {
+        numpages: textResult.total,
+        text: textResult.text,
+      };
+    } else {
+      // Old function-based API: direct function call
+      const result = await ParseModule(dataBuffer, options);
+      
+      // Validate the result structure
+      if (!result || typeof result.numpages !== 'number' || typeof result.text !== 'string') {
+        throw new Error(
+          `pdf-parse old API returned unexpected result format. Expected {numpages: number, text: string}, got ${JSON.stringify(result)}`
+        );
+      }
+      
+      return result as PdfParseResult;
+    }
+  };
 
   cachedPdfParse = parsePdf as PdfParseFn;
   return cachedPdfParse;

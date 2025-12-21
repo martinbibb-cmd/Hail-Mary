@@ -141,18 +141,6 @@
   white-space: nowrap;
 }
 
-.visit-action-stop-recording {
-  background: rgba(255, 255, 255, 0.25);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-.visit-action-stop-recording:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.6);
-  transform: translateY(-1px);
-}
-
 .visit-action-end-visit {
   background: rgba(0, 0, 0, 0.25);
   color: white;

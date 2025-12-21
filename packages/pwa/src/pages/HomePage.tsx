@@ -73,6 +73,7 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
         { id: 'admin-nas', name: 'NAS', description: 'System health & migrations', icon: '🖥️', action: { kind: 'route', target: '/admin/nas' } },
         { id: 'admin-users', name: 'Users', description: 'Reset links & roles', icon: '🛂', action: { kind: 'route', target: '/admin/users' } },
         { id: 'admin-knowledge', name: 'Knowledge', description: 'Docs & uploads', icon: '📚', action: { kind: 'route', target: '/admin/knowledge' } },
+        { id: 'admin-system-recommendation', name: 'System Rec', description: 'Submodule management', icon: '🔥', action: { kind: 'route', target: '/admin/system-recommendation' } },
       ]
     : [];
 

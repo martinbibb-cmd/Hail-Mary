@@ -16,7 +16,7 @@ import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useLayoutMode } from './hooks/useLayoutMode'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
-import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
+import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage } from './pages/admin'
 import { HomePage } from './pages/HomePage'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
@@ -713,6 +713,7 @@ function App() {
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/nas" element={<AdminNasPage />} />
           <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
+          <Route path="/admin/system-recommendation" element={<AdminSystemRecommendationPage />} />
         </Routes>
       </main>
 

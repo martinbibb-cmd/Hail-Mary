@@ -187,6 +187,7 @@ export const visitSessions = pgTable("visit_sessions", {
     .notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
   status: varchar("status", { length: 50 }).default("in_progress").notNull(), // in_progress, completed, cancelled
+  summary: text("summary"), // AI-generated summary of the visit
 });
 
 // Media attachments - photos, videos, measurement screenshots

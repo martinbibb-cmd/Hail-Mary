@@ -248,6 +248,7 @@ export interface VisitSession {
   startedAt: Date;
   endedAt?: Date;
   status: VisitSessionStatus;
+  summary?: string; // AI-generated summary of the visit
 }
 
 export type MediaType = 'photo' | 'video' | 'measurement' | 'other';
@@ -343,6 +344,7 @@ export interface CreateVisitSessionDto {
 export interface UpdateVisitSessionDto {
   status?: VisitSessionStatus;
   endedAt?: Date;
+  summary?: string; // Allow updating the summary
 }
 
 // ============================================

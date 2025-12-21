@@ -4,6 +4,16 @@
 
 The Voice Notes feature has been redesigned to match the Depot-voice-notes interaction model with a 3-panel layout and local Rocky extraction.
 
+## Recording Persistence (NEW)
+
+**Voice recording now persists across navigation within the app:**
+- Recording continues when switching between pages/modules
+- Global `voiceRecordingService` manages recording lifecycle independently of React components
+- VisitApp syncs with the service state when mounting/unmounting
+- Recording stops only when explicitly stopped by the user or the app closes
+
+This ensures uninterrupted voice capture during site visits, even when accessing other app features.
+
 ## Key Changes
 
 ### 1. NOT a Chat Interface

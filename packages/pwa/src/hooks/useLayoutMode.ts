@@ -6,6 +6,22 @@ export type LayoutMode = 'desktop' | 'tablet' | 'mobile'
  * Hook to detect device layout mode based on pointer type and screen width.
  * Includes stability mechanisms to prevent flickering on tablets.
  * 
+ * ## Stability Features:
+ * 
+ * 1. **Debouncing**: Resize events are debounced by 150ms to prevent rapid
+ *    recalculations during window resizing or orientation changes.
+ * 
+ * 2. **Hysteresis**: Different thresholds are used for transitioning between
+ *    mobile and tablet modes:
+ *    - Mobile → Tablet: triggers at 900px (upper threshold)
+ *    - Tablet → Mobile: triggers at 850px (lower threshold)
+ *    This 50px "dead zone" prevents flickering when the window size
+ *    hovers near a single threshold.
+ * 
+ * 3. **Pointer Detection**: Desktop mode is determined by pointer type
+ *    (fine pointer = mouse/trackpad), which is stable and doesn't change
+ *    during resize events.
+ * 
  * @returns LayoutMode type:
  *   - 'desktop': pointer:fine (mouse/trackpad) - uses WIMP desktop interface
  *   - 'tablet': pointer:coarse + width >= 900px - uses Stack UI with tabs

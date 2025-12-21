@@ -172,8 +172,10 @@ export const VisitApp: React.FC = () => {
     if (isCurrentlyRecording) {
       if (currentProvider === 'browser') {
         setIsListening(true)
+        startRecordingInStore('browser')
       } else if (currentProvider === 'whisper') {
         setIsRecording(true)
+        startRecordingInStore('whisper')
       }
     }
 
@@ -181,7 +183,7 @@ export const VisitApp: React.FC = () => {
     return () => {
       // Callbacks remain active to allow recording to continue across navigation
     }
-  }, [incrementTranscriptCount, processWithRocky])
+  }, [incrementTranscriptCount, processWithRocky, startRecordingInStore])
 
   // Load customers
   useEffect(() => {

@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useWindowStore } from '../window-manager/windowStore'
-import type { DeviceLayout } from '../../hooks/useDeviceLayout'
+import type { LayoutMode } from '../../hooks/useLayoutMode'
 import { ProfileApp } from '../apps/profile/ProfileApp'
 import { VisitApp } from '../apps/visit/VisitApp'
 import { DiaryApp } from '../apps/diary/DiaryApp'
@@ -39,7 +39,7 @@ import { getAllDockApps } from '../dock/Dock'
 import './StackWorkspace.css'
 
 interface StackWorkspaceProps {
-  layout: DeviceLayout
+  layout: LayoutMode
   children: React.ReactNode
 }
 

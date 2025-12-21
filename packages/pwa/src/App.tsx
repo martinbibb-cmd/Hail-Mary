@@ -14,7 +14,7 @@ import { Desktop, DesktopWorkspace, StackWorkspace } from './os'
 import { AuthProvider, AuthGuard, ResetPasswordPage, useAuth } from './auth'
 import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
-import { useDeviceLayout } from './hooks/useDeviceLayout'
+import { useLayoutMode } from './hooks/useLayoutMode'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { AdminUsersPage, AdminNasPage, AdminKnowledgePage } from './pages/admin'
 import { HomePage } from './pages/HomePage'
@@ -647,7 +647,7 @@ function VisitPage() {
 function App() {
   const { profile } = useCognitiveProfile()
   const isFocusProfile = profile === 'focus'
-  const layout = useDeviceLayout()
+  const layout = useLayoutMode()
   const { hydrate } = useLeadStore()
   
   // Drawer states

@@ -42,14 +42,14 @@ export const useVisitStore = create<VisitStore>((set) => ({
   transcriptCount: 0,
 
   // Set active session (when visit starts)
-  setActiveSession: (session, customer) => set({
+  setActiveSession: (session: VisitSession | null, customer: Customer | null) => set({
     activeSession: session,
     activeCustomer: customer,
     transcriptCount: 0,
   }),
 
   // Start recording
-  startRecording: (provider) => set({
+  startRecording: (provider: RecordingProvider) => set({
     isRecording: true,
     recordingProvider: provider,
     recordingStartTime: new Date(),

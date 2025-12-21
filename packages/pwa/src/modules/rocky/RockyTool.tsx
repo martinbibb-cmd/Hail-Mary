@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import type { RockyProcessResult } from '@hail-mary/shared'
+import { aiService } from '../../services/ai.service'
 
 interface DebugInfo {
   requestUrl: string

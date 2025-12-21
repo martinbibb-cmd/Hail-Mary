@@ -364,7 +364,7 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
 /**
  * Generate a detailed summary from transcript and observations
  */
-function generateDetailedSummary(transcript: string, observations: any[]): string {
+function generateDetailedSummary(transcript: string, observations: Array<{ text: string }>): string {
   const lines: string[] = [];
   
   // Extract key information from transcript
@@ -408,7 +408,7 @@ function generateDetailedSummary(transcript: string, observations: any[]): strin
 /**
  * Generate a summary from observations only
  */
-function generateObservationsSummary(observations: any[]): string {
+function generateObservationsSummary(observations: Array<{ text: string }>): string {
   const lines: string[] = [];
   
   lines.push('**Visit Summary**\n');

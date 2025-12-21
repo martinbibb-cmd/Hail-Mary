@@ -349,10 +349,11 @@ export const VisitApp: React.FC = () => {
       // Only generate if we have enough content and not already generating
       const wordCount = accumulatedTranscriptRef.current.split(/\s+/).length
       if (wordCount >= 50 && !isGeneratingSummary && activeSession) {
-        generateSummary()
+        // Call the API directly here to avoid circular dependency
+        generateSummaryForSession(activeSession.id)
       }
     }
-  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, generateSummary])
+  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession])
 
   // STT Functions
   const startListening = useCallback(() => {
@@ -488,13 +489,12 @@ export const VisitApp: React.FC = () => {
     }
   }, [currentLeadId, keyDetails, autoFilledFields, markDirty])
 
-  const generateSummary = useCallback(async () => {
-    if (!activeSession) return
-    
+  // Helper function to generate summary (used to avoid circular dependency)
+  const generateSummaryForSession = async (sessionId: number) => {
     setIsGeneratingSummary(true)
     try {
       const res = await api.post<ApiResponse<VisitSession>>(
-        `/api/visit-sessions/${activeSession.id}/generate-summary`,
+        `/api/visit-sessions/${sessionId}/generate-summary`,
         {}
       )
       
@@ -509,6 +509,11 @@ export const VisitApp: React.FC = () => {
     } finally {
       setIsGeneratingSummary(false)
     }
+  }
+
+  const generateSummary = useCallback(async () => {
+    if (!activeSession) return
+    await generateSummaryForSession(activeSession.id)
   }, [activeSession])
 
   const endVisit = async () => {

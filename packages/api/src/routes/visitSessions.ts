@@ -373,7 +373,10 @@ function generateDetailedSummary(transcript: string, observations: Array<{ text:
     return 'No transcript data available.';
   }
   
-  const words = trimmedTranscript.toLowerCase().split(/\s+/);
+  const words = trimmedTranscript.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+  if (words.length === 0) {
+    return 'No transcript data available.';
+  }
   
   // Check for common keywords
   const hasBoilerMention = words.some(w => w.includes('boiler'));

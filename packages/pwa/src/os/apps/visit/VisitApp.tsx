@@ -348,8 +348,9 @@ export const VisitApp: React.FC = () => {
       // Auto-generate summary after significant transcript accumulation
       // Only generate if we have enough content and not already generating
       const trimmedTranscript = accumulatedTranscriptRef.current.trim()
-      if (trimmedTranscript) {
-        const wordCount = trimmedTranscript.split(/\s+/).length
+      if (trimmedTranscript && trimmedTranscript.length > 0) {
+        const words = trimmedTranscript.split(/\s+/)
+        const wordCount = words.filter(w => w.length > 0).length
         // Only auto-generate once when threshold is crossed
         if (wordCount >= 50 && !isGeneratingSummary && activeSession && !visitSummary) {
           generateSummaryForSession(activeSession.id)

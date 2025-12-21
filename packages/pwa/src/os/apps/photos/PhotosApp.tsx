@@ -28,6 +28,10 @@ interface CapturedPhoto {
   fileId?: number
 }
 
+interface LeadStoreState {
+  currentLeadId: string | null
+}
+
 export const PhotosApp: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -43,7 +47,7 @@ export const PhotosApp: React.FC = () => {
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesText, setNotesText] = useState('')
   
-  const currentLeadId = useLeadStore((state: { currentLeadId: string | null }) => state.currentLeadId)
+  const currentLeadId = useLeadStore((state: LeadStoreState) => state.currentLeadId)
 
   const startCamera = useCallback(async () => {
     try {
@@ -139,9 +143,17 @@ export const PhotosApp: React.FC = () => {
         }
         setLocationPermission('granted')
       } catch (err) {
-        console.warn('Failed to get location:', err)
-        if ((err as GeolocationPositionError).code === 1) {
+        const geoError = err as GeolocationPositionError
+        console.warn('Failed to get location:', geoError)
+        
+        // Provide user-friendly error messages
+        if (geoError.code === 1) {
           setLocationPermission('denied')
+          console.info('Location permission denied by user')
+        } else if (geoError.code === 2) {
+          console.warn('Location position unavailable')
+        } else if (geoError.code === 3) {
+          console.warn('Location request timed out')
         }
       }
     }
@@ -161,7 +173,7 @@ export const PhotosApp: React.FC = () => {
       dataUrl,
       timestamp: new Date(),
       metadata,
-      leadId: currentLeadId ? parseInt(currentLeadId) : undefined,
+      leadId: currentLeadId ? parseInt(currentLeadId, 10) : undefined,
     }
 
     setPhotos(prev => [newPhoto, ...prev])
@@ -212,7 +224,9 @@ export const PhotosApp: React.FC = () => {
 
   const uploadPhotoToBackend = useCallback(async (photo: CapturedPhoto) => {
     if (!photo.leadId) {
-      console.warn('Cannot upload photo without lead context')
+      const errorMsg = 'Cannot upload photo without an active lead. Please select a lead first.'
+      console.warn(errorMsg)
+      setError(errorMsg)
       return
     }
 
@@ -234,7 +248,8 @@ export const PhotosApp: React.FC = () => {
       })
       
       if (!uploadResponse.ok) {
-        throw new Error('File upload failed')
+        const errorData = await uploadResponse.json().catch(() => ({}))
+        throw new Error(`File upload failed (${uploadResponse.status}): ${errorData.error || uploadResponse.statusText}`)
       }
       
       const uploadResult = await uploadResponse.json()
@@ -254,7 +269,8 @@ export const PhotosApp: React.FC = () => {
       })
       
       if (!photoResponse.ok) {
-        throw new Error('Photo record creation failed')
+        const errorData = await photoResponse.json().catch(() => ({}))
+        throw new Error(`Photo record creation failed (${photoResponse.status}): ${errorData.error || photoResponse.statusText}`)
       }
       
       const photoResult = await photoResponse.json()
@@ -268,7 +284,9 @@ export const PhotosApp: React.FC = () => {
       
       return photoResult.data
     } catch (error) {
-      console.error('Error uploading photo:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      console.error('Error uploading photo:', errorMessage)
+      setError(errorMessage)
       throw error
     }
   }, [])

@@ -24,7 +24,7 @@ import type {
   CreateTranscriptSessionDto,
   TranscriptSessionWithDetails,
 } from '@hail-mary/shared';
-import { enqueueSttJob } from '../services/stt.service';
+import { enqueueSttJob, getSttProvider } from '../services/stt.service';
 import { requireLeadId } from '../middleware/leadId.middleware';
 
 const router = Router();
@@ -449,8 +449,7 @@ router.post('/whisper-transcribe', whisperUpload.single('audio'), async (req: Re
 
     const language = req.body.language || 'en-GB';
 
-    // Import and use Whisper provider directly
-    const { getSttProvider } = await import('../services/stt.service');
+    // Use Whisper provider directly
     const sttProvider = getSttProvider();
 
     // Transcribe the audio file

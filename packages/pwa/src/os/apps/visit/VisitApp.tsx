@@ -169,6 +169,7 @@ export const VisitApp: React.FC = () => {
   const [isTranscribing, setIsTranscribing] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const mediaStreamRef = useRef<MediaStream | null>(null)
   
   // Accumulated final transcript for Rocky processing
   const accumulatedTranscriptRef = useRef<string>('')
@@ -460,6 +461,7 @@ export const VisitApp: React.FC = () => {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaStreamRef.current = stream
       
       // Create MediaRecorder with appropriate format
       let mimeType = 'audio/webm;codecs=opus'
@@ -493,21 +495,37 @@ export const VisitApp: React.FC = () => {
     
     return new Promise<void>((resolve) => {
       const mediaRecorder = mediaRecorderRef.current!
+      const mimeType = mediaRecorder.mimeType
       
       mediaRecorder.onstop = async () => {
         setIsRecording(false)
         setIsTranscribing(true)
         
         // Stop all tracks to release microphone
-        mediaRecorder.stream.getTracks().forEach(track => track.stop())
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach(track => track.stop())
+          mediaStreamRef.current = null
+        }
         
         // Create blob from recorded chunks
-        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType })
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
+        
+        // Determine file extension from mimeType
+        let fileExt = '.webm'
+        if (mimeType.includes('mp4')) {
+          fileExt = '.mp4'
+        } else if (mimeType.includes('mpeg')) {
+          fileExt = '.mp3'
+        } else if (mimeType.includes('wav')) {
+          fileExt = '.wav'
+        } else if (mimeType.includes('ogg')) {
+          fileExt = '.ogg'
+        }
         
         // Upload to Whisper API
         try {
           const formData = new FormData()
-          formData.append('audio', audioBlob, 'recording.webm')
+          formData.append('audio', audioBlob, `recording${fileExt}`)
           formData.append('language', 'en-GB')
           
           const response = await fetch('/api/transcription/whisper-transcribe', {
@@ -530,7 +548,25 @@ export const VisitApp: React.FC = () => {
             setTranscriptSegments(prev => [...prev, segment])
             
             // Process with Rocky (correction + extraction)
+            // This will update accumulatedTranscriptRef.current
             processWithRocky(transcriptText.trim())
+            
+            // Trigger save after processing (moved outside finally to ensure transcript is processed)
+            // Use setTimeout to ensure processWithRocky completes first
+            setTimeout(() => {
+              if (currentLeadId) {
+                enqueueSave({
+                  leadId: currentLeadId,
+                  reason: 'stop_recording',
+                  payload: {
+                    correctedTranscript: accumulatedTranscriptRef.current,
+                    keyDetails,
+                    checklistItems,
+                    timestamp: new Date().toISOString(),
+                  },
+                })
+              }
+            }, 100)
           } else {
             setExceptions(prev => [...prev, `Transcription error: ${result.error || 'Unknown error'}`])
           }
@@ -539,20 +575,6 @@ export const VisitApp: React.FC = () => {
           setExceptions(prev => [...prev, `Transcription error: ${(error as Error).message}`])
         } finally {
           setIsTranscribing(false)
-          
-          // Trigger save when stopping recording
-          if (currentLeadId && accumulatedTranscriptRef.current) {
-            enqueueSave({
-              leadId: currentLeadId,
-              reason: 'stop_recording',
-              payload: {
-                correctedTranscript: accumulatedTranscriptRef.current,
-                keyDetails,
-                checklistItems,
-                timestamp: new Date().toISOString(),
-              },
-            })
-          }
         }
         
         resolve()

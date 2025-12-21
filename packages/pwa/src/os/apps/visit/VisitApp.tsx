@@ -21,6 +21,7 @@ import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField }
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
 import { useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext'
+import { voiceRecordingService, getFileExtensionFromMimeType } from '../../../services/voiceRecordingService'
 import './VisitApp.css'
 
 /**
@@ -60,64 +61,6 @@ const api = {
     })
     return res.json()
   },
-}
-
-// Helper function to get file extension from MIME type
-function getFileExtensionFromMimeType(mimeType: string): string {
-  if (mimeType.includes('mp4')) return '.mp4'
-  if (mimeType.includes('mpeg')) return '.mp3'
-  if (mimeType.includes('wav')) return '.wav'
-  if (mimeType.includes('ogg')) return '.ogg'
-  return '.webm' // default
-}
-
-// Type declarations for Web Speech API
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList
-  resultIndex: number
-}
-
-interface SpeechRecognitionResultList {
-  length: number
-  item(index: number): SpeechRecognitionResult
-  [index: number]: SpeechRecognitionResult
-}
-
-interface SpeechRecognitionResult {
-  isFinal: boolean
-  length: number
-  item(index: number): SpeechRecognitionAlternative
-  [index: number]: SpeechRecognitionAlternative
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string
-  confidence: number
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string
-  message: string
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  start(): void
-  stop(): void
-  abort(): void
-  onresult: ((event: SpeechRecognitionEvent) => void) | null
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
-  onend: (() => void) | null
-  onstart: (() => void) | null
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognition
-    webkitSpeechRecognition: new () => SpeechRecognition
-  }
 }
 
 type ViewMode = 'list' | 'active'
@@ -178,15 +121,11 @@ export const VisitApp: React.FC = () => {
   // STT state
   const [isListening, setIsListening] = useState(false)
   const [liveTranscript, setLiveTranscript] = useState('')
-  const [sttSupported, setSttSupported] = useState(false)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const [sttSupported, setSttSupported] = useState(voiceRecordingService.isSpeechRecognitionSupported())
   
   // Audio recording state for Whisper mode
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const mediaStreamRef = useRef<MediaStream | null>(null)
   
   // Accumulated final transcript for Rocky processing
   const accumulatedTranscriptRef = useRef<string>('')
@@ -194,24 +133,55 @@ export const VisitApp: React.FC = () => {
   // Rocky status (always 'connected' for local extraction)
   const [rockyStatus] = useState<'connected' | 'degraded' | 'blocked'>(getLocalRockyStatus())
 
-  // Check for STT support
+  // Setup voice recording callbacks when component mounts
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    setSttSupported(!!SpeechRecognition)
+    voiceRecordingService.setCallbacks({
+      onFinalTranscript: (text: string) => {
+        // Add as a new transcript segment
+        const segment: TranscriptSegment = {
+          id: `segment-${Date.now()}`,
+          timestamp: new Date(),
+          speaker: 'user',
+          text: text,
+        }
+        setTranscriptSegments(prev => [...prev, segment])
+        
+        // Increment transcript count in visit store
+        incrementTranscriptCount()
+        
+        // Process with Rocky
+        processWithRocky(text)
+        
+        // Clear live transcript
+        setLiveTranscript('')
+      },
+      onInterimTranscript: (text: string) => {
+        // Update live transcript
+        setLiveTranscript(text)
+      },
+      onError: (error: string) => {
+        console.error('Voice recording error:', error)
+        setExceptions(prev => [...prev, error])
+      },
+    })
+
+    // Sync initial recording state from service
+    const isCurrentlyRecording = voiceRecordingService.getIsRecording()
+    const currentProvider = voiceRecordingService.getCurrentProvider()
     
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition()
-      recognitionRef.current.continuous = true
-      recognitionRef.current.interimResults = true
-      recognitionRef.current.lang = 'en-GB'
-    }
-    
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort()
+    if (isCurrentlyRecording) {
+      if (currentProvider === 'browser') {
+        setIsListening(true)
+      } else if (currentProvider === 'whisper') {
+        setIsRecording(true)
       }
     }
-  }, [])
+
+    // Note: We don't clear callbacks on unmount because recording should persist
+    return () => {
+      // Callbacks remain active to allow recording to continue across navigation
+    }
+  }, [incrementTranscriptCount, processWithRocky])
 
   // Load customers
   useEffect(() => {
@@ -393,79 +363,23 @@ export const VisitApp: React.FC = () => {
   }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary])
 
   // STT Functions
-  const startListening = useCallback(() => {
-    if (!recognitionRef.current || isListening) return
+  const startListening = useCallback(async () => {
+    if (isListening || !sttSupported) return
     
     setLiveTranscript('')
     
-    recognitionRef.current.onstart = () => {
+    try {
+      await voiceRecordingService.startBrowserRecording()
       setIsListening(true)
       startRecordingInStore('browser')
-    }
-    
-    recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-      let interimTranscript = ''
-      let finalTranscript = ''
-      
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i]
-        if (result.isFinal) {
-          finalTranscript += result[0].transcript
-        } else {
-          interimTranscript += result[0].transcript
-        }
-      }
-      
-      if (finalTranscript) {
-        // Add as a new transcript segment
-        const segment: TranscriptSegment = {
-          id: `segment-${Date.now()}`,
-          timestamp: new Date(),
-          speaker: 'user',
-          text: finalTranscript.trim(),
-        }
-        setTranscriptSegments(prev => [...prev, segment])
-        
-        // Increment transcript count in visit store
-        incrementTranscriptCount()
-        
-        // Process with Rocky
-        processWithRocky(finalTranscript.trim())
-        
-        // Clear live transcript
-        setLiveTranscript('')
-      } else if (interimTranscript) {
-        // Update live transcript
-        setLiveTranscript(interimTranscript.trim())
-      }
-    }
-    
-    recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error)
-      setIsListening(false)
-      stopRecordingInStore()
-      if (event.error !== 'aborted') {
-        setExceptions(prev => [...prev, `Microphone error: ${event.error}`])
-      }
-    }
-    
-    recognitionRef.current.onend = () => {
-      setIsListening(false)
-      stopRecordingInStore()
-      setLiveTranscript('')
-    }
-    
-    try {
-      recognitionRef.current.start()
     } catch (error) {
       console.error('Failed to start speech recognition:', error)
+      setExceptions(prev => [...prev, `Failed to start recording: ${(error as Error).message}`])
     }
-  }, [isListening, processWithRocky, startRecordingInStore, stopRecordingInStore, incrementTranscriptCount])
+  }, [isListening, sttSupported, startRecordingInStore])
 
   const stopListening = useCallback(() => {
-    if (!recognitionRef.current) return
-
-    recognitionRef.current.stop()
+    voiceRecordingService.stopBrowserRecording()
     setIsListening(false)
     stopRecordingInStore()
     setLiveTranscript('')
@@ -488,37 +402,7 @@ export const VisitApp: React.FC = () => {
   // Audio Recording Functions for Whisper mode
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaStreamRef.current = stream
-      
-      // Create MediaRecorder with appropriate format
-      let mimeType = 'audio/webm;codecs=opus'
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/webm'
-      }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/mp4'
-      }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/mpeg'
-      }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        // Fallback to default, though recording may fail
-        console.warn('No supported audio MIME type found, recording may fail. Using audio/webm as fallback.')
-        mimeType = 'audio/webm'
-      }
-      
-      const mediaRecorder = new MediaRecorder(stream, { mimeType })
-      mediaRecorderRef.current = mediaRecorder
-      audioChunksRef.current = []
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      }
-      
-      mediaRecorder.start()
+      await voiceRecordingService.startWhisperRecording()
       setIsRecording(true)
       startRecordingInStore('whisper')
     } catch (error) {
@@ -528,93 +412,74 @@ export const VisitApp: React.FC = () => {
   }, [startRecordingInStore])
 
   const stopRecording = useCallback(async () => {
-    if (!mediaRecorderRef.current) return
-    
-    return new Promise<void>((resolve) => {
-      const mediaRecorder = mediaRecorderRef.current!
-      const mimeType = mediaRecorder.mimeType
+    setIsRecording(false)
+    stopRecordingInStore()
+    setIsTranscribing(true)
+
+    try {
+      // Stop recording and get the audio blob
+      const { blob: audioBlob, mimeType } = await voiceRecordingService.stopWhisperRecording()
       
-      mediaRecorder.onstop = async () => {
-        setIsRecording(false)
-        stopRecordingInStore()
-        setIsTranscribing(true)
+      // Determine file extension from mimeType using helper
+      const fileExt = getFileExtensionFromMimeType(mimeType)
+      
+      // Upload to Whisper API
+      const formData = new FormData()
+      formData.append('audio', audioBlob, `recording${fileExt}`)
+      formData.append('language', 'en-GB')
+      
+      const response = await fetch('/api/transcription/whisper-transcribe', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        const transcriptText = result.data.text
         
-        // Stop all tracks to release microphone
-        if (mediaStreamRef.current) {
-          mediaStreamRef.current.getTracks().forEach(track => track.stop())
-          mediaStreamRef.current = null
+        // Add as a new transcript segment
+        const segment: TranscriptSegment = {
+          id: `segment-${Date.now()}`,
+          timestamp: new Date(),
+          speaker: 'user',
+          text: transcriptText.trim(),
         }
+        setTranscriptSegments(prev => [...prev, segment])
         
-        // Create blob from recorded chunks
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
+        // Increment transcript count in visit store
+        incrementTranscriptCount()
         
-        // Determine file extension from mimeType using helper
-        const fileExt = getFileExtensionFromMimeType(mimeType)
+        // Process with Rocky (correction + extraction)
+        // This will update accumulatedTranscriptRef.current synchronously
+        processWithRocky(transcriptText.trim())
         
-        // Upload to Whisper API
-        try {
-          const formData = new FormData()
-          formData.append('audio', audioBlob, `recording${fileExt}`)
-          formData.append('language', 'en-GB')
-          
-          const response = await fetch('/api/transcription/whisper-transcribe', {
-            method: 'POST',
-            body: formData,
-          })
-          
-          const result = await response.json()
-          
-          if (result.success && result.data) {
-            const transcriptText = result.data.text
-            
-            // Add as a new transcript segment
-            const segment: TranscriptSegment = {
-              id: `segment-${Date.now()}`,
-              timestamp: new Date(),
-              speaker: 'user',
-              text: transcriptText.trim(),
-            }
-            setTranscriptSegments(prev => [...prev, segment])
-            
-            // Increment transcript count in visit store
-            incrementTranscriptCount()
-            
-            // Process with Rocky (correction + extraction)
-            // This will update accumulatedTranscriptRef.current synchronously
-            processWithRocky(transcriptText.trim())
-            
-            // Trigger save after processing completes
-            // processWithRocky is synchronous, so we can safely access the updated ref
-            // Synchronize with browser repaint to ensure React state updates complete
-            requestAnimationFrame(() => {
-              if (currentLeadId) {
-                enqueueSave({
-                  leadId: currentLeadId,
-                  reason: 'stop_recording',
-                  payload: {
-                    correctedTranscript: accumulatedTranscriptRef.current,
-                    keyDetails,
-                    checklistItems,
-                    timestamp: new Date().toISOString(),
-                  },
-                })
-              }
+        // Trigger save after processing completes
+        // processWithRocky is synchronous, so we can safely access the updated ref
+        // Synchronize with browser repaint to ensure React state updates complete
+        requestAnimationFrame(() => {
+          if (currentLeadId) {
+            enqueueSave({
+              leadId: currentLeadId,
+              reason: 'stop_recording',
+              payload: {
+                correctedTranscript: accumulatedTranscriptRef.current,
+                keyDetails,
+                checklistItems,
+                timestamp: new Date().toISOString(),
+              },
             })
-          } else {
-            setExceptions(prev => [...prev, `Transcription error: ${result.error || 'Unknown error'}`])
           }
-        } catch (error) {
-          console.error('Failed to transcribe audio:', error)
-          setExceptions(prev => [...prev, `Transcription error: ${(error as Error).message}`])
-        } finally {
-          setIsTranscribing(false)
-        }
-        
-        resolve()
+        })
+      } else {
+        setExceptions(prev => [...prev, `Transcription error: ${result.error || 'Unknown error'}`])
       }
-      
-      mediaRecorder.stop()
-    })
+    } catch (error) {
+      console.error('Failed to transcribe audio:', error)
+      setExceptions(prev => [...prev, `Transcription error: ${(error as Error).message}`])
+    } finally {
+      setIsTranscribing(false)
+    }
   }, [currentLeadId, enqueueSave, keyDetails, checklistItems, processWithRocky, stopRecordingInStore, incrementTranscriptCount])
 
   const handleManualSave = useCallback(() => {

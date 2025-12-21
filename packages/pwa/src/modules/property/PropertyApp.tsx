@@ -40,7 +40,7 @@ export const PropertyApp: React.FC<PropertyAppProps> = ({
 
   const currentLead = currentLeadId ? leadById[currentLeadId] : null;
 
-  // Store property data from Property and LeadOccupancy tables
+  // Store property data from Property table
   const [propertyData, setPropertyData] = useState<Property | null>(null);
 
   // Local state for instant UI updates

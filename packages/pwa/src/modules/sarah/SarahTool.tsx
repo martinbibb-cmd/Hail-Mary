@@ -270,7 +270,9 @@ export const SarahTool: React.FC = () => {
           conversationHistory: conversationContext,
           audience: audience,
           tone: tone,
-          // If there's a recent rockyFacts context, include it
+          // Note: rockyFacts placeholder for future integration
+          // When Rocky analysis results are available in context, they can be passed here
+          // to provide more contextual responses
           rockyFacts: result?.explanation ? {
             facts: {},
             completeness: { overall: 100 },

@@ -371,7 +371,7 @@ export async function explainRockyFacts(request: SarahExplainRequest): Promise<S
  */
 const CHAT_PATTERNS = {
   greeting: {
-    patterns: ['hello', 'hi ', 'hi\n', 'hey'],
+    patterns: ['hello', 'hi', 'hey'],
     customerResponse: "Hello! I'm Sarah, your AI assistant. I can help explain survey findings, answer questions about your heating system, and guide you through the next steps. What would you like to know?",
     otherResponse: "Hi there! I'm Sarah. I can help you understand survey data and provide explanations. What can I help you with?"
   },
@@ -395,18 +395,30 @@ const CHAT_PATTERNS = {
 }
 
 /**
+ * Normalize message for pattern matching
+ * Removes punctuation, extra whitespace, and converts to lowercase
+ */
+function normalizeMessage(message: string): string {
+  return message
+    .toLowerCase()
+    .replace(/[.,!?;:]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ')      // Normalize whitespace
+    .trim();
+}
+
+/**
  * Check if message matches a pattern
  */
 function matchesPattern(message: string, pattern: typeof CHAT_PATTERNS[keyof typeof CHAT_PATTERNS]): boolean {
-  const lower = message.toLowerCase()
+  const normalized = normalizeMessage(message);
   
   if ('requiresBoth' in pattern && pattern.requiresBoth) {
     // All patterns must be present
-    return pattern.patterns.every(p => lower.includes(p))
+    return pattern.patterns.every(p => normalized.includes(p));
   }
   
   // Any pattern matches
-  return pattern.patterns.some(p => lower.includes(p))
+  return pattern.patterns.some(p => normalized.includes(p));
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   TranscriptFeed, 
   InstallChecklist, 
   KeyDetailsForm,
+  VisitSummaryCard,
   type TranscriptSegment,
   type ChecklistItem,
   type KeyDetails
@@ -148,6 +149,10 @@ export const VisitApp: React.FC = () => {
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([])
   const [exceptions, setExceptions] = useState<string[]>([])
   
+  // Visit summary state
+  const [visitSummary, setVisitSummary] = useState<string | undefined>(undefined)
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
+  
   // STT state
   const [isListening, setIsListening] = useState(false)
   const [liveTranscript, setLiveTranscript] = useState('')
@@ -207,6 +212,7 @@ export const VisitApp: React.FC = () => {
         setKeyDetails({})
         setAutoFilledFields([])
         setExceptions([])
+        setVisitSummary(undefined)
         accumulatedTranscriptRef.current = ''
       }
     } catch (error) {
@@ -233,6 +239,7 @@ export const VisitApp: React.FC = () => {
         setKeyDetails({})
         setAutoFilledFields([])
         setExceptions([])
+        setVisitSummary(session.summary)
         accumulatedTranscriptRef.current = ''
       } else {
         // No active session, start new one
@@ -337,8 +344,20 @@ export const VisitApp: React.FC = () => {
           timestamp: new Date().toISOString(),
         },
       })
+      
+      // Auto-generate summary after significant transcript accumulation
+      // Only generate if we have enough content and not already generating
+      const trimmedTranscript = accumulatedTranscriptRef.current.trim()
+      if (trimmedTranscript && trimmedTranscript.length > 0) {
+        const words = trimmedTranscript.split(/\s+/)
+        const wordCount = words.filter(w => w.length > 0).length
+        // Only auto-generate once when threshold is crossed
+        if (wordCount >= 50 && !isGeneratingSummary && activeSession && !visitSummary) {
+          generateSummaryForSession(activeSession.id)
+        }
+      }
     }
-  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave])
+  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary])
 
   // STT Functions
   const startListening = useCallback(() => {
@@ -474,6 +493,33 @@ export const VisitApp: React.FC = () => {
     }
   }, [currentLeadId, keyDetails, autoFilledFields, markDirty])
 
+  // Helper function to generate summary (used to avoid circular dependency)
+  const generateSummaryForSession = async (sessionId: number) => {
+    setIsGeneratingSummary(true)
+    try {
+      const res = await api.post<ApiResponse<VisitSession>>(
+        `/api/visit-sessions/${sessionId}/generate-summary`,
+        {}
+      )
+      
+      if (res.success && res.data && res.data.summary) {
+        setVisitSummary(res.data.summary)
+        // Update the active session with the new summary
+        setActiveSession(res.data)
+      }
+    } catch (error) {
+      console.error('Failed to generate summary:', error)
+      setExceptions(prev => [...prev, 'Failed to generate summary'])
+    } finally {
+      setIsGeneratingSummary(false)
+    }
+  }
+
+  const generateSummary = useCallback(async () => {
+    if (!activeSession) return
+    await generateSummaryForSession(activeSession.id)
+  }, [activeSession])
+
   const endVisit = async () => {
     if (!activeSession) return
 
@@ -506,6 +552,7 @@ export const VisitApp: React.FC = () => {
       setKeyDetails({})
       setAutoFilledFields([])
       setExceptions([])
+      setVisitSummary(undefined)
       accumulatedTranscriptRef.current = ''
     } catch (error) {
       console.error('Failed to end visit:', error)
@@ -613,6 +660,14 @@ export const VisitApp: React.FC = () => {
               autoFilledFields={autoFilledFields}
             />
           </div>
+        </div>
+
+        <div className="visit-summary-section">
+          <VisitSummaryCard 
+            summary={visitSummary}
+            isGenerating={isGeneratingSummary}
+            onGenerate={generateSummary}
+          />
         </div>
 
         <div className="visit-controls">

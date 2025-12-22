@@ -96,6 +96,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validate argument combinations
+if [[ "$NO_CACHE" == "true" ]] && [[ "$BUILD_LOCALLY" != "true" ]]; then
+    warn "--no-cache flag has no effect without --build flag"
+    warn "Use both flags together: --build --no-cache"
+fi
+
 # Auto-detect unRAID and set appropriate compose file (after parsing args)
 if [[ -d "/mnt/user" ]] && [[ -z "$COMPOSE_FILE" ]]; then
     # Running on unRAID
@@ -231,7 +237,10 @@ registry_login() {
 # Build images locally
 build_images() {
     info "Building images locally..."
-    cd "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR" || {
+        error "Failed to change to deployment directory: $DEPLOY_DIR"
+        exit 1
+    }
     
     local -a build_args=("-f" "$COMPOSE_FILE" "build")
     
@@ -253,7 +262,10 @@ build_images() {
 # Pull latest images
 pull_images() {
     info "Pulling latest images..."
-    cd "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR" || {
+        error "Failed to change to deployment directory: $DEPLOY_DIR"
+        exit 1
+    }
     
     if [[ -n "$SPECIFIC_SERVICE" ]]; then
         info "Pulling image for service: $SPECIFIC_SERVICE"
@@ -268,7 +280,10 @@ pull_images() {
 # Update and restart containers
 deploy_containers() {
     info "Deploying containers..."
-    cd "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR" || {
+        error "Failed to change to deployment directory: $DEPLOY_DIR"
+        exit 1
+    }
     
     local -a compose_args=("-f" "$COMPOSE_FILE" "up" "-d" "--remove-orphans")
     
@@ -322,7 +337,10 @@ health_check() {
 # Show container status
 show_status() {
     info "Container status:"
-    cd "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR" || {
+        error "Failed to change to deployment directory: $DEPLOY_DIR"
+        exit 1
+    }
     docker-compose -f "$COMPOSE_FILE" ps
 }
 

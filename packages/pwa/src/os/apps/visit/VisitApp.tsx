@@ -4,6 +4,7 @@ import type {
   ApiResponse, 
   PaginatedResponse,
   Lead,
+  LeadWorkspace,
 } from '@hail-mary/shared'
 import { 
   TranscriptFeed, 
@@ -23,6 +24,10 @@ import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers
 import { useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext'
 import { voiceRecordingService, getFileExtensionFromMimeType } from '../../../services/voiceRecordingService'
 import { backgroundTranscriptionProcessor } from '../../../services/backgroundTranscriptionProcessor'
+import { useTranscriptionStore } from '../../../stores/transcriptionStore'
+import { extractStructuredData } from '../../../services/enhancedDataExtractor'
+import { applyExtractedFactsToWorkspace } from '../../../services/applyExtractedFactsToWorkspace'
+import { useExtractedData } from '../../../hooks/useExtractedData'
 import { useAuth } from '../../../auth'
 import './VisitApp.css'
 
@@ -108,7 +113,6 @@ export const VisitApp: React.FC = () => {
   const clearSessionInStore = useVisitStore((state) => state.clearSession)
   
   // New state for 3-panel layout
-  const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
   const [keyDetails, setKeyDetails] = useState<KeyDetails>({})
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([])
@@ -124,8 +128,18 @@ export const VisitApp: React.FC = () => {
   
   // STT state
   const [isListening, setIsListening] = useState(false)
-  const [liveTranscript, setLiveTranscript] = useState('')
   const sttSupported = voiceRecordingService.isSpeechRecognitionSupported()
+  const transcriptionSession = useTranscriptionStore((state) => state.activeSession)
+  const liveTranscript = useTranscriptionStore((state) => state.interimTranscript)
+  const transcriptSegments: TranscriptSegment[] = useMemo(() => {
+    const segments = transcriptionSession?.segments || []
+    // Ensure timestamps are Dates (persist middleware may rehydrate as strings in some cases)
+    return segments.map((s) => ({
+      ...s,
+      timestamp: s.timestamp instanceof Date ? s.timestamp : new Date(s.timestamp as any),
+    })) as TranscriptSegment[]
+  }, [transcriptionSession?.segments])
+  const extracted = useExtractedData(currentLeadId)
   
   // Audio recording state for Whisper mode
   const [isRecording, setIsRecording] = useState(false)
@@ -142,60 +156,35 @@ export const VisitApp: React.FC = () => {
     return leadById[currentLeadId] || null
   }, [currentLeadId, leadById])
 
-  const getVisitNotesStorageKey = useCallback((leadId: string | null) => {
-    return leadId ? `hail-mary:visit-notes:${leadId}` : null
-  }, [])
-
-  // Load persisted transcript segments for the active lead (refresh-safe)
-  useEffect(() => {
-    const key = getVisitNotesStorageKey(currentLeadId)
-    if (!key) return
-
+  const syncKeyDetailsFromWorkspace = useCallback(async () => {
+    if (!currentLeadId) return
     try {
-      const raw = localStorage.getItem(key)
-      if (!raw) {
-        setTranscriptSegments([])
-        accumulatedTranscriptRef.current = ''
-        return
-      }
+      const res = await fetch(`/api/leads/${currentLeadId}/workspace`, { credentials: 'include' })
+      const json: ApiResponse<LeadWorkspace> = await res.json()
+      if (!json.success || !json.data) return
 
-      const parsed: {
-        segments?: Array<Omit<TranscriptSegment, 'timestamp'> & { timestamp: string }>
-        accumulatedTranscript?: string
-      } = JSON.parse(raw)
+      const ws = json.data
+      const wsType = (ws.property?.type || '').toLowerCase().trim()
+      const wsSchedule = (ws.occupancy?.schedule || '').trim()
 
-      const hydratedSegments: TranscriptSegment[] = (parsed.segments || []).map((s) => ({
-        ...s,
-        timestamp: new Date(s.timestamp),
+      const mappedType = wsType
+        ? (wsType === 'flat' || wsType === 'bungalow' || wsType === 'other' ? wsType : 'house')
+        : undefined
+
+      setKeyDetails((prev) => ({
+        ...prev,
+        ...(mappedType ? { propertyType: mappedType } : null),
+        ...(wsSchedule ? { occupancy: wsSchedule } : null),
       }))
-
-      setTranscriptSegments(hydratedSegments)
-      accumulatedTranscriptRef.current = parsed.accumulatedTranscript || ''
-    } catch (err) {
-      console.warn('Failed to load persisted visit notes:', err)
-      setTranscriptSegments([])
-      accumulatedTranscriptRef.current = ''
+    } catch {
+      // ignore
     }
-  }, [currentLeadId, getVisitNotesStorageKey])
+  }, [currentLeadId])
 
-  // Persist transcript segments per active lead
+  // Keep local ref synced with global transcription store (used by Whisper flow + manual save payloads)
   useEffect(() => {
-    const key = getVisitNotesStorageKey(currentLeadId)
-    if (!key) return
-
-    try {
-      const serializable = {
-        segments: transcriptSegments.map((s) => ({
-          ...s,
-          timestamp: s.timestamp.toISOString(),
-        })),
-        accumulatedTranscript: accumulatedTranscriptRef.current,
-      }
-      localStorage.setItem(key, JSON.stringify(serializable))
-    } catch (err) {
-      console.warn('Failed to persist visit notes:', err)
-    }
-  }, [currentLeadId, getVisitNotesStorageKey, transcriptSegments])
+    accumulatedTranscriptRef.current = transcriptionSession?.accumulatedTranscript || ''
+  }, [transcriptionSession?.accumulatedTranscript])
 
   // If the active lead changes mid-session, reset visit context so saves route to the new lead.
   // Do NOT clear persisted transcript segments here; they are loaded per-lead above.
@@ -220,6 +209,64 @@ export const VisitApp: React.FC = () => {
       setVisitSummary(undefined)
     }
   }, [currentLeadId, clearSessionInStore])
+
+  // Keep workspace-backed fields in Key Details synced while the Visit screen is active.
+  useEffect(() => {
+    if (viewMode !== 'active' || !currentLeadId) return
+
+    syncKeyDetailsFromWorkspace()
+    const interval = window.setInterval(syncKeyDetailsFromWorkspace, 10000)
+    return () => window.clearInterval(interval)
+  }, [viewMode, currentLeadId, syncKeyDetailsFromWorkspace])
+
+  // Keep Key Details in sync with extracted + workspace-backed facts.
+  // Non-destructive: only fill blanks so user edits don't get overwritten.
+  useEffect(() => {
+    if (!currentLeadId || !extracted.isAvailable) return
+
+    const next: Partial<KeyDetails> = {}
+
+    // Property type
+    if (!keyDetails.propertyType && extracted.property.propertyType) {
+      const pt = extracted.property.propertyType
+      next.propertyType = (pt === 'flat' || pt === 'bungalow') ? pt : 'house'
+    }
+
+    // Bedrooms
+    if ((keyDetails.bedrooms === undefined || keyDetails.bedrooms === null) && typeof extracted.property.bedrooms === 'number') {
+      next.bedrooms = extracted.property.bedrooms
+    }
+
+    // Occupancy summary (best-effort)
+    if (!keyDetails.occupancy) {
+      next.occupancy = extracted.occupancy.schedule
+        || (typeof extracted.occupancy.homeAllDay === 'boolean'
+          ? (extracted.occupancy.homeAllDay ? 'Home all day' : 'Out 9-5')
+          : undefined)
+    }
+
+    // Boiler age
+    if ((keyDetails.boilerAge === undefined || keyDetails.boilerAge === null) && typeof extracted.boiler.boilerAge === 'number') {
+      next.boilerAge = extracted.boiler.boilerAge
+    }
+
+    // Current system (type + make)
+    if (!keyDetails.currentSystem) {
+      const type = extracted.boiler.currentBoilerType
+      const make = extracted.boiler.currentBoilerMake
+      const label = [make, type].filter(Boolean).join(' ')
+      if (label) next.currentSystem = label
+    }
+
+    // Issues
+    if ((!keyDetails.issues || keyDetails.issues.length === 0) && extracted.issues.length > 0) {
+      next.issues = extracted.issues
+    }
+
+    if (Object.keys(next).length > 0) {
+      setKeyDetails((prev) => ({ ...prev, ...next }))
+    }
+  }, [currentLeadId, extracted.isAvailable, extracted.property, extracted.occupancy, extracted.boiler, extracted.issues, keyDetails])
 
   // Helper function to generate summary (used to avoid circular dependency)
   const generateSummaryForSession = async (sessionId: number) => {
@@ -349,39 +396,9 @@ export const VisitApp: React.FC = () => {
     }
   }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary])
 
-  // Setup voice recording callbacks when component mounts
+  // Sync initial recording state from service on mount.
+  // Transcript consumption runs globally (BackgroundTranscriptionProcessor) so it keeps working across navigation.
   useEffect(() => {
-    voiceRecordingService.setCallbacks({
-      onFinalTranscript: (text: string) => {
-        // Add as a new transcript segment
-        const segment: TranscriptSegment = {
-          id: `segment-${Date.now()}`,
-          timestamp: new Date(),
-          speaker: 'user',
-          text: text,
-        }
-        setTranscriptSegments(prev => [...prev, segment])
-        
-        // Increment transcript count in visit store
-        incrementTranscriptCount()
-        
-        // Process with Rocky
-        processWithRocky(text)
-        
-        // Clear live transcript
-        setLiveTranscript('')
-      },
-      onInterimTranscript: (text: string) => {
-        // Update live transcript
-        setLiveTranscript(text)
-      },
-      onError: (error: string) => {
-        console.error('Voice recording error:', error)
-        setExceptions(prev => [...prev, error])
-      },
-    })
-
-    // Sync initial recording state from service
     const isCurrentlyRecording = voiceRecordingService.getIsRecording()
     const currentProvider = voiceRecordingService.getCurrentProvider()
     
@@ -394,15 +411,7 @@ export const VisitApp: React.FC = () => {
         startRecordingInStore('whisper')
       }
     }
-
-    // Note: We don't clear callbacks on unmount because recording should persist
-    // across navigation. The service manages callback lifecycle globally. Callbacks
-    // are re-registered each time the component mounts with fresh closures to prevent
-    // stale references while maintaining recording continuity.
-    return () => {
-      // Callbacks remain active to allow recording to continue across navigation
-    }
-  }, [incrementTranscriptCount, processWithRocky, startRecordingInStore])
+  }, [startRecordingInStore])
 
   // Ready once we have an active lead (VisitApp is guarded, but keep it defensive)
   useEffect(() => {
@@ -449,9 +458,7 @@ export const VisitApp: React.FC = () => {
   // STT Functions
   const startListening = useCallback(async () => {
     if (isListening || !sttSupported) return
-    
-    setLiveTranscript('')
-    
+
     try {
       await voiceRecordingService.startBrowserRecording()
       setIsListening(true)
@@ -466,7 +473,6 @@ export const VisitApp: React.FC = () => {
     voiceRecordingService.stopBrowserRecording()
     setIsListening(false)
     stopRecordingInStore()
-    setLiveTranscript('')
 
     // Trigger save when stopping recording (with corrected transcript)
     if (currentLeadId && accumulatedTranscriptRef.current) {
@@ -529,7 +535,16 @@ export const VisitApp: React.FC = () => {
           speaker: 'user',
           text: transcriptText.trim(),
         }
-        setTranscriptSegments(prev => [...prev, segment])
+        // Persist into global transcription store so transcript continues across navigation
+        const transcriptionStore = useTranscriptionStore.getState()
+        transcriptionStore.addSegment(segment as any)
+        const active = transcriptionStore.getActiveSession()
+        if (active) {
+          const nextAccumulated = active.accumulatedTranscript
+            ? `${active.accumulatedTranscript} ${transcriptText.trim()}`
+            : transcriptText.trim()
+          transcriptionStore.updateAccumulatedTranscript(nextAccumulated)
+        }
         
         // Increment transcript count in visit store
         incrementTranscriptCount()
@@ -537,6 +552,12 @@ export const VisitApp: React.FC = () => {
         // Process with Rocky (correction + extraction)
         // This will update accumulatedTranscriptRef.current synchronously
         processWithRocky(transcriptText.trim())
+
+        // Also run enhanced extraction to populate workspace (Property/Occupancy) non-destructively
+        if (currentLeadId) {
+          const extracted = extractStructuredData(transcriptText.trim())
+          applyExtractedFactsToWorkspace(currentLeadId, extracted).catch(() => undefined)
+        }
         
         // Trigger save after processing completes
         // processWithRocky is synchronous, so we can safely access the updated ref
@@ -592,6 +613,30 @@ export const VisitApp: React.FC = () => {
   const handleKeyDetailsChange = useCallback((newDetails: KeyDetails) => {
     // Update local state
     setKeyDetails(newDetails)
+
+    // Write-through for fields backed by Property/Occupancy workspace tables.
+    // This prevents Key Details from becoming a parallel data model.
+    if (currentLeadId) {
+      const prev = keyDetails
+
+      if (newDetails.propertyType !== prev.propertyType && newDetails.propertyType) {
+        fetch(`/api/leads/${currentLeadId}/property`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ type: newDetails.propertyType }),
+        }).catch(() => undefined)
+      }
+
+      if (newDetails.occupancy !== prev.occupancy) {
+        fetch(`/api/leads/${currentLeadId}/occupancy`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ schedule: newDetails.occupancy || '' }),
+        }).catch(() => undefined)
+      }
+    }
 
     // Clear auto-fill indicators for changed fields
     // Only check fields that were auto-filled for efficiency
@@ -649,7 +694,7 @@ export const VisitApp: React.FC = () => {
       setActiveSession(null)
       // Clear visit store
       clearSessionInStore()
-      setTranscriptSegments([])
+      useTranscriptionStore.getState().clearSession()
       setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
       setKeyDetails({})
       setAutoFilledFields([])

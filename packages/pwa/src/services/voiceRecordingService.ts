@@ -81,7 +81,11 @@ class VoiceRecordingService {
   private audioChunks: Blob[] = []
   private isRecording = false
   private currentProvider: RecordingProvider | null = null
-  private callbacks: TranscriptCallback | null = null
+  /**
+   * Multiple listeners can subscribe concurrently.
+   * This avoids lifecycle coupling where one screen overwrites global listeners.
+   */
+  private listeners = new Map<string, TranscriptCallback>()
   
   private constructor() {
     console.log('[VoiceRecordingService] Initializing singleton instance')
@@ -121,7 +125,7 @@ class VoiceRecordingService {
     }
 
     this.recognition.onresult = (event: SpeechRecognitionEvent) => {
-      if (!this.callbacks) return
+      if (this.listeners.size === 0) return
 
       let interimTranscript = ''
       let finalTranscript = ''
@@ -140,20 +144,20 @@ class VoiceRecordingService {
         const previewText = finalTranscript.trim().substring(0, 50)
         const preview = previewText.length < finalTranscript.trim().length ? `${previewText}...` : previewText
         console.log('[VoiceRecordingService] Final transcript received:', preview)
-        this.callbacks.onFinalTranscript(finalTranscript.trim())
+        this.emit((cb) => cb.onFinalTranscript(finalTranscript.trim()))
       } else if (interimTranscript) {
         // Only log first 30 chars to avoid exposing sensitive data in production
         const previewText = interimTranscript.trim().substring(0, 30)
         const preview = previewText.length < interimTranscript.trim().length ? `${previewText}...` : previewText
         console.log('[VoiceRecordingService] Interim transcript:', preview)
-        this.callbacks.onInterimTranscript(interimTranscript.trim())
+        this.emit((cb) => cb.onInterimTranscript(interimTranscript.trim()))
       }
     }
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('[VoiceRecordingService] Speech recognition error:', event.error, event.message)
-      if (event.error !== 'aborted' && this.callbacks) {
-        this.callbacks.onError(`Microphone error: ${event.error}`)
+      if (event.error !== 'aborted' && this.listeners.size > 0) {
+        this.emit((cb) => cb.onError(`Microphone error: ${event.error}`))
       }
       // Don't set isRecording to false here - let onend handle it
     }
@@ -169,8 +173,8 @@ class VoiceRecordingService {
         } catch (error) {
           console.error('[VoiceRecordingService] Failed to restart recognition:', error)
           this.isRecording = false
-          if (this.callbacks) {
-            this.callbacks.onError('Failed to restart recording. Please try again.')
+          if (this.listeners.size > 0) {
+            this.emit((cb) => cb.onError('Failed to restart recording. Please try again.'))
           }
         }
       } else {
@@ -202,19 +206,38 @@ class VoiceRecordingService {
   }
 
   /**
-   * Set transcript callbacks
+   * Subscribe to transcript updates.
+   * Returns an id that can be used to unsubscribe.
    */
-  setCallbacks(callbacks: TranscriptCallback) {
-    console.log('[VoiceRecordingService] Setting transcript callbacks')
-    this.callbacks = callbacks
+  addListener(callbacks: TranscriptCallback): string {
+    const id = `listener-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    console.log('[VoiceRecordingService] Adding transcript listener:', id)
+    this.listeners.set(id, callbacks)
+    return id
   }
 
   /**
-   * Clear callbacks
+   * Unsubscribe a previously registered listener.
    */
+  removeListener(id: string) {
+    if (this.listeners.has(id)) {
+      console.log('[VoiceRecordingService] Removing transcript listener:', id)
+      this.listeners.delete(id)
+    }
+  }
+
+  /**
+   * Legacy single-callback API (kept for backward compatibility).
+   * Prefer addListener/removeListener to avoid overwriting global listeners.
+   */
+  setCallbacks(callbacks: TranscriptCallback) {
+    console.log('[VoiceRecordingService] Setting legacy transcript callbacks')
+    this.listeners.set('legacy', callbacks)
+  }
+
   clearCallbacks() {
-    console.log('[VoiceRecordingService] Clearing transcript callbacks')
-    this.callbacks = null
+    console.log('[VoiceRecordingService] Clearing legacy transcript callbacks')
+    this.listeners.delete('legacy')
   }
 
   /**
@@ -382,8 +405,6 @@ class VoiceRecordingService {
 
     this.mediaRecorder = null
     this.audioChunks = []
-    // Note: callbacks are not cleared here to allow for service reuse
-    // They will be overwritten when setCallbacks is called again
   }
 
   /**
@@ -400,7 +421,17 @@ class VoiceRecordingService {
       this.recognition = null
     }
     
-    this.callbacks = null
+    this.listeners.clear()
+  }
+
+  private emit(fn: (cb: TranscriptCallback) => void) {
+    for (const cb of this.listeners.values()) {
+      try {
+        fn(cb)
+      } catch (err) {
+        console.error('[VoiceRecordingService] Listener callback error:', err)
+      }
+    }
   }
 }
 

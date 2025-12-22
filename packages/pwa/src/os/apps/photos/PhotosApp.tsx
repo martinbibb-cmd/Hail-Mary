@@ -49,6 +49,54 @@ export const PhotosApp: React.FC = () => {
   
   const currentLeadId = useLeadStore((state: LeadStoreState) => state.currentLeadId)
 
+  const getStorageKey = useCallback((leadId: string | null) => {
+    return leadId ? `hail-mary:photos:${leadId}` : null
+  }, [])
+
+  // Load persisted photos for the active lead (so refresh keeps attachment)
+  useEffect(() => {
+    const storageKey = getStorageKey(currentLeadId)
+    if (!storageKey) return
+
+    try {
+      const raw = localStorage.getItem(storageKey)
+      if (!raw) {
+        setPhotos([])
+        setSelectedPhoto(null)
+        return
+      }
+
+      const parsed: Array<Omit<CapturedPhoto, 'timestamp'> & { timestamp: string }> = JSON.parse(raw)
+      const hydrated: CapturedPhoto[] = parsed.map((p) => ({
+        ...p,
+        timestamp: new Date(p.timestamp),
+      }))
+
+      setPhotos(hydrated)
+      setSelectedPhoto(null)
+    } catch (err) {
+      console.warn('Failed to load persisted photos for lead:', err)
+      setPhotos([])
+      setSelectedPhoto(null)
+    }
+  }, [currentLeadId, getStorageKey])
+
+  // Persist photos per active lead
+  useEffect(() => {
+    const storageKey = getStorageKey(currentLeadId)
+    if (!storageKey) return
+
+    try {
+      const serializable = photos.map((p) => ({
+        ...p,
+        timestamp: p.timestamp.toISOString(),
+      }))
+      localStorage.setItem(storageKey, JSON.stringify(serializable))
+    } catch (err) {
+      console.warn('Failed to persist photos for lead:', err)
+    }
+  }, [currentLeadId, getStorageKey, photos])
+
   const startCamera = useCallback(async () => {
     try {
       setError(null)

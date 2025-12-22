@@ -61,7 +61,7 @@ export function ActiveCustomerBar() {
         {activeLead ? (
           <>
             <div className="active-customer-info">
-              <div className="customer-label">Active Customer:</div>
+              <div className="customer-label">Active Lead:</div>
               <div className="customer-details">
                 <span className="customer-name">
                   {activeLead.firstName} {activeLead.lastName}
@@ -89,16 +89,16 @@ export function ActiveCustomerBar() {
         ) : (
           <>
             <div className="active-customer-info">
-              <div className="customer-label warning">⚠️ No Active Customer</div>
+              <div className="customer-label warning">⚠️ No Active Lead</div>
               <div className="customer-details">
                 <span className="customer-prompt">
-                  Select a customer to start capturing data
+                  Select a lead to start capturing data
                 </span>
               </div>
             </div>
             <div className="active-customer-actions">
               <button className="btn-change primary" onClick={handleChange}>
-                Select Customer
+                Select Lead
               </button>
             </div>
           </>

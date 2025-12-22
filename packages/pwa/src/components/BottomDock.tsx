@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLayoutMode } from '../hooks/useLayoutMode';
 import './BottomDock.css';
 
 interface BottomDockProps {
@@ -16,10 +17,13 @@ interface BottomDockProps {
 export const BottomDock: React.FC<BottomDockProps> = ({ onOpenMoreDrawer }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const layout = useLayoutMode();
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
+
+  const visitLabel = layout === 'mobile' ? 'Visit' : 'Visit Notes';
 
   const dockItems = [
     {
@@ -45,7 +49,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({ onOpenMoreDrawer }) => {
     },
     {
       id: 'visit',
-      label: 'Visit',
+      label: visitLabel,
       icon: '🎙️',
       onClick: () => navigate('/visit'),
       isActive: isActive('/visit'),

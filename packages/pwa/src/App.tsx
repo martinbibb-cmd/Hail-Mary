@@ -674,6 +674,7 @@ function App() {
           </div>
           <ul className="nav-links">
             <li><Link to="/">Home</Link></li>
+            <li><Link to="/visit">Visit Notes</Link></li>
             <li><Link to="/customers">Customers</Link></li>
             <li><Link to="/quotes">Quotes</Link></li>
             <li><Link to="/leads">Leads</Link></li>

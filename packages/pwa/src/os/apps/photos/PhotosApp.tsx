@@ -1,11 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useLeadStore } from '../../../stores/leadStore'
+import { calculate3DDistance, formatDistance } from '../../../utils/geoUtils'
 import './PhotosApp.css'
 
 interface PhotoLocation {
   latitude: number
   longitude: number
   accuracy: number
+  altitude?: number
+  altitudeAccuracy?: number
 }
 
 interface PhotoMetadata {
@@ -188,6 +191,8 @@ export const PhotosApp: React.FC = () => {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          altitude: position.coords.altitude ?? undefined,
+          altitudeAccuracy: position.coords.altitudeAccuracy ?? undefined,
         }
         setLocationPermission('granted')
       } catch (err) {
@@ -236,6 +241,29 @@ export const PhotosApp: React.FC = () => {
     setPhotos((prev: CapturedPhoto[]) => prev.filter((p: CapturedPhoto) => p.id !== photoId))
     setSelectedPhoto(null)
   }, [])
+
+  // Calculate distance from previous photo (per visit/lead)
+  const calculateDistanceFromPrevious = useCallback((photo: CapturedPhoto): number | null => {
+    if (!photo.metadata?.location) return null
+
+    // Find photos from same lead/visit with location data
+    const photosWithLocation = photos
+      .filter((p) => p.metadata?.location && p.leadId === photo.leadId)
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+
+    // Find index of current photo
+    const currentIndex = photosWithLocation.findIndex((p) => p.id === photo.id)
+    if (currentIndex <= 0) return null // No previous photo
+
+    const previousPhoto = photosWithLocation[currentIndex - 1]
+    if (!previousPhoto.metadata?.location) return null
+
+    // Calculate distance
+    return calculate3DDistance(
+      previousPhoto.metadata.location,
+      photo.metadata.location
+    )
+  }, [photos])
 
   const savePhotoNotes = useCallback(async () => {
     if (!selectedPhoto) return
@@ -366,6 +394,8 @@ export const PhotosApp: React.FC = () => {
 
   // Photo detail view
   if (selectedPhoto) {
+    const distanceFromPrevious = calculateDistanceFromPrevious(selectedPhoto)
+
     return (
       <div className="photos-app">
         <div className="photos-app-header">
@@ -391,6 +421,19 @@ export const PhotosApp: React.FC = () => {
                 <p className="photo-location-accuracy">
                   Accuracy: ±{Math.round(selectedPhoto.metadata.location.accuracy)}m
                 </p>
+                {selectedPhoto.metadata.location.altitude !== undefined && (
+                  <p className="photo-location-altitude">
+                    ⛰️ Altitude: {Math.round(selectedPhoto.metadata.location.altitude)}m
+                    {selectedPhoto.metadata.location.altitudeAccuracy !== undefined && 
+                      ` (±${Math.round(selectedPhoto.metadata.location.altitudeAccuracy)}m)`
+                    }
+                  </p>
+                )}
+                {distanceFromPrevious !== null && (
+                  <p className="photo-distance-from-previous">
+                    📏 Distance from previous: {formatDistance(distanceFromPrevious)}
+                  </p>
+                )}
               </div>
             )}
             

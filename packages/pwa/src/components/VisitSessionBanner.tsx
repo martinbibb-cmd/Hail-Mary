@@ -65,14 +65,16 @@ export const VisitSessionBanner: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to end visit session');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to end visit (${response.status})`);
       }
       
       clearSession();
       navigate('/visit'); // Navigate back to visit list
     } catch (error) {
       console.error('Failed to end visit:', error);
-      setError('Failed to end visit. Please try again from the Visit page.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to end visit. Please try again.';
+      setError(errorMessage);
       // Don't clear session on error - keep it active
     }
   };

@@ -6,11 +6,14 @@
  * navigating between pages/components.
  * 
  * Key Features:
+ * - True singleton pattern (private constructor, getInstance() method)
  * - Survives component unmounts
  * - Manages browser speech recognition (continuous mode)
+ * - Auto-restarts recording if stopped unexpectedly (resiliency)
  * - Manages Whisper audio recording
  * - Provides callbacks for transcript updates
  * - Integrates with visitStore for state synchronization
+ * - Comprehensive logging for debugging
  */
 
 // Type declarations for Web Speech API

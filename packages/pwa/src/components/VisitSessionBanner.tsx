@@ -24,10 +24,12 @@ export const VisitSessionBanner: React.FC = () => {
   const isRecording = useVisitStore((state) => state.isRecording);
   const recordingStartTime = useVisitStore((state) => state.recordingStartTime);
   const transcriptCount = useVisitStore((state) => state.transcriptCount);
-  const clearSession = useVisitStore((state) => state.clearSession);
+  const endVisit = useVisitStore((state) => state.endVisit);
+  const isEndingVisit = useVisitStore((state) => state.isEndingVisit);
+  const endVisitError = useVisitStore((state) => state.endVisitError);
+  const clearEndVisitError = useVisitStore((state) => state.clearEndVisitError);
 
   const [recordingDuration, setRecordingDuration] = useState<string>('0:00');
-  const [error, setError] = useState<string | null>(null);
 
   // Update recording duration every second
   useEffect(() => {
@@ -47,34 +49,21 @@ export const VisitSessionBanner: React.FC = () => {
     return () => clearInterval(interval);
   }, [isRecording, recordingStartTime]);
 
+  // Clear error when session changes
+  useEffect(() => {
+    return () => clearEndVisitError();
+  }, [activeSession, clearEndVisitError]);
+
   const handleEndVisit = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!activeSession) return;
-
-    setError(null);
-
-    // End the visit session via API
-    try {
-      const response = await fetch(`/api/visit-sessions/${activeSession.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'completed',
-          endedAt: new Date(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to end visit session');
-      }
-      
-      clearSession();
+    
+    // Use global endVisit action from store
+    const result = await endVisit();
+    
+    if (result.success) {
       navigate('/visit'); // Navigate back to visit list
-    } catch (error) {
-      console.error('Failed to end visit:', error);
-      setError('Failed to end visit. Please try again from the Visit page.');
-      // Don't clear session on error - keep it active
     }
+    // Error is handled by the store and displayed via endVisitError
   };
 
   const handleGoToVisit = () => {
@@ -121,18 +110,18 @@ export const VisitSessionBanner: React.FC = () => {
           <button
             className="visit-action-btn visit-action-end-visit"
             onClick={handleEndVisit}
-            title="End Visit Session"
-            disabled={isRecording}
+            title={isRecording ? "Stop recording before ending visit" : "End Visit Session"}
+            disabled={isRecording || isEndingVisit}
           >
-            End Visit
+            {isEndingVisit ? 'Ending...' : 'End Visit'}
           </button>
         </div>
       </div>
 
       {/* Error message if end visit fails */}
-      {error && (
+      {endVisitError && (
         <div className="visit-error-message" onClick={(e) => e.stopPropagation()}>
-          {error}
+          {endVisitError}
         </div>
       )}
     </div>

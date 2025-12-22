@@ -111,6 +111,7 @@ export const VisitApp: React.FC = () => {
   const stopRecordingInStore = useVisitStore((state) => state.stopRecording)
   const incrementTranscriptCount = useVisitStore((state) => state.incrementTranscriptCount)
   const clearSessionInStore = useVisitStore((state) => state.clearSession)
+  const globalEndVisit = useVisitStore((state) => state.endVisit)
   
   // New state for 3-panel layout
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
@@ -683,26 +684,25 @@ export const VisitApp: React.FC = () => {
       })
     }
     
-    try {
-      await api.put<ApiResponse<VisitSession>>(`/api/visit-sessions/${activeSession.id}`, {
-        status: 'completed',
-        endedAt: new Date(),
-      })
+    // Use global endVisit action (handles API call + store cleanup)
+    const result = await globalEndVisit()
+    
+    if (result.success) {
       // Stop background transcription session
       backgroundTranscriptionProcessor.stopSession()
       setViewMode('list')
       setActiveSession(null)
-      // Clear visit store
-      clearSessionInStore()
+      // Clear transcription store
       useTranscriptionStore.getState().clearSession()
+      // Reset local state
       setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
       setKeyDetails({})
       setAutoFilledFields([])
       setExceptions([])
       setVisitSummary(undefined)
       accumulatedTranscriptRef.current = ''
-    } catch (error) {
-      console.error('Failed to end visit:', error)
+    } else {
+      console.error('Failed to end visit:', result.error)
     }
   }
 

@@ -1,11 +1,78 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useLeadStore } from '../../../stores/leadStore'
 import './PhotosApp.css'
+
+/**
+ * Calculate haversine distance between two points on Earth
+ * @returns Distance in meters
+ */
+function calculateHaversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000 // Earth's radius in meters
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  
+  return R * c
+}
+
+/**
+ * Calculate 3D distance (includes altitude difference)
+ * @returns Distance in meters
+ */
+function calculate3DDistance(
+  lat1: number,
+  lon1: number,
+  alt1: number | null | undefined,
+  lat2: number,
+  lon2: number,
+  alt2: number | null | undefined
+): { horizontal: number; vertical: number | null; total3D: number | null } {
+  const horizontal = calculateHaversineDistance(lat1, lon1, lat2, lon2)
+  
+  // If both altitudes are available, compute 3D distance
+  if (alt1 != null && alt2 != null) {
+    const vertical = Math.abs(alt2 - alt1)
+    const total3D = Math.sqrt(horizontal * horizontal + vertical * vertical)
+    return { horizontal, vertical, total3D }
+  }
+  
+  return { horizontal, vertical: null, total3D: null }
+}
+
+/**
+ * Format distance for display
+ */
+function formatDistance(meters: number): string {
+  if (meters < 1) {
+    return '<1m'
+  } else if (meters < 1000) {
+    return `${Math.round(meters)}m`
+  } else {
+    return `${(meters / 1000).toFixed(2)}km`
+  }
+}
 
 interface PhotoLocation {
   latitude: number
   longitude: number
   accuracy: number
+  // Altitude in meters (nullable - not always available)
+  altitude?: number | null
+  // Altitude accuracy in meters (nullable)
+  altitudeAccuracy?: number | null
 }
 
 interface PhotoMetadata {
@@ -48,6 +115,31 @@ export const PhotosApp: React.FC = () => {
   const [notesText, setNotesText] = useState('')
   
   const currentLeadId = useLeadStore((state: LeadStoreState) => state.currentLeadId)
+
+  // Calculate distance from previous photo (per visit/lead)
+  const distanceFromPrevious = useMemo(() => {
+    if (!selectedPhoto?.metadata?.location) return null
+    
+    // Find the previous photo in the list (photos are sorted newest first)
+    const currentIndex = photos.findIndex(p => p.id === selectedPhoto.id)
+    if (currentIndex === -1 || currentIndex >= photos.length - 1) return null
+    
+    // Get the next photo in the array (which is the previous chronologically)
+    const previousPhoto = photos[currentIndex + 1]
+    if (!previousPhoto?.metadata?.location) return null
+    
+    const currentLoc = selectedPhoto.metadata.location
+    const prevLoc = previousPhoto.metadata.location
+    
+    return calculate3DDistance(
+      currentLoc.latitude,
+      currentLoc.longitude,
+      currentLoc.altitude,
+      prevLoc.latitude,
+      prevLoc.longitude,
+      prevLoc.altitude
+    )
+  }, [selectedPhoto, photos])
 
   const getStorageKey = useCallback((leadId: string | null) => {
     return leadId ? `hail-mary:photos:${leadId}` : null
@@ -174,7 +266,7 @@ export const PhotosApp: React.FC = () => {
     // Get image data URL
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
 
-    // Capture location if available
+    // Capture location if available (including altitude)
     let location: PhotoLocation | undefined
     if ('geolocation' in navigator) {
       try {
@@ -182,12 +274,16 @@ export const PhotosApp: React.FC = () => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             timeout: 5000,
             maximumAge: 60000,
+            enableHighAccuracy: true, // Request high accuracy to get altitude when available
           })
         })
         location = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          // Altitude data (nullable - not always available)
+          altitude: position.coords.altitude,
+          altitudeAccuracy: position.coords.altitudeAccuracy,
         }
         setLocationPermission('granted')
       } catch (err) {
@@ -391,6 +487,33 @@ export const PhotosApp: React.FC = () => {
                 <p className="photo-location-accuracy">
                   Accuracy: ±{Math.round(selectedPhoto.metadata.location.accuracy)}m
                 </p>
+                
+                {/* Altitude display */}
+                {selectedPhoto.metadata.location.altitude != null && (
+                  <p className="photo-altitude">
+                    ⛰️ Altitude: {Math.round(selectedPhoto.metadata.location.altitude)}m
+                    {selectedPhoto.metadata.location.altitudeAccuracy != null && (
+                      <span className="photo-altitude-accuracy">
+                        {' '}(±{Math.round(selectedPhoto.metadata.location.altitudeAccuracy)}m)
+                      </span>
+                    )}
+                  </p>
+                )}
+                
+                {/* Distance from previous photo */}
+                {distanceFromPrevious && (
+                  <div className="photo-distance">
+                    <p className="photo-distance-text">
+                      📏 Distance from previous: {formatDistance(distanceFromPrevious.horizontal)}
+                    </p>
+                    {distanceFromPrevious.vertical != null && distanceFromPrevious.total3D != null && (
+                      <p className="photo-distance-3d">
+                        ↕️ Vertical: {formatDistance(distanceFromPrevious.vertical)} • 
+                        3D: {formatDistance(distanceFromPrevious.total3D)}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             

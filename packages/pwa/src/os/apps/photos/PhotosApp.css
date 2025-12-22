@@ -370,6 +370,36 @@
   font-size: 12px;
 }
 
+.photo-altitude {
+  margin: 8px 0 0 0;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+  font-size: 13px;
+}
+
+.photo-altitude-accuracy {
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
+  font-size: 12px;
+}
+
+.photo-distance {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--window-border, rgba(139, 119, 91, 0.2));
+}
+
+.photo-distance-text {
+  margin: 0 0 4px 0;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.photo-distance-3d {
+  margin: 0;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
+  font-size: 12px;
+}
+
 .photo-no-location {
   margin: 8px 0 0 0;
   color: var(--text-muted, rgba(60, 50, 40, 0.6));

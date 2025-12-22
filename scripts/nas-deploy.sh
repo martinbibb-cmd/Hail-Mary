@@ -102,6 +102,20 @@ if [[ "$NO_CACHE" == "true" ]] && [[ "$BUILD_LOCALLY" != "true" ]]; then
     warn "Use both flags together: --build --no-cache"
 fi
 
+# Validate service name if specified
+if [[ -n "$SPECIFIC_SERVICE" ]]; then
+    case "$SPECIFIC_SERVICE" in
+        api|pwa|assistant)
+            # Valid service name
+            ;;
+        *)
+            error "Invalid service name: $SPECIFIC_SERVICE"
+            error "Valid services are: api, pwa, assistant"
+            exit 1
+            ;;
+    esac
+fi
+
 # Auto-detect unRAID and set appropriate compose file (after parsing args)
 if [[ -d "/mnt/user" ]] && [[ -z "$COMPOSE_FILE" ]]; then
     # Running on unRAID
@@ -316,7 +330,7 @@ health_check() {
     local healthy=false
     
     while [[ $attempt -le $max_attempts ]]; do
-        if curl -sf "http://localhost:${PWA_PORT:-3000}/" > /dev/null 2>&1; then
+        if curl -sf "http://localhost:${PWA_PORT:-8080}/" > /dev/null 2>&1; then
             healthy=true
             break
         fi

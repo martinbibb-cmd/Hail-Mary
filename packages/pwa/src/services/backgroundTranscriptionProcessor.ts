@@ -19,9 +19,11 @@
 import { voiceRecordingService } from './voiceRecordingService';
 import { useTranscriptionStore, type TranscriptSegment } from '../stores/transcriptionStore';
 import { useLeadStore } from '../stores/leadStore';
+import { useVisitStore } from '../stores/visitStore';
 import { extractStructuredData, type ExtractedData } from './enhancedDataExtractor';
 import { correctTranscript } from '../utils/transcriptCorrector';
 import type { Lead } from '@hail-mary/shared';
+import { applyExtractedFactsToWorkspace } from './applyExtractedFactsToWorkspace';
 
 class BackgroundTranscriptionProcessor {
   private static instance: BackgroundTranscriptionProcessor | undefined;
@@ -55,15 +57,16 @@ class BackgroundTranscriptionProcessor {
 
     console.log('[BackgroundTranscriptionProcessor] Setting up global transcript callbacks');
 
-    // Set up global callbacks for voice recording
-    voiceRecordingService.setCallbacks({
+    // Set up global callbacks for voice recording (do not overwrite other listeners)
+    voiceRecordingService.addListener({
       onFinalTranscript: (text: string) => {
+        // Clear interim transcript on final
+        useTranscriptionStore.getState().setInterimTranscript('');
         this.handleFinalTranscript(text);
       },
-      onInterimTranscript: (_text: string) => {
-        // Interim transcripts can be used for real-time UI updates
-        // but we don't process them for data extraction
-        console.log('[BackgroundTranscriptionProcessor] Interim transcript received');
+      onInterimTranscript: (text: string) => {
+        // Store interim transcripts for real-time UI updates across navigation
+        useTranscriptionStore.getState().setInterimTranscript(text);
       },
       onError: (error: string) => {
         console.error('[BackgroundTranscriptionProcessor] Voice recording error:', error);
@@ -84,6 +87,13 @@ class BackgroundTranscriptionProcessor {
     if (!activeSession) {
       console.warn('[BackgroundTranscriptionProcessor] No active session, ignoring transcript');
       return;
+    }
+
+    // Keep visit banner counters in sync even if VisitApp is unmounted
+    try {
+      useVisitStore.getState().incrementTranscriptCount();
+    } catch {
+      // ignore
     }
 
     // Apply transcript corrections
@@ -170,6 +180,10 @@ class BackgroundTranscriptionProcessor {
 
       // Auto-populate modules
       await this.autoPopulateModules(activeSession.leadId, extractedData);
+
+      // Ensure extracted facts fill the normalized workspace tables (Property/Occupancy)
+      // Non-destructive: fills blanks only.
+      await applyExtractedFactsToWorkspace(activeSession.leadId, extractedData);
 
       // Mark segment as processed
       transcriptionStore.markSegmentProcessed(segment.id);

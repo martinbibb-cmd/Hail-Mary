@@ -31,6 +31,9 @@ interface TranscriptionState {
   // Active transcription session
   activeSession: TranscriptionSession | null;
 
+  // Live interim transcript (for UI display while recording)
+  interimTranscript: string;
+
   // Processing state
   isProcessing: boolean;
   lastProcessedAt: Date | null;
@@ -39,6 +42,7 @@ interface TranscriptionState {
   startSession: (leadId: string, sessionId: string) => void;
   stopSession: () => void;
   addSegment: (segment: TranscriptSegment) => void;
+  setInterimTranscript: (text: string) => void;
   markSegmentProcessed: (segmentId: string) => void;
   updateAccumulatedTranscript: (transcript: string) => void;
   clearSession: () => void;
@@ -52,6 +56,7 @@ export const useTranscriptionStore = create<TranscriptionState>()(
   persist(
     (set, get) => ({
       activeSession: null,
+      interimTranscript: '',
       isProcessing: false,
       lastProcessedAt: null,
 
@@ -76,6 +81,10 @@ export const useTranscriptionStore = create<TranscriptionState>()(
             ? { ...state.activeSession, isActive: false }
             : null,
         }));
+      },
+
+      setInterimTranscript: (text: string) => {
+        set({ interimTranscript: text });
       },
 
       addSegment: (segment: TranscriptSegment) => {
@@ -129,6 +138,7 @@ export const useTranscriptionStore = create<TranscriptionState>()(
         console.log('[TranscriptionStore] Clearing session');
         set({
           activeSession: null,
+          interimTranscript: '',
           isProcessing: false,
           lastProcessedAt: null,
         });
@@ -148,6 +158,7 @@ export const useTranscriptionStore = create<TranscriptionState>()(
       name: 'transcription-storage',
       partialize: (state) => ({
         activeSession: state.activeSession,
+        interimTranscript: state.interimTranscript,
         lastProcessedAt: state.lastProcessedAt,
       }),
     }

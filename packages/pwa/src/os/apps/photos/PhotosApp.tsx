@@ -6,6 +6,8 @@ interface PhotoLocation {
   latitude: number
   longitude: number
   accuracy: number
+  altitude?: number | null
+  altitudeAccuracy?: number | null
 }
 
 interface PhotoMetadata {
@@ -30,6 +32,69 @@ interface CapturedPhoto {
 
 interface LeadStoreState {
   currentLeadId: string | null
+}
+
+/**
+ * Calculate haversine distance between two coordinates (in meters)
+ */
+function haversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000 // Earth radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+/**
+ * Calculate 3D distance (horizontal + vertical) between two coordinates (in meters)
+ */
+function distance3D(
+  lat1: number,
+  lon1: number,
+  alt1: number | null,
+  lat2: number,
+  lon2: number,
+  alt2: number | null
+): number | null {
+  const horizontal = haversineDistance(lat1, lon1, lat2, lon2)
+  
+  if (alt1 === null || alt2 === null || alt1 === undefined || alt2 === undefined) {
+    return null
+  }
+  
+  const vertical = Math.abs(alt1 - alt2)
+  return Math.sqrt(horizontal * horizontal + vertical * vertical)
+}
+
+/**
+ * Find previous photo with location data in the same visit/lead
+ */
+function findPreviousPhotoWithLocation(
+  photos: CapturedPhoto[],
+  currentPhotoId: string,
+  currentLeadId: string | null
+): CapturedPhoto | null {
+  const currentIndex = photos.findIndex(p => p.id === currentPhotoId)
+  if (currentIndex === -1) return null
+  
+  // Look backwards through photos for the same lead
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    const photo = photos[i]
+    if (photo.leadId?.toString() === currentLeadId && photo.metadata?.location) {
+      return photo
+    }
+  }
+  
+  return null
 }
 
 export const PhotosApp: React.FC = () => {
@@ -188,6 +253,8 @@ export const PhotosApp: React.FC = () => {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          altitude: position.coords.altitude ?? null,
+          altitudeAccuracy: position.coords.altitudeAccuracy ?? null,
         }
         setLocationPermission('granted')
       } catch (err) {
@@ -366,6 +433,34 @@ export const PhotosApp: React.FC = () => {
 
   // Photo detail view
   if (selectedPhoto) {
+    // Calculate distance from previous photo
+    const previousPhoto = findPreviousPhotoWithLocation(photos, selectedPhoto.id, currentLeadId)
+    let distanceFromPrevious: number | null = null
+    let distance3DFromPrevious: number | null = null
+    
+    if (previousPhoto?.metadata?.location && selectedPhoto.metadata?.location) {
+      const prevLoc = previousPhoto.metadata.location
+      const currLoc = selectedPhoto.metadata.location
+      distanceFromPrevious = haversineDistance(
+        prevLoc.latitude,
+        prevLoc.longitude,
+        currLoc.latitude,
+        currLoc.longitude
+      )
+      
+      if (prevLoc.altitude !== null && prevLoc.altitude !== undefined &&
+          currLoc.altitude !== null && currLoc.altitude !== undefined) {
+        distance3DFromPrevious = distance3D(
+          prevLoc.latitude,
+          prevLoc.longitude,
+          prevLoc.altitude,
+          currLoc.latitude,
+          currLoc.longitude,
+          currLoc.altitude
+        )
+      }
+    }
+
     return (
       <div className="photos-app">
         <div className="photos-app-header">
@@ -391,6 +486,26 @@ export const PhotosApp: React.FC = () => {
                 <p className="photo-location-accuracy">
                   Accuracy: ±{Math.round(selectedPhoto.metadata.location.accuracy)}m
                 </p>
+                {selectedPhoto.metadata.location.altitude !== null && 
+                 selectedPhoto.metadata.location.altitude !== undefined && (
+                  <>
+                    <p className="photo-location-altitude">
+                      ⛰️ Altitude: {Math.round(selectedPhoto.metadata.location.altitude)}m
+                      {selectedPhoto.metadata.location.altitudeAccuracy !== null &&
+                       selectedPhoto.metadata.location.altitudeAccuracy !== undefined && (
+                        <span> (±{Math.round(selectedPhoto.metadata.location.altitudeAccuracy)}m)</span>
+                      )}
+                    </p>
+                  </>
+                )}
+                {distanceFromPrevious !== null && (
+                  <p className="photo-location-distance">
+                    📏 Distance from previous: {Math.round(distanceFromPrevious)}m
+                    {distance3DFromPrevious !== null && distance3DFromPrevious !== distanceFromPrevious && (
+                      <span> (3D: {Math.round(distance3DFromPrevious)}m)</span>
+                    )}
+                  </p>
+                )}
               </div>
             )}
             

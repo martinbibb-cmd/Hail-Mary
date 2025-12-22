@@ -111,6 +111,7 @@ export const VisitApp: React.FC = () => {
   const stopRecordingInStore = useVisitStore((state) => state.stopRecording)
   const incrementTranscriptCount = useVisitStore((state) => state.incrementTranscriptCount)
   const clearSessionInStore = useVisitStore((state) => state.clearSession)
+  const endVisitGlobal = useVisitStore((state) => state.endVisit)
   
   // New state for 3-panel layout
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
@@ -667,34 +668,17 @@ export const VisitApp: React.FC = () => {
   const endVisit = async () => {
     if (!activeSession) return
 
-    // Trigger save on end visit (with corrected transcript)
-    if (currentLeadId) {
-      enqueueSave({
-        leadId: currentLeadId,
-        reason: 'end_visit',
-        payload: {
-          visitSessionId: activeSession.id,
-          correctedTranscript: accumulatedTranscriptRef.current, // Already corrected during processing
-          keyDetails,
-          checklistItems,
-          exceptions,
-          timestamp: new Date().toISOString(),
-        },
-      })
-    }
-    
     try {
-      await api.put<ApiResponse<VisitSession>>(`/api/visit-sessions/${activeSession.id}`, {
-        status: 'completed',
-        endedAt: new Date(),
+      // Use global endVisit action with visit data for saving
+      await endVisitGlobal({
+        keyDetails,
+        checklistItems,
+        exceptions,
       })
-      // Stop background transcription session
-      backgroundTranscriptionProcessor.stopSession()
+      
+      // Clear local UI state
       setViewMode('list')
       setActiveSession(null)
-      // Clear visit store
-      clearSessionInStore()
-      useTranscriptionStore.getState().clearSession()
       setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
       setKeyDetails({})
       setAutoFilledFields([])
@@ -703,6 +687,7 @@ export const VisitApp: React.FC = () => {
       accumulatedTranscriptRef.current = ''
     } catch (error) {
       console.error('Failed to end visit:', error)
+      setExceptions(prev => [...prev, `Failed to end visit: ${error instanceof Error ? error.message : 'Unknown error'}`])
     }
   }
 

@@ -116,9 +116,79 @@ check_prerequisites() {
         warn "Production compose file not found at $COMPOSE_FILE"
         warn "Falling back to ${DEPLOY_DIR}/docker-compose.yml"
         COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.yml"
+        
+        if [[ ! -f "$COMPOSE_FILE" ]]; then
+            error "No valid docker-compose file found in $DEPLOY_DIR"
+            error "Expected files: docker-compose.unraid.yml or docker-compose.prod.yml or docker-compose.yml"
+            exit 1
+        fi
     fi
     
     success "Prerequisites check passed"
+}
+
+# Validate environment variables
+validate_environment() {
+    info "Validating environment configuration..."
+    
+    local env_file="${DEPLOY_DIR}/.env"
+    
+    # Check if .env file exists
+    if [[ ! -f "$env_file" ]]; then
+        error ".env file not found at $env_file"
+        error "Please create a .env file based on .env.example"
+        error "Run: cp ${DEPLOY_DIR}/.env.example ${env_file}"
+        exit 1
+    fi
+    
+    info ".env file found at $env_file"
+    
+    # Source the .env file to check variables
+    # Use a subshell to avoid polluting current environment
+    (
+        set -a
+        # shellcheck disable=SC1090
+        source "$env_file"
+        set +a
+        
+        local has_errors=false
+        
+        # Check critical database variables
+        if [[ -z "$POSTGRES_PASSWORD" ]]; then
+            echo -e "${RED}ERROR${NC}: POSTGRES_PASSWORD is not set in .env file" >&2
+            has_errors=true
+        fi
+        
+        # Check JWT_SECRET (critical for security)
+        if [[ -z "$JWT_SECRET" ]]; then
+            echo -e "${RED}ERROR${NC}: JWT_SECRET is not set in .env file" >&2
+            echo -e "${RED}ERROR${NC}: This is required for security. Generate one with:" >&2
+            echo -e "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"" >&2
+            has_errors=true
+        fi
+        
+        # Validate unRAID-specific paths if on unRAID
+        if [[ -d "/mnt/user" ]]; then
+            if [[ ! -f "${DEPLOY_DIR}/docker-compose.unraid.yml" ]]; then
+                echo -e "${YELLOW}WARN${NC}: Running on unRAID but docker-compose.unraid.yml not found" >&2
+                echo -e "${YELLOW}WARN${NC}: Expected at: ${DEPLOY_DIR}/docker-compose.unraid.yml" >&2
+            fi
+        fi
+        
+        # Return error status from subshell
+        if [[ "$has_errors" == "true" ]]; then
+            exit 1
+        fi
+    )
+    
+    # Check if subshell exited with error
+    if [[ $? -ne 0 ]]; then
+        error "Environment validation failed. Please fix the issues above."
+        error "Refer to .env.example for required variables and their descriptions."
+        exit 1
+    fi
+    
+    success "Environment validation passed"
 }
 
 # Login to registry (for private repos)
@@ -221,6 +291,7 @@ main() {
     info "=========================================="
     
     check_prerequisites
+    validate_environment
     registry_login
     pull_images
     deploy_containers

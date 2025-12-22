@@ -71,6 +71,7 @@ export interface TranscriptCallback {
 }
 
 class VoiceRecordingService {
+  private static instance: VoiceRecordingService | null = null
   private recognition: SpeechRecognition | null = null
   private mediaRecorder: MediaRecorder | null = null
   private mediaStream: MediaStream | null = null
@@ -79,24 +80,40 @@ class VoiceRecordingService {
   private currentProvider: RecordingProvider | null = null
   private callbacks: TranscriptCallback | null = null
   
-  constructor() {
+  private constructor() {
+    console.log('[VoiceRecordingService] Initializing singleton instance')
     // Initialize speech recognition if available
     if (typeof window !== 'undefined') {
       const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
       if (SpeechRecognitionAPI) {
+        console.log('[VoiceRecordingService] Speech recognition API available')
         this.recognition = new SpeechRecognitionAPI()
         this.recognition.continuous = true
         this.recognition.interimResults = true
         this.recognition.lang = 'en-GB'
         this.setupRecognitionHandlers()
+      } else {
+        console.warn('[VoiceRecordingService] Speech recognition API not available')
       }
     }
+  }
+
+  /**
+   * Get the singleton instance of VoiceRecordingService
+   */
+  public static getInstance(): VoiceRecordingService {
+    if (!VoiceRecordingService.instance) {
+      console.log('[VoiceRecordingService] Creating new singleton instance')
+      VoiceRecordingService.instance = new VoiceRecordingService()
+    }
+    return VoiceRecordingService.instance
   }
 
   private setupRecognitionHandlers() {
     if (!this.recognition) return
 
     this.recognition.onstart = () => {
+      console.log('[VoiceRecordingService] Speech recognition started')
       this.isRecording = true
     }
 
@@ -116,14 +133,16 @@ class VoiceRecordingService {
       }
 
       if (finalTranscript) {
+        console.log('[VoiceRecordingService] Final transcript received:', finalTranscript.trim().substring(0, 50) + '...')
         this.callbacks.onFinalTranscript(finalTranscript.trim())
       } else if (interimTranscript) {
+        console.log('[VoiceRecordingService] Interim transcript:', interimTranscript.trim().substring(0, 30) + '...')
         this.callbacks.onInterimTranscript(interimTranscript.trim())
       }
     }
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error)
+      console.error('[VoiceRecordingService] Speech recognition error:', event.error, event.message)
       if (event.error !== 'aborted' && this.callbacks) {
         this.callbacks.onError(`Microphone error: ${event.error}`)
       }
@@ -131,17 +150,22 @@ class VoiceRecordingService {
     }
 
     this.recognition.onend = () => {
+      console.log('[VoiceRecordingService] Speech recognition ended. isRecording:', this.isRecording, 'provider:', this.currentProvider)
       // If we're supposed to be recording, restart automatically
       // This handles cases where the browser stops recognition automatically
       if (this.isRecording && this.currentProvider === 'browser') {
-        console.log('Speech recognition ended unexpectedly, restarting...')
+        console.log('[VoiceRecordingService] Auto-restarting speech recognition for resiliency')
         try {
           this.recognition?.start()
         } catch (error) {
-          console.error('Failed to restart recognition:', error)
+          console.error('[VoiceRecordingService] Failed to restart recognition:', error)
           this.isRecording = false
+          if (this.callbacks) {
+            this.callbacks.onError('Failed to restart recording. Please try again.')
+          }
         }
       } else {
+        console.log('[VoiceRecordingService] Recording session ended normally')
         this.isRecording = false
       }
     }
@@ -172,6 +196,7 @@ class VoiceRecordingService {
    * Set transcript callbacks
    */
   setCallbacks(callbacks: TranscriptCallback) {
+    console.log('[VoiceRecordingService] Setting transcript callbacks')
     this.callbacks = callbacks
   }
 
@@ -179,6 +204,7 @@ class VoiceRecordingService {
    * Clear callbacks
    */
   clearCallbacks() {
+    console.log('[VoiceRecordingService] Clearing transcript callbacks')
     this.callbacks = null
   }
 
@@ -186,12 +212,14 @@ class VoiceRecordingService {
    * Start browser speech recognition
    */
   async startBrowserRecording(): Promise<void> {
+    console.log('[VoiceRecordingService] Starting browser speech recognition')
     if (!this.recognition) {
+      console.error('[VoiceRecordingService] Speech recognition not supported')
       throw new Error('Speech recognition not supported')
     }
 
     if (this.isRecording) {
-      console.warn('Recording already in progress')
+      console.warn('[VoiceRecordingService] Recording already in progress')
       return
     }
 
@@ -199,7 +227,9 @@ class VoiceRecordingService {
       this.currentProvider = 'browser'
       this.isRecording = true
       this.recognition.start()
+      console.log('[VoiceRecordingService] Browser recording started successfully')
     } catch (error) {
+      console.error('[VoiceRecordingService] Failed to start browser recording:', error)
       this.isRecording = false
       this.currentProvider = null
       throw error
@@ -210,6 +240,7 @@ class VoiceRecordingService {
    * Stop browser speech recognition
    */
   stopBrowserRecording(): void {
+    console.log('[VoiceRecordingService] Stopping browser speech recognition')
     if (!this.recognition) return
 
     this.isRecording = false
@@ -221,13 +252,16 @@ class VoiceRecordingService {
    * Start Whisper audio recording
    */
   async startWhisperRecording(): Promise<void> {
+    console.log('[VoiceRecordingService] Starting Whisper audio recording')
     if (this.isRecording) {
+      console.error('[VoiceRecordingService] Recording already in progress')
       throw new Error('Recording already in progress')
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       this.mediaStream = stream
+      console.log('[VoiceRecordingService] Media stream acquired')
 
       // Create MediaRecorder with appropriate format
       let mimeType = 'audio/webm;codecs=opus'
@@ -241,9 +275,10 @@ class VoiceRecordingService {
         mimeType = 'audio/mpeg'
       }
       if (!MediaRecorder.isTypeSupported(mimeType)) {
-        console.warn('No supported audio MIME type found. Attempting audio/webm as last resort - recording may fail.')
+        console.warn('[VoiceRecordingService] No supported audio MIME type found. Attempting audio/webm as last resort - recording may fail.')
         mimeType = 'audio/webm'
       }
+      console.log('[VoiceRecordingService] Using MIME type:', mimeType)
 
       const mediaRecorder = new MediaRecorder(stream, { mimeType })
       this.mediaRecorder = mediaRecorder
@@ -251,6 +286,7 @@ class VoiceRecordingService {
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          console.log('[VoiceRecordingService] Audio chunk received, size:', event.data.size)
           this.audioChunks.push(event.data)
         }
       }
@@ -258,7 +294,9 @@ class VoiceRecordingService {
       mediaRecorder.start()
       this.isRecording = true
       this.currentProvider = 'whisper'
+      console.log('[VoiceRecordingService] Whisper recording started successfully')
     } catch (error) {
+      console.error('[VoiceRecordingService] Failed to start Whisper recording:', error)
       this.cleanup()
       throw error
     }
@@ -268,7 +306,9 @@ class VoiceRecordingService {
    * Stop Whisper audio recording and return the audio blob
    */
   async stopWhisperRecording(): Promise<{ blob: Blob; mimeType: string }> {
+    console.log('[VoiceRecordingService] Stopping Whisper audio recording')
     if (!this.mediaRecorder) {
+      console.error('[VoiceRecordingService] No active recording')
       throw new Error('No active recording')
     }
 
@@ -277,6 +317,7 @@ class VoiceRecordingService {
       const mimeType = mediaRecorder.mimeType
 
       mediaRecorder.onstop = () => {
+        console.log('[VoiceRecordingService] Whisper recording stopped, processing audio')
         this.isRecording = false
         this.currentProvider = null
 
@@ -288,6 +329,7 @@ class VoiceRecordingService {
 
         // Create blob from recorded chunks
         const audioBlob = new Blob(this.audioChunks, { type: mimeType })
+        console.log('[VoiceRecordingService] Audio blob created, size:', audioBlob.size, 'type:', mimeType)
         this.audioChunks = []
         this.mediaRecorder = null
 
@@ -295,6 +337,7 @@ class VoiceRecordingService {
       }
 
       mediaRecorder.onerror = (error) => {
+        console.error('[VoiceRecordingService] Media recorder error:', error)
         this.cleanup()
         reject(error)
       }
@@ -307,6 +350,7 @@ class VoiceRecordingService {
    * Stop any active recording
    */
   stopRecording(): void {
+    console.log('[VoiceRecordingService] Stopping any active recording')
     if (this.currentProvider === 'browser') {
       this.stopBrowserRecording()
     } else if (this.currentProvider === 'whisper' && this.mediaRecorder) {
@@ -318,6 +362,7 @@ class VoiceRecordingService {
    * Cleanup resources
    */
   private cleanup(): void {
+    console.log('[VoiceRecordingService] Cleaning up resources')
     this.isRecording = false
     this.currentProvider = null
 
@@ -337,6 +382,7 @@ class VoiceRecordingService {
    * Note: This should only be called when the app is closing
    */
   destroy(): void {
+    console.log('[VoiceRecordingService] Destroying service')
     this.stopRecording()
     this.cleanup()
     
@@ -350,7 +396,7 @@ class VoiceRecordingService {
 }
 
 // Export singleton instance
-export const voiceRecordingService = new VoiceRecordingService()
+export const voiceRecordingService = VoiceRecordingService.getInstance()
 
 // Helper function to get file extension from MIME type
 export function getFileExtensionFromMimeType(mimeType: string): string {

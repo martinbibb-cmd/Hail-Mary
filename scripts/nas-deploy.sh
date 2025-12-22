@@ -9,6 +9,8 @@
 #   ./nas-deploy.sh [options]
 #
 # Options:
+#   --build             Build images locally instead of pulling from registry
+#   --no-cache          Build without cache (use with --build)
 #   --registry-login    Login to GitHub Container Registry before pulling
 #   --force-recreate    Force recreate containers even if no image changes
 #   --service <name>    Deploy only a specific service (api, pwa, assistant)
@@ -27,15 +29,6 @@ DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
 REGISTRY="${REGISTRY:-ghcr.io}"
 IMAGE_PREFIX="${IMAGE_PREFIX:-martinbibb-cmd/hail-mary}"
 LOG_FILE="${LOG_FILE:-/var/log/hail-mary-deploy.log}"
-
-# Auto-detect unRAID and set appropriate compose file
-if [[ -d "/mnt/user" ]] && [[ -z "$COMPOSE_FILE" ]]; then
-    # Running on unRAID
-    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
-    COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.unraid.yml"
-else
-    COMPOSE_FILE="${COMPOSE_FILE:-${DEPLOY_DIR}/docker-compose.prod.yml}"
-fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -60,17 +53,27 @@ success() { log "${GREEN}SUCCESS${NC}" "$@"; }
 
 # Help message
 show_help() {
-    head -n 22 "$0" | tail -n 20
+    head -n 24 "$0" | tail -n 22
     exit 0
 }
 
 # Parse arguments
+BUILD_LOCALLY=false
+NO_CACHE=false
 REGISTRY_LOGIN=false
 FORCE_RECREATE=false
 SPECIFIC_SERVICE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --build)
+            BUILD_LOCALLY=true
+            shift
+            ;;
+        --no-cache)
+            NO_CACHE=true
+            shift
+            ;;
         --registry-login)
             REGISTRY_LOGIN=true
             shift
@@ -92,6 +95,40 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Validate argument combinations
+if [[ "$NO_CACHE" == "true" ]] && [[ "$BUILD_LOCALLY" != "true" ]]; then
+    warn "--no-cache flag has no effect without --build flag"
+    warn "Use both flags together: --build --no-cache"
+fi
+
+# Validate service name if specified
+if [[ -n "$SPECIFIC_SERVICE" ]]; then
+    case "$SPECIFIC_SERVICE" in
+        api|pwa|assistant)
+            # Valid service name
+            ;;
+        *)
+            error "Invalid service name: $SPECIFIC_SERVICE"
+            error "Valid services are: api, pwa, assistant"
+            exit 1
+            ;;
+    esac
+fi
+
+# Auto-detect unRAID and set appropriate compose file (after parsing args)
+if [[ -d "/mnt/user" ]] && [[ -z "$COMPOSE_FILE" ]]; then
+    # Running on unRAID
+    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
+    # Use build compose file if building locally, otherwise use pull-based compose
+    if [[ "$BUILD_LOCALLY" == "true" ]]; then
+        COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.unraid-build.yml"
+    else
+        COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.unraid.yml"
+    fi
+else
+    COMPOSE_FILE="${COMPOSE_FILE:-${DEPLOY_DIR}/docker-compose.prod.yml}"
+fi
 
 # Check prerequisites
 check_prerequisites() {
@@ -211,10 +248,38 @@ registry_login() {
     fi
 }
 
+# Build images locally
+build_images() {
+    info "Building images locally..."
+    cd "$DEPLOY_DIR" || {
+        error "Failed to change to deployment directory: $DEPLOY_DIR"
+        exit 1
+    }
+    
+    local -a build_args=("-f" "$COMPOSE_FILE" "build")
+    
+    if [[ "$NO_CACHE" == "true" ]]; then
+        info "Building without cache to ensure fresh build..."
+        build_args+=("--no-cache")
+    fi
+    
+    if [[ -n "$SPECIFIC_SERVICE" ]]; then
+        info "Building image for service: $SPECIFIC_SERVICE"
+        docker-compose "${build_args[@]}" "hailmary-${SPECIFIC_SERVICE}"
+    else
+        docker-compose "${build_args[@]}"
+    fi
+    
+    success "Images built successfully"
+}
+
 # Pull latest images
 pull_images() {
     info "Pulling latest images..."
-    cd "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR" || {
+        error "Failed to change to deployment directory: $DEPLOY_DIR"
+        exit 1
+    }
     
     if [[ -n "$SPECIFIC_SERVICE" ]]; then
         info "Pulling image for service: $SPECIFIC_SERVICE"
@@ -229,7 +294,10 @@ pull_images() {
 # Update and restart containers
 deploy_containers() {
     info "Deploying containers..."
-    cd "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR" || {
+        error "Failed to change to deployment directory: $DEPLOY_DIR"
+        exit 1
+    }
     
     local -a compose_args=("-f" "$COMPOSE_FILE" "up" "-d" "--remove-orphans")
     
@@ -262,7 +330,7 @@ health_check() {
     local healthy=false
     
     while [[ $attempt -le $max_attempts ]]; do
-        if curl -sf "http://localhost:${PWA_PORT:-3000}/" > /dev/null 2>&1; then
+        if curl -sf "http://localhost:${PWA_PORT:-8080}/" > /dev/null 2>&1; then
             healthy=true
             break
         fi
@@ -283,7 +351,10 @@ health_check() {
 # Show container status
 show_status() {
     info "Container status:"
-    cd "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR" || {
+        error "Failed to change to deployment directory: $DEPLOY_DIR"
+        exit 1
+    }
     docker-compose -f "$COMPOSE_FILE" ps
 }
 
@@ -295,8 +366,17 @@ main() {
     
     check_prerequisites
     validate_environment
-    registry_login
-    pull_images
+    
+    # Build or pull images depending on mode
+    if [[ "$BUILD_LOCALLY" == "true" ]]; then
+        info "Using local build mode (builds images from source)"
+        build_images
+    else
+        info "Using registry pull mode (pulls pre-built images)"
+        registry_login
+        pull_images
+    fi
+    
     deploy_containers
     cleanup_images
     health_check

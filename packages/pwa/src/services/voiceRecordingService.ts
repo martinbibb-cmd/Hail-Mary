@@ -71,7 +71,7 @@ export interface TranscriptCallback {
 }
 
 class VoiceRecordingService {
-  private static instance: VoiceRecordingService | null = null
+  private static instance: VoiceRecordingService | undefined = undefined
   private recognition: SpeechRecognition | null = null
   private mediaRecorder: MediaRecorder | null = null
   private mediaStream: MediaStream | null = null
@@ -133,10 +133,16 @@ class VoiceRecordingService {
       }
 
       if (finalTranscript) {
-        console.log('[VoiceRecordingService] Final transcript received:', finalTranscript.trim().substring(0, 50) + '...')
+        // Only log first 50 chars to avoid exposing sensitive data in production
+        const previewText = finalTranscript.trim().substring(0, 50)
+        const preview = previewText.length < finalTranscript.trim().length ? `${previewText}...` : previewText
+        console.log('[VoiceRecordingService] Final transcript received:', preview)
         this.callbacks.onFinalTranscript(finalTranscript.trim())
       } else if (interimTranscript) {
-        console.log('[VoiceRecordingService] Interim transcript:', interimTranscript.trim().substring(0, 30) + '...')
+        // Only log first 30 chars to avoid exposing sensitive data in production
+        const previewText = interimTranscript.trim().substring(0, 30)
+        const preview = previewText.length < interimTranscript.trim().length ? `${previewText}...` : previewText
+        console.log('[VoiceRecordingService] Interim transcript:', preview)
         this.callbacks.onInterimTranscript(interimTranscript.trim())
       }
     }

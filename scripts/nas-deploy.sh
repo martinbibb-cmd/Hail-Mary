@@ -163,7 +163,10 @@ validate_environment() {
         if [[ -z "$JWT_SECRET" ]]; then
             echo -e "${RED}ERROR${NC}: JWT_SECRET is not set in .env file" >&2
             echo -e "${RED}ERROR${NC}: This is required for security. Generate one with:" >&2
+            echo -e "  # Using Node.js:" >&2
             echo -e "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"" >&2
+            echo -e "  # Or using OpenSSL:" >&2
+            echo -e "  openssl rand -hex 32" >&2
             has_errors=true
         fi
         

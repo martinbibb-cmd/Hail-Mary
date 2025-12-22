@@ -67,6 +67,7 @@ export const LeadContextBanner: React.FC<LeadContextBannerProps> = ({ onOpenLead
         <>
           <div className="lead-context-info">
             <div className="lead-context-customer">
+              <span className="lead-context-label">Active Lead</span>
               <span className="lead-context-name">{getCustomerName()}</span>
               <span className="lead-context-ref">Lead #{currentLead.id}</span>
               {getPostcode() && (
@@ -134,7 +135,8 @@ export const LeadContextBanner: React.FC<LeadContextBannerProps> = ({ onOpenLead
         <>
           <div className="lead-context-info">
             <div className="lead-context-customer">
-              <span className="lead-context-name lead-context-empty">No active lead</span>
+              <span className="lead-context-label">Active Lead</span>
+              <span className="lead-context-name lead-context-empty">None selected</span>
               <span className="lead-context-help">Select a lead to start working</span>
             </div>
           </div>

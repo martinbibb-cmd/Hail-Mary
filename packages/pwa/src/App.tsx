@@ -661,6 +661,7 @@ function App() {
 
   // Determine if using desktop or touch workspace
   const isDesktop = layout === 'desktop'
+  const showBottomDock = !isFocusProfile && !isDesktop
 
   // Main content component (shared between both workspaces)
   const mainContent = (
@@ -680,7 +681,10 @@ function App() {
           </ul>
         </nav>
       )}
-      <main className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`} style={{ paddingBottom: '80px' }}>
+      <main
+        className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`}
+        style={showBottomDock ? { paddingBottom: '80px' } : undefined}
+      >
         {/* Lead Context Banner - always visible at the top */}
         <LeadContextBanner onOpenLeadDrawer={() => setIsLeadDrawerOpen(true)} />
         
@@ -717,12 +721,16 @@ function App() {
         </Routes>
       </main>
 
-      {/* Bottom Dock - always visible across all breakpoints */}
-      <BottomDock onOpenMoreDrawer={() => setIsMoreDrawerOpen(true)} />
-
       {/* Drawers */}
       <LeadDrawer isOpen={isLeadDrawerOpen} onClose={() => setIsLeadDrawerOpen(false)} />
-      <MoreDrawer isOpen={isMoreDrawerOpen} onClose={() => setIsMoreDrawerOpen(false)} />
+
+      {/* Touch navigation (tablet/mobile only). Desktop uses sidebar + OS dock. */}
+      {showBottomDock && (
+        <>
+          <BottomDock onOpenMoreDrawer={() => setIsMoreDrawerOpen(true)} />
+          <MoreDrawer isOpen={isMoreDrawerOpen} onClose={() => setIsMoreDrawerOpen(false)} />
+        </>
+      )}
     </>
   )
 

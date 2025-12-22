@@ -1,11 +1,14 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useLeadStore } from '../../../stores/leadStore'
+import { useVisitStore } from '../../../stores/visitStore'
 import './PhotosApp.css'
 
 interface PhotoLocation {
   latitude: number
   longitude: number
   accuracy: number
+  altitude?: number | null
+  altitudeAccuracy?: number | null
 }
 
 interface PhotoMetadata {
@@ -20,6 +23,7 @@ interface CapturedPhoto {
   id: string
   dataUrl: string
   timestamp: Date
+  visitSessionId?: number
   description?: string
   notes?: string
   metadata?: PhotoMetadata
@@ -48,6 +52,7 @@ export const PhotosApp: React.FC = () => {
   const [notesText, setNotesText] = useState('')
   
   const currentLeadId = useLeadStore((state: LeadStoreState) => state.currentLeadId)
+  const activeVisitSessionId = useVisitStore((state) => state.activeSession?.id)
 
   const getStorageKey = useCallback((leadId: string | null) => {
     return leadId ? `hail-mary:photos:${leadId}` : null
@@ -188,6 +193,8 @@ export const PhotosApp: React.FC = () => {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          altitude: position.coords.altitude,
+          altitudeAccuracy: position.coords.altitudeAccuracy,
         }
         setLocationPermission('granted')
       } catch (err) {
@@ -220,12 +227,13 @@ export const PhotosApp: React.FC = () => {
       id: `photo-${Date.now()}`,
       dataUrl,
       timestamp: new Date(),
+      visitSessionId: activeVisitSessionId ?? undefined,
       metadata,
       leadId: currentLeadId ? parseInt(currentLeadId, 10) : undefined,
     }
 
     setPhotos(prev => [newPhoto, ...prev])
-  }, [currentLeadId])
+  }, [currentLeadId, activeVisitSessionId])
 
   const toggleFacingMode = useCallback(async () => {
     stopCamera()
@@ -364,6 +372,41 @@ export const PhotosApp: React.FC = () => {
     }
   }, [selectedPhoto])
 
+  const distanceFromPreviousPhotoM = useMemo(() => {
+    const current = selectedPhoto
+    const currentLoc = current?.metadata?.location
+    if (!current || !currentLoc) return null
+
+    const currentTs = current.timestamp.getTime()
+    const scopeVisitId = current.visitSessionId
+    const scopeLeadId = current.leadId ? String(current.leadId) : null
+
+    const candidates = photos
+      .filter((p) => p.id !== current.id)
+      .filter((p) => (scopeLeadId ? String(p.leadId) === scopeLeadId : true))
+      .filter((p) => (scopeVisitId ? p.visitSessionId === scopeVisitId : true))
+      .filter((p) => p.timestamp.getTime() < currentTs)
+      .filter((p) => Boolean(p.metadata?.location))
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+
+    const prev = candidates[0]
+    const prevLoc = prev?.metadata?.location
+    if (!prevLoc) return null
+
+    const toRad = (deg: number) => (deg * Math.PI) / 180
+    const R = 6371000 // meters
+    const dLat = toRad(prevLoc.latitude - currentLoc.latitude)
+    const dLon = toRad(prevLoc.longitude - currentLoc.longitude)
+    const lat1 = toRad(currentLoc.latitude)
+    const lat2 = toRad(prevLoc.latitude)
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }, [photos, selectedPhoto])
+
   // Photo detail view
   if (selectedPhoto) {
     return (
@@ -391,6 +434,19 @@ export const PhotosApp: React.FC = () => {
                 <p className="photo-location-accuracy">
                   Accuracy: ±{Math.round(selectedPhoto.metadata.location.accuracy)}m
                 </p>
+                {(selectedPhoto.metadata.location.altitude !== undefined && selectedPhoto.metadata.location.altitude !== null) && (
+                  <p className="photo-location-altitude">
+                    Altitude: {Math.round(selectedPhoto.metadata.location.altitude)}m
+                    {(selectedPhoto.metadata.location.altitudeAccuracy !== undefined && selectedPhoto.metadata.location.altitudeAccuracy !== null)
+                      ? ` (±${Math.round(selectedPhoto.metadata.location.altitudeAccuracy)}m)`
+                      : ''}
+                  </p>
+                )}
+                {(typeof distanceFromPreviousPhotoM === 'number' && Number.isFinite(distanceFromPreviousPhotoM)) && (
+                  <p className="photo-location-distance">
+                    Distance from previous: {Math.round(distanceFromPreviousPhotoM)}m
+                  </p>
+                )}
               </div>
             )}
             

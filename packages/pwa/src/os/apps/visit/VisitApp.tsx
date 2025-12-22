@@ -111,6 +111,7 @@ export const VisitApp: React.FC = () => {
   const stopRecordingInStore = useVisitStore((state) => state.stopRecording)
   const incrementTranscriptCount = useVisitStore((state) => state.incrementTranscriptCount)
   const clearSessionInStore = useVisitStore((state) => state.clearSession)
+  const endVisitInStore = useVisitStore((state) => state.endVisit)
   
   // New state for 3-panel layout
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
@@ -684,17 +685,14 @@ export const VisitApp: React.FC = () => {
     }
     
     try {
-      await api.put<ApiResponse<VisitSession>>(`/api/visit-sessions/${activeSession.id}`, {
-        status: 'completed',
-        endedAt: new Date(),
-      })
-      // Stop background transcription session
-      backgroundTranscriptionProcessor.stopSession()
+      const result = await endVisitInStore()
+      if (!result.success) {
+        setExceptions(prev => [...prev, result.error])
+        return
+      }
+
       setViewMode('list')
       setActiveSession(null)
-      // Clear visit store
-      clearSessionInStore()
-      useTranscriptionStore.getState().clearSession()
       setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
       setKeyDetails({})
       setAutoFilledFields([])
@@ -703,6 +701,7 @@ export const VisitApp: React.FC = () => {
       accumulatedTranscriptRef.current = ''
     } catch (error) {
       console.error('Failed to end visit:', error)
+      setExceptions(prev => [...prev, 'Failed to end visit. Please try again.'])
     }
   }
 

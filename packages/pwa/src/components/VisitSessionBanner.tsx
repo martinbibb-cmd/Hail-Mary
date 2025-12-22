@@ -24,7 +24,7 @@ export const VisitSessionBanner: React.FC = () => {
   const isRecording = useVisitStore((state) => state.isRecording);
   const recordingStartTime = useVisitStore((state) => state.recordingStartTime);
   const transcriptCount = useVisitStore((state) => state.transcriptCount);
-  const clearSession = useVisitStore((state) => state.clearSession);
+  const endVisit = useVisitStore((state) => state.endVisit);
 
   const [recordingDuration, setRecordingDuration] = useState<string>('0:00');
   const [error, setError] = useState<string | null>(null);
@@ -53,27 +53,14 @@ export const VisitSessionBanner: React.FC = () => {
 
     setError(null);
 
-    // End the visit session via API
     try {
-      const response = await fetch(`/api/visit-sessions/${activeSession.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'completed',
-          endedAt: new Date(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to end visit session');
+      const result = await endVisit();
+      if (!result.success) {
+        setError(result.error);
       }
-      
-      clearSession();
-      navigate('/visit'); // Navigate back to visit list
-    } catch (error) {
-      console.error('Failed to end visit:', error);
-      setError('Failed to end visit. Please try again from the Visit page.');
-      // Don't clear session on error - keep it active
+    } catch (err) {
+      console.error('Failed to end visit:', err);
+      setError('Failed to end visit. Please try again.');
     }
   };
 

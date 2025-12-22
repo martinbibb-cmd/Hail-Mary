@@ -647,7 +647,6 @@ export const VisitApp: React.FC = () => {
       backgroundTranscriptionProcessor.stopSession()
       setViewMode('list')
       setActiveSession(null)
-      setSelectedCustomer(null)
       // Clear visit store
       clearSessionInStore()
       setTranscriptSegments([])

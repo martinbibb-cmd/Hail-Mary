@@ -30,6 +30,6 @@
   ],
   "license": "ISC",
   "overrides": {
-    "pdfjs-dist": "5.4.449"
+    "pdfjs-dist": "5.4.296"
   }
 }

@@ -10,6 +10,8 @@
 
 import { create } from 'zustand';
 import type { VisitSession, Lead } from '@hail-mary/shared';
+import { backgroundTranscriptionProcessor } from '../services/backgroundTranscriptionProcessor';
+import { useTranscriptionStore } from './transcriptionStore';
 
 export type RecordingProvider = 'browser' | 'whisper';
 
@@ -30,9 +32,10 @@ interface VisitStore {
   stopRecording: () => void;
   incrementTranscriptCount: () => void;
   clearSession: () => void;
+  endVisit: () => Promise<void>;
 }
 
-export const useVisitStore = create<VisitStore>((set) => ({
+export const useVisitStore = create<VisitStore>((set, get) => ({
   // Initial state
   activeSession: null,
   activeLead: null,
@@ -76,4 +79,39 @@ export const useVisitStore = create<VisitStore>((set) => ({
     recordingStartTime: null,
     transcriptCount: 0,
   }),
+
+  // End visit (global action)
+  endVisit: async () => {
+    const { activeSession, clearSession } = get();
+    if (!activeSession) return;
+
+    try {
+      const response = await fetch(`/api/visit-sessions/${activeSession.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          status: 'completed',
+          endedAt: new Date(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to end visit session');
+      }
+
+      // Stop background transcription session
+      backgroundTranscriptionProcessor.stopSession();
+      
+      // Clear transcription store
+      useTranscriptionStore.getState().clearSession();
+
+      // Clear local session
+      clearSession();
+      
+    } catch (error) {
+      console.error('Failed to end visit:', error);
+      throw error;
+    }
+  },
 }));

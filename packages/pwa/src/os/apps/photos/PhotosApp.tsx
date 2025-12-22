@@ -6,6 +6,24 @@ interface PhotoLocation {
   latitude: number
   longitude: number
   accuracy: number
+  altitude: number | null
+  altitudeAccuracy: number | null
+}
+
+function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3; // Radius of the earth in meters
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in meters
+}
+
+function deg2rad(deg: number) {
+  return deg * (Math.PI / 180);
 }
 
 interface PhotoMetadata {
@@ -188,6 +206,8 @@ export const PhotosApp: React.FC = () => {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          altitude: position.coords.altitude,
+          altitudeAccuracy: position.coords.altitudeAccuracy,
         }
         setLocationPermission('granted')
       } catch (err) {
@@ -366,6 +386,22 @@ export const PhotosApp: React.FC = () => {
 
   // Photo detail view
   if (selectedPhoto) {
+    // Find previous photo (assuming sorted by newest first)
+    const currentIndex = photos.findIndex(p => p.id === selectedPhoto.id);
+    const previousPhoto = currentIndex !== -1 && currentIndex < photos.length - 1 
+      ? photos[currentIndex + 1] 
+      : null;
+
+    let distanceMeters: number | null = null;
+    if (selectedPhoto.metadata?.location && previousPhoto?.metadata?.location) {
+      distanceMeters = getDistanceFromLatLonInMeters(
+        selectedPhoto.metadata.location.latitude,
+        selectedPhoto.metadata.location.longitude,
+        previousPhoto.metadata.location.latitude,
+        previousPhoto.metadata.location.longitude
+      );
+    }
+
     return (
       <div className="photos-app">
         <div className="photos-app-header">
@@ -391,6 +427,17 @@ export const PhotosApp: React.FC = () => {
                 <p className="photo-location-accuracy">
                   Accuracy: ±{Math.round(selectedPhoto.metadata.location.accuracy)}m
                 </p>
+                {selectedPhoto.metadata.location.altitude !== null && (
+                   <p className="photo-location-altitude">
+                     ⛰️ Altitude: {Math.round(selectedPhoto.metadata.location.altitude)}m
+                     {selectedPhoto.metadata.location.altitudeAccuracy !== null && ` (±${Math.round(selectedPhoto.metadata.location.altitudeAccuracy)}m)`}
+                   </p>
+                )}
+                {distanceMeters !== null && (
+                  <p className="photo-location-distance">
+                    📏 Distance from previous: {Math.round(distanceMeters)}m
+                  </p>
+                )}
               </div>
             )}
             

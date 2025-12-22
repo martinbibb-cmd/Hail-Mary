@@ -17,7 +17,6 @@ import {
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
 import { useVisitStore } from '../../../stores/visitStore'
-import { useTranscriptionStore } from '../../../stores/transcriptionStore'
 import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'

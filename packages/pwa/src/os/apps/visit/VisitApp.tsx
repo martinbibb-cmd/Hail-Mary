@@ -17,11 +17,13 @@ import {
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
 import { useVisitStore } from '../../../stores/visitStore'
+import { useTranscriptionStore } from '../../../stores/transcriptionStore'
 import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
 import { useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext'
 import { voiceRecordingService, getFileExtensionFromMimeType } from '../../../services/voiceRecordingService'
+import { backgroundTranscriptionProcessor } from '../../../services/backgroundTranscriptionProcessor'
 import './VisitApp.css'
 
 /**
@@ -340,6 +342,11 @@ export const VisitApp: React.FC = () => {
         setViewMode('active')
         // Update visit store with active session
         setActiveSessionInStore(res.data, customer)
+        // Start background transcription session
+        backgroundTranscriptionProcessor.startSession(
+          customer.id.toString(),
+          res.data.id.toString()
+        )
         // Reset state for new visit
         setTranscriptSegments([])
         setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
@@ -369,6 +376,11 @@ export const VisitApp: React.FC = () => {
         setViewMode('active')
         // Update visit store with active session
         setActiveSessionInStore(session, customer)
+        // Start background transcription session
+        backgroundTranscriptionProcessor.startSession(
+          customer.id.toString(),
+          session.id.toString()
+        )
         // Reset state (in future, could load previous data)
         setTranscriptSegments([])
         setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
@@ -586,6 +598,8 @@ export const VisitApp: React.FC = () => {
         status: 'completed',
         endedAt: new Date(),
       })
+      // Stop background transcription session
+      backgroundTranscriptionProcessor.stopSession()
       setViewMode('list')
       setActiveSession(null)
       setSelectedCustomer(null)

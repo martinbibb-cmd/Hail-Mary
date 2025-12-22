@@ -16,7 +16,7 @@
  * - Persists data to Lead store and API
  */
 
-import { voiceRecordingService, type TranscriptCallback } from './voiceRecordingService';
+import { voiceRecordingService } from './voiceRecordingService';
 import { useTranscriptionStore, type TranscriptSegment } from '../stores/transcriptionStore';
 import { useLeadStore } from '../stores/leadStore';
 import { extractStructuredData, type ExtractedData } from './enhancedDataExtractor';
@@ -60,7 +60,7 @@ class BackgroundTranscriptionProcessor {
       onFinalTranscript: (text: string) => {
         this.handleFinalTranscript(text);
       },
-      onInterimTranscript: (text: string) => {
+      onInterimTranscript: (_text: string) => {
         // Interim transcripts can be used for real-time UI updates
         // but we don't process them for data extraction
         console.log('[BackgroundTranscriptionProcessor] Interim transcript received');
@@ -235,13 +235,6 @@ class BackgroundTranscriptionProcessor {
     if (notes.length > 0) {
       updates.notes = notes.join('\n');
     }
-
-    // Occupancy data (stored in lead store metadata for now)
-    const metadata = {
-      occupancy: data.occupancy,
-      extractedAt: new Date().toISOString(),
-      confidence: data.confidence,
-    };
 
     // Update lead store
     leadStore.updateLeadData(leadId, updates);

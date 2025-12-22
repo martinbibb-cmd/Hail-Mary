@@ -20,7 +20,13 @@ async function loadPdfParse(): Promise<PdfParseFn> {
     return cachedPdfParse;
   }
 
-  const mod = await import('pdf-parse');
+  // IMPORTANT: Prefer the CommonJS entry via require().
+  // Using dynamic import in Node can select the ESM entry, which in turn can
+  // trigger pdf.js "fake worker" initialization issues in some Node/Jest setups.
+  //
+  // packages/api is built as CommonJS, so require() is available here.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = require('pdf-parse');
 
   // Handle different export patterns:
   // 1. Direct function (mod itself is a function) - old API
@@ -45,10 +51,11 @@ async function loadPdfParse(): Promise<PdfParseFn> {
   // Create a wrapper function that handles both old function-based and new class-based APIs
   const parsePdf = async (dataBuffer: Buffer, options?: unknown): Promise<PdfParseResult> => {
     if (isClassBasedAPI) {
-      // New class-based API: instantiate class and call getText()
-      // The new API expects Uint8Array, not Buffer
+      // New class-based API (pdf-parse v2+): instantiate PDFParse with LoadParameters
+      // (expects an object with `data`, not positional args).
       const uint8Array = new Uint8Array(dataBuffer);
-      const parser = new ParseModule(uint8Array, options);
+      const loadOptions = (options && typeof options === 'object') ? (options as Record<string, unknown>) : {};
+      const parser = new ParseModule({ data: uint8Array, ...loadOptions });
       const textResult = await parser.getText();
       
       // Convert new API result format to old API format
@@ -109,7 +116,9 @@ export async function processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult
 
     const parsePdf = await loadPdfParse();
     // Step 1: Extract text from PDF using pdf-parse (function-based API)
-    const pdfData = await parsePdf(pdfBuffer);
+    // Force pdf.js worker OFF to avoid version mismatch between API and bundled worker.
+    // (Some dependency trees can end up with pdf.js API and worker versions diverging.)
+    const pdfData = await parsePdf(pdfBuffer, { disableWorker: true });
     const totalPages = pdfData.numpages;
 
     // Step 2: Render all pages to PNG images

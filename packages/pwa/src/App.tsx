@@ -27,7 +27,7 @@ import { VisitSessionBanner } from './components/VisitSessionBanner'
 import { LeadDrawer } from './components/LeadDrawer'
 import { BottomDock } from './components/BottomDock'
 import { MoreDrawer } from './components/MoreDrawer'
-import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard } from './components/ProtectedRoutes'
+import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
 
 // Simple API client
@@ -705,7 +705,7 @@ function App() {
           <Route path="/leads/new" element={<NewLead />} />
           <Route path="/leads/:id" element={<LeadWorkspace />} />
           <Route path="/diary" element={<DiaryApp />} />
-          <Route path="/visit" element={<VisitApp />} />
+          <Route path="/visit" element={<VisitAppWithGuard />} />
           <Route path="/rocky" element={<RockyToolWithGuard />} />
           <Route path="/sarah" element={<SarahToolWithGuard />} />
           <Route path="/photos" element={<PhotosAppWithGuard />} />

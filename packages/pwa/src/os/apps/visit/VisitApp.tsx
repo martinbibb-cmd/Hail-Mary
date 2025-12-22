@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { 
-  Customer, 
   VisitSession,
   ApiResponse, 
-  PaginatedResponse 
+  PaginatedResponse,
+  Lead,
 } from '@hail-mary/shared'
 import { 
   TranscriptFeed, 
@@ -23,6 +23,7 @@ import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers
 import { useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext'
 import { voiceRecordingService, getFileExtensionFromMimeType } from '../../../services/voiceRecordingService'
 import { backgroundTranscriptionProcessor } from '../../../services/backgroundTranscriptionProcessor'
+import { useAuth } from '../../../auth'
 import './VisitApp.css'
 
 /**
@@ -43,13 +44,14 @@ import './VisitApp.css'
 // Simple API client
 const api = {
   async get<T>(url: string): Promise<T> {
-    const res = await fetch(url)
+    const res = await fetch(url, { credentials: 'include' })
     return res.json()
   },
   async post<T>(url: string, data: unknown): Promise<T> {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     })
     return res.json()
@@ -58,6 +60,7 @@ const api = {
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     })
     return res.json()
@@ -82,13 +85,13 @@ const DEFAULT_CHECKLIST_ITEMS: ChecklistItem[] = [
 
 export const VisitApp: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [activeSession, setActiveSession] = useState<VisitSession | null>(null)
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
   
   // Lead store for save triggers
   const currentLeadId = useLeadStore((state) => state.currentLeadId)
+  const leadById = useLeadStore((state) => state.leadById)
   const enqueueSave = useLeadStore((state) => state.enqueueSave)
   const markDirty = useLeadStore((state) => state.markDirty)
   const isSyncing = useLeadStore((state) => state.isSyncing)
@@ -133,6 +136,90 @@ export const VisitApp: React.FC = () => {
 
   // Rocky status (always 'connected' for local extraction)
   const [rockyStatus] = useState<'connected' | 'degraded' | 'blocked'>(getLocalRockyStatus())
+
+  const activeLead: Lead | null = useMemo(() => {
+    if (!currentLeadId) return null
+    return leadById[currentLeadId] || null
+  }, [currentLeadId, leadById])
+
+  const getVisitNotesStorageKey = useCallback((leadId: string | null) => {
+    return leadId ? `hail-mary:visit-notes:${leadId}` : null
+  }, [])
+
+  // Load persisted transcript segments for the active lead (refresh-safe)
+  useEffect(() => {
+    const key = getVisitNotesStorageKey(currentLeadId)
+    if (!key) return
+
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw) {
+        setTranscriptSegments([])
+        accumulatedTranscriptRef.current = ''
+        return
+      }
+
+      const parsed: {
+        segments?: Array<Omit<TranscriptSegment, 'timestamp'> & { timestamp: string }>
+        accumulatedTranscript?: string
+      } = JSON.parse(raw)
+
+      const hydratedSegments: TranscriptSegment[] = (parsed.segments || []).map((s) => ({
+        ...s,
+        timestamp: new Date(s.timestamp),
+      }))
+
+      setTranscriptSegments(hydratedSegments)
+      accumulatedTranscriptRef.current = parsed.accumulatedTranscript || ''
+    } catch (err) {
+      console.warn('Failed to load persisted visit notes:', err)
+      setTranscriptSegments([])
+      accumulatedTranscriptRef.current = ''
+    }
+  }, [currentLeadId, getVisitNotesStorageKey])
+
+  // Persist transcript segments per active lead
+  useEffect(() => {
+    const key = getVisitNotesStorageKey(currentLeadId)
+    if (!key) return
+
+    try {
+      const serializable = {
+        segments: transcriptSegments.map((s) => ({
+          ...s,
+          timestamp: s.timestamp.toISOString(),
+        })),
+        accumulatedTranscript: accumulatedTranscriptRef.current,
+      }
+      localStorage.setItem(key, JSON.stringify(serializable))
+    } catch (err) {
+      console.warn('Failed to persist visit notes:', err)
+    }
+  }, [currentLeadId, getVisitNotesStorageKey, transcriptSegments])
+
+  // If the active lead changes mid-session, reset visit context so saves route to the new lead.
+  // Do NOT clear persisted transcript segments here; they are loaded per-lead above.
+  const lastLeadIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    // First mount: just record baseline
+    if (lastLeadIdRef.current === null) {
+      lastLeadIdRef.current = currentLeadId
+      return
+    }
+
+    if (lastLeadIdRef.current !== currentLeadId) {
+      lastLeadIdRef.current = currentLeadId
+      setViewMode('list')
+      setActiveSession(null)
+      clearSessionInStore()
+      backgroundTranscriptionProcessor.stopSession()
+      setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
+      setKeyDetails({})
+      setAutoFilledFields([])
+      setExceptions([])
+      setVisitSummary(undefined)
+    }
+  }, [currentLeadId, clearSessionInStore])
 
   // Helper function to generate summary (used to avoid circular dependency)
   const generateSummaryForSession = async (sessionId: number) => {
@@ -317,84 +404,43 @@ export const VisitApp: React.FC = () => {
     }
   }, [incrementTranscriptCount, processWithRocky, startRecordingInStore])
 
-  // Load customers
+  // Ready once we have an active lead (VisitApp is guarded, but keep it defensive)
   useEffect(() => {
-    api.get<PaginatedResponse<Customer>>('/api/customers')
-      .then(res => {
-        setCustomers(res.data || [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    setLoading(false)
   }, [])
 
-  const startVisit = async (customer: Customer) => {
+  const startOrResumeVisit = async (lead: Lead) => {
     setLoading(true)
     try {
-      const res = await api.post<ApiResponse<VisitSession>>('/api/visit-sessions', {
-        accountId: 1,
-        leadId: customer.id,
-      })
+      // Try to find an active session for this lead (API doesn't currently filter status server-side)
+      const sessionsRes = await api.get<PaginatedResponse<VisitSession>>(`/api/visit-sessions?leadId=${lead.id}&limit=20`)
+      const existingInProgress = (sessionsRes.data || []).find((s) => s.status === 'in_progress') || null
+      const sessionToUse = existingInProgress
+        ? existingInProgress
+        : (await api.post<ApiResponse<VisitSession>>('/api/visit-sessions', {
+            accountId: user?.accountId ?? 1,
+            leadId: Number(lead.id),
+          })).data || null
       
-      if (res.success && res.data) {
-        setSelectedCustomer(customer)
-        setActiveSession(res.data)
+      if (sessionToUse) {
+        setActiveSession(sessionToUse)
         setViewMode('active')
         // Update visit store with active session
-        setActiveSessionInStore(res.data, customer)
+        setActiveSessionInStore(sessionToUse, lead)
         // Start background transcription session
         backgroundTranscriptionProcessor.startSession(
-          customer.id.toString(),
-          res.data.id.toString()
+          String(lead.id),
+          sessionToUse.id.toString()
         )
         // Reset state for new visit
-        setTranscriptSegments([])
         setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
         setKeyDetails({})
         setAutoFilledFields([])
         setExceptions([])
         setVisitSummary(undefined)
-        accumulatedTranscriptRef.current = ''
       }
     } catch (error) {
       console.error('Failed to start visit:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadExistingVisit = async (customer: Customer) => {
-    setLoading(true)
-    try {
-      // Try to find an active session for this customer
-      const sessionsRes = await api.get<PaginatedResponse<VisitSession>>(`/api/visit-sessions?leadId=${customer.id}&status=in_progress`)
-      
-      if (sessionsRes.data && sessionsRes.data.length > 0) {
-        const session = sessionsRes.data[0]
-        setSelectedCustomer(customer)
-        setActiveSession(session)
-        setViewMode('active')
-        // Update visit store with active session
-        setActiveSessionInStore(session, customer)
-        // Start background transcription session
-        backgroundTranscriptionProcessor.startSession(
-          customer.id.toString(),
-          session.id.toString()
-        )
-        // Reset state (in future, could load previous data)
-        setTranscriptSegments([])
-        setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
-        setKeyDetails({})
-        setAutoFilledFields([])
-        setExceptions([])
-        setVisitSummary(session.summary)
-        accumulatedTranscriptRef.current = ''
-      } else {
-        // No active session, start new one
-        startVisit(customer)
-      }
-    } catch {
-      console.error('Failed to load visit')
-      startVisit(customer)
     } finally {
       setLoading(false)
     }
@@ -620,7 +666,7 @@ export const VisitApp: React.FC = () => {
     return <div className="visit-app-loading">Loading...</div>
   }
 
-  if (viewMode === 'active' && activeSession && selectedCustomer) {
+  if (viewMode === 'active' && activeSession && activeLead) {
     const failures = currentLeadId ? (saveFailuresByLeadId[currentLeadId] || 0) : 0
     const isDirty = currentLeadId ? dirtyByLeadId[currentLeadId] : false
     const lastSaved = currentLeadId ? lastSavedAtByLeadId[currentLeadId] : null
@@ -629,7 +675,7 @@ export const VisitApp: React.FC = () => {
       <div className="visit-app visit-app-active">
         <div className="visit-app-header">
           <div className="visit-app-header-info">
-            <h2>🎙️ {selectedCustomer.firstName} {selectedCustomer.lastName}</h2>
+            <h2>🎙️ {activeLead.firstName} {activeLead.lastName}</h2>
             <span className="visit-status-badge">Active Visit</span>
             <span className={`rocky-status-badge rocky-${rockyStatus}`}>
               Rocky: {rockyStatus === 'connected' ? '✅ Local' : rockyStatus === 'degraded' ? '⚠️ Degraded' : '❌ Offline'}
@@ -767,26 +813,23 @@ export const VisitApp: React.FC = () => {
     <div className="visit-app">
       <div className="visit-app-header">
         <h2>📋 Visit Notes</h2>
-        <p className="visit-app-subtitle">Select a customer to start or continue a visit</p>
+        <p className="visit-app-subtitle">Start or continue a visit for the active lead</p>
       </div>
 
       <div className="visit-customer-list">
-        {customers.length === 0 ? (
-          <p className="visit-empty">No customers yet. Create a customer first!</p>
+        {activeLead ? (
+          <button
+            className="visit-customer-item"
+            onClick={() => startOrResumeVisit(activeLead)}
+          >
+            <div className="visit-customer-info">
+              <strong>{activeLead.firstName} {activeLead.lastName}</strong>
+              <span>{activeLead.address?.city || activeLead.address?.postcode || `Lead #${activeLead.id}`}</span>
+            </div>
+            <span className="visit-customer-arrow">→</span>
+          </button>
         ) : (
-          customers.map(customer => (
-            <button
-              key={customer.id}
-              className="visit-customer-item"
-              onClick={() => loadExistingVisit(customer)}
-            >
-              <div className="visit-customer-info">
-                <strong>{customer.firstName} {customer.lastName}</strong>
-                <span>{customer.address?.city || customer.email}</span>
-              </div>
-              <span className="visit-customer-arrow">→</span>
-            </button>
-          ))
+          <p className="visit-empty">No active lead selected. Use the banner above to select or create one.</p>
         )}
       </div>
     </div>

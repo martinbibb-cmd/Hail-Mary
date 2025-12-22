@@ -20,7 +20,7 @@ import './VisitSessionBanner.css';
 export const VisitSessionBanner: React.FC = () => {
   const navigate = useNavigate();
   const activeSession = useVisitStore((state) => state.activeSession);
-  const activeCustomer = useVisitStore((state) => state.activeCustomer);
+  const activeLead = useVisitStore((state) => state.activeLead);
   const isRecording = useVisitStore((state) => state.isRecording);
   const recordingStartTime = useVisitStore((state) => state.recordingStartTime);
   const transcriptCount = useVisitStore((state) => state.transcriptCount);
@@ -86,9 +86,9 @@ export const VisitSessionBanner: React.FC = () => {
     return null;
   }
 
-  const customerName = (activeCustomer?.firstName || activeCustomer?.lastName)
-    ? `${activeCustomer.firstName || ''} ${activeCustomer.lastName || ''}`.trim()
-    : 'Unnamed Customer';
+  const leadName = (activeLead?.firstName || activeLead?.lastName)
+    ? `${activeLead.firstName || ''} ${activeLead.lastName || ''}`.trim()
+    : 'Unnamed Lead';
 
   return (
     <div className="visit-session-banner" onClick={handleGoToVisit}>
@@ -96,7 +96,7 @@ export const VisitSessionBanner: React.FC = () => {
         <div className="visit-session-customer">
           <span className="visit-icon">🎙️</span>
           <div className="visit-details">
-            <span className="visit-customer-name">{customerName}</span>
+            <span className="visit-customer-name">{leadName}</span>
             <span className="visit-session-id">Visit Session #{activeSession.id}</span>
           </div>
         </div>

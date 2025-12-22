@@ -9,14 +9,14 @@
  */
 
 import { create } from 'zustand';
-import type { VisitSession, Customer } from '@hail-mary/shared';
+import type { VisitSession, Lead } from '@hail-mary/shared';
 
 export type RecordingProvider = 'browser' | 'whisper';
 
 interface VisitStore {
   // Active visit session
   activeSession: VisitSession | null;
-  activeCustomer: Customer | null;
+  activeLead: Lead | null;
   
   // Recording state
   isRecording: boolean;
@@ -25,7 +25,7 @@ interface VisitStore {
   transcriptCount: number;
   
   // Actions
-  setActiveSession: (session: VisitSession | null, customer: Customer | null) => void;
+  setActiveSession: (session: VisitSession | null, lead: Lead | null) => void;
   startRecording: (provider: RecordingProvider) => void;
   stopRecording: () => void;
   incrementTranscriptCount: () => void;
@@ -35,16 +35,16 @@ interface VisitStore {
 export const useVisitStore = create<VisitStore>((set) => ({
   // Initial state
   activeSession: null,
-  activeCustomer: null,
+  activeLead: null,
   isRecording: false,
   recordingProvider: null,
   recordingStartTime: null,
   transcriptCount: 0,
 
   // Set active session (when visit starts)
-  setActiveSession: (session: VisitSession | null, customer: Customer | null) => set({
+  setActiveSession: (session: VisitSession | null, lead: Lead | null) => set({
     activeSession: session,
-    activeCustomer: customer,
+    activeLead: lead,
     transcriptCount: 0,
   }),
 
@@ -70,7 +70,7 @@ export const useVisitStore = create<VisitStore>((set) => ({
   // Clear session (when visit ends)
   clearSession: () => set({
     activeSession: null,
-    activeCustomer: null,
+    activeLead: null,
     isRecording: false,
     recordingProvider: null,
     recordingStartTime: null,

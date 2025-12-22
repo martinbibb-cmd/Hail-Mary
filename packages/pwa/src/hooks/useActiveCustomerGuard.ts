@@ -32,7 +32,7 @@ export function useActiveCustomerGuard() {
    */
   const guardAction = (actionName: string = 'this action'): boolean => {
     if (!hasActiveCustomer()) {
-      alert(`Please select an active customer before ${actionName}.`);
+      alert(`Please select an active lead before ${actionName}.`);
       return false;
     }
     return true;

@@ -6,6 +6,7 @@
 
 import 'dotenv/config';
 import express from 'express';
+import type { Request, RequestHandler } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
@@ -51,6 +52,7 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
+const IS_DEV = (process.env.NODE_ENV || 'development') !== 'production';
 
 // Trust proxy - required when running behind nginx/Docker/Cloudflare
 // This must be set before rate-limit middleware to prevent ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
@@ -113,6 +115,50 @@ initializeSttProvider().catch(error => {
 // - Auth is chatty in SPAs (/auth/me, /auth/config) and should almost never be blocked.
 // - Rocky/Sarah/AI can be expensive and should be stricter.
 // - Everything else gets a reasonable baseline.
+const logLimiterHit = (name: string, req: Request) => {
+  if (!IS_DEV) return;
+  const xff = req.headers['x-forwarded-for'];
+  const ua = req.headers['user-agent'];
+  console.warn(
+    `[rate-limit:${name}] ${req.method} ${req.originalUrl} ip=${req.ip}` +
+      (xff ? ` xff=${String(xff)}` : '') +
+      (ua ? ` ua=${String(ua)}` : '')
+  );
+};
+
+/**
+ * Wrap a rate limiter so we can log (dev-only) when it returns 429.
+ * We avoid using express-rate-limit's `handler` option because the
+ * legacy @types package used in this repo doesn't expose it.
+ */
+const wrapLimiter = (name: string, limiter: RequestHandler): RequestHandler => {
+  return (req, res, next) => {
+    const origJson = res.json.bind(res);
+    const origSend = res.send.bind(res);
+    const origStatus = res.status.bind(res);
+    let capturedStatus: number | undefined;
+
+    res.status = ((code: number) => {
+      capturedStatus = code;
+      return origStatus(code);
+    }) as any;
+
+    res.json = ((body: any) => {
+      const statusCode = capturedStatus ?? res.statusCode;
+      if (statusCode === 429) logLimiterHit(name, req);
+      return origJson(body);
+    }) as any;
+
+    res.send = ((body: any) => {
+      const statusCode = capturedStatus ?? res.statusCode;
+      if (statusCode === 429) logLimiterHit(name, req);
+      return origSend(body);
+    }) as any;
+
+    return limiter(req, res, next);
+  };
+};
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // baseline for non-auth, non-AI endpoints
@@ -169,7 +215,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
-app.use('/api', apiLimiter); // Baseline rate limiting for API routes
+app.use('/api', wrapLimiter('api', apiLimiter)); // Baseline rate limiting for API routes
 
 // Health check endpoints are intentionally NOT rate-limited to allow
 // monitoring systems (load balancers, container orchestrators, etc.)
@@ -252,8 +298,8 @@ app.get('/health/db', async (_req, res) => {
 
 // API Routes
 // Auth should not be blocked by Rocky/AI limits; it has its own generous limiter.
-app.use('/api/auth/me', authMeLimiter);
-app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/auth/me', wrapLimiter('auth-me', authMeLimiter));
+app.use('/api/auth', wrapLimiter('auth', authLimiter), authRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/nas', nasRouter);
 app.use('/api/customers', customersRouter);
@@ -271,11 +317,11 @@ app.use('/api', transcriptsRouter); // Option A live transcript ingestion
 app.use('/api/depot-notes', depotNotesRouter);
 app.use('/api/survey-helper', surveyHelperRouter);
 app.use('/api/voice-notes', voiceNotesRouter); // Rocky & Sarah architecture
-app.use('/api/rocky', aiLimiter, rockyRouter); // Rocky standalone endpoint
-app.use('/api/sarah', aiLimiter, sarahRouter); // Sarah standalone endpoint
+app.use('/api/rocky', wrapLimiter('ai', aiLimiter), rockyRouter); // Rocky standalone endpoint
+app.use('/api/sarah', wrapLimiter('ai', aiLimiter), sarahRouter); // Sarah standalone endpoint
 app.use('/api/voice', voiceTransformRouter); // Voice transform endpoint
 app.use('/api/knowledge', knowledgeRouter); // Knowledge ingest system
-app.use('/api/ai', aiLimiter, aiRouter); // AI Gateway (server-side proxy to Cloudflare Worker)
+app.use('/api/ai', wrapLimiter('ai', aiLimiter), aiRouter); // AI Gateway (server-side proxy to Cloudflare Worker)
 app.use('/api/session', sessionRouter); // Session management (active lead persistence)
 
 // 404 handler

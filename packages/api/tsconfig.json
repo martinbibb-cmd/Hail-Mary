@@ -23,11 +23,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "baseUrl": "./src",
-    "paths": {
-      "@hail-mary/shared": ["../shared/src"],
-      "@hail-mary/shared/*": ["../shared/src/*"]
-    }
+    "baseUrl": "./src"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/__tests__", "**/*.test.ts", "**/*.spec.ts"]

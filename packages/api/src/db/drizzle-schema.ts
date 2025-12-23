@@ -460,6 +460,50 @@ export const visitEvents = pgTable("visit_events", {
 }));
 
 // ============================================
+// v2 Spine: Property / Visit / Timeline
+// ============================================
+
+export const spineProperties = pgTable("spine_properties", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  addressLine1: text("address_line_1").notNull(),
+  addressLine2: text("address_line_2"),
+  town: text("town"),
+  // Stored normalized (uppercase, no spaces) for fast indexed lookup
+  postcode: text("postcode").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  postcodeIdx: index("spine_properties_postcode_idx").on(t.postcode),
+}));
+
+export const spineVisits = pgTable("spine_visits", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  propertyId: uuid("property_id")
+    .references(() => spineProperties.id, { onDelete: "cascade" })
+    .notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  propertyStartedAtIdx: index("spine_visits_property_started_at_idx").on(t.propertyId, t.startedAt),
+}));
+
+export const spineTimelineEvents = pgTable("spine_timeline_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  visitId: uuid("visit_id")
+    .references(() => spineVisits.id, { onDelete: "cascade" })
+    .notNull(),
+  type: text("type").notNull(),
+  ts: timestamp("ts", { withTimezone: true }).defaultNow().notNull(),
+  payload: jsonb("payload").notNull().default({}),
+  geo: jsonb("geo"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  tsIdx: index("spine_timeline_events_ts_idx").on(t.ts),
+  visitTsIdx: index("spine_timeline_events_visit_ts_idx").on(t.visitId, t.ts),
+}));
+
+// ============================================
 // Survey Helper System - SystemSpecDraft
 // ============================================
 

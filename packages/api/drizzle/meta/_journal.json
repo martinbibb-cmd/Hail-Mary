@@ -36,6 +36,27 @@
       "when": 1734753600000,
       "tag": "0004_add_visit_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1734936400000,
+      "tag": "0005_option_a_transcripts",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1735022800000,
+      "tag": "0006_assets_and_visit_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1766448000000,
+      "tag": "0007_spine_properties_visits_timeline",
+      "breakpoints": true
     }
   ]
 }

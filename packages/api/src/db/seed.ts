@@ -23,6 +23,9 @@ import {
   leadHeatloss,
   leadInterests,
   leadFuturePlans,
+  spineProperties,
+  spineVisits,
+  spineTimelineEvents,
 } from "./drizzle-schema";
 import { hashPassword } from "../services/auth.service";
 
@@ -126,6 +129,26 @@ async function main() {
     console.log(`Seeded lead_future_plans for lead ${leadId}`);
 
     console.log(`✅ Seeded all lead workspace records for lead ${leadId}`);
+
+    // 2b. Seed v2 spine demo data (property + visit + timeline event)
+    const [spineProperty] = await db.insert(spineProperties).values({
+      addressLine1: "1 Test Street",
+      addressLine2: null,
+      town: "Testville",
+      postcode: "TE571NG",
+    }).returning();
+
+    const [spineVisit] = await db.insert(spineVisits).values({
+      propertyId: spineProperty.id,
+    }).returning();
+
+    await db.insert(spineTimelineEvents).values({
+      visitId: spineVisit.id,
+      type: "note",
+      payload: { text: "Welcome to v2 Spine. This is a demo timeline event." },
+    });
+
+    console.log(`Seeded v2 spine demo property/visit/timeline (${spineProperty.id})`);
   }
 
   // 3. Seed sample boiler products only if demo lead was created

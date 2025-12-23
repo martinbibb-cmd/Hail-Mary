@@ -44,6 +44,7 @@ import knowledgeRouter from './routes/knowledge';
 import aiRouter from './routes/ai';
 import sessionRouter from './routes/session';
 import systemRecommendationsRouter from './routes/systemRecommendations';
+import spineRouter from './routes/spine';
 
 // API version - kept in sync with package.json
 export const API_VERSION = '0.2.0';
@@ -323,6 +324,7 @@ app.use('/api/voice', voiceTransformRouter); // Voice transform endpoint
 app.use('/api/knowledge', knowledgeRouter); // Knowledge ingest system
 app.use('/api/ai', wrapLimiter('ai', aiLimiter), aiRouter); // AI Gateway (server-side proxy to Cloudflare Worker)
 app.use('/api/session', sessionRouter); // Session management (active lead persistence)
+app.use('/api', spineRouter); // v2 Spine (all-activity feed + postcode-first properties)
 
 // 404 handler
 app.use((_req, res) => {

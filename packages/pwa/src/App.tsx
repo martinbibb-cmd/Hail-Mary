@@ -28,6 +28,9 @@ import { BottomDock } from './components/BottomDock'
 import { MoreDrawer } from './components/MoreDrawer'
 import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
+import { useSpineStore } from './stores/spineStore'
+import { ActivePropertyBar } from './components/ActivePropertyBar'
+import { SpinePropertyPage } from './pages/SpinePropertyPage'
 
 // Simple API client
 const api = {
@@ -649,6 +652,7 @@ function App() {
   const isFocusProfile = profile === 'focus'
   const layout = useLayoutMode()
   const { hydrate } = useLeadStore()
+  const hydrateSpine = useSpineStore((s) => s.hydrate)
   
   // Drawer states
   const [isLeadDrawerOpen, setIsLeadDrawerOpen] = useState(false)
@@ -657,7 +661,8 @@ function App() {
   // Hydrate lead store from localStorage on mount
   useEffect(() => {
     hydrate()
-  }, [hydrate])
+    hydrateSpine()
+  }, [hydrate, hydrateSpine])
 
   // Determine if using desktop or touch workspace
   const isDesktop = layout === 'desktop'
@@ -685,6 +690,9 @@ function App() {
         className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`}
         style={showBottomDock ? { paddingBottom: '80px' } : undefined}
       >
+        {/* v2 Spine: Active Property Bar (optional focus) */}
+        <ActivePropertyBar />
+
         {/* Lead Context Banner - always visible at the top */}
         <LeadContextBanner onOpenLeadDrawer={() => setIsLeadDrawerOpen(true)} />
         
@@ -699,6 +707,7 @@ function App() {
         )}
         <Routes>
           <Route path="/" element={<HomePage layout={layout} />} />
+          <Route path="/properties/:id" element={<SpinePropertyPage />} />
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<NewCustomer />} />
           <Route path="/customers/:id" element={<CustomerDetail />} />

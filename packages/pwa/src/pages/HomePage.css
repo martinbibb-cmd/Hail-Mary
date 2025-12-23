@@ -69,6 +69,142 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.home-section--full {
+  grid-column: 1 / -1;
+}
+
+.home-feed__status {
+  color: var(--text-muted);
+  padding: 6px 0;
+}
+
+.home-feed__status--error {
+  color: #b91c1c;
+}
+
+.home-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.home-feed__day-title {
+  font-weight: 800;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.home-feed__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-feed__item {
+  border: 1px solid var(--window-border);
+  background: var(--surface-secondary, #f7f7f9);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.home-feed__item-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.home-feed__type {
+  font-weight: 800;
+}
+
+.home-feed__time {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.home-feed__item-sub {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.home-postcode__input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--window-border);
+  background: white;
+  font-size: 16px;
+}
+
+.home-postcode__hint {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.home-properties {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.home-properties__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--window-border);
+  background: var(--surface-secondary, #f7f7f9);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.home-properties__info {
+  min-width: 0;
+}
+
+.home-properties__title {
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-properties__sub {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.home-properties__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.home-properties__btn {
+  border: 1px solid var(--window-border);
+  background: white;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.home-properties__btn--primary {
+  background: var(--accent-soft, #eef2ff);
+  color: var(--accent, #3b42a1);
+}
+
 .home-grid--stacked {
   grid-template-columns: 1fr;
 }

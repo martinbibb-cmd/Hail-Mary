@@ -1,25 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth';
 import type { LayoutMode } from '../hooks/useLayoutMode';
-import { useWindowStore } from '../os/window-manager';
-import { AdminApiStatus } from '../components/AdminApiStatus';
-import { MEDIA_RECEIVER_ONLY } from '../config/featureFlags';
 import { useSpineStore } from '../stores/spineStore';
 import './HomePage.css';
-
-type ShortcutAction =
-  | { kind: 'route'; target: string }
-  | { kind: 'window'; target: string };
-
-interface Shortcut {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  action: ShortcutAction;
-  badge?: string;
-}
 
 interface HomePageProps {
   layout: LayoutMode;
@@ -54,12 +37,51 @@ interface SpineFeedEvent {
   };
 }
 
+const eventTypeIcon = (type: string): string => {
+  switch (type) {
+    case 'note':
+      return '📝';
+    case 'photo':
+      return '📷';
+    case 'transcript':
+      return '🗣️';
+    case 'measurement':
+      return '📏';
+    case 'engineer_output':
+      return '🛠️';
+    case 'knowledge_ref':
+      return '📚';
+    default:
+      return '🕒';
+  }
+};
+
+const truncate = (s: string, max = 140) => (s.length <= max ? s : `${s.slice(0, max - 1)}…`);
+
+const summarizePayload = (_type: string, payload: any): string => {
+  if (payload == null) return '';
+  if (typeof payload === 'string') return truncate(payload);
+  if (typeof payload === 'number' || typeof payload === 'boolean') return String(payload);
+  if (Array.isArray(payload)) return truncate(JSON.stringify(payload));
+  if (typeof payload === 'object') {
+    const p = payload as Record<string, unknown>;
+    const preferredKeys = ['summary', 'text', 'note', 'caption', 'title', 'name', 'value', 'result'];
+    for (const k of preferredKeys) {
+      const v = p[k];
+      if (typeof v === 'string' && v.trim()) return truncate(v.trim());
+    }
+    if (typeof p.url === 'string') return truncate(p.url);
+    try {
+      return truncate(JSON.stringify(payload));
+    } catch {
+      return '';
+    }
+  }
+  return truncate(String(payload));
+};
+
 export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const windows = useWindowStore((state) => state.windows);
-  const focusWindow = useWindowStore((state) => state.focusWindow);
-  const openWindow = useWindowStore((state) => state.openWindow);
   const setActiveProperty = useSpineStore((s) => s.setActiveProperty);
 
   const isDesktop = layout === 'desktop';
@@ -133,131 +155,20 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
     return () => window.clearTimeout(handle);
   }, [postcodeQuery]);
 
-  const openAppWindow = (appId: string, title: string) => {
-    const existing = windows.find((w) => w.appId === appId);
-    if (existing) {
-      focusWindow(existing.id);
-    } else {
-      openWindow(appId, title);
-    }
-  };
-
-  const coreShortcuts: Shortcut[] = [
-    { id: 'leads', name: 'Leads', description: 'Pipelines & surveys', icon: '🧲', action: { kind: 'route', target: '/leads' } },
-    { id: 'customers', name: 'Customers', description: 'Accounts & details', icon: '👥', action: { kind: 'route', target: '/customers' } },
-    { id: 'quotes', name: 'Quotes', description: 'Estimates & proposals', icon: '💷', action: { kind: 'route', target: '/quotes' } },
-    { id: 'files', name: 'Files', description: 'Project docs', icon: '📂', action: { kind: 'route', target: '/files' } },
-    { id: 'profile', name: 'Profile', description: 'Account & preferences', icon: '👤', action: { kind: 'route', target: '/profile' } },
-  ];
-
-  const surveyShortcuts: Shortcut[] = [
-    { id: 'property', name: 'Property', description: 'Address & property facts', icon: '🏠', action: { kind: 'window', target: 'property' } },
-    { id: 'central-heating', name: 'Boiler / CH', description: 'Existing system checks', icon: '🔥', action: { kind: 'window', target: 'central_heating' } },
-    { id: 'hazards', name: 'Hazards', description: 'Safety blockers & risks', icon: '⚠️', action: { kind: 'window', target: 'hazards' } },
-    { id: 'heat-pump', name: 'Heat Pump', description: 'Suitability stub', icon: '♨️', action: { kind: 'window', target: 'heat_pump' }, badge: 'Preview' },
-    { id: 'pv', name: 'Solar PV', description: 'Solar opportunity', icon: '☀️', action: { kind: 'window', target: 'pv' }, badge: 'Preview' },
-    { id: 'ev', name: 'EV Charging', description: 'EV supply checks', icon: '🔌', action: { kind: 'window', target: 'ev' }, badge: 'Preview' },
-    { id: 'roadmap', name: 'Roadmap', description: 'Upgrades & next steps', icon: '🗺️', action: { kind: 'window', target: 'roadmap' }, badge: 'Beta' },
-    { id: 'other-trades', name: 'Other trades', description: 'Future trade gateway', icon: '🛠️', action: { kind: 'window', target: 'other_trades' }, badge: 'Beta' },
-  ];
-
-  const toolShortcuts: Shortcut[] = [
-    { id: 'rocky', name: 'Rocky', description: 'Fact extraction', icon: '🪨', action: { kind: 'window', target: 'rocky' } },
-    { id: 'sarah', name: 'Sarah', description: 'Explain findings', icon: '🧠', action: { kind: 'window', target: 'sarah' } },
-    { id: 'diary', name: 'Diary', description: 'Jobs & appointments', icon: '🗓', action: { kind: 'window', target: 'diary' } },
-    ...(MEDIA_RECEIVER_ONLY
-      ? []
-      : [{ id: 'photos', name: 'Photos', description: 'Capture site photos', icon: '📸', action: { kind: 'window', target: 'photos' } as const }]),
-  ];
-
-  const adminShortcuts: Shortcut[] = user?.role === 'admin'
-    ? [
-        { id: 'admin-nas', name: 'NAS', description: 'System health & migrations', icon: '🖥️', action: { kind: 'route', target: '/admin/nas' } },
-        { id: 'admin-users', name: 'Users', description: 'Reset links & roles', icon: '🛂', action: { kind: 'route', target: '/admin/users' } },
-        { id: 'admin-knowledge', name: 'Knowledge', description: 'Docs & uploads', icon: '📚', action: { kind: 'route', target: '/admin/knowledge' } },
-        { id: 'admin-system-recommendation', name: 'System Rec', description: 'Submodule management', icon: '🔥', action: { kind: 'route', target: '/admin/system-recommendation' } },
-      ]
-    : [];
-
-  const handleShortcutClick = (shortcut: Shortcut) => {
-    if (shortcut.action.kind === 'route') {
-      navigate(shortcut.action.target);
-    } else {
-      openAppWindow(shortcut.action.target, shortcut.name);
-    }
-  };
-
-  const renderShortcut = (shortcut: Shortcut) => (
-    <button
-      key={shortcut.id}
-      className={`home-shortcut ${isDesktop ? 'home-shortcut--icon' : 'home-shortcut--tile'}`}
-      onClick={() => handleShortcutClick(shortcut)}
-    >
-      <div className="home-shortcut__icon">
-        <span>{shortcut.icon}</span>
-        {shortcut.badge && <span className="home-shortcut__badge">{shortcut.badge}</span>}
-      </div>
-      <div className="home-shortcut__text">
-        <p className="home-shortcut__title">{shortcut.name}</p>
-        <p className="home-shortcut__desc">{shortcut.description}</p>
-      </div>
-    </button>
-  );
-
   return (
     <div className="home-page">
       <div className="home-hero">
         <div className="home-hero__text">
-          <p className="home-hero__eyebrow">Welcome back{user?.name ? `, ${user.name}` : ''}</p>
-          <h1 className="home-hero__title">All Activity</h1>
+          <p className="home-hero__eyebrow">v2 spine</p>
+          <h1 className="home-hero__title">Home</h1>
         </div>
       </div>
 
       <div className={`home-grid ${isDesktop ? 'home-grid--desktop' : 'home-grid--stacked'}`}>
         <section className={`home-section home-section--full`}>
           <div className="home-section__header">
-            <h2>Feed</h2>
-            <p>Latest timeline events across all properties.</p>
-          </div>
-
-          {feedLoading ? (
-            <div className="home-feed__status">Loading…</div>
-          ) : feedError ? (
-            <div className="home-feed__status home-feed__status--error">{feedError}</div>
-          ) : feed.length === 0 ? (
-            <div className="home-feed__status">No activity yet.</div>
-          ) : (
-            <div className="home-feed">
-              {feedByDay.map(([day, events]) => (
-                <div key={day} className="home-feed__day">
-                  <div className="home-feed__day-title">{day}</div>
-                  <div className="home-feed__list">
-                    {events.map((e) => (
-                      <div key={e.id} className="home-feed__item">
-                        <div className="home-feed__item-main">
-                          <div className="home-feed__item-title">
-                            <span className="home-feed__type">{e.type}</span>
-                            <span className="home-feed__time">
-                              {new Date(e.ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <div className="home-feed__item-sub">
-                            {e.property.addressLine1} • {e.property.postcode}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="home-section">
-          <div className="home-section__header">
             <h2>Postcode search</h2>
-            <p>Set an active property when you want focus (optional).</p>
+            <p>Search does not redirect. Active property is optional.</p>
           </div>
 
           <div className="home-postcode">
@@ -310,44 +221,53 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
           ) : null}
         </section>
 
-        <section className="home-section">
+        <section className={`home-section home-section--full`}>
           <div className="home-section__header">
-            <h2>Core workspace</h2>
+            <h2>Feed</h2>
+            <p>Newest → oldest, grouped by day.</p>
           </div>
-          <div className={`home-section__shortcuts ${isDesktop ? 'home-section__shortcuts--desktop' : 'home-section__shortcuts--tiles'}`}>
-            {coreShortcuts.map(renderShortcut)}
-          </div>
-        </section>
 
-        <section className="home-section">
-          <div className="home-section__header">
-            <h2>Survey modules</h2>
-          </div>
-          <div className={`home-section__shortcuts ${isDesktop ? 'home-section__shortcuts--desktop' : 'home-section__shortcuts--tiles'}`}>
-            {surveyShortcuts.map(renderShortcut)}
-          </div>
-        </section>
-
-        <section className="home-section">
-          <div className="home-section__header">
-            <h2>Tools</h2>
-          </div>
-          <div className={`home-section__shortcuts ${isDesktop ? 'home-section__shortcuts--desktop' : 'home-section__shortcuts--tiles'}`}>
-            {toolShortcuts.map(renderShortcut)}
-          </div>
-        </section>
-
-        {adminShortcuts.length > 0 && (
-          <section className="home-section">
-            <div className="home-section__header">
-              <h2>Admin</h2>
+          {feedLoading ? (
+            <div className="home-feed__status">Loading…</div>
+          ) : feedError ? (
+            <div className="home-feed__status home-feed__status--error">{feedError}</div>
+          ) : feed.length === 0 ? (
+            <div className="home-feed__status">No activity yet.</div>
+          ) : (
+            <div className="home-feed">
+              {feedByDay.map(([day, events]) => (
+                <div key={day} className="home-feed__day">
+                  <div className="home-feed__day-title">{day}</div>
+                  <div className="home-feed__list">
+                    {events.map((e) => {
+                      const summary = summarizePayload(e.type, e.payload);
+                      return (
+                        <div key={e.id} className="home-feed__item">
+                          <div className="home-feed__item-title">
+                            <span className="home-feed__type">
+                              <span className="home-feed__icon" aria-hidden="true">
+                                {eventTypeIcon(e.type)}
+                              </span>
+                              {e.type}
+                            </span>
+                            <span className="home-feed__time">
+                              {new Date(e.ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="home-feed__item-sub">
+                            {e.property.addressLine1 ? `${e.property.addressLine1} • ` : ''}
+                            {e.property.postcode}
+                          </div>
+                          {summary ? <div className="home-feed__payload">{summary}</div> : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className={`home-section__shortcuts ${isDesktop ? 'home-section__shortcuts--desktop' : 'home-section__shortcuts--tiles'}`}>
-              {adminShortcuts.map(renderShortcut)}
-            </div>
-            <AdminApiStatus />
-          </section>
-        )}
+          )}
+        </section>
       </div>
     </div>
   );

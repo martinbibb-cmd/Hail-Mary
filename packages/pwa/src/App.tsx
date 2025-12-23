@@ -21,16 +21,13 @@ import { HomePage } from './pages/HomePage'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
 import { DiaryApp } from './os/apps/diary/DiaryApp'
-import { LeadContextBanner } from './components/LeadContextBanner'
-import { VisitSessionBanner } from './components/VisitSessionBanner'
-import { LeadDrawer } from './components/LeadDrawer'
 import { BottomDock } from './components/BottomDock'
-import { MoreDrawer } from './components/MoreDrawer'
 import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
 import { useSpineStore } from './stores/spineStore'
 import { ActivePropertyBar } from './components/ActivePropertyBar'
 import { SpinePropertyPage } from './pages/SpinePropertyPage'
+import { SpinePlaceholderPage } from './pages/SpinePlaceholderPage'
 
 // Simple API client
 const api = {
@@ -654,10 +651,6 @@ function App() {
   const { hydrate } = useLeadStore()
   const hydrateSpine = useSpineStore((s) => s.hydrate)
   
-  // Drawer states
-  const [isLeadDrawerOpen, setIsLeadDrawerOpen] = useState(false)
-  const [isMoreDrawerOpen, setIsMoreDrawerOpen] = useState(false)
-
   // Hydrate lead store from localStorage on mount
   useEffect(() => {
     hydrate()
@@ -666,7 +659,7 @@ function App() {
 
   // Determine if using desktop or touch workspace
   const isDesktop = layout === 'desktop'
-  const showBottomDock = !isFocusProfile && !isDesktop
+  const showBottomDock = true
 
   // Main content component (shared between both workspaces)
   const mainContent = (
@@ -690,24 +683,22 @@ function App() {
         className={`content ${isFocusProfile ? 'content-focus' : ''} ${!isDesktop ? 'content-stack' : ''}`}
         style={showBottomDock ? { paddingBottom: '80px' } : undefined}
       >
-        {/* v2 Spine: Active Property Bar (optional focus) */}
+        {/* v2 Spine TopBar (optional focus; never required) */}
         <ActivePropertyBar />
-
-        {/* Lead Context Banner - always visible at the top */}
-        <LeadContextBanner onOpenLeadDrawer={() => setIsLeadDrawerOpen(true)} />
-        
-        {/* Visit Session Banner - shows when visit is active */}
-        <VisitSessionBanner />
         
         {isFocusProfile && (
           <div className="focus-mode-banner">
             <p className="focus-mode-title">Focus Mode</p>
-            <p className="focus-mode-copy">Navigation and dock are hidden to reduce distraction.</p>
+            <p className="focus-mode-copy">Extra UI is reduced to minimise distraction.</p>
           </div>
         )}
         <Routes>
           <Route path="/" element={<HomePage layout={layout} />} />
           <Route path="/properties/:id" element={<SpinePropertyPage />} />
+          <Route path="/camera" element={<SpinePlaceholderPage title="Camera" subtitle="Placeholder in PR #1." />} />
+          <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />
+          <Route path="/engineer" element={<SpinePlaceholderPage title="Engineer" subtitle="Placeholder in PR #1." />} />
+          <Route path="/knowledge" element={<SpinePlaceholderPage title="Knowledge" subtitle="Placeholder in PR #1." />} />
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<NewCustomer />} />
           <Route path="/customers/:id" element={<CustomerDetail />} />
@@ -730,15 +721,9 @@ function App() {
         </Routes>
       </main>
 
-      {/* Drawers */}
-      <LeadDrawer isOpen={isLeadDrawerOpen} onClose={() => setIsLeadDrawerOpen(false)} />
-
       {/* Touch navigation (tablet/mobile only). Desktop uses sidebar + OS dock. */}
       {showBottomDock && (
-        <>
-          <BottomDock onOpenMoreDrawer={() => setIsMoreDrawerOpen(true)} />
-          <MoreDrawer isOpen={isMoreDrawerOpen} onClose={() => setIsMoreDrawerOpen(false)} />
-        </>
+        <BottomDock />
       )}
     </>
   )

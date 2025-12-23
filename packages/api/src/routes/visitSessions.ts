@@ -171,6 +171,15 @@ router.put("/:id", async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const dto: UpdateVisitSessionDto = req.body;
 
+    const parseDateInput = (input: unknown): Date | null => {
+      if (input instanceof Date) return input;
+      if (typeof input === "string" || typeof input === "number") {
+        const d = new Date(input);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      return null;
+    };
+
     // Check if session exists
     const existing = await db
       .select()
@@ -195,7 +204,15 @@ router.put("/:id", async (req: Request, res: Response) => {
       updateData.status = dto.status;
     }
     if (dto.endedAt) {
-      updateData.endedAt = dto.endedAt;
+      const endedAt = parseDateInput(dto.endedAt);
+      if (!endedAt) {
+        const response: ApiResponse<null> = {
+          success: false,
+          error: "Invalid endedAt timestamp",
+        };
+        return res.status(400).json(response);
+      }
+      updateData.endedAt = endedAt;
     }
     if (dto.summary !== undefined) {
       updateData.summary = dto.summary;

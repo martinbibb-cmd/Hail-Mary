@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useLeadStore } from '../../../stores/leadStore'
 import './PhotosApp.css'
 
@@ -10,20 +10,55 @@ interface PhotoLocation {
   altitudeAccuracy: number | null
 }
 
-function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371e3; // Radius of the earth in meters
-  const dLat = deg2rad(lat2 - lat1);
-  const dLon = deg2rad(lon2 - lon1);
+/**
+ * Calculate haversine distance between two points on Earth
+ * @returns Distance in meters
+ */
+function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3 // Radius of the earth in meters
+  const dLat = deg2rad(lat2 - lat1)
+  const dLon = deg2rad(lon2 - lon1)
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // Distance in meters
+    Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c // Distance in meters
 }
 
-function deg2rad(deg: number) {
-  return deg * (Math.PI / 180);
+function deg2rad(deg: number): number {
+  return deg * (Math.PI / 180)
+}
+
+/**
+ * Calculate 3D distance (includes altitude difference)
+ */
+function calculate3DDistance(
+  horizontalDistance: number,
+  alt1: number | null,
+  alt2: number | null
+): { horizontal: number; vertical: number | null; total3D: number | null } {
+  // If both altitudes are available, compute 3D distance
+  if (alt1 != null && alt2 != null) {
+    const vertical = Math.abs(alt2 - alt1)
+    const total3D = Math.sqrt(horizontalDistance * horizontalDistance + vertical * vertical)
+    return { horizontal: horizontalDistance, vertical, total3D }
+  }
+  
+  return { horizontal: horizontalDistance, vertical: null, total3D: null }
+}
+
+/**
+ * Format distance for display
+ */
+function formatDistance(meters: number): string {
+  if (meters < 1) {
+    return '<1m'
+  } else if (meters < 1000) {
+    return `${Math.round(meters)}m`
+  } else {
+    return `${(meters / 1000).toFixed(2)}km`
+  }
 }
 
 interface PhotoMetadata {
@@ -66,6 +101,35 @@ export const PhotosApp: React.FC = () => {
   const [notesText, setNotesText] = useState('')
   
   const currentLeadId = useLeadStore((state: LeadStoreState) => state.currentLeadId)
+
+  // Calculate distance from previous photo (per visit/lead)
+  const distanceInfo = useMemo(() => {
+    if (!selectedPhoto?.metadata?.location) return null
+    
+    // Find the previous photo in the list (photos are sorted newest first)
+    const currentIndex = photos.findIndex(p => p.id === selectedPhoto.id)
+    if (currentIndex === -1 || currentIndex >= photos.length - 1) return null
+    
+    // Get the next photo in the array (which is the previous chronologically)
+    const previousPhoto = photos[currentIndex + 1]
+    if (!previousPhoto?.metadata?.location) return null
+    
+    const currentLoc = selectedPhoto.metadata.location
+    const prevLoc = previousPhoto.metadata.location
+    
+    const horizontalDistance = getDistanceFromLatLonInMeters(
+      currentLoc.latitude,
+      currentLoc.longitude,
+      prevLoc.latitude,
+      prevLoc.longitude
+    )
+    
+    return calculate3DDistance(
+      horizontalDistance,
+      currentLoc.altitude,
+      prevLoc.altitude
+    )
+  }, [selectedPhoto, photos])
 
   const getStorageKey = useCallback((leadId: string | null) => {
     return leadId ? `hail-mary:photos:${leadId}` : null
@@ -192,7 +256,7 @@ export const PhotosApp: React.FC = () => {
     // Get image data URL
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
 
-    // Capture location if available
+    // Capture location if available (including altitude)
     let location: PhotoLocation | undefined
     if ('geolocation' in navigator) {
       try {
@@ -200,6 +264,7 @@ export const PhotosApp: React.FC = () => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             timeout: 5000,
             maximumAge: 60000,
+            enableHighAccuracy: true, // Request high accuracy to get altitude when available
           })
         })
         location = {
@@ -386,22 +451,6 @@ export const PhotosApp: React.FC = () => {
 
   // Photo detail view
   if (selectedPhoto) {
-    // Find previous photo (assuming sorted by newest first)
-    const currentIndex = photos.findIndex(p => p.id === selectedPhoto.id);
-    const previousPhoto = currentIndex !== -1 && currentIndex < photos.length - 1 
-      ? photos[currentIndex + 1] 
-      : null;
-
-    let distanceMeters: number | null = null;
-    if (selectedPhoto.metadata?.location && previousPhoto?.metadata?.location) {
-      distanceMeters = getDistanceFromLatLonInMeters(
-        selectedPhoto.metadata.location.latitude,
-        selectedPhoto.metadata.location.longitude,
-        previousPhoto.metadata.location.latitude,
-        previousPhoto.metadata.location.longitude
-      );
-    }
-
     return (
       <div className="photos-app">
         <div className="photos-app-header">
@@ -427,16 +476,32 @@ export const PhotosApp: React.FC = () => {
                 <p className="photo-location-accuracy">
                   Accuracy: ±{Math.round(selectedPhoto.metadata.location.accuracy)}m
                 </p>
+                
+                {/* Altitude display */}
                 {selectedPhoto.metadata.location.altitude !== null && (
-                   <p className="photo-location-altitude">
-                     ⛰️ Altitude: {Math.round(selectedPhoto.metadata.location.altitude)}m
-                     {selectedPhoto.metadata.location.altitudeAccuracy !== null && ` (±${Math.round(selectedPhoto.metadata.location.altitudeAccuracy)}m)`}
-                   </p>
-                )}
-                {distanceMeters !== null && (
-                  <p className="photo-location-distance">
-                    📏 Distance from previous: {Math.round(distanceMeters)}m
+                  <p className="photo-altitude">
+                    ⛰️ Altitude: {Math.round(selectedPhoto.metadata.location.altitude)}m
+                    {selectedPhoto.metadata.location.altitudeAccuracy !== null && (
+                      <span className="photo-altitude-accuracy">
+                        {' '}(±{Math.round(selectedPhoto.metadata.location.altitudeAccuracy)}m)
+                      </span>
+                    )}
                   </p>
+                )}
+                
+                {/* Distance from previous photo */}
+                {distanceInfo && (
+                  <div className="photo-distance">
+                    <p className="photo-distance-text">
+                      📏 Distance from previous: {formatDistance(distanceInfo.horizontal)}
+                    </p>
+                    {distanceInfo.vertical != null && distanceInfo.total3D != null && (
+                      <p className="photo-distance-3d">
+                        ↕️ Vertical: {formatDistance(distanceInfo.vertical)} • 
+                        3D: {formatDistance(distanceInfo.total3D)}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

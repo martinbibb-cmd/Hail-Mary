@@ -15,6 +15,11 @@ import { useTranscriptionStore } from './transcriptionStore';
 
 export type RecordingProvider = 'browser' | 'whisper';
 
+export interface EndVisitResult {
+  success: boolean;
+  error?: string;
+}
+
 interface VisitStore {
   // Active visit session
   activeSession: VisitSession | null;
@@ -26,13 +31,29 @@ interface VisitStore {
   recordingStartTime: Date | null;
   transcriptCount: number;
   
+  // End visit state
+  isEndingVisit: boolean;
+  endVisitError: string | null;
+  
   // Actions
   setActiveSession: (session: VisitSession | null, lead: Lead | null) => void;
   startRecording: (provider: RecordingProvider) => void;
   stopRecording: () => void;
   incrementTranscriptCount: () => void;
   clearSession: () => void;
-  endVisit: () => Promise<void>;
+  
+  /**
+   * End the active visit session.
+   * This is a global action that can be called from any page.
+   * It handles the API call to mark the visit as completed,
+   * stops background transcription, and clears all session state.
+   */
+  endVisit: () => Promise<EndVisitResult>;
+  
+  /**
+   * Clear any end visit error state
+   */
+  clearEndVisitError: () => void;
 }
 
 export const useVisitStore = create<VisitStore>((set, get) => ({
@@ -43,12 +64,15 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
   recordingProvider: null,
   recordingStartTime: null,
   transcriptCount: 0,
+  isEndingVisit: false,
+  endVisitError: null,
 
   // Set active session (when visit starts)
   setActiveSession: (session: VisitSession | null, lead: Lead | null) => set({
     activeSession: session,
     activeLead: lead,
     transcriptCount: 0,
+    endVisitError: null,
   }),
 
   // Start recording
@@ -78,12 +102,26 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
     recordingProvider: null,
     recordingStartTime: null,
     transcriptCount: 0,
+    isEndingVisit: false,
+    endVisitError: null,
   }),
 
-  // End visit (global action)
-  endVisit: async () => {
-    const { activeSession, clearSession } = get();
-    if (!activeSession) return;
+  // End visit - global action that can be called from any page
+  endVisit: async (): Promise<EndVisitResult> => {
+    const state = get();
+    const { activeSession, isRecording } = state;
+
+    // Cannot end visit if no active session
+    if (!activeSession) {
+      return { success: false, error: 'No active visit session to end.' };
+    }
+
+    // Cannot end visit while recording is active
+    if (isRecording) {
+      return { success: false, error: 'Please stop recording before ending the visit.' };
+    }
+
+    set({ isEndingVisit: true, endVisitError: null });
 
     try {
       const response = await fetch(`/api/visit-sessions/${activeSession.id}`, {
@@ -92,12 +130,13 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
         credentials: 'include',
         body: JSON.stringify({
           status: 'completed',
-          endedAt: new Date(),
+          endedAt: new Date().toISOString(),
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to end visit session');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to end visit (HTTP ${response.status})`);
       }
 
       // Stop background transcription session
@@ -106,12 +145,27 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
       // Clear transcription store
       useTranscriptionStore.getState().clearSession();
 
-      // Clear local session
-      clearSession();
-      
+      // Success - clear the session
+      set({
+        activeSession: null,
+        activeLead: null,
+        isRecording: false,
+        recordingProvider: null,
+        recordingStartTime: null,
+        transcriptCount: 0,
+        isEndingVisit: false,
+        endVisitError: null,
+      });
+
+      return { success: true };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to end visit. Please try again.';
       console.error('Failed to end visit:', error);
-      throw error;
+      set({ isEndingVisit: false, endVisitError: errorMessage });
+      return { success: false, error: errorMessage };
     }
   },
+
+  // Clear end visit error
+  clearEndVisitError: () => set({ endVisitError: null }),
 }));

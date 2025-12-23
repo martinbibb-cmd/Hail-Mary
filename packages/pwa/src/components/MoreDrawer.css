@@ -87,6 +87,12 @@
   flex-direction: column;
 }
 
+.more-menu-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0.5rem 0;
+}
+
 .more-menu-item {
   display: flex;
   align-items: center;

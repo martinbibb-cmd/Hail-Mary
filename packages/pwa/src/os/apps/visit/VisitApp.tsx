@@ -8,6 +8,7 @@ import type {
 } from '@hail-mary/shared'
 import { 
   TranscriptFeed, 
+  AssetFeed,
   InstallChecklist, 
   KeyDetailsForm,
   VisitSummaryCard,
@@ -109,6 +110,10 @@ export const VisitApp: React.FC = () => {
   // Visit summary state
   const [visitSummary, setVisitSummary] = useState<string | undefined>(undefined)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
+  const [assetRefreshKey, setAssetRefreshKey] = useState(0)
+  const [isImportingMedia, setIsImportingMedia] = useState(false)
+  const [importMediaError, setImportMediaError] = useState<string | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const transcriptionSession = useTranscriptionStore((state) => state.activeSession)
   const transcriptSegments: TranscriptSegment[] = useMemo(() => {
@@ -441,6 +446,61 @@ export const VisitApp: React.FC = () => {
     await generateSummaryForSession(activeSession.id)
   }, [activeSession])
 
+  const getOrCreateDeviceId = useCallback(() => {
+    let deviceId = localStorage.getItem('hail-mary:device-id')
+    if (!deviceId) {
+      try {
+        deviceId = crypto.randomUUID()
+      } catch {
+        deviceId = `device-${Date.now()}`
+      }
+      localStorage.setItem('hail-mary:device-id', deviceId)
+    }
+    return deviceId
+  }, [])
+
+  const handleClickImportMedia = useCallback(() => {
+    setImportMediaError(null)
+    importInputRef.current?.click()
+  }, [])
+
+  const handleImportMediaSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    // allow re-selecting the same file(s)
+    e.target.value = ''
+
+    if (!files || files.length === 0) return
+    if (!currentLeadId || !activeSession) return
+
+    setIsImportingMedia(true)
+    setImportMediaError(null)
+
+    try {
+      const formData = new FormData()
+      Array.from(files).forEach((f) => formData.append('files', f))
+      formData.append('deviceId', getOrCreateDeviceId())
+
+      const res = await fetch(`/api/leads/${currentLeadId}/visits/${activeSession.id}/assets`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || `Upload failed (HTTP ${res.status})`)
+      }
+
+      setAssetRefreshKey((k) => k + 1)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to import media'
+      console.error('Import media failed:', err)
+      setImportMediaError(msg)
+    } finally {
+      setIsImportingMedia(false)
+    }
+  }, [activeSession, currentLeadId, getOrCreateDeviceId])
+
   const endVisit = async () => {
     if (!activeSession) return
 
@@ -512,6 +572,15 @@ export const VisitApp: React.FC = () => {
             </span>
           </div>
           <div className="visit-header-actions">
+            <input
+              ref={importInputRef}
+              type="file"
+              multiple
+              accept=".m4a,.mp3,.wav,.jpg,.jpeg,.png,.heic,.txt,.json,.obj,.glb,.usdz"
+              style={{ display: 'none' }}
+              onChange={handleImportMediaSelected}
+            />
+
             {/* Save Status Indicator */}
             <div className="visit-save-status">
               {isSyncing && (
@@ -540,6 +609,15 @@ export const VisitApp: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
+            <button
+              className="btn-secondary"
+              onClick={handleClickImportMedia}
+              disabled={isImportingMedia}
+              title="Import media to this visit"
+            >
+              {isImportingMedia ? 'Importing…' : 'Import media'}
+            </button>
+
             {failures >= 3 && (
               <button 
                 className="btn-export"
@@ -565,8 +643,21 @@ export const VisitApp: React.FC = () => {
           </div>
         </div>
 
+        {importMediaError && (
+          <div style={{ padding: '0 16px 8px 16px', color: '#ffb4b4' }}>
+            {importMediaError}
+          </div>
+        )}
+
         <div className="visit-three-panel">
           <div className="visit-panel visit-panel-left">
+            {currentLeadId && (
+              <AssetFeed
+                leadId={currentLeadId}
+                visitId={activeSession.id}
+                refreshKey={assetRefreshKey}
+              />
+            )}
             <TranscriptFeed 
               segments={transcriptSegments}
             />

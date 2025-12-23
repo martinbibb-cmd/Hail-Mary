@@ -11,6 +11,7 @@ import { RockyTool } from '../modules/rocky';
 import { SarahTool } from '../modules/sarah';
 import { PhotosApp } from '../os/apps/photos/PhotosApp';
 import { VisitApp } from '../os/apps/visit/VisitApp';
+import { MEDIA_RECEIVER_ONLY } from '../config/featureFlags';
 
 export const RockyToolWithGuard: React.FC = () => {
   const [showLeadDrawer, setShowLeadDrawer] = useState(false);
@@ -53,7 +54,17 @@ export const PhotosAppWithGuard: React.FC = () => {
         onRequestLead={() => setShowLeadDrawer(true)}
         message="Photos must be attached to an active lead."
       >
-        <PhotosApp />
+        {MEDIA_RECEIVER_ONLY ? (
+          <div style={{ padding: 16 }}>
+            <h2>Photos capture disabled</h2>
+            <p>
+              Atlas is running in <strong>receiver-only</strong> mode tonight.
+              Use <strong>Import media</strong> on the Visit screen header to attach photos/audio/files.
+            </p>
+          </div>
+        ) : (
+          <PhotosApp />
+        )}
       </LeadGuard>
       <LeadDrawer isOpen={showLeadDrawer} onClose={() => setShowLeadDrawer(false)} />
     </>

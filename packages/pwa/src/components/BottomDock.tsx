@@ -8,6 +8,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLayoutMode } from '../hooks/useLayoutMode';
+import { MEDIA_RECEIVER_ONLY } from '../config/featureFlags';
 import './BottomDock.css';
 
 interface BottomDockProps {
@@ -54,13 +55,17 @@ export const BottomDock: React.FC<BottomDockProps> = ({ onOpenMoreDrawer }) => {
       onClick: () => navigate('/visit'),
       isActive: isActive('/visit'),
     },
-    {
-      id: 'photos',
-      label: 'Photos',
-      icon: '📸',
-      onClick: () => navigate('/photos'),
-      isActive: isActive('/photos'),
-    },
+    ...(MEDIA_RECEIVER_ONLY
+      ? []
+      : [
+          {
+            id: 'photos',
+            label: 'Photos',
+            icon: '📸',
+            onClick: () => navigate('/photos'),
+            isActive: isActive('/photos'),
+          },
+        ]),
     {
       id: 'more',
       label: 'More',

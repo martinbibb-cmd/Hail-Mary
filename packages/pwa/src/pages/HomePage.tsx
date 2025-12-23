@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import type { LayoutMode } from '../hooks/useLayoutMode';
 import { useWindowStore } from '../os/window-manager';
 import { AdminApiStatus } from '../components/AdminApiStatus';
+import { MEDIA_RECEIVER_ONLY } from '../config/featureFlags';
 import './HomePage.css';
 
 type ShortcutAction =
@@ -64,7 +65,9 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
     { id: 'rocky', name: 'Rocky', description: 'Fact extraction', icon: '🪨', action: { kind: 'window', target: 'rocky' } },
     { id: 'sarah', name: 'Sarah', description: 'Explain findings', icon: '🧠', action: { kind: 'window', target: 'sarah' } },
     { id: 'diary', name: 'Diary', description: 'Jobs & appointments', icon: '🗓', action: { kind: 'window', target: 'diary' } },
-    { id: 'photos', name: 'Photos', description: 'Capture site photos', icon: '📸', action: { kind: 'window', target: 'photos' } },
+    ...(MEDIA_RECEIVER_ONLY
+      ? []
+      : [{ id: 'photos', name: 'Photos', description: 'Capture site photos', icon: '📸', action: { kind: 'window', target: 'photos' } as const }]),
   ];
 
   const adminShortcuts: Shortcut[] = user?.role === 'admin'

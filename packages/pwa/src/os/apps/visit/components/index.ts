@@ -1,5 +1,7 @@
 export { TranscriptFeed } from './TranscriptFeed';
 export type { TranscriptSegment } from './TranscriptFeed';
+export { AssetFeed } from './AssetFeed';
+export type { VisitAsset } from './AssetFeed';
 export { InstallChecklist } from './InstallChecklist';
 export type { ChecklistItem } from './InstallChecklist';
 export { KeyDetailsForm } from './KeyDetailsForm';

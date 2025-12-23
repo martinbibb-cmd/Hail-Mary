@@ -343,7 +343,12 @@ export interface CreateVisitSessionDto {
 
 export interface UpdateVisitSessionDto {
   status?: VisitSessionStatus;
-  endedAt?: Date;
+  /**
+   * Timestamp for when the visit ended.
+   *
+   * Note: over JSON this will typically arrive as an ISO string.
+   */
+  endedAt?: string | Date;
   summary?: string; // Allow updating the summary
 }
 

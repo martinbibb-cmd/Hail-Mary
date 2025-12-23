@@ -562,7 +562,7 @@ function VisitPage() {
     try {
       await api.put<ApiResponse<VisitSession>>(`/api/visit-sessions/${session.id}`, {
         status: 'completed',
-        endedAt: new Date(),
+        endedAt: new Date().toISOString(),
       })
       // Navigate back to lead detail using React Router
       navigate(`/leads/${leadId}`)

@@ -110,11 +110,26 @@ export const SarahTool: React.FC = () => {
 
     const testRequest = {
       rockyFacts: {
-        customerInfo: { name: 'Test Customer' },
-        propertyDetails: {},
-        existingSystem: {},
-        measurements: {},
-        completeness: { overall: 100 }
+        version: '1.0.0',
+        sessionId: -1,
+        processedAt: new Date().toISOString(),
+        naturalNotesHash: 'smoke-test',
+        facts: {
+          customer: {},
+          property: {},
+          existingSystem: {},
+          measurements: {},
+          materials: [],
+          hazards: [],
+        },
+        completeness: {
+          customerInfo: 0,
+          propertyDetails: 0,
+          existingSystem: 0,
+          measurements: 0,
+          overall: 0,
+        },
+        missingData: [],
       },
       audience: 'customer' as SarahAudience,
       tone: 'professional' as SarahTone,

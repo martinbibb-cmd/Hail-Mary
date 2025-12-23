@@ -77,7 +77,7 @@ const SARAH_CONFIG: SarahConfig = {
  * Generate explanation for customer audience
  */
 function explainForCustomer(rockyFacts: RockyFacts, tone: SarahTone): SarahExplanation['sections'] {
-  const facts = rockyFacts.facts;
+  const facts = rockyFacts?.facts ?? {};
   
   const summary = generateCustomerSummary(facts, tone);
   const systemAssessment = generateCustomerSystemAssessment(facts, tone);
@@ -197,7 +197,7 @@ function generateCustomerNextSteps(facts: RockyFacts['facts'], tone: SarahTone):
  * Generate explanation for engineer audience
  */
 function explainForEngineer(rockyFacts: RockyFacts): SarahExplanation['sections'] {
-  const facts = rockyFacts.facts;
+  const facts = rockyFacts?.facts ?? {};
   
   let summary = 'Technical survey summary:\n\n';
   
@@ -244,20 +244,22 @@ function explainForEngineer(rockyFacts: RockyFacts): SarahExplanation['sections'
  * Generate explanation for surveyor audience
  */
 function explainForSurveyor(rockyFacts: RockyFacts): SarahExplanation['sections'] {
-  const facts = rockyFacts.facts;
+  const facts = rockyFacts?.facts ?? {};
   
   let summary = 'Survey fact check:\n\n';
   
   // Completeness overview
-  summary += `Completeness: ${rockyFacts.completeness.overall}%\n`;
-  if (rockyFacts.completeness.overall < 70) {
+  const overall = rockyFacts?.completeness?.overall ?? 0;
+  summary += `Completeness: ${overall}%\n`;
+  if (overall < 70) {
     summary += '⚠️ Additional information needed\n';
   }
   summary += '\n';
   
   // Missing data
-  if (rockyFacts.missingData.length > 0) {
-    const required = rockyFacts.missingData.filter(m => m.required);
+  const missingData = rockyFacts?.missingData ?? [];
+  if (missingData.length > 0) {
+    const required = missingData.filter(m => m.required);
     if (required.length > 0) {
       summary += 'Required fields missing:\n';
       required.forEach(m => {
@@ -316,26 +318,56 @@ export async function explainRockyFacts(request: SarahExplainRequest): Promise<S
   try {
     const { rockyFacts, audience, tone = 'professional' } = request;
     
+    // Defensive defaults: Sarah must never throw due to missing Rocky buckets.
+    // This also supports "empty facts" flows where Rocky ran but didn't match anything yet.
+    const normalizedRockyFacts: RockyFacts = {
+      version: (rockyFacts as any)?.version ?? '1.0.0',
+      sessionId: (rockyFacts as any)?.sessionId ?? -1,
+      processedAt: (rockyFacts as any)?.processedAt ?? new Date(),
+      naturalNotesHash: (rockyFacts as any)?.naturalNotesHash ?? 'unknown',
+      facts: (rockyFacts as any)?.facts ?? {},
+      completeness: (rockyFacts as any)?.completeness ?? {
+        customerInfo: 0,
+        propertyDetails: 0,
+        existingSystem: 0,
+        measurements: 0,
+        overall: 0,
+      },
+      missingData: (rockyFacts as any)?.missingData ?? [],
+    } as RockyFacts;
+    
+    // Add warnings if input looks empty/misaligned
+    const hasFacts =
+      normalizedRockyFacts.facts &&
+      Object.values(normalizedRockyFacts.facts).some((v) => {
+        if (Array.isArray(v)) return v.length > 0;
+        if (v && typeof v === 'object') return Object.keys(v as any).length > 0;
+        return Boolean(v);
+      });
+    if (!hasFacts) {
+      warnings.push('Rocky facts appear empty. Ensure you are passing `result.rockyFacts` (not the whole API response).');
+    }
+    
     // Generate audience-specific explanation
     let sections: SarahExplanation['sections'];
     
     switch (audience) {
       case 'customer':
-        sections = explainForCustomer(rockyFacts, tone);
+        sections = explainForCustomer(normalizedRockyFacts, tone);
         break;
       case 'engineer':
-        sections = explainForEngineer(rockyFacts);
+        sections = explainForEngineer(normalizedRockyFacts);
         break;
       case 'surveyor':
-        sections = explainForSurveyor(rockyFacts);
+        sections = explainForSurveyor(normalizedRockyFacts);
         break;
       case 'manager':
         // For now, use surveyor explanation for managers
-        sections = explainForSurveyor(rockyFacts);
+        sections = explainForSurveyor(normalizedRockyFacts);
         break;
       case 'admin':
         // For now, use simplified customer explanation
-        sections = explainForCustomer(rockyFacts, 'simple');
+        sections = explainForCustomer(normalizedRockyFacts, 'simple');
         break;
       default:
         throw new Error(`Unknown audience: ${audience}`);
@@ -346,7 +378,7 @@ export async function explainRockyFacts(request: SarahExplainRequest): Promise<S
       audience,
       tone,
       generatedAt: new Date(),
-      rockyFactsVersion: rockyFacts.version,
+      rockyFactsVersion: normalizedRockyFacts.version,
       sections,
       disclaimer: SARAH_CONFIG.audienceTemplates[audience].disclaimerTemplate,
     };

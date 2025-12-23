@@ -75,8 +75,10 @@ const api = {
 type ViewMode = 'list' | 'active'
 
 export const VisitApp: React.FC = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [activeSession, setActiveSession] = useState<VisitSession | null>(null)
+  const storedActiveSession = useVisitStore((state) => state.activeSession)
+  const storedActiveLead = useVisitStore((state) => state.activeLead)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => (storedActiveSession ? 'active' : 'list'))
+  const [activeSession, setActiveSession] = useState<VisitSession | null>(() => storedActiveSession)
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
   
@@ -111,6 +113,7 @@ export const VisitApp: React.FC = () => {
   const setKeyDetailsInCapture = useVisitCaptureStore((state) => state.setKeyDetails)
   const setExceptionsInCapture = useVisitCaptureStore((state) => state.setExceptions)
   const removeAutoFilledFieldInCapture = useVisitCaptureStore((state) => state.removeAutoFilledField)
+  
   
   // Visit summary state
   const [visitSummary, setVisitSummary] = useState<string | undefined>(undefined)
@@ -200,6 +203,17 @@ export const VisitApp: React.FC = () => {
       setVisitSummary(undefined)
     }
   }, [currentLeadId, clearSessionInStore, clearCapture])
+
+  // Re-enter active view when returning to Visit Notes (component remount).
+  // Transcript + derived structured state are global/persisted (transcription + visitCapture stores).
+  useEffect(() => {
+    if (!currentLeadId) return
+    if (!storedActiveSession || !storedActiveLead) return
+    if (String(storedActiveLead.id) !== String(currentLeadId)) return
+
+    setActiveSession(storedActiveSession)
+    setViewMode('active')
+  }, [currentLeadId, storedActiveSession, storedActiveLead])
 
   // Keep workspace-backed fields in Key Details synced while the Visit screen is active.
   useEffect(() => {
@@ -415,14 +429,29 @@ export const VisitApp: React.FC = () => {
         setViewMode('active')
         // Update visit store with active session
         setActiveSessionInStore(sessionToUse, lead)
-        // Start background transcription session
-        backgroundTranscriptionProcessor.startSession(
-          String(lead.id),
-          sessionToUse.id.toString()
-        )
-        // Reset structured capture state for this session
-        resetCaptureForSession(String(lead.id), sessionToUse.id.toString())
-        // Reset state for new visit
+        
+        // Start background transcription session ONLY if we are not already tracking this same session.
+        // Starting a new session clears transcript segments, which caused "transcript dies on navigation".
+        const activeTranscription = useTranscriptionStore.getState().getActiveSession()
+        const isSameTranscription =
+          activeTranscription &&
+          activeTranscription.leadId === String(lead.id) &&
+          activeTranscription.sessionId === sessionToUse.id.toString()
+        if (!isSameTranscription) {
+          backgroundTranscriptionProcessor.startSession(String(lead.id), sessionToUse.id.toString())
+        }
+
+        // Reset structured capture state only when switching to a new session.
+        // If the user is simply navigating away/back, keep the existing derived state.
+        const captureState = useVisitCaptureStore.getState()
+        const isSameCapture =
+          captureState.leadId === String(lead.id) &&
+          captureState.sessionId === sessionToUse.id.toString()
+        if (!isSameCapture) {
+          resetCaptureForSession(String(lead.id), sessionToUse.id.toString())
+        }
+
+        // Reset summary (always re-generatable)
         setVisitSummary(undefined)
       }
     } catch (error) {

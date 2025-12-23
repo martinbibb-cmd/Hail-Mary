@@ -14,20 +14,15 @@ import {
   type TranscriptSegment,
   type KeyDetails
 } from './components'
-import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
+import { getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
 import { useVisitStore } from '../../../stores/visitStore'
-import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
-import { correctTranscript } from '../../../utils/transcriptCorrector'
+import { clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
-import { useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext'
-import { voiceRecordingService, getFileExtensionFromMimeType } from '../../../services/voiceRecordingService'
-import { backgroundTranscriptionProcessor } from '../../../services/backgroundTranscriptionProcessor'
 import { useTranscriptionStore } from '../../../stores/transcriptionStore'
 import { useVisitCaptureStore } from '../../../stores/visitCaptureStore'
-import { extractStructuredData } from '../../../services/enhancedDataExtractor'
-import { applyExtractedFactsToWorkspace } from '../../../services/applyExtractedFactsToWorkspace'
 import { useExtractedData } from '../../../hooks/useExtractedData'
+import { useLiveTranscriptPolling } from '../../../hooks/useLiveTranscriptPolling'
 import { useAuth } from '../../../auth'
 import './VisitApp.css'
 
@@ -95,9 +90,6 @@ export const VisitApp: React.FC = () => {
   
   // Visit store for session/recording state
   const setActiveSessionInStore = useVisitStore((state) => state.setActiveSession)
-  const startRecordingInStore = useVisitStore((state) => state.startRecording)
-  const stopRecordingInStore = useVisitStore((state) => state.stopRecording)
-  const incrementTranscriptCount = useVisitStore((state) => state.incrementTranscriptCount)
   const clearSessionInStore = useVisitStore((state) => state.clearSession)
   const globalEndVisit = useVisitStore((state) => state.endVisit)
   
@@ -109,7 +101,6 @@ export const VisitApp: React.FC = () => {
   const resetCaptureForSession = useVisitCaptureStore((state) => state.resetForSession)
   const clearCapture = useVisitCaptureStore((state) => state.clear)
   const toggleChecklistItem = useVisitCaptureStore((state) => state.toggleChecklistItem)
-  const addAutoFilledFieldsInCapture = useVisitCaptureStore((state) => state.addAutoFilledFields)
   const setKeyDetailsInCapture = useVisitCaptureStore((state) => state.setKeyDetails)
   const setExceptionsInCapture = useVisitCaptureStore((state) => state.setExceptions)
   const removeAutoFilledFieldInCapture = useVisitCaptureStore((state) => state.removeAutoFilledField)
@@ -118,16 +109,8 @@ export const VisitApp: React.FC = () => {
   // Visit summary state
   const [visitSummary, setVisitSummary] = useState<string | undefined>(undefined)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
-  
-  // Get STT provider setting
-  const { settings } = useCognitiveProfile()
-  const sttProvider = settings.sttProvider
-  
-  // STT state
-  const [isListening, setIsListening] = useState(false)
-  const sttSupported = voiceRecordingService.isSpeechRecognitionSupported()
+
   const transcriptionSession = useTranscriptionStore((state) => state.activeSession)
-  const liveTranscript = useTranscriptionStore((state) => state.interimTranscript)
   const transcriptSegments: TranscriptSegment[] = useMemo(() => {
     const segments = transcriptionSession?.segments || []
     // Ensure timestamps are Dates (persist middleware may rehydrate as strings in some cases)
@@ -137,10 +120,15 @@ export const VisitApp: React.FC = () => {
     })) as TranscriptSegment[]
   }, [transcriptionSession?.segments])
   const extracted = useExtractedData(currentLeadId)
-  
-  // Audio recording state for Whisper mode
-  const [isRecording, setIsRecording] = useState(false)
-  const [isTranscribing, setIsTranscribing] = useState(false)
+
+  // Live transcript polling (Option A) for the active transcript session
+  useLiveTranscriptPolling({
+    leadId: currentLeadId,
+    sessionId: transcriptionSession?.sessionId ?? null,
+    enabled: viewMode === 'active' && !!currentLeadId,
+    intervalMs: 1500,
+    processDebounceMs: 8000,
+  })
   
   // Accumulated final transcript for Rocky processing
   const accumulatedTranscriptRef = useRef<string>('')
@@ -198,7 +186,6 @@ export const VisitApp: React.FC = () => {
       setViewMode('list')
       setActiveSession(null)
       clearSessionInStore()
-      backgroundTranscriptionProcessor.stopSession()
       clearCapture()
       setVisitSummary(undefined)
     }
@@ -295,117 +282,6 @@ export const VisitApp: React.FC = () => {
     }
   }
 
-  // Process transcript with Rocky (deterministic/local) + correction + live extraction
-  const processWithRocky = useCallback((newTranscript: string) => {
-    if (!newTranscript.trim()) return
-
-    let correctedText = newTranscript // Default to raw if no correction applied
-    
-    // Step 1: Use orchestrator for live extraction (applies corrections internally)
-    if (currentLeadId) {
-      const captureResult = processTranscriptSegment(newTranscript, {
-        currentLeadId,
-        accumulatedTranscript: accumulatedTranscriptRef.current,
-        previousFacts: keyDetails,
-      })
-
-      // Get corrected text from orchestrator result
-      correctedText = captureResult.transcriptCorrection.corrected
-
-      // Log corrections for debugging
-      if (captureResult.transcriptCorrection.corrections.length > 0) {
-        console.log('Transcript corrections:', captureResult.transcriptCorrection.corrections)
-      }
-
-      // Track auto-filled fields
-      if (captureResult.autoFilledFields.length > 0) {
-        trackAutoFilledFields(currentLeadId, captureResult.autoFilledFields)
-        addAutoFilledFieldsInCapture(captureResult.autoFilledFields)
-      }
-
-      // Update local state (Key Details now synced with Lead store)
-      setKeyDetailsInCapture(captureResult.extractedFields as any)
-    } else {
-      // Fallback: no active lead, apply corrections manually
-      const correction = correctTranscript(newTranscript)
-      correctedText = correction.corrected
-    }
-
-    // Update accumulated transcript with corrected version
-    accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
-      ? `${accumulatedTranscriptRef.current} ${correctedText}`
-      : correctedText
-
-    // Run local extraction for checklist updates
-    // Note: We reprocess the full transcript each time because:
-    // 1. Rocky extraction is deterministic and fast (no LLM)
-    // 2. New context can change interpretation of previous statements
-    // 3. This ensures consistency and accuracy in field extraction
-    const result = extractFromTranscript({
-      transcript: accumulatedTranscriptRef.current,
-      previousFacts: keyDetails,
-      previousChecklist: checklistItems,
-    })
-
-    // Update checklist
-    if (result.checklistUpdates.length > 0) {
-      for (const update of result.checklistUpdates) {
-        toggleChecklistItem(update.id, update.checked)
-      }
-    }
-
-    // Update exceptions/flags
-    if (result.flags.length > 0) {
-      const newExceptions = result.flags.map(flag => `${flag.type.toUpperCase()}: ${flag.message}`)
-      setExceptionsInCapture([...new Set([...exceptions, ...newExceptions])])
-    }
-
-    // Trigger save after processing recording
-    if (currentLeadId) {
-      enqueueSave({
-        leadId: currentLeadId,
-        reason: 'process_recording',
-        payload: {
-          rawTranscript: newTranscript,
-          correctedTranscript: correctedText,
-          fullTranscript: accumulatedTranscriptRef.current,
-          keyDetails: result.facts,
-          checklistItems,
-          timestamp: new Date().toISOString(),
-        },
-      })
-      
-      // Auto-generate summary after significant transcript accumulation
-      // Only generate if we have enough content and not already generating
-      const trimmedTranscript = accumulatedTranscriptRef.current.trim()
-      if (trimmedTranscript && trimmedTranscript.length > 0) {
-        const words = trimmedTranscript.split(/\s+/)
-        const wordCount = words.filter(w => w.length > 0).length
-        // Only auto-generate once when threshold is crossed
-        if (wordCount >= 50 && !isGeneratingSummary && activeSession && !visitSummary) {
-          generateSummaryForSession(activeSession.id)
-        }
-      }
-    }
-  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary, toggleChecklistItem, exceptions, setExceptionsInCapture, setKeyDetailsInCapture, addAutoFilledFieldsInCapture])
-
-  // Sync initial recording state from service on mount.
-  // Transcript consumption runs globally (BackgroundTranscriptionProcessor) so it keeps working across navigation.
-  useEffect(() => {
-    const isCurrentlyRecording = voiceRecordingService.getIsRecording()
-    const currentProvider = voiceRecordingService.getCurrentProvider()
-    
-    if (isCurrentlyRecording) {
-      if (currentProvider === 'browser') {
-        setIsListening(true)
-        startRecordingInStore('browser')
-      } else if (currentProvider === 'whisper') {
-        setIsRecording(true)
-        startRecordingInStore('whisper')
-      }
-    }
-  }, [startRecordingInStore])
-
   // Ready once we have an active lead (VisitApp is guarded, but keep it defensive)
   useEffect(() => {
     setLoading(false)
@@ -429,16 +305,43 @@ export const VisitApp: React.FC = () => {
         setViewMode('active')
         // Update visit store with active session
         setActiveSessionInStore(sessionToUse, lead)
-        
-        // Start background transcription session ONLY if we are not already tracking this same session.
-        // Starting a new session clears transcript segments, which caused "transcript dies on navigation".
-        const activeTranscription = useTranscriptionStore.getState().getActiveSession()
-        const isSameTranscription =
-          activeTranscription &&
-          activeTranscription.leadId === String(lead.id) &&
-          activeTranscription.sessionId === sessionToUse.id.toString()
-        if (!isSameTranscription) {
-          backgroundTranscriptionProcessor.startSession(String(lead.id), sessionToUse.id.toString())
+
+        // Ensure we have an Option A transcript session to poll for this lead.
+        const transcriptionStore = useTranscriptionStore.getState()
+        const existingTranscript = transcriptionStore.getActiveSession()
+        const isSameTranscript =
+          existingTranscript &&
+          existingTranscript.leadId === String(lead.id) &&
+          existingTranscript.isActive &&
+          !!existingTranscript.sessionId
+
+        let transcriptSessionId = isSameTranscript ? existingTranscript!.sessionId : null
+
+        if (!transcriptSessionId) {
+          // Stable device id to help server-side attribution
+          let deviceId = localStorage.getItem('hail-mary:device-id')
+          if (!deviceId) {
+            try {
+              deviceId = crypto.randomUUID()
+            } catch {
+              deviceId = `device-${Date.now()}`
+            }
+            localStorage.setItem('hail-mary:device-id', deviceId)
+          }
+
+          const createRes = await api.post<ApiResponse<{ sessionId: number }>>(
+            `/api/leads/${lead.id}/transcripts/sessions`,
+            {
+              source: 'atlas-pwa',
+              deviceId,
+              language: 'en-GB',
+            }
+          )
+
+          if (createRes.success && createRes.data?.sessionId) {
+            transcriptSessionId = String(createRes.data.sessionId)
+            transcriptionStore.startSession(String(lead.id), transcriptSessionId)
+          }
         }
 
         // Reset structured capture state only when switching to a new session.
@@ -446,9 +349,9 @@ export const VisitApp: React.FC = () => {
         const captureState = useVisitCaptureStore.getState()
         const isSameCapture =
           captureState.leadId === String(lead.id) &&
-          captureState.sessionId === sessionToUse.id.toString()
+          captureState.sessionId === (transcriptSessionId || '')
         if (!isSameCapture) {
-          resetCaptureForSession(String(lead.id), sessionToUse.id.toString())
+          resetCaptureForSession(String(lead.id), transcriptSessionId || sessionToUse.id.toString())
         }
 
         // Reset summary (always re-generatable)
@@ -460,154 +363,6 @@ export const VisitApp: React.FC = () => {
       setLoading(false)
     }
   }
-
-  // STT Functions
-  const startListening = useCallback(async () => {
-    if (isListening || !sttSupported) return
-
-    try {
-      await voiceRecordingService.startBrowserRecording()
-      setIsListening(true)
-      startRecordingInStore('browser')
-    } catch (error) {
-      console.error('Failed to start speech recognition:', error)
-      setExceptionsInCapture([
-        ...new Set([...exceptions, `Failed to start recording: ${(error as Error).message}`]),
-      ])
-    }
-  }, [isListening, sttSupported, startRecordingInStore, exceptions, setExceptionsInCapture])
-
-  const stopListening = useCallback(() => {
-    voiceRecordingService.stopBrowserRecording()
-    setIsListening(false)
-    stopRecordingInStore()
-
-    // Trigger save when stopping recording (with corrected transcript)
-    if (currentLeadId && accumulatedTranscriptRef.current) {
-      enqueueSave({
-        leadId: currentLeadId,
-        reason: 'stop_recording',
-        payload: {
-          correctedTranscript: accumulatedTranscriptRef.current, // Already corrected during processing
-          keyDetails,
-          checklistItems,
-          timestamp: new Date().toISOString(),
-        },
-      })
-    }
-  }, [currentLeadId, enqueueSave, keyDetails, checklistItems, stopRecordingInStore])
-
-  // Audio Recording Functions for Whisper mode
-  const startRecording = useCallback(async () => {
-    try {
-      await voiceRecordingService.startWhisperRecording()
-      setIsRecording(true)
-      startRecordingInStore('whisper')
-    } catch (error) {
-      console.error('Failed to start audio recording:', error)
-      setExceptionsInCapture([...new Set([...exceptions, `Microphone error: ${(error as Error).message}`])])
-    }
-  }, [startRecordingInStore, exceptions, setExceptionsInCapture])
-
-  const stopRecording = useCallback(async () => {
-    setIsRecording(false)
-    stopRecordingInStore()
-    setIsTranscribing(true)
-
-    try {
-      // Stop recording and get the audio blob
-      const { blob: audioBlob, mimeType } = await voiceRecordingService.stopWhisperRecording()
-      
-      // Determine file extension from mimeType using helper
-      const fileExt = getFileExtensionFromMimeType(mimeType)
-      
-      // Upload to Whisper API
-      const formData = new FormData()
-      formData.append('audio', audioBlob, `recording${fileExt}`)
-      formData.append('language', 'en-GB')
-      
-      const response = await fetch('/api/transcription/whisper-transcribe', {
-        method: 'POST',
-        body: formData,
-      })
-      
-      const result = await response.json()
-      
-      if (result.success && result.data) {
-        const transcriptText = result.data.text
-        
-        // Add as a new transcript segment
-        const segment: TranscriptSegment = {
-          id: `segment-${Date.now()}`,
-          timestamp: new Date(),
-          speaker: 'user',
-          text: transcriptText.trim(),
-        }
-        // Persist into global transcription store so transcript continues across navigation
-        const transcriptionStore = useTranscriptionStore.getState()
-        transcriptionStore.addSegment(segment as any)
-        const active = transcriptionStore.getActiveSession()
-        if (active) {
-          const nextAccumulated = active.accumulatedTranscript
-            ? `${active.accumulatedTranscript} ${transcriptText.trim()}`
-            : transcriptText.trim()
-          transcriptionStore.updateAccumulatedTranscript(nextAccumulated)
-        }
-        
-        // Increment transcript count in visit store
-        incrementTranscriptCount()
-        
-        // Process with Rocky (correction + extraction)
-        // This will update accumulatedTranscriptRef.current synchronously
-        processWithRocky(transcriptText.trim())
-
-        // Also run enhanced extraction to populate workspace (Property/Occupancy) non-destructively
-        if (currentLeadId) {
-          const extracted = extractStructuredData(transcriptText.trim())
-          applyExtractedFactsToWorkspace(currentLeadId, extracted).catch(() => undefined)
-        }
-        
-        // Trigger save after processing completes
-        // processWithRocky is synchronous, so we can safely access the updated ref
-        // Synchronize with browser repaint to ensure React state updates complete
-        requestAnimationFrame(() => {
-          if (currentLeadId) {
-            enqueueSave({
-              leadId: currentLeadId,
-              reason: 'stop_recording',
-              payload: {
-                correctedTranscript: accumulatedTranscriptRef.current,
-                keyDetails,
-                checklistItems,
-                timestamp: new Date().toISOString(),
-              },
-            })
-          }
-        })
-      } else {
-        setExceptionsInCapture([
-          ...new Set([...exceptions, `Transcription error: ${result.error || 'Unknown error'}`]),
-        ])
-      }
-    } catch (error) {
-      console.error('Failed to transcribe audio:', error)
-      setExceptionsInCapture([
-        ...new Set([...exceptions, `Transcription error: ${(error as Error).message}`]),
-      ])
-    } finally {
-      setIsTranscribing(false)
-    }
-  }, [
-    currentLeadId,
-    enqueueSave,
-    keyDetails,
-    checklistItems,
-    processWithRocky,
-    stopRecordingInStore,
-    incrementTranscriptCount,
-    exceptions,
-    setExceptionsInCapture,
-  ])
 
   const handleManualSave = useCallback(() => {
     if (!currentLeadId) return
@@ -704,13 +459,25 @@ export const VisitApp: React.FC = () => {
         },
       })
     }
+
+    // Finalize the active transcript session (Option A) best-effort
+    try {
+      const activeTranscript = useTranscriptionStore.getState().getActiveSession()
+      if (activeTranscript?.sessionId) {
+        await fetch(`/api/transcripts/sessions/${activeTranscript.sessionId}/finalize`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+    } catch {
+      // ignore (offline-friendly)
+    }
     
     // Use global endVisit action (handles API call + store cleanup)
     const result = await globalEndVisit()
     
     if (result.success) {
-      // Stop background transcription session
-      backgroundTranscriptionProcessor.stopSession()
       setViewMode('list')
       setActiveSession(null)
       // Clear transcription store
@@ -802,8 +569,6 @@ export const VisitApp: React.FC = () => {
           <div className="visit-panel visit-panel-left">
             <TranscriptFeed 
               segments={transcriptSegments}
-              isRecording={isListening}
-              liveTranscript={liveTranscript}
             />
           </div>
 
@@ -832,38 +597,6 @@ export const VisitApp: React.FC = () => {
             isGenerating={isGeneratingSummary}
             onGenerate={generateSummary}
           />
-        </div>
-
-        <div className="visit-controls">
-          {sttProvider === 'whisper' ? (
-            // Whisper mode: record audio and transcribe on stop
-            <button
-              className={`btn-mic ${isRecording ? 'recording' : ''}`}
-              onClick={isRecording ? stopRecording : startRecording}
-              title={isRecording ? 'Stop Recording' : 'Start Recording'}
-              disabled={isTranscribing}
-            >
-              {isTranscribing 
-                ? '⏳ Transcribing...' 
-                : isRecording 
-                ? '⏹️ Stop Recording' 
-                : '🎤 Start Recording (Whisper)'
-              }
-            </button>
-          ) : sttSupported ? (
-            // Browser mode: real-time speech recognition
-            <button
-              className={`btn-mic ${isListening ? 'recording' : ''}`}
-              onClick={isListening ? stopListening : startListening}
-              title={isListening ? 'Stop Recording' : 'Start Recording'}
-            >
-              {isListening ? '⏹️ Stop Recording' : '🎤 Start Recording'}
-            </button>
-          ) : (
-            <p className="stt-unsupported">
-              ℹ️ Voice input requires Chrome, Edge, or Safari
-            </p>
-          )}
         </div>
       </div>
     )

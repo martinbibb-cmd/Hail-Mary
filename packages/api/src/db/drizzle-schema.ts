@@ -16,7 +16,11 @@ import {
   numeric,
   boolean,
   jsonb,
+  index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+import { sql } from "drizzle-orm";
 
 // Accounts / tenancies (optional but useful)
 export const accounts = pgTable("accounts", {
@@ -289,6 +293,13 @@ export const transcriptSessions = pgTable("transcript_sessions", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
+  // Option A ingestion metadata (live streaming)
+  source: varchar("source", { length: 100 }), // e.g. "atlas", "ios", "android", "worker"
+  deviceId: varchar("device_id", { length: 255 }),
+  startedAt: timestamp("started_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
   status: varchar("status", { length: 50 }).default("recording").notNull(), // recording, processing, completed, error
   durationSeconds: integer("duration_seconds"),
   language: varchar("language", { length: 20 }).default("en-GB").notNull(),
@@ -322,9 +333,14 @@ export const transcriptSegments = pgTable("transcript_segments", {
   sessionId: integer("session_id")
     .references(() => transcriptSessions.id)
     .notNull(),
-  chunkId: integer("chunk_id")
-    .references(() => transcriptAudioChunks.id)
-    .notNull(),
+  // Option A ingestion sequence number (monotonic per session)
+  // Nullable to preserve legacy chunk-based segments which do not have seq.
+  seq: integer("seq"),
+  // Option A timestamps (milliseconds)
+  startMs: integer("start_ms"),
+  endMs: integer("end_ms"),
+  // Legacy chunk-based ingestion
+  chunkId: integer("chunk_id").references(() => transcriptAudioChunks.id),
   startSeconds: numeric("start_seconds", { precision: 10, scale: 2 }).notNull(),
   endSeconds: numeric("end_seconds", { precision: 10, scale: 2 }).notNull(),
   speaker: varchar("speaker", { length: 100 }).default("engineer").notNull(),
@@ -332,6 +348,28 @@ export const transcriptSegments = pgTable("transcript_segments", {
   roomTag: varchar("room_tag", { length: 100 }),
   topicTag: varchar("topic_tag", { length: 100 }),
   confidence: numeric("confidence", { precision: 5, scale: 4 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  // Unique seq constraint for Option A segments (partial: only when seq is present)
+  sessionSeqUnique: uniqueIndex("transcript_segments_session_seq_uq")
+    .on(t.sessionId, t.seq)
+    .where(sql`${t.seq} is not null`),
+  sessionSeqIdx: index("transcript_segments_session_seq_idx")
+    .on(t.sessionId, t.seq),
+}));
+
+// Transcript aggregates - optional rollup for fast polling + full text
+export const transcriptAggregates = pgTable("transcript_aggregates", {
+  sessionId: integer("session_id")
+    .references(() => transcriptSessions.id, { onDelete: "cascade" })
+    .primaryKey(),
+  lastSeq: integer("last_seq").notNull().default(0),
+  fullText: text("full_text").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

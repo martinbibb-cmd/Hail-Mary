@@ -438,6 +438,13 @@ export interface TranscriptSession {
   leadId?: number;
   createdAt: Date;
   updatedAt: Date;
+  /**
+   * Option A (live ingestion) metadata
+   */
+  source?: string;
+  deviceId?: string;
+  startedAt?: Date;
+  endedAt?: Date;
   status: TranscriptSessionStatus;
   durationSeconds?: number;
   language: string;
@@ -463,7 +470,16 @@ export interface TranscriptAudioChunk {
 export interface TranscriptSegment {
   id: number;
   sessionId: number;
-  chunkId: number;
+  /**
+   * Legacy chunk-based ingestion (may be null for Option A live segments)
+   */
+  chunkId?: number;
+  /**
+   * Option A (live ingestion) fields
+   */
+  seq?: number;
+  startMs?: number;
+  endMs?: number;
   startSeconds: number;
   endSeconds: number;
   speaker: string;

@@ -31,6 +31,7 @@ import appointmentsRouter from './routes/appointments';
 import visitSessionsRouter from './routes/visitSessions';
 import filesRouter from './routes/files';
 import transcriptionRouter from './routes/transcription';
+import transcriptsRouter from './routes/transcripts';
 import depotNotesRouter from './routes/depotNotes';
 import surveyHelperRouter from './routes/surveyHelper';
 import voiceNotesRouter from './routes/voiceNotes';
@@ -217,6 +218,7 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
 app.use('/api/files', filesRouter);
 app.use('/api/transcription', transcriptionRouter);
+app.use('/api', transcriptsRouter); // Option A live transcript ingestion
 app.use('/api/depot-notes', depotNotesRouter);
 app.use('/api/survey-helper', surveyHelperRouter);
 app.use('/api/voice-notes', voiceNotesRouter); // Rocky & Sarah architecture

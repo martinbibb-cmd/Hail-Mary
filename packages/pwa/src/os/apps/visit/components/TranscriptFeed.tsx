@@ -10,8 +10,6 @@ export interface TranscriptSegment {
 
 interface TranscriptFeedProps {
   segments: TranscriptSegment[];
-  isRecording: boolean;
-  liveTranscript?: string;
 }
 
 /**
@@ -22,26 +20,17 @@ interface TranscriptFeedProps {
  */
 export const TranscriptFeed: React.FC<TranscriptFeedProps> = ({
   segments,
-  isRecording,
-  liveTranscript,
 }) => {
   return (
     <div className="transcript-feed">
       <div className="transcript-feed-header">
-        <h3>📝 Transcript</h3>
-        {isRecording && (
-          <span className="transcript-feed-recording">
-            <span className="recording-dot"></span>
-            Recording
-          </span>
-        )}
+        <h3>📝 Live transcript</h3>
       </div>
 
       <div className="transcript-feed-content">
-        {segments.length === 0 && !liveTranscript && (
+        {segments.length === 0 && (
           <p className="transcript-feed-empty">
-            Start recording to capture your visit notes. Speak naturally about the property,
-            existing system, and any issues or requirements.
+            Waiting for transcript segments…
           </p>
         )}
 
@@ -57,21 +46,6 @@ export const TranscriptFeed: React.FC<TranscriptFeedProps> = ({
             <div className="transcript-segment-text">{segment.text}</div>
           </div>
         ))}
-
-        {liveTranscript && (
-          <div className="transcript-segment transcript-segment-live">
-            <div className="transcript-segment-time">
-              {new Date().toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })}
-            </div>
-            <div className="transcript-segment-text transcript-segment-interim">
-              {liveTranscript}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

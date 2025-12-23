@@ -3,17 +3,11 @@
  * 
  * Tracks:
  * - activeSession: current VisitSession if any
- * - isRecording: whether microphone/recording is active
- * - recordingStartTime: when recording started
- * - transcriptCount: number of transcript segments captured
  */
 
 import { create } from 'zustand';
 import type { VisitSession, Lead } from '@hail-mary/shared';
-import { backgroundTranscriptionProcessor } from '../services/backgroundTranscriptionProcessor';
 import { useTranscriptionStore } from './transcriptionStore';
-
-export type RecordingProvider = 'browser' | 'whisper';
 
 export interface EndVisitResult {
   success: boolean;
@@ -25,21 +19,12 @@ interface VisitStore {
   activeSession: VisitSession | null;
   activeLead: Lead | null;
   
-  // Recording state
-  isRecording: boolean;
-  recordingProvider: RecordingProvider | null;
-  recordingStartTime: Date | null;
-  transcriptCount: number;
-  
   // End visit state
   isEndingVisit: boolean;
   endVisitError: string | null;
   
   // Actions
   setActiveSession: (session: VisitSession | null, lead: Lead | null) => void;
-  startRecording: (provider: RecordingProvider) => void;
-  stopRecording: () => void;
-  incrementTranscriptCount: () => void;
   clearSession: () => void;
   
   /**
@@ -60,10 +45,6 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
   // Initial state
   activeSession: null,
   activeLead: null,
-  isRecording: false,
-  recordingProvider: null,
-  recordingStartTime: null,
-  transcriptCount: 0,
   isEndingVisit: false,
   endVisitError: null,
 
@@ -71,37 +52,13 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
   setActiveSession: (session: VisitSession | null, lead: Lead | null) => set({
     activeSession: session,
     activeLead: lead,
-    transcriptCount: 0,
     endVisitError: null,
   }),
-
-  // Start recording
-  startRecording: (provider: RecordingProvider) => set({
-    isRecording: true,
-    recordingProvider: provider,
-    recordingStartTime: new Date(),
-  }),
-
-  // Stop recording
-  stopRecording: () => set({
-    isRecording: false,
-    recordingProvider: null,
-    recordingStartTime: null,
-  }),
-
-  // Increment transcript count
-  incrementTranscriptCount: () => set((state) => ({
-    transcriptCount: state.transcriptCount + 1,
-  })),
 
   // Clear session (when visit ends)
   clearSession: () => set({
     activeSession: null,
     activeLead: null,
-    isRecording: false,
-    recordingProvider: null,
-    recordingStartTime: null,
-    transcriptCount: 0,
     isEndingVisit: false,
     endVisitError: null,
   }),
@@ -109,16 +66,11 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
   // End visit - global action that can be called from any page
   endVisit: async (): Promise<EndVisitResult> => {
     const state = get();
-    const { activeSession, isRecording } = state;
+    const { activeSession } = state;
 
     // Cannot end visit if no active session
     if (!activeSession) {
       return { success: false, error: 'No active visit session to end.' };
-    }
-
-    // Cannot end visit while recording is active
-    if (isRecording) {
-      return { success: false, error: 'Please stop recording before ending the visit.' };
     }
 
     set({ isEndingVisit: true, endVisitError: null });
@@ -139,9 +91,6 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
         throw new Error(errorData.error || `Failed to end visit (HTTP ${response.status})`);
       }
 
-      // Stop background transcription session
-      backgroundTranscriptionProcessor.stopSession();
-      
       // Clear transcription store
       useTranscriptionStore.getState().clearSession();
 
@@ -149,10 +98,6 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
       set({
         activeSession: null,
         activeLead: null,
-        isRecording: false,
-        recordingProvider: null,
-        recordingStartTime: null,
-        transcriptCount: 0,
         isEndingVisit: false,
         endVisitError: null,
       });

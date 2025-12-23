@@ -12,7 +12,7 @@
  * informational with navigation shortcuts.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVisitStore } from '../stores/visitStore';
 import './VisitSessionBanner.css';
@@ -21,33 +21,10 @@ export const VisitSessionBanner: React.FC = () => {
   const navigate = useNavigate();
   const activeSession = useVisitStore((state) => state.activeSession);
   const activeLead = useVisitStore((state) => state.activeLead);
-  const isRecording = useVisitStore((state) => state.isRecording);
-  const recordingStartTime = useVisitStore((state) => state.recordingStartTime);
-  const transcriptCount = useVisitStore((state) => state.transcriptCount);
   const endVisit = useVisitStore((state) => state.endVisit);
   const isEndingVisit = useVisitStore((state) => state.isEndingVisit);
   const endVisitError = useVisitStore((state) => state.endVisitError);
   const clearEndVisitError = useVisitStore((state) => state.clearEndVisitError);
-
-  const [recordingDuration, setRecordingDuration] = useState<string>('0:00');
-
-  // Update recording duration every second
-  useEffect(() => {
-    if (!isRecording || !recordingStartTime) {
-      setRecordingDuration('0:00');
-      return;
-    }
-
-    const interval = setInterval(() => {
-      const now = new Date();
-      const diff = Math.floor((now.getTime() - recordingStartTime.getTime()) / 1000);
-      const minutes = Math.floor(diff / 60);
-      const seconds = diff % 60;
-      setRecordingDuration(`${minutes}:${seconds.toString().padStart(2, '0')}`);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isRecording, recordingStartTime]);
 
   // Clear error when session changes
   useEffect(() => {
@@ -92,26 +69,17 @@ export const VisitSessionBanner: React.FC = () => {
       </div>
 
       <div className="visit-session-status">
-        {/* Recording Status Indicator */}
-        {isRecording ? (
-          <div className="recording-indicator">
-            <span className="recording-pulse">●</span>
-            <span className="recording-text">Recording {recordingDuration}</span>
-            <span className="recording-count">({transcriptCount} segments)</span>
-          </div>
-        ) : (
-          <span className="visit-status-chip visit-status-active">
-            ✓ Visit Active
-          </span>
-        )}
+        <span className="visit-status-chip visit-status-active">
+          ✓ Visit Active
+        </span>
 
         {/* Quick Actions */}
         <div className="visit-session-actions" onClick={(e) => e.stopPropagation()}>
           <button
             className="visit-action-btn visit-action-end-visit"
             onClick={handleEndVisit}
-            title={isRecording ? "Stop recording before ending visit" : "End Visit Session"}
-            disabled={isRecording || isEndingVisit}
+            title="End Visit Session"
+            disabled={isEndingVisit}
           >
             {isEndingVisit ? 'Ending...' : 'End Visit'}
           </button>

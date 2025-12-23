@@ -22,6 +22,7 @@ export interface TranscriptionSession {
   leadId: string;
   startedAt: Date;
   lastTranscriptAt?: Date;
+  lastSeq?: number;
   segments: TranscriptSegment[];
   accumulatedTranscript: string;
   isActive: boolean;
@@ -42,9 +43,11 @@ interface TranscriptionState {
   startSession: (leadId: string, sessionId: string) => void;
   stopSession: () => void;
   addSegment: (segment: TranscriptSegment) => void;
+  addSegments: (segments: TranscriptSegment[]) => void;
   setInterimTranscript: (text: string) => void;
   markSegmentProcessed: (segmentId: string) => void;
   updateAccumulatedTranscript: (transcript: string) => void;
+  setLastSeq: (seq: number) => void;
   clearSession: () => void;
 
   // Getters
@@ -70,6 +73,7 @@ export const useTranscriptionStore = create<TranscriptionState>()(
             segments: [],
             accumulatedTranscript: '',
             isActive: true,
+            lastSeq: -1,
           },
         });
       },
@@ -95,10 +99,34 @@ export const useTranscriptionStore = create<TranscriptionState>()(
             return state;
           }
 
+          // Idempotent: don't duplicate if we already have this segment id
+          if (state.activeSession.segments.some((s) => s.id === segment.id)) {
+            return state;
+          }
+
           return {
             activeSession: {
               ...state.activeSession,
               segments: [...state.activeSession.segments, segment],
+              lastTranscriptAt: new Date(),
+            },
+          };
+        });
+      },
+
+      addSegments: (segments: TranscriptSegment[]) => {
+        if (!segments || segments.length === 0) return;
+        set((state) => {
+          if (!state.activeSession) return state;
+
+          const existingIds = new Set(state.activeSession.segments.map((s) => s.id));
+          const deduped = segments.filter((s) => !existingIds.has(s.id));
+          if (deduped.length === 0) return state;
+
+          return {
+            activeSession: {
+              ...state.activeSession,
+              segments: [...state.activeSession.segments, ...deduped],
               lastTranscriptAt: new Date(),
             },
           };
@@ -130,6 +158,15 @@ export const useTranscriptionStore = create<TranscriptionState>()(
               ...state.activeSession,
               accumulatedTranscript: transcript,
             },
+          };
+        });
+      },
+
+      setLastSeq: (seq: number) => {
+        set((state) => {
+          if (!state.activeSession) return state;
+          return {
+            activeSession: { ...state.activeSession, lastSeq: seq },
           };
         });
       },

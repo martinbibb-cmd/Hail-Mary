@@ -19,7 +19,6 @@
 import { voiceRecordingService } from './voiceRecordingService';
 import { useTranscriptionStore, type TranscriptSegment } from '../stores/transcriptionStore';
 import { useLeadStore } from '../stores/leadStore';
-import { useVisitStore } from '../stores/visitStore';
 import { useVisitCaptureStore } from '../stores/visitCaptureStore';
 import { extractStructuredData, type ExtractedData } from './enhancedDataExtractor';
 import { correctTranscript } from '../utils/transcriptCorrector';
@@ -88,13 +87,6 @@ class BackgroundTranscriptionProcessor {
     if (!activeSession) {
       console.warn('[BackgroundTranscriptionProcessor] No active session, ignoring transcript');
       return;
-    }
-
-    // Keep visit banner counters in sync even if VisitApp is unmounted
-    try {
-      useVisitStore.getState().incrementTranscriptCount();
-    } catch {
-      // ignore
     }
 
     // Apply transcript corrections

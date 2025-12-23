@@ -109,12 +109,57 @@ initializeSttProvider().catch(error => {
 });
 
 // Rate limiting middleware
-const limiter = rateLimit({
+// Split rate limiters by concern:
+// - Auth is chatty in SPAs (/auth/me, /auth/config) and should almost never be blocked.
+// - Rocky/Sarah/AI can be expensive and should be stricter.
+// - Everything else gets a reasonable baseline.
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // baseline for non-auth, non-AI endpoints
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests, please try again later.' },
+  // Exclude chatty/critical and expensive endpoints from the baseline limiter.
+  // These have their own dedicated limiters below.
+  skip: (req) => {
+    const p = req.path || '';
+    return (
+      p.startsWith('/auth') ||
+      p === '/csrf-token' ||
+      p.startsWith('/rocky') ||
+      p.startsWith('/sarah') ||
+      p.startsWith('/ai')
+    );
+  },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Don't punish successful logins/me checks.
+  skipSuccessfulRequests: true,
+  message: { success: false, code: 'rate_limited', error: 'Please wait a moment and try again.' },
+  // /me and /config have their own (more generous) rules.
+  skip: (req) => req.path === '/me' || req.path === '/config',
+});
+
+const authMeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: { success: false, code: 'rate_limited', error: 'Please wait a moment and try again.' },
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, code: 'rate_limited', error: 'Too many requests, please try again later.' },
 });
 
 // Middleware
@@ -124,7 +169,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
-app.use('/api', limiter); // Apply rate limiting to API routes
+app.use('/api', apiLimiter); // Baseline rate limiting for API routes
 
 // Health check endpoints are intentionally NOT rate-limited to allow
 // monitoring systems (load balancers, container orchestrators, etc.)
@@ -206,7 +251,9 @@ app.get('/health/db', async (_req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRouter);
+// Auth should not be blocked by Rocky/AI limits; it has its own generous limiter.
+app.use('/api/auth/me', authMeLimiter);
+app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/nas', nasRouter);
 app.use('/api/customers', customersRouter);
@@ -224,11 +271,11 @@ app.use('/api', transcriptsRouter); // Option A live transcript ingestion
 app.use('/api/depot-notes', depotNotesRouter);
 app.use('/api/survey-helper', surveyHelperRouter);
 app.use('/api/voice-notes', voiceNotesRouter); // Rocky & Sarah architecture
-app.use('/api/rocky', rockyRouter); // Rocky standalone endpoint
-app.use('/api/sarah', sarahRouter); // Sarah standalone endpoint
+app.use('/api/rocky', aiLimiter, rockyRouter); // Rocky standalone endpoint
+app.use('/api/sarah', aiLimiter, sarahRouter); // Sarah standalone endpoint
 app.use('/api/voice', voiceTransformRouter); // Voice transform endpoint
 app.use('/api/knowledge', knowledgeRouter); // Knowledge ingest system
-app.use('/api/ai', aiRouter); // AI Gateway (server-side proxy to Cloudflare Worker)
+app.use('/api/ai', aiLimiter, aiRouter); // AI Gateway (server-side proxy to Cloudflare Worker)
 app.use('/api/session', sessionRouter); // Session management (active lead persistence)
 
 // 404 handler

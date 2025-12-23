@@ -419,11 +419,16 @@ export async function processNaturalNotes(request: RockyProcessRequest): Promise
     // Calculate hash for auditability
     const notesHash = calculateNotesHash(request.naturalNotes);
     
-    // Extract facts using deterministic rules
+    // Extract facts using deterministic rules.
+    // IMPORTANT: Always initialize buckets so downstream consumers never see undefined objects.
     const facts: RockyFactsV1['facts'] = {
-      measurements: extractMeasurements(normalizedText),
-      materials: extractMaterials(normalizedText),
-      hazards: extractHazards(normalizedText),
+      customer: {},
+      property: {},
+      existingSystem: {},
+      measurements: extractMeasurements(normalizedText) || {},
+      materials: extractMaterials(normalizedText) || [],
+      hazards: extractHazards(normalizedText) || [],
+      // requiredActions is derived (if any). Keep it undefined unless deterministically present.
     };
     
     // Calculate completeness

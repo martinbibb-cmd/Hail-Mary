@@ -18,6 +18,7 @@ import {
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
 import { useVisitStore } from '../../../stores/visitStore'
+import { useVisitDraftStore } from '../../../stores/visitDraftStore'
 import { processTranscriptSegment, trackAutoFilledFields, clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { correctTranscript } from '../../../utils/transcriptCorrector'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
@@ -89,8 +90,10 @@ const DEFAULT_CHECKLIST_ITEMS: ChecklistItem[] = [
 ]
 
 export const VisitApp: React.FC = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [activeSession, setActiveSession] = useState<VisitSession | null>(null)
+  const storedActiveSession = useVisitStore((state) => state.activeSession)
+  const storedActiveLead = useVisitStore((state) => state.activeLead)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => (storedActiveSession ? 'active' : 'list'))
+  const [activeSession, setActiveSession] = useState<VisitSession | null>(() => storedActiveSession)
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
   
@@ -113,6 +116,10 @@ export const VisitApp: React.FC = () => {
   const clearSessionInStore = useVisitStore((state) => state.clearSession)
   const globalEndVisit = useVisitStore((state) => state.endVisit)
   
+  // Draft persistence (across navigation/remount)
+  const upsertDraft = useVisitDraftStore((state) => state.upsertDraft)
+  const clearDraft = useVisitDraftStore((state) => state.clearDraft)
+
   // New state for 3-panel layout
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
   const [keyDetails, setKeyDetails] = useState<KeyDetails>({})
@@ -210,6 +217,46 @@ export const VisitApp: React.FC = () => {
       setVisitSummary(undefined)
     }
   }, [currentLeadId, clearSessionInStore])
+
+  // Rehydrate Visit UI state when returning to Visit Notes (component remount).
+  // This solves "transcript dies on navigation" by preventing a new background session from wiping segments,
+  // and by restoring checklist/fields from persisted draft state.
+  const didHydrateRef = useRef(false)
+  useEffect(() => {
+    if (!currentLeadId) return
+
+    // If there's a stored active visit for this lead, re-enter active view.
+    if (storedActiveSession && storedActiveLead && String(storedActiveLead.id) === String(currentLeadId)) {
+      setActiveSession(storedActiveSession)
+      setViewMode('active')
+    }
+
+    // Hydrate UI draft once per mount/lead.
+    if (!didHydrateRef.current && storedActiveSession && String(storedActiveLead?.id) === String(currentLeadId)) {
+      const draft = useVisitDraftStore.getState().getDraft(String(currentLeadId))
+      if (draft) {
+        setChecklistItems(draft.checklistItems?.length ? draft.checklistItems : DEFAULT_CHECKLIST_ITEMS)
+        setKeyDetails(draft.keyDetails || {})
+        setAutoFilledFields(draft.autoFilledFields || [])
+        setExceptions(draft.exceptions || [])
+        setVisitSummary(draft.visitSummary)
+      }
+      didHydrateRef.current = true
+    }
+  }, [currentLeadId, storedActiveSession, storedActiveLead])
+
+  // Persist draft while visit is active
+  useEffect(() => {
+    if (viewMode !== 'active' || !currentLeadId) return
+    upsertDraft(String(currentLeadId), {
+      visitSessionId: activeSession?.id,
+      checklistItems,
+      keyDetails,
+      autoFilledFields,
+      exceptions,
+      visitSummary,
+    })
+  }, [viewMode, currentLeadId, activeSession?.id, checklistItems, keyDetails, autoFilledFields, exceptions, visitSummary, upsertDraft])
 
   // Keep workspace-backed fields in Key Details synced while the Visit screen is active.
   useEffect(() => {
@@ -437,17 +484,33 @@ export const VisitApp: React.FC = () => {
         setViewMode('active')
         // Update visit store with active session
         setActiveSessionInStore(sessionToUse, lead)
-        // Start background transcription session
-        backgroundTranscriptionProcessor.startSession(
-          String(lead.id),
-          sessionToUse.id.toString()
-        )
-        // Reset state for new visit
-        setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
-        setKeyDetails({})
-        setAutoFilledFields([])
-        setExceptions([])
-        setVisitSummary(undefined)
+
+        // Start background transcription session ONLY if we are not already tracking this same session.
+        // Starting a new session clears segments, which caused "transcript dies on navigation".
+        const activeTranscription = useTranscriptionStore.getState().getActiveSession()
+        const isSameTranscription =
+          activeTranscription &&
+          activeTranscription.leadId === String(lead.id) &&
+          activeTranscription.sessionId === sessionToUse.id.toString()
+        if (!isSameTranscription) {
+          backgroundTranscriptionProcessor.startSession(String(lead.id), sessionToUse.id.toString())
+        }
+
+        // Hydrate from persisted draft if available; otherwise reset for a fresh visit.
+        const draft = useVisitDraftStore.getState().getDraft(String(lead.id))
+        if (draft) {
+          setChecklistItems(draft.checklistItems?.length ? draft.checklistItems : DEFAULT_CHECKLIST_ITEMS)
+          setKeyDetails(draft.keyDetails || {})
+          setAutoFilledFields(draft.autoFilledFields || [])
+          setExceptions(draft.exceptions || [])
+          setVisitSummary(draft.visitSummary)
+        } else {
+          setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
+          setKeyDetails({})
+          setAutoFilledFields([])
+          setExceptions([])
+          setVisitSummary(undefined)
+        }
       }
     } catch (error) {
       console.error('Failed to start visit:', error)
@@ -694,6 +757,8 @@ export const VisitApp: React.FC = () => {
       setActiveSession(null)
       // Clear transcription store
       useTranscriptionStore.getState().clearSession()
+      // Clear draft so a new visit starts clean
+      if (currentLeadId) clearDraft(String(currentLeadId))
       // Reset local state
       setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
       setKeyDetails({})

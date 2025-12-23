@@ -18,6 +18,21 @@ import { rockyService } from '../services/rocky.service';
 
 const router = Router();
 
+function pickText(body: any): { text: string; usedKey: string | null } {
+  const candidates: Array<[string, unknown]> = [
+    ['transcript', body?.transcript],
+    ['text', body?.text],
+    ['notes', body?.notes],
+    ['naturalNotes', body?.naturalNotes],
+  ];
+  for (const [key, value] of candidates) {
+    if (typeof value === 'string' && value.trim()) {
+      return { text: value, usedKey: key };
+    }
+  }
+  return { text: '', usedKey: null };
+}
+
 /**
  * POST /api/rocky/run - Run Rocky processing on natural notes
  * 
@@ -26,16 +41,15 @@ const router = Router();
  */
 router.post('/run', async (req: Request, res: Response) => {
   try {
-    const { leadId, visitId, sessionId, transcript, naturalNotes } = req.body;
+    const { leadId, visitId, sessionId } = req.body;
     
     let textToProcess = '';
     let processingSessionId = sessionId;
     
-    // If transcript/naturalNotes provided directly, use it
-    if (transcript) {
-      textToProcess = transcript;
-    } else if (naturalNotes) {
-      textToProcess = naturalNotes;
+    // If transcript/text/notes/naturalNotes provided directly, use it
+    const picked = pickText(req.body);
+    if (picked.usedKey) {
+      textToProcess = picked.text;
     } else if (sessionId) {
       // Fetch from database if sessionId provided
       const sessions = await db
@@ -70,7 +84,7 @@ router.post('/run', async (req: Request, res: Response) => {
     } else {
       const response: ApiResponse<null> = {
         success: false,
-        error: 'Either sessionId, transcript, or naturalNotes must be provided',
+        error: 'Missing transcript text. Provide one of: transcript, text, notes, naturalNotes, or sessionId',
       };
       return res.status(400).json(response);
     }
@@ -94,6 +108,39 @@ router.post('/run', async (req: Request, res: Response) => {
     };
     
     const rockyResult = await rockyService.processNaturalNotes(rockyRequest);
+
+    // Minimal observability + stable debug/meta
+    const receivedKeys = req.body && typeof req.body === 'object' ? Object.keys(req.body) : [];
+    const facts = rockyResult?.rockyFacts?.facts ?? {};
+    const matchedRules: string[] = [];
+    const unmatchedRules: string[] = [];
+    const ruleChecks: Array<[string, boolean]> = [
+      ['measurements.pipeSize', Boolean((facts as any)?.measurements?.pipeSize)],
+      ['measurements.radiatorCount', typeof (facts as any)?.measurements?.radiatorCount === 'number'],
+      ['measurements.cylinderCapacity', typeof (facts as any)?.measurements?.cylinderCapacity === 'number'],
+      ['measurements.mainFuseRating', typeof (facts as any)?.measurements?.mainFuseRating === 'number'],
+      ['materials.any', Array.isArray((facts as any)?.materials) && (facts as any).materials.length > 0],
+      ['hazards.any', Array.isArray((facts as any)?.hazards) && (facts as any).hazards.length > 0],
+      ['property.any', (facts as any)?.property && typeof (facts as any).property === 'object' && Object.keys((facts as any).property).length > 0],
+      ['customer.any', (facts as any)?.customer && typeof (facts as any).customer === 'object' && Object.keys((facts as any).customer).length > 0],
+      ['existingSystem.any', (facts as any)?.existingSystem && typeof (facts as any).existingSystem === 'object' && Object.keys((facts as any).existingSystem).length > 0],
+    ];
+    for (const [rule, ok] of ruleChecks) {
+      (ok ? matchedRules : unmatchedRules).push(rule);
+    }
+    (rockyResult as any).meta = {
+      chars: textToProcess.length,
+      ruleMatches: matchedRules.length,
+      receivedKeys,
+      usedTextKey: picked.usedKey,
+    };
+    (rockyResult as any).debug = {
+      matchedRules,
+      unmatchedRules,
+      notes: [
+        picked.usedKey ? `Using request body field: ${picked.usedKey}` : 'Using transcript text from sessionId lookup',
+      ],
+    };
     
     const response: ApiResponse<RockyProcessResult> = {
       success: rockyResult.success,

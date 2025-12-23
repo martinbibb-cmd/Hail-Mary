@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  # Local dev Postgres (host-accessible on localhost:5432)
+  # This is intentionally separate from docker-compose.yml (production-oriented).
+  hailmary-postgres:
+    image: postgres:17-alpine
+    container_name: hailmary-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hailmary
+      POSTGRES_USER: postgres
+      # Trust auth for local dev only (no password)
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data_dev:
+    name: hailmary-postgres-data-dev
+

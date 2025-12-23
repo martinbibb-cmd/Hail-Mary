@@ -20,6 +20,7 @@ import { voiceRecordingService } from './voiceRecordingService';
 import { useTranscriptionStore, type TranscriptSegment } from '../stores/transcriptionStore';
 import { useLeadStore } from '../stores/leadStore';
 import { useVisitStore } from '../stores/visitStore';
+import { useVisitCaptureStore } from '../stores/visitCaptureStore';
 import { extractStructuredData, type ExtractedData } from './enhancedDataExtractor';
 import { correctTranscript } from '../utils/transcriptCorrector';
 import type { Lead } from '@hail-mary/shared';
@@ -118,6 +119,13 @@ class BackgroundTranscriptionProcessor {
       ? `${activeSession.accumulatedTranscript} ${correctedText}`
       : correctedText;
     transcriptionStore.updateAccumulatedTranscript(newAccumulated);
+
+    // Update global visit capture state (key details/checklist/exceptions) so it survives navigation
+    try {
+      useVisitCaptureStore.getState().ingestAccumulatedTranscript(activeSession.leadId, newAccumulated);
+    } catch (err) {
+      console.warn('[BackgroundTranscriptionProcessor] Failed to update visit capture store:', err);
+    }
 
     // Add to processing queue
     this.processingQueue.push(segment);

@@ -12,7 +12,6 @@ import {
   KeyDetailsForm,
   VisitSummaryCard,
   type TranscriptSegment,
-  type ChecklistItem,
   type KeyDetails
 } from './components'
 import { extractFromTranscript, getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
@@ -25,6 +24,7 @@ import { useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext'
 import { voiceRecordingService, getFileExtensionFromMimeType } from '../../../services/voiceRecordingService'
 import { backgroundTranscriptionProcessor } from '../../../services/backgroundTranscriptionProcessor'
 import { useTranscriptionStore } from '../../../stores/transcriptionStore'
+import { useVisitCaptureStore } from '../../../stores/visitCaptureStore'
 import { extractStructuredData } from '../../../services/enhancedDataExtractor'
 import { applyExtractedFactsToWorkspace } from '../../../services/applyExtractedFactsToWorkspace'
 import { useExtractedData } from '../../../hooks/useExtractedData'
@@ -74,20 +74,6 @@ const api = {
 
 type ViewMode = 'list' | 'active'
 
-// Default checklist items (from checklist-config.json)
-const DEFAULT_CHECKLIST_ITEMS: ChecklistItem[] = [
-  { id: 'boiler_replacement', label: 'Boiler Replacement', checked: false },
-  { id: 'system_flush', label: 'System Flush/Cleanse', checked: false },
-  { id: 'pipework_modification', label: 'Pipework Modifications', checked: false },
-  { id: 'radiator_upgrade', label: 'Radiator Upgrade/Addition', checked: false },
-  { id: 'cylinder_replacement', label: 'Hot Water Cylinder Replacement', checked: false },
-  { id: 'controls_upgrade', label: 'Controls Upgrade', checked: false },
-  { id: 'gas_work', label: 'Gas Supply Work', checked: false },
-  { id: 'electrical_work', label: 'Electrical Work', checked: false },
-  { id: 'flue_modification', label: 'Flue Modifications', checked: false },
-  { id: 'filter_installation', label: 'Magnetic Filter Installation', checked: false },
-]
-
 export const VisitApp: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [activeSession, setActiveSession] = useState<VisitSession | null>(null)
@@ -113,11 +99,18 @@ export const VisitApp: React.FC = () => {
   const clearSessionInStore = useVisitStore((state) => state.clearSession)
   const globalEndVisit = useVisitStore((state) => state.endVisit)
   
-  // New state for 3-panel layout
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST_ITEMS)
-  const [keyDetails, setKeyDetails] = useState<KeyDetails>({})
-  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([])
-  const [exceptions, setExceptions] = useState<string[]>([])
+  // Structured visit state (global; survives navigation while recording)
+  const checklistItems = useVisitCaptureStore((state) => state.checklistItems)
+  const keyDetails = useVisitCaptureStore((state) => state.keyDetails)
+  const autoFilledFields = useVisitCaptureStore((state) => state.autoFilledFields)
+  const exceptions = useVisitCaptureStore((state) => state.exceptions)
+  const resetCaptureForSession = useVisitCaptureStore((state) => state.resetForSession)
+  const clearCapture = useVisitCaptureStore((state) => state.clear)
+  const toggleChecklistItem = useVisitCaptureStore((state) => state.toggleChecklistItem)
+  const addAutoFilledFieldsInCapture = useVisitCaptureStore((state) => state.addAutoFilledFields)
+  const setKeyDetailsInCapture = useVisitCaptureStore((state) => state.setKeyDetails)
+  const setExceptionsInCapture = useVisitCaptureStore((state) => state.setExceptions)
+  const removeAutoFilledFieldInCapture = useVisitCaptureStore((state) => state.removeAutoFilledField)
   
   // Visit summary state
   const [visitSummary, setVisitSummary] = useState<string | undefined>(undefined)
@@ -172,15 +165,15 @@ export const VisitApp: React.FC = () => {
         ? (wsType === 'flat' || wsType === 'bungalow' || wsType === 'other' ? wsType : 'house')
         : undefined
 
-      setKeyDetails((prev) => ({
-        ...prev,
+      setKeyDetailsInCapture({
+        ...keyDetails,
         ...(mappedType ? { propertyType: mappedType } : null),
         ...(wsSchedule ? { occupancy: wsSchedule } : null),
-      }))
+      })
     } catch {
       // ignore
     }
-  }, [currentLeadId])
+  }, [currentLeadId, keyDetails, setKeyDetailsInCapture])
 
   // Keep local ref synced with global transcription store (used by Whisper flow + manual save payloads)
   useEffect(() => {
@@ -203,13 +196,10 @@ export const VisitApp: React.FC = () => {
       setActiveSession(null)
       clearSessionInStore()
       backgroundTranscriptionProcessor.stopSession()
-      setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
-      setKeyDetails({})
-      setAutoFilledFields([])
-      setExceptions([])
+      clearCapture()
       setVisitSummary(undefined)
     }
-  }, [currentLeadId, clearSessionInStore])
+  }, [currentLeadId, clearSessionInStore, clearCapture])
 
   // Keep workspace-backed fields in Key Details synced while the Visit screen is active.
   useEffect(() => {
@@ -265,9 +255,9 @@ export const VisitApp: React.FC = () => {
     }
 
     if (Object.keys(next).length > 0) {
-      setKeyDetails((prev) => ({ ...prev, ...next }))
+      setKeyDetailsInCapture({ ...keyDetails, ...next })
     }
-  }, [currentLeadId, extracted.isAvailable, extracted.property, extracted.occupancy, extracted.boiler, extracted.issues, keyDetails])
+  }, [currentLeadId, extracted.isAvailable, extracted.property, extracted.occupancy, extracted.boiler, extracted.issues, keyDetails, setKeyDetailsInCapture])
 
   // Helper function to generate summary (used to avoid circular dependency)
   const generateSummaryForSession = async (sessionId: number) => {
@@ -285,7 +275,7 @@ export const VisitApp: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to generate summary:', error)
-      setExceptions(prev => [...prev, 'Failed to generate summary'])
+      setExceptionsInCapture([...new Set([...exceptions, 'Failed to generate summary'])])
     } finally {
       setIsGeneratingSummary(false)
     }
@@ -315,12 +305,12 @@ export const VisitApp: React.FC = () => {
 
       // Track auto-filled fields
       if (captureResult.autoFilledFields.length > 0) {
-        setAutoFilledFields(prev => [...new Set([...prev, ...captureResult.autoFilledFields])])
         trackAutoFilledFields(currentLeadId, captureResult.autoFilledFields)
+        addAutoFilledFieldsInCapture(captureResult.autoFilledFields)
       }
 
       // Update local state (Key Details now synced with Lead store)
-      setKeyDetails(captureResult.extractedFields)
+      setKeyDetailsInCapture(captureResult.extractedFields as any)
     } else {
       // Fallback: no active lead, apply corrections manually
       const correction = correctTranscript(newTranscript)
@@ -345,27 +335,15 @@ export const VisitApp: React.FC = () => {
 
     // Update checklist
     if (result.checklistUpdates.length > 0) {
-      setChecklistItems(prev => {
-        const updated = [...prev]
-        for (const update of result.checklistUpdates) {
-          const index = updated.findIndex(item => item.id === update.id)
-          if (index !== -1) {
-            updated[index] = {
-              ...updated[index],
-              checked: update.checked,
-              note: update.note,
-              autoDetected: true,
-            }
-          }
-        }
-        return updated
-      })
+      for (const update of result.checklistUpdates) {
+        toggleChecklistItem(update.id, update.checked)
+      }
     }
 
     // Update exceptions/flags
     if (result.flags.length > 0) {
       const newExceptions = result.flags.map(flag => `${flag.type.toUpperCase()}: ${flag.message}`)
-      setExceptions(prev => [...new Set([...prev, ...newExceptions])])
+      setExceptionsInCapture([...new Set([...exceptions, ...newExceptions])])
     }
 
     // Trigger save after processing recording
@@ -395,7 +373,7 @@ export const VisitApp: React.FC = () => {
         }
       }
     }
-  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary])
+  }, [keyDetails, checklistItems, currentLeadId, markDirty, enqueueSave, isGeneratingSummary, activeSession, visitSummary, toggleChecklistItem, exceptions, setExceptionsInCapture, setKeyDetailsInCapture, addAutoFilledFieldsInCapture])
 
   // Sync initial recording state from service on mount.
   // Transcript consumption runs globally (BackgroundTranscriptionProcessor) so it keeps working across navigation.
@@ -442,11 +420,9 @@ export const VisitApp: React.FC = () => {
           String(lead.id),
           sessionToUse.id.toString()
         )
+        // Reset structured capture state for this session
+        resetCaptureForSession(String(lead.id), sessionToUse.id.toString())
         // Reset state for new visit
-        setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
-        setKeyDetails({})
-        setAutoFilledFields([])
-        setExceptions([])
         setVisitSummary(undefined)
       }
     } catch (error) {
@@ -466,9 +442,11 @@ export const VisitApp: React.FC = () => {
       startRecordingInStore('browser')
     } catch (error) {
       console.error('Failed to start speech recognition:', error)
-      setExceptions(prev => [...prev, `Failed to start recording: ${(error as Error).message}`])
+      setExceptionsInCapture([
+        ...new Set([...exceptions, `Failed to start recording: ${(error as Error).message}`]),
+      ])
     }
-  }, [isListening, sttSupported, startRecordingInStore])
+  }, [isListening, sttSupported, startRecordingInStore, exceptions, setExceptionsInCapture])
 
   const stopListening = useCallback(() => {
     voiceRecordingService.stopBrowserRecording()
@@ -498,9 +476,9 @@ export const VisitApp: React.FC = () => {
       startRecordingInStore('whisper')
     } catch (error) {
       console.error('Failed to start audio recording:', error)
-      setExceptions(prev => [...prev, `Microphone error: ${(error as Error).message}`])
+      setExceptionsInCapture([...new Set([...exceptions, `Microphone error: ${(error as Error).message}`])])
     }
-  }, [startRecordingInStore])
+  }, [startRecordingInStore, exceptions, setExceptionsInCapture])
 
   const stopRecording = useCallback(async () => {
     setIsRecording(false)
@@ -578,15 +556,29 @@ export const VisitApp: React.FC = () => {
           }
         })
       } else {
-        setExceptions(prev => [...prev, `Transcription error: ${result.error || 'Unknown error'}`])
+        setExceptionsInCapture([
+          ...new Set([...exceptions, `Transcription error: ${result.error || 'Unknown error'}`]),
+        ])
       }
     } catch (error) {
       console.error('Failed to transcribe audio:', error)
-      setExceptions(prev => [...prev, `Transcription error: ${(error as Error).message}`])
+      setExceptionsInCapture([
+        ...new Set([...exceptions, `Transcription error: ${(error as Error).message}`]),
+      ])
     } finally {
       setIsTranscribing(false)
     }
-  }, [currentLeadId, enqueueSave, keyDetails, checklistItems, processWithRocky, stopRecordingInStore, incrementTranscriptCount])
+  }, [
+    currentLeadId,
+    enqueueSave,
+    keyDetails,
+    checklistItems,
+    processWithRocky,
+    stopRecordingInStore,
+    incrementTranscriptCount,
+    exceptions,
+    setExceptionsInCapture,
+  ])
 
   const handleManualSave = useCallback(() => {
     if (!currentLeadId) return
@@ -612,8 +604,8 @@ export const VisitApp: React.FC = () => {
   }, [currentLeadId, exportLeadAsJson])
 
   const handleKeyDetailsChange = useCallback((newDetails: KeyDetails) => {
-    // Update local state
-    setKeyDetails(newDetails)
+    // Update global structured state
+    setKeyDetailsInCapture(newDetails)
 
     // Write-through for fields backed by Property/Occupancy workspace tables.
     // This prevents Key Details from becoming a parallel data model.
@@ -651,14 +643,14 @@ export const VisitApp: React.FC = () => {
         
         if (hasChanged) {
           clearAutoFilledField(currentLeadId, field)
-          setAutoFilledFields(prev => prev.filter(f => f !== field))
+          removeAutoFilledFieldInCapture(field)
         }
       })
 
       // Mark lead as dirty to trigger save
       markDirty(currentLeadId)
     }
-  }, [currentLeadId, keyDetails, autoFilledFields, markDirty])
+  }, [currentLeadId, keyDetails, autoFilledFields, markDirty, removeAutoFilledFieldInCapture, setKeyDetailsInCapture])
 
   const generateSummary = useCallback(async () => {
     if (!activeSession) return
@@ -694,11 +686,9 @@ export const VisitApp: React.FC = () => {
       setActiveSession(null)
       // Clear transcription store
       useTranscriptionStore.getState().clearSession()
+      // Clear structured capture state
+      clearCapture()
       // Reset local state
-      setChecklistItems(DEFAULT_CHECKLIST_ITEMS)
-      setKeyDetails({})
-      setAutoFilledFields([])
-      setExceptions([])
       setVisitSummary(undefined)
       accumulatedTranscriptRef.current = ''
     } else {
@@ -792,9 +782,7 @@ export const VisitApp: React.FC = () => {
             <InstallChecklist 
               items={checklistItems}
               onItemToggle={(id, checked) => {
-                setChecklistItems(prev => 
-                  prev.map(item => item.id === id ? { ...item, checked } : item)
-                )
+                toggleChecklistItem(id, checked)
               }}
               exceptions={exceptions}
             />

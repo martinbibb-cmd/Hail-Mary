@@ -2,54 +2,50 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useLeadStore } from '../../../stores/leadStore'
 import './PhotosApp.css'
 
+interface PhotoLocation {
+  latitude: number
+  longitude: number
+  accuracy: number
+  altitude: number | null
+  altitudeAccuracy: number | null
+}
+
 /**
  * Calculate haversine distance between two points on Earth
  * @returns Distance in meters
  */
-function calculateHaversineDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371000 // Earth's radius in meters
-  const toRad = (deg: number) => (deg * Math.PI) / 180
-
-  const dLat = toRad(lat2 - lat1)
-  const dLon = toRad(lon2 - lon1)
-  
+function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3 // Radius of the earth in meters
+  const dLat = deg2rad(lat2 - lat1)
+  const dLon = deg2rad(lon2 - lon1)
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2)
-  
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  
-  return R * c
+  return R * c // Distance in meters
+}
+
+function deg2rad(deg: number): number {
+  return deg * (Math.PI / 180)
 }
 
 /**
  * Calculate 3D distance (includes altitude difference)
- * @returns Distance in meters
  */
 function calculate3DDistance(
-  lat1: number,
-  lon1: number,
-  alt1: number | null | undefined,
-  lat2: number,
-  lon2: number,
-  alt2: number | null | undefined
+  horizontalDistance: number,
+  alt1: number | null,
+  alt2: number | null
 ): { horizontal: number; vertical: number | null; total3D: number | null } {
-  const horizontal = calculateHaversineDistance(lat1, lon1, lat2, lon2)
-  
   // If both altitudes are available, compute 3D distance
   if (alt1 != null && alt2 != null) {
     const vertical = Math.abs(alt2 - alt1)
-    const total3D = Math.sqrt(horizontal * horizontal + vertical * vertical)
-    return { horizontal, vertical, total3D }
+    const total3D = Math.sqrt(horizontalDistance * horizontalDistance + vertical * vertical)
+    return { horizontal: horizontalDistance, vertical, total3D }
   }
   
-  return { horizontal, vertical: null, total3D: null }
+  return { horizontal: horizontalDistance, vertical: null, total3D: null }
 }
 
 /**
@@ -63,16 +59,6 @@ function formatDistance(meters: number): string {
   } else {
     return `${(meters / 1000).toFixed(2)}km`
   }
-}
-
-interface PhotoLocation {
-  latitude: number
-  longitude: number
-  accuracy: number
-  // Altitude in meters (nullable - not always available)
-  altitude?: number | null
-  // Altitude accuracy in meters (nullable)
-  altitudeAccuracy?: number | null
 }
 
 interface PhotoMetadata {
@@ -117,7 +103,7 @@ export const PhotosApp: React.FC = () => {
   const currentLeadId = useLeadStore((state: LeadStoreState) => state.currentLeadId)
 
   // Calculate distance from previous photo (per visit/lead)
-  const distanceFromPrevious = useMemo(() => {
+  const distanceInfo = useMemo(() => {
     if (!selectedPhoto?.metadata?.location) return null
     
     // Find the previous photo in the list (photos are sorted newest first)
@@ -131,12 +117,16 @@ export const PhotosApp: React.FC = () => {
     const currentLoc = selectedPhoto.metadata.location
     const prevLoc = previousPhoto.metadata.location
     
-    return calculate3DDistance(
+    const horizontalDistance = getDistanceFromLatLonInMeters(
       currentLoc.latitude,
       currentLoc.longitude,
-      currentLoc.altitude,
       prevLoc.latitude,
-      prevLoc.longitude,
+      prevLoc.longitude
+    )
+    
+    return calculate3DDistance(
+      horizontalDistance,
+      currentLoc.altitude,
       prevLoc.altitude
     )
   }, [selectedPhoto, photos])
@@ -281,7 +271,6 @@ export const PhotosApp: React.FC = () => {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
-          // Altitude data (nullable - not always available)
           altitude: position.coords.altitude,
           altitudeAccuracy: position.coords.altitudeAccuracy,
         }
@@ -489,10 +478,10 @@ export const PhotosApp: React.FC = () => {
                 </p>
                 
                 {/* Altitude display */}
-                {selectedPhoto.metadata.location.altitude != null && (
+                {selectedPhoto.metadata.location.altitude !== null && (
                   <p className="photo-altitude">
                     ⛰️ Altitude: {Math.round(selectedPhoto.metadata.location.altitude)}m
-                    {selectedPhoto.metadata.location.altitudeAccuracy != null && (
+                    {selectedPhoto.metadata.location.altitudeAccuracy !== null && (
                       <span className="photo-altitude-accuracy">
                         {' '}(±{Math.round(selectedPhoto.metadata.location.altitudeAccuracy)}m)
                       </span>
@@ -501,15 +490,15 @@ export const PhotosApp: React.FC = () => {
                 )}
                 
                 {/* Distance from previous photo */}
-                {distanceFromPrevious && (
+                {distanceInfo && (
                   <div className="photo-distance">
                     <p className="photo-distance-text">
-                      📏 Distance from previous: {formatDistance(distanceFromPrevious.horizontal)}
+                      📏 Distance from previous: {formatDistance(distanceInfo.horizontal)}
                     </p>
-                    {distanceFromPrevious.vertical != null && distanceFromPrevious.total3D != null && (
+                    {distanceInfo.vertical != null && distanceInfo.total3D != null && (
                       <p className="photo-distance-3d">
-                        ↕️ Vertical: {formatDistance(distanceFromPrevious.vertical)} • 
-                        3D: {formatDistance(distanceFromPrevious.total3D)}
+                        ↕️ Vertical: {formatDistance(distanceInfo.vertical)} • 
+                        3D: {formatDistance(distanceInfo.total3D)}
                       </p>
                     )}
                   </div>

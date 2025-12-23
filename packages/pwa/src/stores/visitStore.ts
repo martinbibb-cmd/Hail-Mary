@@ -10,6 +10,8 @@
 
 import { create } from 'zustand';
 import type { VisitSession, Lead } from '@hail-mary/shared';
+import { backgroundTranscriptionProcessor } from '../services/backgroundTranscriptionProcessor';
+import { useTranscriptionStore } from './transcriptionStore';
 
 export type RecordingProvider = 'browser' | 'whisper';
 
@@ -43,7 +45,8 @@ interface VisitStore {
   /**
    * End the active visit session.
    * This is a global action that can be called from any page.
-   * It handles the API call to mark the visit as completed.
+   * It handles the API call to mark the visit as completed,
+   * stops background transcription, and clears all session state.
    */
   endVisit: () => Promise<EndVisitResult>;
   
@@ -135,6 +138,12 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Failed to end visit (HTTP ${response.status})`);
       }
+
+      // Stop background transcription session
+      backgroundTranscriptionProcessor.stopSession();
+      
+      // Clear transcription store
+      useTranscriptionStore.getState().clearSession();
 
       // Success - clear the session
       set({

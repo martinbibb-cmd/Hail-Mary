@@ -27,8 +27,8 @@ import { backgroundTranscriptionProcessor } from '../../../services/backgroundTr
 import { useTranscriptionStore } from '../../../stores/transcriptionStore'
 import { extractStructuredData } from '../../../services/enhancedDataExtractor'
 import { applyExtractedFactsToWorkspace } from '../../../services/applyExtractedFactsToWorkspace'
-import { useExtractedData } from '../../../hooks/useExtractedData'
 import { useAuth } from '../../../auth'
+import { useVisitDerivedStore } from '../../../stores/visitDerivedStore'
 import './VisitApp.css'
 
 /**
@@ -140,7 +140,9 @@ export const VisitApp: React.FC = () => {
       timestamp: s.timestamp instanceof Date ? s.timestamp : new Date(s.timestamp as any),
     })) as TranscriptSegment[]
   }, [transcriptionSession?.segments])
-  const extracted = useExtractedData(currentLeadId)
+  const derived = useVisitDerivedStore((state) =>
+    currentLeadId ? state.byLeadId[currentLeadId] : undefined
+  )
   
   // Audio recording state for Whisper mode
   const [isRecording, setIsRecording] = useState(false)
@@ -223,51 +225,52 @@ export const VisitApp: React.FC = () => {
   // Keep Key Details in sync with extracted + workspace-backed facts.
   // Non-destructive: only fill blanks so user edits don't get overwritten.
   useEffect(() => {
-    if (!currentLeadId || !extracted.isAvailable) return
+    if (!currentLeadId) return
 
     const next: Partial<KeyDetails> = {}
 
     // Property type
-    if (!keyDetails.propertyType && extracted.property.propertyType) {
-      const pt = extracted.property.propertyType
+    if (!keyDetails.propertyType && derived?.keyDetails.propertyType) {
+      const pt = derived.keyDetails.propertyType
       next.propertyType = (pt === 'flat' || pt === 'bungalow') ? pt : 'house'
     }
 
     // Bedrooms
-    if ((keyDetails.bedrooms === undefined || keyDetails.bedrooms === null) && typeof extracted.property.bedrooms === 'number') {
-      next.bedrooms = extracted.property.bedrooms
+    if ((keyDetails.bedrooms === undefined || keyDetails.bedrooms === null) && typeof derived?.keyDetails.bedrooms === 'number') {
+      next.bedrooms = derived.keyDetails.bedrooms
     }
 
     // Occupancy summary (best-effort)
     if (!keyDetails.occupancy) {
-      next.occupancy = extracted.occupancy.schedule
-        || (typeof extracted.occupancy.homeAllDay === 'boolean'
-          ? (extracted.occupancy.homeAllDay ? 'Home all day' : 'Out 9-5')
-          : undefined)
+      next.occupancy = derived?.keyDetails.occupancy
     }
 
     // Boiler age
-    if ((keyDetails.boilerAge === undefined || keyDetails.boilerAge === null) && typeof extracted.boiler.boilerAge === 'number') {
-      next.boilerAge = extracted.boiler.boilerAge
+    if ((keyDetails.boilerAge === undefined || keyDetails.boilerAge === null) && typeof derived?.keyDetails.boilerAge === 'number') {
+      next.boilerAge = derived.keyDetails.boilerAge
     }
 
     // Current system (type + make)
     if (!keyDetails.currentSystem) {
-      const type = extracted.boiler.currentBoilerType
-      const make = extracted.boiler.currentBoilerMake
-      const label = [make, type].filter(Boolean).join(' ')
+      const label = derived?.keyDetails.currentSystem
       if (label) next.currentSystem = label
     }
 
     // Issues
-    if ((!keyDetails.issues || keyDetails.issues.length === 0) && extracted.issues.length > 0) {
-      next.issues = extracted.issues
+    if ((!keyDetails.issues || keyDetails.issues.length === 0) && Array.isArray(derived?.keyDetails.issues) && derived.keyDetails.issues.length > 0) {
+      next.issues = derived.keyDetails.issues
     }
 
     if (Object.keys(next).length > 0) {
       setKeyDetails((prev) => ({ ...prev, ...next }))
     }
-  }, [currentLeadId, extracted.isAvailable, extracted.property, extracted.occupancy, extracted.boiler, extracted.issues, keyDetails])
+  }, [currentLeadId, derived, keyDetails])
+
+  // Keep auto-filled field indicators synced from global derived state (survives navigation).
+  useEffect(() => {
+    if (!derived?.autoFilledFields) return
+    setAutoFilledFields(derived.autoFilledFields)
+  }, [derived?.autoFilledFields])
 
   // Helper function to generate summary (used to avoid circular dependency)
   const generateSummaryForSession = async (sessionId: number) => {
@@ -652,6 +655,18 @@ export const VisitApp: React.FC = () => {
         if (hasChanged) {
           clearAutoFilledField(currentLeadId, field)
           setAutoFilledFields(prev => prev.filter(f => f !== field))
+
+          // Mark as manual so background extraction doesn't re-apply auto badges.
+          try {
+            const manualFieldsKey = `lead-${currentLeadId}-manual-fields`
+            const existingManual = localStorage.getItem(manualFieldsKey)
+            const manualFields: string[] = existingManual ? JSON.parse(existingManual) : []
+            if (Array.isArray(manualFields) && !manualFields.includes(field)) {
+              localStorage.setItem(manualFieldsKey, JSON.stringify([...manualFields, field]))
+            }
+          } catch {
+            // ignore
+          }
         }
       })
 

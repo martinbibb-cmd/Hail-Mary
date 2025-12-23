@@ -24,6 +24,8 @@ import { extractStructuredData, type ExtractedData } from './enhancedDataExtract
 import { correctTranscript } from '../utils/transcriptCorrector';
 import type { Lead } from '@hail-mary/shared';
 import { applyExtractedFactsToWorkspace } from './applyExtractedFactsToWorkspace';
+import { useVisitDerivedStore } from '../stores/visitDerivedStore';
+import type { KeyDetails } from '../os/apps/visit/components/KeyDetailsForm';
 
 class BackgroundTranscriptionProcessor {
   private static instance: BackgroundTranscriptionProcessor | undefined;
@@ -185,6 +187,9 @@ class BackgroundTranscriptionProcessor {
       // Non-destructive: fills blanks only.
       await applyExtractedFactsToWorkspace(activeSession.leadId, extractedData);
 
+      // Publish derived visit UI state (Key Details + auto-filled fields) globally so it survives navigation.
+      this.publishVisitDerivedState(activeSession.leadId, extractedData);
+
       // Mark segment as processed
       transcriptionStore.markSegmentProcessed(segment.id);
 
@@ -195,6 +200,55 @@ class BackgroundTranscriptionProcessor {
     } catch (error) {
       console.error('[BackgroundTranscriptionProcessor] Error processing segment:', error);
     }
+  }
+
+  private getManualFields(leadId: string): Set<string> {
+    try {
+      const key = `lead-${leadId}-manual-fields`;
+      const stored = localStorage.getItem(key);
+      if (!stored) return new Set();
+      const parsed = JSON.parse(stored);
+      return new Set(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  private publishVisitDerivedState(leadId: string, data: ExtractedData): void {
+    if (!leadId) return;
+
+    const keyDetails: KeyDetails = {};
+
+    // Property
+    if (data.property.propertyType) keyDetails.propertyType = data.property.propertyType;
+    if (typeof (data.property as any).bedrooms === 'number') keyDetails.bedrooms = (data.property as any).bedrooms;
+
+    // Occupancy
+    if (data.occupancy.schedule) keyDetails.occupancy = data.occupancy.schedule;
+
+    // Boiler / current system
+    const systemLabel = [data.boiler.currentBoilerMake, data.boiler.currentBoilerType].filter(Boolean).join(' ');
+    if (systemLabel) keyDetails.currentSystem = systemLabel;
+    if (typeof data.boiler.boilerAge === 'number') keyDetails.boilerAge = data.boiler.boilerAge;
+
+    // Issues
+    if (Array.isArray(data.issues) && data.issues.length > 0) keyDetails.issues = data.issues;
+
+    // Proposed system (best-effort)
+    if (Array.isArray((data.quotation as any).workRequired) && (data.quotation as any).workRequired.length > 0) {
+      keyDetails.proposedSystem = (data.quotation as any).workRequired.join(', ');
+    }
+
+    const manualFields = this.getManualFields(leadId);
+    const autoFilledFields = Object.entries(keyDetails)
+      .filter(([key, value]) => value !== undefined && value !== null && !manualFields.has(key))
+      .map(([key]) => key);
+
+    useVisitDerivedStore.getState().upsert(leadId, {
+      keyDetails,
+      autoFilledFields,
+      lastUpdated: new Date().toISOString(),
+    });
   }
 
   /**

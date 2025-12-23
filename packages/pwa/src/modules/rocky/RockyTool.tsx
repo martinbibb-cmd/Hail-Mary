@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import type { RockyProcessResult } from '@hail-mary/shared'
 import { aiService } from '../../services/ai.service'
+import { useAuth } from '../../auth'
 
 interface DebugInfo {
   requestUrl: string
@@ -26,6 +27,7 @@ export const RockyTool: React.FC = () => {
   const [showDebug, setShowDebug] = useState(false)
   const [smokeTestRunning, setSmokeTestRunning] = useState(false)
   const [smokeTestSuccess, setSmokeTestSuccess] = useState<string | null>(null)
+  const { logout } = useAuth()
 
   // Check Worker health on mount
   useEffect(() => {
@@ -68,6 +70,20 @@ export const RockyTool: React.FC = () => {
         responseBody: bodyPreview,
         timestamp: new Date(),
       })
+
+      // Auth expired: quietly drop back to AuthScreen
+      if (response.status === 401) {
+        await logout()
+        return
+      }
+
+      // Rate limited / already running: show calm inline message (no red panic)
+      if (response.status === 429) {
+        setWorkerStatus('available')
+        setLastError('RATE_LIMITED')
+        setError('Rocky is already running — please wait a moment')
+        return
+      }
       
       if (response.ok && data.success) {
         setWorkerStatus('available')
@@ -126,6 +142,20 @@ export const RockyTool: React.FC = () => {
         responseBody: bodyPreview,
         timestamp: new Date(),
       })
+
+      // Auth expired: quietly drop back to AuthScreen
+      if (response.status === 401) {
+        await logout()
+        return
+      }
+
+      // Rate limited / already running: show calm inline message (no red panic)
+      if (response.status === 429) {
+        setWorkerStatus('available')
+        setLastError('RATE_LIMITED')
+        setError('Rocky is already running — please wait a moment')
+        return
+      }
 
       if (data.success && data.data) {
         setResult(data.data)
@@ -250,8 +280,8 @@ ${basics.actions.map(a => `- ${a}`).join('\n')}
           <span>✓ Session cookies (credentials: include)</span>
           {lastError && (
             <>
-              <span style={{ color: '#d9534f' }}>Last Error:</span>
-              <span style={{ color: '#d9534f', fontSize: '11px' }}>{lastError}</span>
+              <span style={{ color: lastError === 'RATE_LIMITED' ? '#856404' : '#d9534f' }}>Last Error:</span>
+              <span style={{ color: lastError === 'RATE_LIMITED' ? '#856404' : '#d9534f', fontSize: '11px' }}>{lastError}</span>
             </>
           )}
         </div>
@@ -352,10 +382,10 @@ ${basics.actions.map(a => `- ${a}`).join('\n')}
         <div
           style={{
             padding: '12px',
-            backgroundColor: '#fee',
-            border: '1px solid #fcc',
+            backgroundColor: '#fff3cd',
+            border: '1px solid #ffeeba',
             borderRadius: '4px',
-            color: '#c00',
+            color: '#856404',
             marginBottom: '20px',
           }}
         >

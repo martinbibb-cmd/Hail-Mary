@@ -46,6 +46,15 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * Get a user-friendly error message based on the error code
  */
 function getFriendlyErrorMessage(code?: string, fallback?: string): string {
+  // Rate limiting: keep messaging calm and non-technical
+  if (
+    code === 'rate_limited' ||
+    code === 'RATE_LIMITED' ||
+    (typeof fallback === 'string' && /too many requests|rate limit/i.test(fallback))
+  ) {
+    return 'Please wait a moment and try again.';
+  }
+
   switch (code) {
     case 'invalid_credentials':
       return "We couldn't sign you in. Check your email and password and try again.";

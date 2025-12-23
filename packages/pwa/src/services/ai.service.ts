@@ -89,12 +89,27 @@ class AIService {
 
       const data = await response.json();
 
+      // Avoid global/"scary" failure states for expected conditions.
+      // - 429 is typically a transient concurrency/rate-limit condition.
+      // - 401 means session expired; UI should re-auth without drama.
+      if (response.status === 429) {
+        throw new Error('RATE_LIMITED');
+      }
+      if (response.status === 401) {
+        throw new Error('UNAUTHORIZED');
+      }
+
       if (!response.ok) {
         throw new Error(data.error || `Rocky request failed with status ${response.status}`);
       }
 
       return data;
     } catch (error) {
+      // Don't mark service as degraded for expected/handled states
+      if (error instanceof Error && (error.message === 'RATE_LIMITED' || error.message === 'UNAUTHORIZED')) {
+        throw error;
+      }
+
       // Mark as degraded on error
       this.healthStatus = {
         success: false,
@@ -122,6 +137,14 @@ class AIService {
 
       const data = await response.json();
       
+      // Avoid global/"scary" failure states for expected conditions.
+      if (response.status === 429) {
+        throw new Error('RATE_LIMITED');
+      }
+      if (response.status === 401) {
+        throw new Error('UNAUTHORIZED');
+      }
+
       if (!response.ok || !data.success) {
         throw new Error(data.error || `Sarah request failed with status ${response.status}`);
       }
@@ -135,6 +158,11 @@ class AIService {
 
       return data;
     } catch (error) {
+      // Don't mark service as degraded for expected/handled states
+      if (error instanceof Error && (error.message === 'RATE_LIMITED' || error.message === 'UNAUTHORIZED')) {
+        throw error;
+      }
+
       // Mark as degraded on error
       this.healthStatus = {
         success: false,

@@ -10,7 +10,7 @@
     "dev": "npm run dev --workspaces --if-present",
     "build:base": "npm run build -w packages/shared -w packages/surveyor-engine -w packages/vision-engine",
     "build:apps": "npm run build -w packages/api -w packages/assistant -w packages/pwa",
-    "build": "npm run build:base && npm run build:apps",
+    "build": "node scripts/build.mjs",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "api:dev": "npm run dev -w packages/api",

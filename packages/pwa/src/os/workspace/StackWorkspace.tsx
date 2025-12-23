@@ -36,6 +36,7 @@ import {
   OtherTradesApp,
 } from '../../modules'
 import { getAllDockApps } from '../dock/Dock'
+import { MEDIA_RECEIVER_ONLY } from '../../config/featureFlags'
 import './StackWorkspace.css'
 
 interface StackWorkspaceProps {
@@ -84,13 +85,25 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
     if (!activeWindow) return null
     
     // Map app IDs to components
+    const DisabledPhotosApp: React.FC = () => (
+      <div style={{ padding: 16 }}>
+        <h2>Photos capture disabled</h2>
+        <p>
+          Atlas is running in <strong>receiver-only</strong> mode.
+          Use <strong>Import media</strong> on the Visit screen to attach photos/audio/files.
+        </p>
+      </div>
+    )
+
+    const PhotosComponent = MEDIA_RECEIVER_ONLY ? DisabledPhotosApp : PhotosApp
+
     const appComponents: Record<string, React.ComponentType> = {
       profile: ProfileApp,
       visit: VisitApp,
       diary: DiaryApp,
       customers: CustomersApp,
       leads: LeadsApp,
-      photos: PhotosApp,
+      photos: PhotosComponent,
       survey: SurveyApp,
       quote: QuoteApp,
       about: AboutApp,
@@ -186,7 +199,9 @@ export const StackWorkspace: React.FC<StackWorkspaceProps> = ({ layout, children
                   </button>
                 </div>
                 <div className="mobile-menu-items">
-                  {getAllDockApps().filter(app => !app.isSurveyModule).map(app => (
+                  {getAllDockApps()
+                    .filter(app => !app.isSurveyModule && (!MEDIA_RECEIVER_ONLY || app.id !== 'photos'))
+                    .map(app => (
                     <button
                       key={app.id}
                       className="mobile-menu-item"

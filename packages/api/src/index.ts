@@ -30,6 +30,7 @@ import leadWorkspaceRouter from './routes/leadWorkspace';
 import appointmentsRouter from './routes/appointments';
 import visitSessionsRouter from './routes/visitSessions';
 import filesRouter from './routes/files';
+import assetsRouter from './routes/assets';
 import transcriptionRouter from './routes/transcription';
 import transcriptsRouter from './routes/transcripts';
 import depotNotesRouter from './routes/depotNotes';
@@ -217,6 +218,7 @@ app.use('/api/leads', systemRecommendationsRouter); // System recommendation rou
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
 app.use('/api/files', filesRouter);
+app.use('/api', assetsRouter); // media receiver (assets + visit_events)
 app.use('/api/transcription', transcriptionRouter);
 app.use('/api', transcriptsRouter); // Option A live transcript ingestion
 app.use('/api/depot-notes', depotNotesRouter);

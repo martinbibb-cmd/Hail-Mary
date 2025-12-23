@@ -9,6 +9,7 @@
 import {
   pgTable,
   serial,
+  uuid,
   text,
   varchar,
   integer,
@@ -16,6 +17,7 @@ import {
   numeric,
   boolean,
   jsonb,
+  bigint,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -402,6 +404,60 @@ export const files = pgTable("files", {
     .defaultNow()
     .notNull(),
 });
+
+// ============================================
+// Media Receiver: Assets + Visit Events
+// ============================================
+
+export const assets = pgTable("assets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  visitId: integer("visit_id")
+    .references(() => visitSessions.id)
+    .notNull(),
+  kind: varchar("kind", { length: 20 }).notNull(), // audio|image|text|model|other
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  ext: varchar("ext", { length: 20 }).notNull(),
+  bytes: bigint("bytes", { mode: "number" }),
+  sha256: text("sha256"),
+  storageProvider: text("storage_provider").notNull().default("local"),
+  storageKey: text("storage_key").notNull(),
+  originalFilename: text("original_filename"),
+  capturedAt: timestamp("captured_at", { withTimezone: true }),
+  deviceId: varchar("device_id", { length: 255 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadVisitCreatedAtIdx: index("assets_lead_visit_created_at_idx").on(t.leadId, t.visitId, t.createdAt),
+  visitCreatedAtIdx: index("assets_visit_created_at_idx").on(t.visitId, t.createdAt),
+  sha256Idx: index("assets_sha256_idx").on(t.sha256),
+}));
+
+export const visitEvents = pgTable("visit_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id)
+    .notNull(),
+  visitId: integer("visit_id")
+    .references(() => visitSessions.id)
+    .notNull(),
+  type: text("type").notNull(), // e.g. 'asset.imported'
+  seq: integer("seq"),
+  payload: jsonb("payload").notNull().default({}),
+  deviceId: varchar("device_id", { length: 255 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadVisitCreatedAtIdx: index("visit_events_lead_visit_created_at_idx").on(t.leadId, t.visitId, t.createdAt),
+  visitCreatedAtIdx: index("visit_events_visit_created_at_idx").on(t.visitId, t.createdAt),
+}));
 
 // ============================================
 // Survey Helper System - SystemSpecDraft

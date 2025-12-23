@@ -47,7 +47,6 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
     { id: 'quotes', name: 'Quotes', description: 'Estimates & proposals', icon: '💷', action: { kind: 'route', target: '/quotes' } },
     { id: 'files', name: 'Files', description: 'Project docs', icon: '📂', action: { kind: 'route', target: '/files' } },
     { id: 'profile', name: 'Profile', description: 'Account & preferences', icon: '👤', action: { kind: 'route', target: '/profile' } },
-    { id: 'settings', name: 'Settings', description: 'Wallpaper, focus, admin', icon: '⚙️', action: { kind: 'window', target: 'settings' } },
   ];
 
   const surveyShortcuts: Shortcut[] = [

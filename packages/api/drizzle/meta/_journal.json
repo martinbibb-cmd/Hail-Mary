@@ -57,6 +57,13 @@
       "when": 1766448000000,
       "tag": "0007_spine_properties_visits_timeline",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1766534400000,
+      "tag": "0008_spine_timeline_events_external_id",
+      "breakpoints": true
     }
   ]
 }

@@ -493,6 +493,8 @@ export const spineTimelineEvents = pgTable("spine_timeline_events", {
   visitId: uuid("visit_id")
     .references(() => spineVisits.id, { onDelete: "cascade" })
     .notNull(),
+  // Optional external id for idempotent ingest (e.g. companion resend)
+  externalId: text("external_id"),
   type: text("type").notNull(),
   ts: timestamp("ts", { withTimezone: true }).defaultNow().notNull(),
   payload: jsonb("payload").notNull().default({}),
@@ -501,6 +503,9 @@ export const spineTimelineEvents = pgTable("spine_timeline_events", {
 }, (t) => ({
   tsIdx: index("spine_timeline_events_ts_idx").on(t.ts),
   visitTsIdx: index("spine_timeline_events_visit_ts_idx").on(t.visitId, t.ts),
+  externalIdUnique: uniqueIndex("spine_timeline_events_external_id_uq")
+    .on(t.externalId)
+    .where(sql`${t.externalId} is not null`),
 }));
 
 // ============================================

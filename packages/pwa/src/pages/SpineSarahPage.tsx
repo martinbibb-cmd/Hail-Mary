@@ -16,7 +16,7 @@ type ChatMessage = {
   id: string
   role: 'user' | 'assistant'
   content: string
-  citations?: Array<{ docId: string; title: string; ref: string }>
+  citations?: Array<{ title: string; ref: string }>
   kbEnabled?: boolean
   ts: number
 }
@@ -87,7 +87,7 @@ export function SpineSarahPage() {
   }, [activeVisitId, feed])
 
   const disabledReason = useMemo(() => {
-    if (!activeVisitId) return 'No active visit. Start a visit first (Property → Start visit, or take a photo to auto-create).'
+    if (!activeVisitId) return 'Pick/Create a property/visit first.'
     return null
   }, [activeVisitId])
 
@@ -117,7 +117,7 @@ export function SpineSarahPage() {
       })
       const json = (await res.json()) as {
         reply?: string
-        citations?: Array<{ docId: string; title: string; ref: string }>
+        citations?: Array<{ title: string; ref: string }>
         error?: string
       }
       if (!res.ok || !json.reply) throw new Error(json.error || 'Failed to get reply from Sarah')
@@ -208,15 +208,26 @@ export function SpineSarahPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
           <h2 style={{ margin: 0 }}>Sarah (conversation)</h2>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-              <input
-                type="checkbox"
-                checked={useKnowledgeBase}
-                onChange={(e) => setUseKnowledgeBase(e.target.checked)}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                type="button"
+                className={useKnowledgeBase ? 'btn-primary' : 'btn-secondary'}
+                onClick={() => setUseKnowledgeBase(true)}
                 disabled={sending}
-              />
-              Use Knowledge Base
-            </label>
+                style={{ padding: '6px 10px', fontSize: 12 }}
+              >
+                Use KB
+              </button>
+              <button
+                type="button"
+                className={!useKnowledgeBase ? 'btn-primary' : 'btn-secondary'}
+                onClick={() => setUseKnowledgeBase(false)}
+                disabled={sending}
+                style={{ padding: '6px 10px', fontSize: 12 }}
+              >
+                Visit-only
+              </button>
+            </div>
             <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Advisory only • No timeline writes</div>
           </div>
         </div>
@@ -271,7 +282,7 @@ export function SpineSarahPage() {
                             ))}
                           </ul>
                         ) : (
-                          <div>No sources found.</div>
+                          <div>No KB sources found.</div>
                         )
                       ) : (
                         <div>Knowledge Base was off for this answer.</div>

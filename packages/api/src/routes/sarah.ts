@@ -206,6 +206,119 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
 
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(401).json({ error: 'User account not properly configured' });
+    const accountIdStrict = accountId;
+
+    // ============================================================
+    // Knowledge Base helper (v1)
+    // ============================================================
+    async function kbSearch(
+      query: string,
+      topK = 5
+    ): Promise<
+      Array<{
+        title: string;
+        docId: string;
+        ref: string;
+        text: string;
+      }>
+    > {
+      const stop = new Set([
+        'a',
+        'an',
+        'and',
+        'are',
+        'as',
+        'at',
+        'be',
+        'by',
+        'can',
+        'could',
+        'do',
+        'does',
+        'for',
+        'from',
+        'how',
+        'i',
+        'in',
+        'is',
+        'it',
+        'me',
+        'minimum',
+        'of',
+        'on',
+        'or',
+        'please',
+        'the',
+        'to',
+        'what',
+        'when',
+        'where',
+        'which',
+        'with',
+        'you',
+        'your',
+      ]);
+
+      const cleaned = String(query || '')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s.-]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const tokens = cleaned
+        .split(' ')
+        .map((t) => t.trim())
+        .filter((t) => t.length >= 3 && !stop.has(t));
+
+      // Prefer a few keywords, but always include the whole query as a final fallback.
+      const terms = [...new Set(tokens)].slice(0, 6);
+      if (terms.length === 0) terms.push(cleaned || String(query || '').trim());
+
+      // Merge page hits across terms so long questions still match.
+      const hitMap = new Map<
+        string,
+        { documentId: number; pageNumber: number; title: string; snippet: string; score: number }
+      >();
+
+      // We deliberately keep this conservative: small number of terms, small per-term limit.
+      for (const term of terms) {
+        if (!term) continue;
+        const hits = await knowledgeService.searchPages(accountIdStrict, term, Math.max(topK, 5));
+        for (const h of hits) {
+          const key = `${h.documentId}:${h.pageNumber}`;
+          const existing = hitMap.get(key);
+          if (!existing) {
+            hitMap.set(key, {
+              documentId: h.documentId,
+              pageNumber: h.pageNumber,
+              title: h.title,
+              snippet: h.snippet,
+              score: 1,
+            });
+          } else {
+            existing.score += 1;
+          }
+        }
+      }
+
+      const merged = [...hitMap.values()]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, Math.max(1, topK));
+
+      const out: Array<{ title: string; docId: string; ref: string; text: string }> = [];
+      for (const h of merged) {
+        const page = await knowledgeService.getPage(h.documentId, h.pageNumber);
+        const text = (page?.text || h.snippet || '').trim();
+        out.push({
+          title: h.title,
+          docId: String(h.documentId),
+          ref: `page:${h.documentId}:${h.pageNumber}`,
+          text,
+        });
+      }
+
+      return out;
+    }
 
     // 1) Load property summary + visit basics
     const visitRows = await db
@@ -244,7 +357,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       .from(spineTimelineEvents)
       .where(and(eq(spineTimelineEvents.visitId, visitId), inArray(spineTimelineEvents.type, ['transcript'])))
       .orderBy(desc(spineTimelineEvents.ts))
-      .limit(12);
+      .limit(3);
 
     const transcripts = transcriptRows
       .map((t) => ({
@@ -269,16 +382,25 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
         }
       : null;
 
-    // 4) KB retrieval (v1 page-level search; semantic search can replace this later)
-    const topK = 6;
-    const kbHits = useKnowledgeBase ? await knowledgeService.searchPages(accountId, message, topK) : [];
-    const kbSources = kbHits.map((h, idx) => ({
+    // 4) KB retrieval
+    const topK = 5;
+    let kbError: string | null = null;
+    let kbPassages: Array<{ title: string; docId: string; ref: string; text: string }> = [];
+    if (useKnowledgeBase) {
+      try {
+        kbPassages = await kbSearch(message, topK);
+      } catch (e) {
+        kbError = e instanceof Error ? e.message : 'Knowledge Base unavailable';
+        kbPassages = [];
+      }
+    }
+
+    const kbSources = kbPassages.map((p, idx) => ({
       sourceId: `S${idx + 1}`,
-      docId: String(h.documentId),
-      title: h.title,
-      ref: `p.${h.pageNumber}`,
-      pageNumber: h.pageNumber,
-      snippet: h.snippet,
+      docId: p.docId,
+      title: p.title,
+      ref: p.ref,
+      text: p.text,
     }));
 
     // 5) Call LLM (fallback to safe template response if no keys)
@@ -302,6 +424,8 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       '- You must NOT invent measurements, model numbers, site conditions, or compliance claims not present in the Visit context.',
       '- You must NOT silently "upgrade" Engineer facts. If Engineer output is missing/unclear, say what is missing.',
       '- You must NOT write timeline events or run Engineer (read-only).',
+      '- If a claim is not supported by the provided Knowledge Base sources, you MUST say so.',
+      '- If the user asks about this specific visit and the needed info is missing (e.g. boiler model, flue type, measured clearance), say exactly what is missing.',
       '',
       'Citations rules (Knowledge Base):',
       '- If you use any KB source for a technical claim, you MUST cite it.',
@@ -312,16 +436,23 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       '- "citations" is a list of KB source IDs actually used (may be empty).',
       '',
       'If Knowledge Base is enabled but no KB sources are provided:',
-      '- Ask exactly ONE clarifying question OR suggest which document should be added to the KB. Do not ask multiple questions.',
+      '- You may still answer from visit context if possible, but you MUST explicitly say: "No KB sources found."',
+      '- If you cannot answer without KB, ask exactly ONE clarifying question (only one).',
     ].join('\n');
 
     const kbBlock = useKnowledgeBase
       ? kbSources.length > 0
         ? [
             'Knowledge Base sources (use these for citations):',
-            ...kbSources.map((s) => `- [${s.sourceId}] docId=${s.docId} title="${s.title}" ref=${s.ref} snippet="${s.snippet.replace(/\s+/g, ' ').trim()}"`),
+            ...kbSources.map((s) => {
+              const safe = String(s.text || '').replace(/\s+/g, ' ').trim();
+              const clipped = safe.length > 1200 ? `${safe.slice(0, 1200)}…` : safe;
+              return `- [${s.sourceId}] docId=${s.docId} title="${s.title}" ref=${s.ref} text="${clipped}"`;
+            }),
           ].join('\n')
-        : 'Knowledge Base sources: NONE_FOUND'
+        : kbError
+          ? `Knowledge Base sources: UNAVAILABLE (${kbError})`
+          : 'Knowledge Base sources: NONE_FOUND'
       : 'Knowledge Base: DISABLED_BY_USER';
 
     const user = [
@@ -383,7 +514,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const citations = citedIds
       .map((id: string) => kbSources.find((s) => s.sourceId === id))
       .filter(Boolean)
-      .map((s: any) => ({ docId: s.docId, title: s.title, ref: s.ref }));
+      .map((s: any) => ({ title: s.title, ref: s.ref }));
 
     return res.json({ reply, citations });
   } catch (error) {

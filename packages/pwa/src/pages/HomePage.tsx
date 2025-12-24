@@ -183,6 +183,7 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   const location = useLocation();
   const setActiveProperty = useSpineStore((s) => s.setActiveProperty);
   const setActiveVisitId = useSpineStore((s) => s.setActiveVisitId);
+  const activeVisitId = useSpineStore((s) => s.activeVisitId);
 
   const isDesktop = layout === 'desktop';
 
@@ -252,6 +253,12 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
     }
     return Object.entries(groups);
   }, [feed]);
+
+  const latestEngineerEventIdForActiveVisit = useMemo(() => {
+    if (!activeVisitId) return null;
+    const latest = feed.find((e) => e.visit?.id === activeVisitId && e.type === 'engineer_output');
+    return latest?.id ?? null;
+  }, [activeVisitId, feed]);
 
   // v2 spine: Postcode-first property search (accelerator)
   const [postcodeQuery, setPostcodeQuery] = useState('');
@@ -541,6 +548,16 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                           </div>
                           {e.type === 'engineer_output' ? (
                             <div className="home-engineer">
+                              {e.visit?.id === activeVisitId && e.id === latestEngineerEventIdForActiveVisit ? (
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                                  <button
+                                    className="btn-secondary"
+                                    onClick={() => navigate(`/customer-summary?visitId=${encodeURIComponent(e.visit.id)}`)}
+                                  >
+                                    Customer summary
+                                  </button>
+                                </div>
+                              ) : null}
                               <div className="home-engineer__section">
                                 <div className="home-engineer__label">Summary</div>
                                 <div className="home-engineer__text">{engineerSummary || '—'}</div>

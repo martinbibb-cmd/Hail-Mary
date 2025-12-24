@@ -1,0 +1,303 @@
+/**
+ * Customer Summary Export (v2 spine)
+ *
+ * POST /api/customer/summary
+ * body: { visitId: string, tone?: "calm" | string }
+ *
+ * Rules:
+ * - Read latest TimelineEvent(type="engineer_output") for this visit.
+ * - Optional: include property address for context.
+ * - Generate customer-friendly markdown summary derived ONLY from that Engineer output.
+ * - No KB calls. No new technical claims. No surprises.
+ */
+
+import { Router, type Request, type Response } from 'express';
+import { and, desc, eq } from 'drizzle-orm';
+import { db } from '../db/drizzle-client';
+import { spineProperties, spineTimelineEvents, spineVisits } from '../db/drizzle-schema';
+import { requireAuth } from '../middleware/auth.middleware';
+import { getOpenaiApiKey } from '../services/workerKeys.service';
+
+const router = Router();
+
+type CustomerSummaryBody = {
+  visitId?: unknown;
+  tone?: unknown;
+};
+
+type EngineerFactCitation = { docId: string; title: string; ref: string };
+type EngineerFactConfidence = 'high' | 'medium' | 'low';
+type EngineerFact = {
+  text: string;
+  citations: EngineerFactCitation[];
+  confidence?: EngineerFactConfidence;
+  verified?: boolean;
+};
+
+type EngineerOutputContext = {
+  summary: string;
+  facts: EngineerFact[];
+  questions: string[];
+  concerns: string[];
+};
+
+function asNonEmptyString(input: unknown): string | null {
+  return typeof input === 'string' && input.trim() ? input.trim() : null;
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return !!input && typeof input === 'object' && !Array.isArray(input);
+}
+
+function toStringArray(input: unknown, maxItems: number): string[] {
+  if (!Array.isArray(input)) return [];
+  const out: string[] = [];
+  for (const v of input) {
+    if (typeof v !== 'string') continue;
+    const s = v.trim();
+    if (!s) continue;
+    out.push(s);
+    if (out.length >= maxItems) break;
+  }
+  return out;
+}
+
+function toEngineerOutputContext(payload: unknown): EngineerOutputContext {
+  if (!isRecord(payload)) return { summary: '', facts: [], questions: [], concerns: [] };
+
+  const summary = typeof payload.summary === 'string' ? payload.summary.trim() : '';
+
+  const factsRaw = Array.isArray(payload.facts) ? payload.facts : [];
+  const facts: EngineerFact[] = [];
+  for (const f of factsRaw) {
+    if (!isRecord(f)) continue;
+    const text = typeof f.text === 'string' ? f.text.trim() : '';
+    if (!text) continue;
+
+    const citationsRaw = Array.isArray(f.citations) ? f.citations : [];
+    const citations: EngineerFactCitation[] = citationsRaw
+      .filter(isRecord)
+      .map((c) => ({
+        docId: typeof c.docId === 'string' ? c.docId.trim() : String(c.docId ?? '').trim(),
+        title: typeof c.title === 'string' ? c.title.trim() : String(c.title ?? '').trim(),
+        ref: typeof c.ref === 'string' ? c.ref.trim() : String(c.ref ?? '').trim(),
+      }))
+      .filter((c) => c.docId && c.title && c.ref)
+      .slice(0, 6);
+
+    const confidence =
+      f.confidence === 'high' || f.confidence === 'medium' || f.confidence === 'low' ? f.confidence : undefined;
+    const verified = typeof f.verified === 'boolean' ? f.verified : undefined;
+
+    facts.push({ text, citations, confidence, verified });
+    if (facts.length >= 12) break;
+  }
+
+  const questions = toStringArray(payload.questions, 12);
+  const concerns = toStringArray(payload.concerns, 12);
+
+  return { summary, facts, questions, concerns };
+}
+
+function formatPropertyAddress(addr: { addressLine1: string; town?: string | null; postcode: string }): string {
+  const parts = [addr.addressLine1, addr.town, addr.postcode].filter((x) => typeof x === 'string' && x.trim());
+  return parts.join(', ');
+}
+
+function markdownTemplate(args: {
+  title: string;
+  engineer: EngineerOutputContext;
+  propertyAddress?: string | null;
+}): { title: string; summaryMarkdown: string } {
+  const engineer = args.engineer;
+  const factTexts = engineer.facts.map((f) => f.text).filter(Boolean).slice(0, 10);
+  const questions = engineer.questions.slice(0, 10);
+  const concerns = engineer.concerns.slice(0, 10);
+
+  const introLine = args.propertyAddress ? `**Property:** ${args.propertyAddress}` : null;
+  const body = [
+    introLine,
+    '',
+    '## What we found',
+    engineer.summary ? engineer.summary : '_No summary was provided in the latest Engineer output._',
+    '',
+    factTexts.length > 0 ? `### Key points\n${factTexts.map((t) => `- ${t}`).join('\n')}` : '### Key points\n- _None listed in the Engineer output._',
+    '',
+    '## What we recommend',
+    concerns.length > 0
+      ? [
+          'These are the items flagged as concerns in the Engineer output (no added assumptions):',
+          ...concerns.map((t) => `- ${t}`),
+        ].join('\n')
+      : '- _No concerns were listed in the Engineer output._',
+    '',
+    '## Next steps',
+    questions.length > 0 ? questions.map((t) => `- ${t}`).join('\n') : '- _No next steps were listed in the Engineer output._',
+    '',
+  ]
+    .filter((x) => x !== null)
+    .join('\n')
+    .trim();
+
+  return { title: args.title, summaryMarkdown: body };
+}
+
+router.post('/summary', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const body = (req.body ?? {}) as CustomerSummaryBody;
+    const visitId = asNonEmptyString(body.visitId);
+    if (!visitId) return res.status(400).json({ success: false, error: 'visitId is required' });
+
+    const accountId = req.user?.accountId;
+    if (!accountId) return res.status(401).json({ success: false, error: 'User account not properly configured' });
+
+    const tone = asNonEmptyString(body.tone) ?? 'calm';
+
+    // 1) Load property summary + visit basics
+    const visitRows = await db
+      .select({
+        visitId: spineVisits.id,
+        startedAt: spineVisits.startedAt,
+        addressLine1: spineProperties.addressLine1,
+        town: spineProperties.town,
+        postcode: spineProperties.postcode,
+      })
+      .from(spineVisits)
+      .innerJoin(spineProperties, eq(spineVisits.propertyId, spineProperties.id))
+      .where(eq(spineVisits.id, visitId))
+      .limit(1);
+
+    if (!visitRows[0]) return res.status(404).json({ success: false, error: 'Visit not found' });
+
+    const propertyAddress = formatPropertyAddress({
+      addressLine1: visitRows[0].addressLine1,
+      town: visitRows[0].town,
+      postcode: visitRows[0].postcode,
+    });
+
+    // 2) Load latest engineer_output for this visit
+    const engineerRows = await db
+      .select({
+        id: spineTimelineEvents.id,
+        ts: spineTimelineEvents.ts,
+        payload: spineTimelineEvents.payload,
+      })
+      .from(spineTimelineEvents)
+      .where(and(eq(spineTimelineEvents.visitId, visitId), eq(spineTimelineEvents.type, 'engineer_output')))
+      .orderBy(desc(spineTimelineEvents.ts))
+      .limit(1);
+
+    if (!engineerRows[0]) {
+      return res.status(409).json({
+        success: false,
+        code: 'run_engineer_first',
+        error: 'Run Engineer first',
+      });
+    }
+
+    const engineer = toEngineerOutputContext(engineerRows[0].payload);
+    const baseTitle = 'Home heating survey summary';
+    const title = propertyAddress ? `${baseTitle} — ${propertyAddress}` : baseTitle;
+
+    // 3) Call LLM (or template render first pass)
+    const openaiKey = (process.env.OPENAI_API_KEY || (await getOpenaiApiKey()))?.trim();
+    if (!openaiKey) {
+      const out = markdownTemplate({ title, engineer, propertyAddress });
+      return res.json({ success: true, data: out });
+    }
+
+    const system = [
+      'You rewrite the provided Engineer output into a customer-friendly summary.',
+      '',
+      'Strict rules (non-negotiable):',
+      '- You may ONLY use the provided Engineer output (summary/facts/questions/concerns) and the optional property address.',
+      '- You MUST NOT introduce any new technical claims, measurements, model numbers, compliance assertions, or inferred site conditions.',
+      '- If a detail is not explicitly present, omit it. Do not guess. Do not add “common knowledge”.',
+      '- Keep wording gentle and calm. Avoid alarmist language.',
+      '- Never mention Knowledge Base, manuals, regulations, or citations.',
+      '',
+      'Output requirements:',
+      '- Return STRICT JSON (no markdown wrapper) with keys: {"title": string, "summaryMarkdown": string}.',
+      '- summaryMarkdown MUST be valid markdown and include exactly these sections in this order:',
+      '  1) "## What we found"',
+      '  2) "## What we recommend"',
+      '  3) "## Next steps"',
+      '- Use bullet lists where helpful.',
+      '- Do not include any other headings before those sections (a short 1–2 line intro is ok).',
+    ].join('\n');
+
+    const user = [
+      `Tone: ${tone}`,
+      `Property address (optional): ${propertyAddress}`,
+      `Engineer output (latest only): ${JSON.stringify(
+        {
+          engineerEventId: engineerRows[0].id,
+          engineerEventAt: engineerRows[0].ts.toISOString(),
+          engineer,
+        },
+        null,
+        2
+      )}`,
+    ].join('\n\n');
+
+    const llmRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: process.env.CUSTOMER_SUMMARY_OPENAI_MODEL || 'gpt-4o-mini',
+        temperature: 0.2,
+        max_tokens: 900,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!llmRes.ok) {
+      const errorText = await llmRes.text();
+      console.error('Customer summary LLM error:', llmRes.status, errorText);
+      const out = markdownTemplate({ title, engineer, propertyAddress });
+      return res.json({ success: true, data: out, warning: 'llm_unavailable_fallback_template' });
+    }
+
+    const llmJson = (await llmRes.json()) as any;
+    const content = typeof llmJson?.choices?.[0]?.message?.content === 'string' ? String(llmJson.choices[0].message.content).trim() : '';
+    if (!content) {
+      const out = markdownTemplate({ title, engineer, propertyAddress });
+      return res.json({ success: true, data: out, warning: 'llm_empty_fallback_template' });
+    }
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      parsed = null;
+    }
+
+    const safeTitle = typeof parsed?.title === 'string' && parsed.title.trim() ? parsed.title.trim() : title;
+    const safeMarkdown =
+      typeof parsed?.summaryMarkdown === 'string' && parsed.summaryMarkdown.trim()
+        ? parsed.summaryMarkdown.trim()
+        : markdownTemplate({ title: safeTitle, engineer, propertyAddress }).summaryMarkdown;
+
+    return res.json({
+      success: true,
+      data: {
+        title: safeTitle,
+        summaryMarkdown: safeMarkdown,
+      },
+    });
+  } catch (error) {
+    console.error('Customer summary error:', error);
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Customer summary failed' });
+  }
+});
+
+export default router;
+

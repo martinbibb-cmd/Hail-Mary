@@ -48,6 +48,7 @@ import spineRouter from './routes/spine';
 import uploadsRouter from './routes/uploads';
 import ingestRouter from './routes/ingest';
 import engineerRouter from './routes/engineer';
+import customerSummaryRouter from './routes/customerSummary';
 
 import path from 'path';
 
@@ -338,6 +339,7 @@ app.use('/api', spineRouter); // v2 Spine (all-activity feed + postcode-first pr
 app.use('/api', uploadsRouter); // local uploads helper for v2 spine camera
 app.use('/api/ingest', ingestRouter); // Companion -> timeline ingest endpoints
 app.use('/api/engineer', engineerRouter); // v2 Spine: manual Engineer runs -> timeline
+app.use('/api/customer', customerSummaryRouter); // v2 Spine: customer-friendly summary from latest engineer_output
 
 // 404 handler
 app.use((_req, res) => {

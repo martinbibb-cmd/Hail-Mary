@@ -63,9 +63,38 @@ const getCookieOptions = (req: Request): typeof BASE_COOKIE_OPTIONS & { secure: 
   };
 };
 
-// Base URL for password reset links
-const getBaseUrl = (): string => {
-  return process.env.BASE_URL || 'https://hail_mary.cloudbibb.uk';
+/**
+ * Get base URL for password reset links and other absolute URLs.
+ * Priority:
+ * 1. BASE_URL environment variable
+ * 2. Detect from request headers (X-Forwarded-Host, Host)
+ * 3. Fallback to default
+ */
+const getBaseUrl = (req?: Request): string => {
+  // If BASE_URL is explicitly set, use it
+  if (process.env.BASE_URL) {
+    return process.env.BASE_URL;
+  }
+
+  // Try to detect from request headers
+  if (req) {
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const host = req.headers['host'];
+
+    if (forwardedHost) {
+      const proto = forwardedProto === 'https' ? 'https' : 'http';
+      return `${proto}://${forwardedHost}`;
+    }
+
+    if (host) {
+      const proto = req.secure || forwardedProto === 'https' ? 'https' : 'http';
+      return `${proto}://${host}`;
+    }
+  }
+
+  // Fallback to default - updated to match actual domain
+  return 'https://atlas.cloudbibb.uk';
 };
 
 /**
@@ -322,7 +351,7 @@ router.post('/request-password-reset', async (req: Request, res: Response) => {
     }
 
     // Send password reset email (or log to console if email service fails)
-    await startPasswordReset(email, getBaseUrl());
+    await startPasswordReset(email, getBaseUrl(req));
 
     // Always return success to not leak whether email exists
     return res.json({

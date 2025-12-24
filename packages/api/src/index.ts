@@ -222,9 +222,31 @@ const aiLimiter = rateLimit({
   message: { success: false, code: 'rate_limited', error: 'Too many requests, please try again later.' },
 });
 
-// Middleware
+// CORS Configuration
+// Allow requests from the PWA domain with credentials (cookies)
+// If CORS_ORIGIN is not set, allow the default domains
+const getAllowedOrigins = (): string[] | boolean => {
+  if (process.env.CORS_ORIGIN) {
+    // If explicitly set, use it (can be comma-separated list)
+    if (process.env.CORS_ORIGIN === 'true' || process.env.CORS_ORIGIN === '*') {
+      return true;
+    }
+    return process.env.CORS_ORIGIN.split(',').map(o => o.trim());
+  }
+
+  // Default allowed origins for typical deployment
+  return [
+    'https://atlas.cloudbibb.uk',
+    'https://hail_mary.cloudbibb.uk',
+    'http://localhost:3000',
+    'http://localhost:8080',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:8080',
+  ];
+};
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || true,
+  origin: getAllowedOrigins(),
   credentials: true,
 }));
 app.use(express.json());

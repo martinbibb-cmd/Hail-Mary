@@ -4,12 +4,18 @@
  * Provides helper functions to retrieve API keys for AI providers.
  * Currently retrieves keys from environment variables.
  * In the future, this could be extended to fetch keys from the Cloudflare Worker.
+ * 
+ * Note: Functions are async to support future integration with worker endpoints,
+ * even though they currently perform synchronous operations.
  */
 
 /**
  * Get OpenAI API key
  * @returns OpenAI API key from environment variables
  * @throws Error if no OpenAI API key is configured
+ * 
+ * Note: Function name uses 'Openai' (not 'OpenAI') to match existing imports in the codebase.
+ * This is intentional and should not be changed to maintain backward compatibility.
  */
 export async function getOpenaiApiKey(): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;

@@ -21,6 +21,7 @@ function mapRowToLead(row: typeof leads.$inferSelect): Lead {
   return {
     id: String(row.id),
     accountId: row.accountId,
+    assignedUserId: row.assignedUserId || undefined,
     firstName: row.firstName,
     lastName: row.lastName,
     email: row.email || undefined,
@@ -43,6 +44,18 @@ function mapRowToLead(row: typeof leads.$inferSelect): Lead {
   };
 }
 
+// Helper to check if user can access a lead
+// Admins can access all leads, regular users can only access their assigned leads or unassigned leads
+function canAccessLead(user: Express.User, leadAssignedUserId: number | null): boolean {
+  // Admins can access all leads
+  if (user.role === 'admin') {
+    return true;
+  }
+
+  // User can access if lead is unassigned or assigned to them
+  return leadAssignedUserId === null || leadAssignedUserId === user.id;
+}
+
 // GET /leads - List all leads
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -54,6 +67,14 @@ router.get('/', async (req: Request, res: Response) => {
     // Build conditions
     const conditions = [];
     if (status) conditions.push(eq(leads.status, status));
+
+    // Access control: Non-admin users can only see leads assigned to them or unassigned leads
+    if (req.user && req.user.role !== 'admin') {
+      // Show leads where: assignedUserId IS NULL OR assignedUserId = currentUser.id
+      conditions.push(
+        eq(leads.assignedUserId, req.user.id)
+      );
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -117,9 +138,20 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json(response);
     }
 
+    const lead = rows[0];
+
+    // Access control: Check if user can access this lead
+    if (req.user && !canAccessLead(req.user, lead.assignedUserId)) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Access denied - this lead is assigned to another user',
+      };
+      return res.status(403).json(response);
+    }
+
     const response: ApiResponse<Lead> = {
       success: true,
-      data: mapRowToLead(rows[0]),
+      data: mapRowToLead(lead),
     };
     res.json(response);
   } catch (error) {

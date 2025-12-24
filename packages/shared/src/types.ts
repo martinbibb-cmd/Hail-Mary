@@ -31,6 +31,8 @@ export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'quoted' | 'won' | 
 // Lead is the single source of truth - combines lead tracking with customer contact info
 export interface Lead extends BaseEntity {
   accountId?: number;
+  // User assignment for access control
+  assignedUserId?: number;
   // Contact information
   firstName: string;
   lastName: string;

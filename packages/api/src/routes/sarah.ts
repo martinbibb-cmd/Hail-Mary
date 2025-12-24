@@ -20,7 +20,7 @@ import { db } from '../db/drizzle-client';
 import { spineProperties, spineTimelineEvents, spineVisits } from '../db/drizzle-schema';
 import { getOpenaiApiKey } from '../services/workerKeys.service';
 import { requireAuth } from '../middleware/auth.middleware';
-import * as knowledgeService from '../services/knowledge.service';
+import { kbSearch as kbSearchForAccount } from '../services/kbSearch.service';
 
 const router = Router();
 
@@ -208,118 +208,6 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     if (!accountId) return res.status(401).json({ error: 'User account not properly configured' });
     const accountIdStrict = accountId;
 
-    // ============================================================
-    // Knowledge Base helper (v1)
-    // ============================================================
-    async function kbSearch(
-      query: string,
-      topK = 5
-    ): Promise<
-      Array<{
-        title: string;
-        docId: string;
-        ref: string;
-        text: string;
-      }>
-    > {
-      const stop = new Set([
-        'a',
-        'an',
-        'and',
-        'are',
-        'as',
-        'at',
-        'be',
-        'by',
-        'can',
-        'could',
-        'do',
-        'does',
-        'for',
-        'from',
-        'how',
-        'i',
-        'in',
-        'is',
-        'it',
-        'me',
-        'minimum',
-        'of',
-        'on',
-        'or',
-        'please',
-        'the',
-        'to',
-        'what',
-        'when',
-        'where',
-        'which',
-        'with',
-        'you',
-        'your',
-      ]);
-
-      const cleaned = String(query || '')
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s.-]/gu, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      const tokens = cleaned
-        .split(' ')
-        .map((t) => t.trim())
-        .filter((t) => t.length >= 3 && !stop.has(t));
-
-      // Prefer a few keywords, but always include the whole query as a final fallback.
-      const terms = [...new Set(tokens)].slice(0, 6);
-      if (terms.length === 0) terms.push(cleaned || String(query || '').trim());
-
-      // Merge page hits across terms so long questions still match.
-      const hitMap = new Map<
-        string,
-        { documentId: number; pageNumber: number; title: string; snippet: string; score: number }
-      >();
-
-      // We deliberately keep this conservative: small number of terms, small per-term limit.
-      for (const term of terms) {
-        if (!term) continue;
-        const hits = await knowledgeService.searchPages(accountIdStrict, term, Math.max(topK, 5));
-        for (const h of hits) {
-          const key = `${h.documentId}:${h.pageNumber}`;
-          const existing = hitMap.get(key);
-          if (!existing) {
-            hitMap.set(key, {
-              documentId: h.documentId,
-              pageNumber: h.pageNumber,
-              title: h.title,
-              snippet: h.snippet,
-              score: 1,
-            });
-          } else {
-            existing.score += 1;
-          }
-        }
-      }
-
-      const merged = [...hitMap.values()]
-        .sort((a, b) => b.score - a.score)
-        .slice(0, Math.max(1, topK));
-
-      const out: Array<{ title: string; docId: string; ref: string; text: string }> = [];
-      for (const h of merged) {
-        const page = await knowledgeService.getPage(h.documentId, h.pageNumber);
-        const text = (page?.text || h.snippet || '').trim();
-        out.push({
-          title: h.title,
-          docId: String(h.documentId),
-          ref: `page:${h.documentId}:${h.pageNumber}`,
-          text,
-        });
-      }
-
-      return out;
-    }
-
     // 1) Load property summary + visit basics
     const visitRows = await db
       .select({
@@ -388,11 +276,20 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     let kbPassages: Array<{ title: string; docId: string; ref: string; text: string }> = [];
     if (useKnowledgeBase) {
       try {
-        kbPassages = await kbSearch(message, topK);
+        kbPassages = await kbSearchForAccount(accountIdStrict, message, topK);
       } catch (e) {
         kbError = e instanceof Error ? e.message : 'Knowledge Base unavailable';
         kbPassages = [];
       }
+    }
+
+    // If KB is enabled and we *successfully* found 0 sources, enforce the required UX:
+    // Sarah must say "I can’t find a source in KB for that" and ask for missing detail.
+    if (useKnowledgeBase && !kbError && kbPassages.length === 0) {
+      const reply =
+        `I can’t find a source in KB for that.\n\n` +
+        `What’s the exact model (e.g. “Worcester Greenstar 4000 25/30/35”) and the flue type/route (horizontal/vertical, and where it terminates)?`;
+      return res.json({ reply, citations: [] });
     }
 
     const kbSources = kbPassages.map((p, idx) => ({
@@ -419,25 +316,27 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const system = [
       'You are Sarah, a read-only assistant for a site survey visit.',
       '',
+      'You will be given TWO separated contexts:',
+      'A) Visit facts (property summary, latest engineer_output if any, and recent transcripts).',
+      'B) Knowledge Base sources (technical docs).',
+      '',
       'Behaviour rules:',
-      '- You can answer using ONLY: (A) Visit context provided below, and (B) Knowledge Base sources provided below (only if enabled).',
-      '- You must NOT invent measurements, model numbers, site conditions, or compliance claims not present in the Visit context.',
+      '- Treat Visit facts and KB facts separately; never mix them up.',
+      '- You must NOT invent site-specific measurements, model numbers, site conditions, or compliance claims not present in Visit facts.',
       '- You must NOT silently "upgrade" Engineer facts. If Engineer output is missing/unclear, say what is missing.',
       '- You must NOT write timeline events or run Engineer (read-only).',
-      '- If a claim is not supported by the provided Knowledge Base sources, you MUST say so.',
-      '- If the user asks about this specific visit and the needed info is missing (e.g. boiler model, flue type, measured clearance), say exactly what is missing.',
       '',
-      'Citations rules (Knowledge Base):',
-      '- If you use any KB source for a technical claim, you MUST cite it.',
-      '- Use ONLY the provided KB source IDs (e.g. "S1"). Never invent doc IDs, titles, pages, or refs.',
+      'Knowledge Base + citations rules:',
+      '- Any technical claim taken from KB MUST be cited.',
+      '- Use ONLY the provided KB source IDs (e.g. "S1"). Never invent document IDs/titles/refs.',
+      '- If something is not supported by the provided KB sources, you MUST say so.',
       '',
       'Output format:',
       '- Return STRICT JSON (no markdown) with keys: {"reply": string, "citations": string[]}.',
       '- "citations" is a list of KB source IDs actually used (may be empty).',
       '',
-      'If Knowledge Base is enabled but no KB sources are provided:',
-      '- You may still answer from visit context if possible, but you MUST explicitly say: "No KB sources found."',
-      '- If you cannot answer without KB, ask exactly ONE clarifying question (only one).',
+      'Clarifications:',
+      '- If the question needs missing details (e.g. boiler model, flue type, measured clearance), ask exactly ONE clarifying question.',
     ].join('\n');
 
     const kbBlock = useKnowledgeBase
@@ -514,7 +413,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const citations = citedIds
       .map((id: string) => kbSources.find((s) => s.sourceId === id))
       .filter(Boolean)
-      .map((s: any) => ({ title: s.title, ref: s.ref }));
+      .map((s: any) => ({ title: s.title, docId: s.docId, ref: s.ref }));
 
     return res.json({ reply, citations });
   } catch (error) {

@@ -16,6 +16,8 @@ type ChatMessage = {
   id: string
   role: 'user' | 'assistant'
   content: string
+  citations?: Array<{ docId: string; title: string; ref: string }>
+  kbEnabled?: boolean
   ts: number
 }
 
@@ -40,6 +42,7 @@ export function SpineSarahPage() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
+  const [useKnowledgeBase, setUseKnowledgeBase] = useState(true)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
@@ -85,11 +88,8 @@ export function SpineSarahPage() {
 
   const disabledReason = useMemo(() => {
     if (!activeVisitId) return 'No active visit. Start a visit first (Property → Start visit, or take a photo to auto-create).'
-    if (feedLoading) return 'Loading visit context…'
-    if (feedError) return 'Failed to load visit context.'
-    if (!latestEngineerEvent) return 'No Engineer output for this visit yet. Run Engineer first.'
     return null
-  }, [activeVisitId, feedError, feedLoading, latestEngineerEvent])
+  }, [activeVisitId])
 
   const engineerPayload = latestEngineerEvent?.payload && typeof latestEngineerEvent.payload === 'object' ? (latestEngineerEvent.payload as any) : null
   const engineerSummary = safeSummary(engineerPayload)
@@ -113,12 +113,23 @@ export function SpineSarahPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ visitId: activeVisitId, message: text }),
+        body: JSON.stringify({ visitId: activeVisitId, message: text, useKnowledgeBase }),
       })
-      const json = (await res.json()) as { reply?: string; error?: string }
+      const json = (await res.json()) as {
+        reply?: string
+        citations?: Array<{ docId: string; title: string; ref: string }>
+        error?: string
+      }
       if (!res.ok || !json.reply) throw new Error(json.error || 'Failed to get reply from Sarah')
 
-      const assistantMsg: ChatMessage = { id: `a-${Date.now()}`, role: 'assistant', content: json.reply, ts: Date.now() }
+      const assistantMsg: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: json.reply,
+        citations: Array.isArray(json.citations) ? json.citations : [],
+        kbEnabled: useKnowledgeBase,
+        ts: Date.now(),
+      }
       setMessages((prev) => [...prev, assistantMsg])
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to send message'
@@ -127,13 +138,15 @@ export function SpineSarahPage() {
         id: `a-err-${Date.now()}`,
         role: 'assistant',
         content: `I couldn’t respond right now. ${msg}`,
+        citations: [],
+        kbEnabled: useKnowledgeBase,
         ts: Date.now(),
       }
       setMessages((prev) => [...prev, assistantMsg])
     } finally {
       setSending(false)
     }
-  }, [activeVisitId, input])
+  }, [activeVisitId, input, useKnowledgeBase])
 
   return (
     <div className="detail-page">
@@ -160,6 +173,9 @@ export function SpineSarahPage() {
             {latestEngineerEvent ? `Latest event: ${new Date(latestEngineerEvent.ts).toLocaleString()}` : '—'}
           </div>
         </div>
+
+        {feedLoading ? <div style={{ marginTop: 10, color: 'var(--text-muted)', fontSize: 13 }}>Loading visit feed…</div> : null}
+        {feedError ? <div style={{ marginTop: 10, color: '#b91c1c', fontSize: 13 }}>{feedError}</div> : null}
 
         {!latestEngineerEvent ? (
           <div style={{ marginTop: 10, color: 'var(--text-muted)', fontSize: 13 }}>No Engineer output to display.</div>
@@ -191,7 +207,18 @@ export function SpineSarahPage() {
       <div className="detail-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
           <h2 style={{ margin: 0 }}>Sarah (conversation)</h2>
-          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Advisory only • No timeline writes</div>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+              <input
+                type="checkbox"
+                checked={useKnowledgeBase}
+                onChange={(e) => setUseKnowledgeBase(e.target.checked)}
+                disabled={sending}
+              />
+              Use Knowledge Base
+            </label>
+            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Advisory only • No timeline writes</div>
+          </div>
         </div>
 
         {disabledReason ? (
@@ -212,7 +239,7 @@ export function SpineSarahPage() {
         >
           {messages.length === 0 ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-              Ask: “What does the Engineer output mean?” or “What should I check next on this visit?”
+              Ask: “What does the Engineer output mean?”, “What should I check next?”, or “What are the minimum clearances for model X?” (KB on).
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -230,7 +257,27 @@ export function SpineSarahPage() {
                   }}
                 >
                   <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>{m.role === 'user' ? 'You' : 'Sarah'}</div>
-                  {m.content}
+                  <div>{m.content}</div>
+                  {m.role === 'assistant' ? (
+                    <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>Sources</div>
+                      {m.kbEnabled ? (
+                        m.citations && m.citations.length > 0 ? (
+                          <ul style={{ margin: 0, paddingLeft: 18 }}>
+                            {m.citations.map((c, idx) => (
+                              <li key={`${m.id}-c-${idx}`}>
+                                <span style={{ color: 'var(--text)' }}>{c.title}</span> <span>({c.ref})</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div>No sources found.</div>
+                        )
+                      ) : (
+                        <div>Knowledge Base was off for this answer.</div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>

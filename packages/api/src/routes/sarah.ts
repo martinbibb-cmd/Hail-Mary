@@ -19,11 +19,23 @@ import { sarahService } from '../services/sarah.service';
 import { db } from '../db/drizzle-client';
 import { spineProperties, spineTimelineEvents, spineVisits } from '../db/drizzle-schema';
 import { getOpenaiApiKey } from '../services/workerKeys.service';
+import { requireAuth } from '../middleware/auth.middleware';
+import * as knowledgeService from '../services/knowledge.service';
 
 const router = Router();
 
 function asNonEmptyString(input: unknown): string | null {
   return typeof input === 'string' && input.trim() ? input.trim() : null;
+}
+
+function asBoolean(input: unknown): boolean | null {
+  if (typeof input === 'boolean') return input;
+  if (typeof input === 'string') {
+    const v = input.trim().toLowerCase();
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+  }
+  return null;
 }
 
 function safeTextFromPayload(payload: unknown): string | null {
@@ -169,26 +181,31 @@ router.post('/explain', async (req: Request, res: Response) => {
  * v2 Spine: Sarah Chat (read-only intelligence)
  *
  * POST /api/sarah/chat
- * body: { visitId: string, message: string }
+ * body: { visitId: string, message: string, useKnowledgeBase?: boolean }
  *
  * Sarah reads:
  * - property summary
- * - latest engineer_output for this visit (required)
+ * - latest engineer_output for this visit (if any)
  * - optional recent transcripts for this visit
+ * - optional Knowledge Base passages (if enabled)
  *
- * Returns: { reply: string }
+ * Returns: { reply: string, citations: Array<{ docId: string; title: string; ref: string }> }
  *
  * Guardrails:
  * - No DB writes (read-only)
  * - Must not claim measurements/compliance not in Engineer output
  * - Must not run Engineer
  */
-router.post('/chat', async (req: Request, res: Response) => {
+router.post('/chat', requireAuth, async (req: Request, res: Response) => {
   try {
     const visitId = asNonEmptyString(req.body?.visitId);
     const message = asNonEmptyString(req.body?.message);
     if (!visitId) return res.status(400).json({ error: 'visitId is required' });
     if (!message) return res.status(400).json({ error: 'message is required' });
+    const useKnowledgeBase = asBoolean(req.body?.useKnowledgeBase) ?? true;
+
+    const accountId = req.user?.accountId;
+    if (!accountId) return res.status(401).json({ error: 'User account not properly configured' });
 
     // 1) Load property summary + visit basics
     const visitRows = await db
@@ -206,7 +223,7 @@ router.post('/chat', async (req: Request, res: Response) => {
 
     if (!visitRows[0]) return res.status(404).json({ error: 'Visit not found' });
 
-    // 2) Load latest engineer_output for this visit (required)
+    // 2) Load latest engineer_output for this visit (optional)
     const engineerRows = await db
       .select({
         id: spineTimelineEvents.id,
@@ -217,12 +234,6 @@ router.post('/chat', async (req: Request, res: Response) => {
       .where(and(eq(spineTimelineEvents.visitId, visitId), eq(spineTimelineEvents.type, 'engineer_output')))
       .orderBy(desc(spineTimelineEvents.ts))
       .limit(1);
-
-    if (!engineerRows[0]) {
-      return res.status(409).json({
-        error: 'No engineer_output exists for this visit yet. Run Engineer first.',
-      });
-    }
 
     // 3) Optional transcripts (recent)
     const transcriptRows = await db
@@ -250,39 +261,83 @@ router.post('/chat', async (req: Request, res: Response) => {
       visitStartedAt: visitRows[0].startedAt.toISOString(),
     };
 
-    const engineerContext = {
-      engineerEventId: engineerRows[0].id,
-      engineerEventAt: engineerRows[0].ts.toISOString(),
-      engineerOutput: engineerRows[0].payload,
-    };
+    const engineerContext = engineerRows[0]
+      ? {
+          engineerEventId: engineerRows[0].id,
+          engineerEventAt: engineerRows[0].ts.toISOString(),
+          engineerOutput: engineerRows[0].payload,
+        }
+      : null;
 
-    // 4) Call LLM (fallback to safe template response if no keys)
+    // 4) KB retrieval (v1 page-level search; semantic search can replace this later)
+    const topK = 6;
+    const kbHits = useKnowledgeBase ? await knowledgeService.searchPages(accountId, message, topK) : [];
+    const kbSources = kbHits.map((h, idx) => ({
+      sourceId: `S${idx + 1}`,
+      docId: String(h.documentId),
+      title: h.title,
+      ref: `p.${h.pageNumber}`,
+      pageNumber: h.pageNumber,
+      snippet: h.snippet,
+    }));
+
+    // 5) Call LLM (fallback to safe template response if no keys)
     const openaiKey = (process.env.OPENAI_API_KEY || (await getOpenaiApiKey()))?.trim();
     if (!openaiKey) {
       const reply =
-        `Based on the latest Engineer run, here’s what I can say:\n\n` +
-        `- I can explain the Engineer summary/facts and suggest next checks.\n` +
-        `- I can’t add new measurements or compliance claims beyond what Engineer recorded.\n\n` +
-        `Ask a specific question about a bullet in the Engineer output, and I’ll walk through it.`;
-      return res.json({ reply });
+        `I can help answer questions using:\n` +
+        `- This visit (property, Engineer output if available, transcripts)\n` +
+        (useKnowledgeBase ? `- Knowledge Base (if documents exist)\n` : `- (Knowledge Base is OFF)\n`) +
+        `\n` +
+        `I can’t add new measurements or compliance claims beyond what was recorded in the timeline.\n\n` +
+        `Ask a specific question and I’ll walk through it.`;
+      return res.json({ reply, citations: [] });
     }
 
     const system = [
       'You are Sarah, a read-only assistant for a site survey visit.',
-      'You must ONLY use the provided context. If something is not in context, say you do not know and suggest what to check next.',
-      'You MUST NOT create or edit timeline events, and you MUST NOT re-run Engineer.',
-      'You MUST NOT invent measurements, model numbers, compliance claims, or pass/fail statements. If asked, respond with uncertainty and list what evidence would be needed.',
-      'Your job: explain the Engineer output in plain English, answer questions about this visit, and suggest next survey steps.',
-      'Keep the answer concise and actionable. Use bullet points when helpful.',
+      '',
+      'Behaviour rules:',
+      '- You can answer using ONLY: (A) Visit context provided below, and (B) Knowledge Base sources provided below (only if enabled).',
+      '- You must NOT invent measurements, model numbers, site conditions, or compliance claims not present in the Visit context.',
+      '- You must NOT silently "upgrade" Engineer facts. If Engineer output is missing/unclear, say what is missing.',
+      '- You must NOT write timeline events or run Engineer (read-only).',
+      '',
+      'Citations rules (Knowledge Base):',
+      '- If you use any KB source for a technical claim, you MUST cite it.',
+      '- Use ONLY the provided KB source IDs (e.g. "S1"). Never invent doc IDs, titles, pages, or refs.',
+      '',
+      'Output format:',
+      '- Return STRICT JSON (no markdown) with keys: {"reply": string, "citations": string[]}.',
+      '- "citations" is a list of KB source IDs actually used (may be empty).',
+      '',
+      'If Knowledge Base is enabled but no KB sources are provided:',
+      '- Ask exactly ONE clarifying question OR suggest which document should be added to the KB. Do not ask multiple questions.',
     ].join('\n');
 
+    const kbBlock = useKnowledgeBase
+      ? kbSources.length > 0
+        ? [
+            'Knowledge Base sources (use these for citations):',
+            ...kbSources.map((s) => `- [${s.sourceId}] docId=${s.docId} title="${s.title}" ref=${s.ref} snippet="${s.snippet.replace(/\s+/g, ' ').trim()}"`),
+          ].join('\n')
+        : 'Knowledge Base sources: NONE_FOUND'
+      : 'Knowledge Base: DISABLED_BY_USER';
+
     const user = [
-      'Context:',
+      'Visit context:',
       `Property summary: ${JSON.stringify(propertySummary)}`,
-      `Latest engineer_output (facts): ${JSON.stringify(engineerContext)}`,
+      `Latest engineer_output (if any): ${JSON.stringify(engineerContext)}`,
       transcripts.length > 0 ? `Recent transcripts (optional): ${JSON.stringify(transcripts)}` : 'Recent transcripts: none',
       '',
+      kbBlock,
+      '',
       `User question: ${message}`,
+      '',
+      'Response style:',
+      '- If Knowledge Base is DISABLED_BY_USER, do not reference manuals/regulations and do not cite KB sources.',
+      '- If answering from KB, phrase it explicitly (e.g. "From the <title>...").',
+      '- If answering from the visit, phrase it explicitly (e.g. "From this visit...").',
     ].join('\n');
 
     const llmRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -295,6 +350,7 @@ router.post('/chat', async (req: Request, res: Response) => {
         model: process.env.SARAH_OPENAI_MODEL || 'gpt-4o-mini',
         temperature: 0.2,
         max_tokens: 500,
+        response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user },
@@ -310,10 +366,26 @@ router.post('/chat', async (req: Request, res: Response) => {
     }
 
     const llmJson = (await llmRes.json()) as any;
-    const reply = typeof llmJson?.choices?.[0]?.message?.content === 'string' ? String(llmJson.choices[0].message.content).trim() : '';
-    if (!reply) return res.status(503).json({ error: 'Sarah returned an empty response. Please try again.' });
+    const content = typeof llmJson?.choices?.[0]?.message?.content === 'string' ? String(llmJson.choices[0].message.content).trim() : '';
+    if (!content) return res.status(503).json({ error: 'Sarah returned an empty response. Please try again.' });
 
-    return res.json({ reply });
+    // Parse strict JSON response; if parsing fails, fall back to raw content with no citations.
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      parsed = null;
+    }
+
+    const reply = typeof parsed?.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : content;
+    const citedIdsRaw = Array.isArray(parsed?.citations) ? parsed.citations : [];
+    const citedIds = citedIdsRaw.filter((x: unknown) => typeof x === 'string' && /^S\d+$/.test(x));
+    const citations = citedIds
+      .map((id: string) => kbSources.find((s) => s.sourceId === id))
+      .filter(Boolean)
+      .map((s: any) => ({ docId: s.docId, title: s.title, ref: s.ref }));
+
+    return res.json({ reply, citations });
   } catch (error) {
     console.error('Sarah chat error:', error);
     return res.status(500).json({ error: error instanceof Error ? error.message : 'Sarah chat failed' });

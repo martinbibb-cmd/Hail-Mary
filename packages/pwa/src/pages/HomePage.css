@@ -161,6 +161,56 @@
   line-height: 1.25;
 }
 
+.home-engineer__fact-text {
+  display: block;
+}
+
+.home-engineer__sources {
+  margin-top: 6px;
+}
+
+.home-engineer__sources-summary {
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+/* Hide default disclosure triangle (we keep the click target) */
+.home-engineer__sources-summary::-webkit-details-marker {
+  display: none;
+}
+
+.home-engineer__sources-empty {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.home-engineer__sources-list {
+  margin: 6px 0 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home-engineer__sources-li {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+
+.home-engineer__sources-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.home-engineer__sources-ref {
+  color: var(--text-muted);
+}
+
 .home-feed__item-title {
   display: flex;
   align-items: baseline;

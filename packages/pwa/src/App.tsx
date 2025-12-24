@@ -33,6 +33,7 @@ import { SpineEngineerPage } from './pages/SpineEngineerPage'
 import { SpineSarahPage } from './pages/SpineSarahPage'
 import { SpineKnowledgePage } from './pages/SpineKnowledgePage'
 import { SpineKnowledgeDocPage } from './pages/SpineKnowledgeDocPage'
+import { CustomerSummaryPage } from './pages/CustomerSummaryPage'
 
 // Simple API client
 const api = {
@@ -703,6 +704,7 @@ function App() {
           <Route path="/camera" element={<SpineCameraPage />} />
           <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />
           <Route path="/engineer" element={<SpineEngineerPage />} />
+          <Route path="/customer-summary" element={<CustomerSummaryPage />} />
           <Route path="/sarah" element={<SpineSarahPage />} />
           <Route path="/knowledge" element={<SpineKnowledgePage />} />
           <Route path="/knowledge/doc/:docId/page/:pageNo" element={<SpineKnowledgeDocPage />} />

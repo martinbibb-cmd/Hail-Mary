@@ -50,6 +50,11 @@ export function SpineEngineerPage() {
     }
   }, [activeVisitId, navigate])
 
+  const openCustomerSummary = useCallback(() => {
+    if (!activeVisitId) return
+    navigate(`/customer-summary?visitId=${encodeURIComponent(activeVisitId)}`)
+  }, [activeVisitId, navigate])
+
   return (
     <div className="detail-page">
       <div className="page-header">
@@ -70,6 +75,10 @@ export function SpineEngineerPage() {
 
           <button className="btn-primary" onClick={runEngineer} disabled={running || !!disabledReason}>
             {running ? 'Running…' : 'Run Engineer'}
+          </button>
+
+          <button className="btn-secondary" onClick={openCustomerSummary} disabled={running || !!disabledReason}>
+            Customer summary
           </button>
 
           {disabledReason ? <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{disabledReason}</div> : null}

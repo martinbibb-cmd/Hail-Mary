@@ -49,6 +49,8 @@ const eventTypeIcon = (type: string): string => {
       return '📏';
     case 'engineer_output':
       return '🛠️';
+    case 'engineer_diff':
+      return '🔁';
     case 'knowledge_ref':
       return '📚';
     default:
@@ -66,6 +68,13 @@ const toStringArray = (input: unknown): string[] => {
 type EngineerFactCitation = { docId: string; title: string; ref: string };
 type EngineerFactConfidence = 'high' | 'medium' | 'low';
 type EngineerFact = { text: string; citations: EngineerFactCitation[]; verified?: boolean; confidence?: EngineerFactConfidence };
+type EngineerDiffPayload = {
+  addedFacts: string[];
+  removedFacts: string[];
+  resolvedQuestions: string[];
+  newConcerns: string[];
+  summary: string;
+};
 
 const toEngineerFacts = (input: unknown): EngineerFact[] => {
   if (!Array.isArray(input)) return [];
@@ -254,11 +263,21 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
     return Object.entries(groups);
   }, [feed]);
 
+  const latestEngineerOutputEventIdByVisit = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of feed) {
+      const visitId = e.visit?.id;
+      if (!visitId) continue;
+      if (e.type !== 'engineer_output') continue;
+      if (!map.has(visitId)) map.set(visitId, e.id);
+    }
+    return map;
+  }, [feed]);
+
   const latestEngineerEventIdForActiveVisit = useMemo(() => {
     if (!activeVisitId) return null;
-    const latest = feed.find((e) => e.visit?.id === activeVisitId && e.type === 'engineer_output');
-    return latest?.id ?? null;
-  }, [activeVisitId, feed]);
+    return latestEngineerOutputEventIdByVisit.get(activeVisitId) ?? null;
+  }, [activeVisitId, latestEngineerOutputEventIdByVisit]);
 
   // v2 spine: Postcode-first property search (accelerator)
   const [postcodeQuery, setPostcodeQuery] = useState('');
@@ -525,6 +544,23 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                       const engineerQuestions = engineerPayload ? toStringArray(engineerPayload.questions) : [];
                       const engineerConcerns = engineerPayload ? toStringArray(engineerPayload.concerns) : [];
 
+                      const engineerDiffPayload =
+                        e.type === 'engineer_diff' && e.payload && typeof e.payload === 'object' ? (e.payload as any) : null;
+                      const engineerDiff: EngineerDiffPayload | null =
+                        engineerDiffPayload && typeof engineerDiffPayload.summary === 'string'
+                          ? {
+                              addedFacts: toStringArray(engineerDiffPayload.addedFacts),
+                              removedFacts: toStringArray(engineerDiffPayload.removedFacts),
+                              resolvedQuestions: toStringArray(engineerDiffPayload.resolvedQuestions),
+                              newConcerns: toStringArray(engineerDiffPayload.newConcerns),
+                              summary: String(engineerDiffPayload.summary),
+                            }
+                          : null;
+
+                      const latestEngineerOutputIdForThisVisit = e.visit?.id
+                        ? latestEngineerOutputEventIdByVisit.get(e.visit.id) ?? null
+                        : null;
+
                       return (
                         <div
                           key={e.id}
@@ -565,6 +601,54 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                               {renderEngineerFactsSection(engineerFacts)}
                               {renderEngineerSection('Open questions', engineerQuestions)}
                               {renderEngineerSection('Concerns', engineerConcerns)}
+                            </div>
+                          ) : e.type === 'engineer_diff' ? (
+                            <div className="home-engineer">
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                                <div className="home-engineer__label" style={{ marginTop: 8 }}>
+                                  Engineer update
+                                </div>
+                                <button
+                                  className="btn-secondary"
+                                  onClick={() => {
+                                    if (!latestEngineerOutputIdForThisVisit) return;
+                                    setHighlightEventId(latestEngineerOutputIdForThisVisit);
+                                  }}
+                                  disabled={!latestEngineerOutputIdForThisVisit}
+                                >
+                                  View full Engineer output
+                                </button>
+                              </div>
+
+                              <div className="home-engineer__section">
+                                <div className="home-engineer__label">Summary</div>
+                                <div className="home-engineer__text">{engineerDiff?.summary || '—'}</div>
+                              </div>
+
+                              {engineerDiff ? (
+                                <>
+                                  {engineerDiff.addedFacts.length > 0
+                                    ? renderEngineerSection('New facts', engineerDiff.addedFacts)
+                                    : null}
+                                  {engineerDiff.removedFacts.length > 0
+                                    ? renderEngineerSection('Removed facts', engineerDiff.removedFacts)
+                                    : null}
+                                  {engineerDiff.resolvedQuestions.length > 0
+                                    ? renderEngineerSection('Resolved questions', engineerDiff.resolvedQuestions)
+                                    : null}
+                                  {engineerDiff.newConcerns.length > 0
+                                    ? renderEngineerSection('New concerns', engineerDiff.newConcerns)
+                                    : null}
+                                  {engineerDiff.addedFacts.length === 0 &&
+                                  engineerDiff.removedFacts.length === 0 &&
+                                  engineerDiff.resolvedQuestions.length === 0 &&
+                                  engineerDiff.newConcerns.length === 0 ? (
+                                    <div className="home-engineer__empty">No changes.</div>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <div className="home-engineer__empty">No diff payload.</div>
+                              )}
                             </div>
                           ) : photoUrl ? (
                             <div className="home-feed__photo">

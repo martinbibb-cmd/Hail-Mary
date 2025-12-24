@@ -16,7 +16,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db/drizzle-client';
 import { spineProperties, spineTimelineEvents, spineVisits } from '../db/drizzle-schema';
 import { requireAuth } from '../middleware/auth.middleware';
-import { getOpenaiApiKey } from '../services/workerKeys.service';
+import { workerClient } from '../services/workerClient.service';
 
 const router = Router();
 
@@ -199,100 +199,32 @@ router.post('/summary', requireAuth, async (req: Request, res: Response) => {
     const baseTitle = 'Home heating survey summary';
     const title = propertyAddress ? `${baseTitle} — ${propertyAddress}` : baseTitle;
 
-    // 3) Call LLM (or template render first pass)
-    const openaiKey = (process.env.OPENAI_API_KEY || (await getOpenaiApiKey()))?.trim();
-    if (!openaiKey) {
-      const out = markdownTemplate({ title, engineer, propertyAddress });
-      return res.json({ success: true, data: out });
-    }
-
-    const system = [
-      'You rewrite the provided Engineer output into a customer-friendly summary.',
-      '',
-      'Strict rules (non-negotiable):',
-      '- You may ONLY use the provided Engineer output (summary/facts/questions/concerns) and the optional property address.',
-      '- You MUST NOT introduce any new technical claims, measurements, model numbers, compliance assertions, or inferred site conditions.',
-      '- If a detail is not explicitly present, omit it. Do not guess. Do not add “common knowledge”.',
-      '- Keep wording gentle and calm. Avoid alarmist language.',
-      '- Never mention Knowledge Base, manuals, regulations, or citations.',
-      '',
-      'Output requirements:',
-      '- Return STRICT JSON (no markdown wrapper) with keys: {"title": string, "summaryMarkdown": string}.',
-      '- summaryMarkdown MUST be valid markdown and include exactly these sections in this order:',
-      '  1) "## What we found"',
-      '  2) "## What we recommend"',
-      '  3) "## Next steps"',
-      '- Use bullet lists where helpful.',
-      '- Do not include any other headings before those sections (a short 1–2 line intro is ok).',
-    ].join('\n');
-
-    const user = [
-      `Tone: ${tone}`,
-      `Property address (optional): ${propertyAddress}`,
-      `Engineer output (latest only): ${JSON.stringify(
-        {
-          engineerEventId: engineerRows[0].id,
-          engineerEventAt: engineerRows[0].ts.toISOString(),
-          engineer,
-        },
-        null,
-        2
-      )}`,
-    ].join('\n\n');
-
-    const llmRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.CUSTOMER_SUMMARY_OPENAI_MODEL || 'gpt-4o-mini',
-        temperature: 0.2,
-        max_tokens: 900,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!llmRes.ok) {
-      const errorText = await llmRes.text();
-      console.error('Customer summary LLM error:', llmRes.status, errorText);
-      const out = markdownTemplate({ title, engineer, propertyAddress });
-      return res.json({ success: true, data: out, warning: 'llm_unavailable_fallback_template' });
-    }
-
-    const llmJson = (await llmRes.json()) as any;
-    const content = typeof llmJson?.choices?.[0]?.message?.content === 'string' ? String(llmJson.choices[0].message.content).trim() : '';
-    if (!content) {
-      const out = markdownTemplate({ title, engineer, propertyAddress });
-      return res.json({ success: true, data: out, warning: 'llm_empty_fallback_template' });
-    }
-
-    let parsed: any = null;
+    // 3) Call worker for customer summary generation
     try {
-      parsed = JSON.parse(content);
-    } catch {
-      parsed = null;
+      const workerResponse = await workerClient.callCustomerSummary({
+        tone,
+        propertyAddress,
+        engineer,
+      });
+
+      if (workerResponse.success) {
+        return res.json({
+          success: true,
+          data: {
+            title: workerResponse.title || title,
+            summaryMarkdown: workerResponse.summaryMarkdown,
+          },
+        });
+      } else {
+        console.warn('Worker customer summary failed, falling back to template:', workerResponse);
+        const out = markdownTemplate({ title, engineer, propertyAddress });
+        return res.json({ success: true, data: out, warning: 'worker_failed_fallback_template' });
+      }
+    } catch (error) {
+      console.error('Worker customer summary call error:', error);
+      const out = markdownTemplate({ title, engineer, propertyAddress });
+      return res.json({ success: true, data: out, warning: 'worker_error_fallback_template' });
     }
-
-    const safeTitle = typeof parsed?.title === 'string' && parsed.title.trim() ? parsed.title.trim() : title;
-    const safeMarkdown =
-      typeof parsed?.summaryMarkdown === 'string' && parsed.summaryMarkdown.trim()
-        ? parsed.summaryMarkdown.trim()
-        : markdownTemplate({ title: safeTitle, engineer, propertyAddress }).summaryMarkdown;
-
-    return res.json({
-      success: true,
-      data: {
-        title: safeTitle,
-        summaryMarkdown: safeMarkdown,
-      },
-    });
   } catch (error) {
     console.error('Customer summary error:', error);
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Customer summary failed' });

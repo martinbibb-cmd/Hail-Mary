@@ -13,7 +13,7 @@ import { db } from "../db/drizzle-client";
 import { spineProperties, spineTimelineEvents, spineVisits } from "../db/drizzle-schema";
 import { requireAuth } from "../middleware/auth.middleware";
 import { kbSearch as kbSearchForAccount, type KbPassage } from "../services/kbSearch.service";
-import { getOpenaiApiKey } from "../services/workerKeys.service";
+import { workerClient } from "../services/workerClient.service";
 
 const router = Router();
 
@@ -434,115 +434,24 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
       kbSources.map((s) => [s.sourceId, { title: s.title, docId: s.docId, ref: s.ref }])
     );
 
-    // 5) Call LLM (OpenAI JSON mode); fallback to safe output if no keys
-    let openaiKey = process.env.OPENAI_API_KEY?.trim() || "";
-    if (!openaiKey) {
-      try {
-        openaiKey = (await getOpenaiApiKey())?.trim() || "";
-      } catch {
-        openaiKey = "";
-      }
-    }
-
+    // 5) Call worker for Engineer analysis
     let engineerOutput: EngineerOutputPayload;
-    if (!openaiKey) {
-      engineerOutput = buildEngineerFallbackOutput(context, mode);
-    } else {
-      const system = [
-          "You are the Atlas Engineer. You produce auditable technical outputs for a site survey visit.",
-          "",
-          "You will be given:",
-          "- Visit context (transcripts + notes)",
-          "- Knowledge Base sources (technical docs) with source IDs (S1, S2, ...)",
-          "",
-          "Non-negotiable guardrails:",
-          "- Do NOT invent clearances, distances, measurements, or compliance claims.",
-          "- If a fact is not directly supported by at least one provided KB source, either OMIT it or mark it as:",
-          '  \"Unverified – site check required: <fact>\"',
-          "- Any fact that is NOT marked Unverified MUST include citations (one or more source IDs).",
-          "- If a fact has ZERO citations, it MUST be marked verified=false and MUST start with \"Unverified\".",
-          "- Use ONLY the provided source IDs in citations. Never invent doc IDs/titles/refs.",
-          "",
-          "Output must be STRICT JSON (no markdown) with keys:",
-          '{ "summary": string, "facts": Array<{ "text": string, "citations": string[], "confidence"?: "high"|"medium"|"low", "verified"?: boolean }>, "questions": string[], "concerns": string[] }',
-          "",
-          "Facts guidance:",
-          "- Each fact should be a single, checkable claim.",
-          "- Prefer manufacturer instructions over generic guidance where possible.",
-          "- If the model/installation details are missing, ask targeted questions rather than guessing.",
-        ].join("\n");
-
-      const kbBlock =
-        kbSources.length > 0
-          ? [
-              "Knowledge Base sources (cite by source ID):",
-              ...kbSources.map((s) => {
-                const safe = normalizeWhitespace(String(s.text || ""));
-                const clipped = safe.length > 1200 ? `${safe.slice(0, 1200)}…` : safe;
-                return `- [${s.sourceId}] docId=${s.docId} title="${s.title}" ref=${s.ref} text="${clipped}"`;
-              }),
-            ].join("\n")
-          : "Knowledge Base sources: NONE_FOUND";
-
-      const user = [
-        `Mode: ${mode}`,
-        "",
-        "Visit context:",
-        `Property: ${JSON.stringify(context.property)}`,
-        `Visit: ${JSON.stringify(context.visit)}`,
-        context.transcripts.length > 0 ? `Transcripts: ${JSON.stringify(context.transcripts)}` : "Transcripts: []",
-        context.notes.length > 0 ? `Notes: ${JSON.stringify(context.notes)}` : "Notes: []",
-        "",
-        `Derived technical queries: ${JSON.stringify(queries)}`,
-        "",
-        kbBlock,
-      ].join("\n");
-
-      const llmRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openaiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: process.env.ENGINEER_OPENAI_MODEL || "gpt-4o-mini",
-          temperature: 0.1,
-          max_tokens: 900,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user },
-          ],
-        }),
-        signal: AbortSignal.timeout(20000),
+    try {
+      const workerResponse = await workerClient.callEngineer({
+        mode,
+        context,
+        queries,
+        kbSources,
       });
 
-      if (!llmRes.ok) {
-        const errorText = await llmRes.text();
-        console.error("Engineer LLM error:", llmRes.status, errorText);
-        engineerOutput = buildEngineerFallbackOutput(context, mode);
-      } else {
-        const llmJson = (await llmRes.json()) as any;
-        const content =
-          typeof llmJson?.choices?.[0]?.message?.content === "string" ? String(llmJson.choices[0].message.content).trim() : "";
-        let parsed: unknown = null;
-        try {
-          parsed = content ? JSON.parse(content) : null;
-        } catch {
-          parsed = null;
-        }
-
-        const llmObj = isRecord(parsed) ? (parsed as Record<string, unknown>) : null;
-        const summary = typeof llmObj?.summary === "string" ? llmObj.summary.trim() : "";
-        const questions = coerceStringArray(llmObj?.questions, 12);
-        const concerns = coerceStringArray(llmObj?.concerns, 12);
-        const facts = normalizeEngineerFactsFromLlm(llmObj?.facts, kbSourcesById);
+      if (workerResponse.success) {
+        const facts = normalizeEngineerFactsFromLlm(workerResponse.facts, kbSourcesById);
 
         engineerOutput = {
-          summary: summary || `Engineer (${mode}): generated output`,
+          summary: workerResponse.summary || `Engineer (${mode}): generated output`,
           facts,
-          questions,
-          concerns,
+          questions: workerResponse.questions || [],
+          concerns: workerResponse.concerns || [],
         };
 
         // Extra enforcement: if KB is empty, facts must be unverified + uncited.
@@ -554,7 +463,13 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
             verified: false,
           }));
         }
+      } else {
+        console.error("Worker engineer analysis failed:", workerResponse);
+        engineerOutput = buildEngineerFallbackOutput(context, mode);
       }
+    } catch (error) {
+      console.error("Worker engineer call error:", error);
+      engineerOutput = buildEngineerFallbackOutput(context, mode);
     }
 
     // 6) Compute + save TimelineEvent(type="engineer_diff") (if previous exists), then save new output.

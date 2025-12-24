@@ -16,7 +16,7 @@ type ChatMessage = {
   id: string
   role: 'user' | 'assistant'
   content: string
-  citations?: Array<{ title: string; ref: string }>
+  citations?: Array<{ title: string; docId: string; ref: string }>
   kbEnabled?: boolean
   ts: number
 }
@@ -87,7 +87,7 @@ export function SpineSarahPage() {
   }, [activeVisitId, feed])
 
   const disabledReason = useMemo(() => {
-    if (!activeVisitId) return 'Pick/Create a property/visit first.'
+    if (!activeVisitId) return 'Select/Create property to start a visit'
     return null
   }, [activeVisitId])
 
@@ -117,7 +117,7 @@ export function SpineSarahPage() {
       })
       const json = (await res.json()) as {
         reply?: string
-        citations?: Array<{ title: string; ref: string }>
+        citations?: Array<{ title: string; docId: string; ref: string }>
         error?: string
       }
       if (!res.ok || !json.reply) throw new Error(json.error || 'Failed to get reply from Sarah')
@@ -277,7 +277,7 @@ export function SpineSarahPage() {
                           <ul style={{ margin: 0, paddingLeft: 18 }}>
                             {m.citations.map((c, idx) => (
                               <li key={`${m.id}-c-${idx}`}>
-                                <span style={{ color: 'var(--text)' }}>{c.title}</span> <span>({c.ref})</span>
+                                <span style={{ color: 'var(--text)' }}>{c.title}</span> <span>({c.docId}, {c.ref})</span>
                               </li>
                             ))}
                           </ul>

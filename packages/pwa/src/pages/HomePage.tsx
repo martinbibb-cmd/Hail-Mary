@@ -63,6 +63,39 @@ const toStringArray = (input: unknown): string[] => {
   return input.filter((v) => typeof v === 'string' && v.trim()).map((v) => String(v).trim());
 };
 
+type EngineerFactCitation = { docId: string; title: string; ref: string };
+type EngineerFact = { text: string; citations: EngineerFactCitation[] };
+
+const toEngineerFacts = (input: unknown): EngineerFact[] => {
+  if (!Array.isArray(input)) return [];
+
+  const out: EngineerFact[] = [];
+  for (const v of input) {
+    if (typeof v === 'string' && v.trim()) {
+      out.push({ text: v.trim(), citations: [] });
+      continue;
+    }
+    if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+    const obj = v as any;
+    const text = typeof obj.text === 'string' ? obj.text.trim() : '';
+    if (!text) continue;
+    const citationsRaw = Array.isArray(obj.citations) ? obj.citations : [];
+    const citations: EngineerFactCitation[] = citationsRaw
+      .filter((c: any) => c && typeof c === 'object' && !Array.isArray(c))
+      .map(
+        (c: any): EngineerFactCitation => ({
+        docId: typeof c.docId === 'string' ? c.docId : String(c.docId ?? ''),
+        title: typeof c.title === 'string' ? c.title : String(c.title ?? ''),
+        ref: typeof c.ref === 'string' ? c.ref : String(c.ref ?? ''),
+        })
+      )
+      .filter((c: EngineerFactCitation) => c.docId.trim() && c.title.trim() && c.ref.trim());
+
+    out.push({ text, citations });
+  }
+  return out;
+};
+
 const renderEngineerSection = (title: string, items: string[]) => {
   return (
     <div className="home-engineer__section">
@@ -74,6 +107,44 @@ const renderEngineerSection = (title: string, items: string[]) => {
           {items.map((t, idx) => (
             <li key={`${title}-${idx}`} className="home-engineer__li">
               {t}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const renderEngineerFactsSection = (facts: EngineerFact[]) => {
+  return (
+    <div className="home-engineer__section">
+      <div className="home-engineer__label">Facts</div>
+      {facts.length === 0 ? (
+        <div className="home-engineer__empty">None</div>
+      ) : (
+        <ul className="home-engineer__list">
+          {facts.map((f, idx) => (
+            <li key={`fact-${idx}`} className="home-engineer__li">
+              <div className="home-engineer__fact-text">{f.text}</div>
+              <details className="home-engineer__sources">
+                <summary className="home-engineer__sources-summary">
+                  Sources{f.citations.length > 0 ? ` (${f.citations.length})` : ''}
+                </summary>
+                {f.citations.length === 0 ? (
+                  <div className="home-engineer__sources-empty">No sources.</div>
+                ) : (
+                  <ul className="home-engineer__sources-list">
+                    {f.citations.map((c, cIdx) => (
+                      <li key={`fact-${idx}-c-${cIdx}`} className="home-engineer__sources-li">
+                        <span className="home-engineer__sources-title">{c.title}</span>{' '}
+                        <span className="home-engineer__sources-ref">
+                          ({c.docId}, {c.ref})
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </details>
             </li>
           ))}
         </ul>
@@ -440,7 +511,7 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                       const engineerPayload = e.type === 'engineer_output' && e.payload && typeof e.payload === 'object' ? (e.payload as any) : null;
                       const engineerSummary =
                         engineerPayload && typeof engineerPayload.summary === 'string' ? String(engineerPayload.summary) : '';
-                      const engineerFacts = engineerPayload ? toStringArray(engineerPayload.facts) : [];
+                      const engineerFacts = engineerPayload ? toEngineerFacts(engineerPayload.facts) : [];
                       const engineerQuestions = engineerPayload ? toStringArray(engineerPayload.questions) : [];
                       const engineerConcerns = engineerPayload ? toStringArray(engineerPayload.concerns) : [];
 
@@ -471,7 +542,7 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                                 <div className="home-engineer__label">Summary</div>
                                 <div className="home-engineer__text">{engineerSummary || '—'}</div>
                               </div>
-                              {renderEngineerSection('Facts', engineerFacts)}
+                              {renderEngineerFactsSection(engineerFacts)}
                               {renderEngineerSection('Open questions', engineerQuestions)}
                               {renderEngineerSection('Concerns', engineerConcerns)}
                             </div>

@@ -21,9 +21,40 @@ type ChatMessage = {
   ts: number
 }
 
+type EngineerFactCitation = { docId: string; title: string; ref: string }
+type EngineerFact = { text: string; citations: EngineerFactCitation[] }
+
 const toStringArray = (input: unknown): string[] => {
   if (!Array.isArray(input)) return []
   return input.filter((v) => typeof v === 'string' && v.trim()).map((v) => String(v).trim())
+}
+
+const toEngineerFacts = (input: unknown): EngineerFact[] => {
+  if (!Array.isArray(input)) return []
+  const out: EngineerFact[] = []
+  for (const v of input) {
+    if (typeof v === 'string' && v.trim()) {
+      out.push({ text: v.trim(), citations: [] })
+      continue
+    }
+    if (!v || typeof v !== 'object' || Array.isArray(v)) continue
+    const obj = v as any
+    const text = typeof obj.text === 'string' ? obj.text.trim() : ''
+    if (!text) continue
+    const citationsRaw = Array.isArray(obj.citations) ? obj.citations : []
+    const citations: EngineerFactCitation[] = citationsRaw
+      .filter((c: any) => c && typeof c === 'object' && !Array.isArray(c))
+      .map(
+        (c: any): EngineerFactCitation => ({
+        docId: typeof c.docId === 'string' ? c.docId : String(c.docId ?? ''),
+        title: typeof c.title === 'string' ? c.title : String(c.title ?? ''),
+        ref: typeof c.ref === 'string' ? c.ref : String(c.ref ?? ''),
+        })
+      )
+      .filter((c: EngineerFactCitation) => c.docId.trim() && c.title.trim() && c.ref.trim())
+    out.push({ text, citations })
+  }
+  return out
 }
 
 const safeSummary = (payload: any): string => {
@@ -93,7 +124,7 @@ export function SpineSarahPage() {
 
   const engineerPayload = latestEngineerEvent?.payload && typeof latestEngineerEvent.payload === 'object' ? (latestEngineerEvent.payload as any) : null
   const engineerSummary = safeSummary(engineerPayload)
-  const engineerFacts = engineerPayload ? toStringArray(engineerPayload.facts) : []
+  const engineerFacts = engineerPayload ? toEngineerFacts(engineerPayload.facts) : []
   const engineerQuestions = engineerPayload ? toStringArray(engineerPayload.questions) : []
   const engineerConcerns = engineerPayload ? toStringArray(engineerPayload.concerns) : []
 
@@ -189,7 +220,33 @@ export function SpineSarahPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Facts</div>
-                {engineerFacts.length === 0 ? <div style={{ color: 'var(--text-muted)' }}>None</div> : <ul>{engineerFacts.map((t, i) => <li key={`f-${i}`}>{t}</li>)}</ul>}
+                {engineerFacts.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)' }}>None</div>
+                ) : (
+                  <ul>
+                    {engineerFacts.map((f, i) => (
+                      <li key={`f-${i}`}>
+                        <div>{f.text}</div>
+                        <details style={{ marginTop: 6 }}>
+                          <summary style={{ fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                            Sources{f.citations.length > 0 ? ` (${f.citations.length})` : ''}
+                          </summary>
+                          {f.citations.length === 0 ? (
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>No sources.</div>
+                          ) : (
+                            <ul style={{ marginTop: 6 }}>
+                              {f.citations.map((c, cIdx) => (
+                                <li key={`f-${i}-c-${cIdx}`} style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                  <span style={{ color: 'var(--text)' }}>{c.title}</span> <span>({c.docId}, {c.ref})</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </details>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Open questions</div>

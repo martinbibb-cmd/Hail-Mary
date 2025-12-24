@@ -460,6 +460,38 @@ export const visitEvents = pgTable("visit_events", {
 }));
 
 // ============================================
+// PR12: Customer Presentation + Admin Media Library
+// ============================================
+
+export const presentationAssets = pgTable("presentation_assets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  kind: text("kind").notNull(), // 'image' | 'video' (enforced by DB check)
+  title: text("title").notNull(),
+  description: text("description"),
+  tags: text("tags").array(),
+  url: text("url").notNull(),
+  thumbUrl: text("thumb_url"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  createdAtIdx: index("presentation_assets_created_at_idx").on(t.createdAt),
+  // tags gin index exists in SQL migration; drizzle doesn't currently model gin here.
+}));
+
+export const presentationDrafts = pgTable("presentation_drafts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  visitId: uuid("visit_id")
+    .references(() => spineVisits.id, { onDelete: "cascade" })
+    .notNull(),
+  title: text("title").notNull().default("Customer Pack"),
+  sections: jsonb("sections").notNull().default([]),
+  selectedPhotoEventIds: uuid("selected_photo_event_ids").array().notNull().default(sql`'{}'::uuid[]`),
+  selectedAssetIds: uuid("selected_asset_ids").array().notNull().default(sql`'{}'::uuid[]`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  visitCreatedAtIdx: index("presentation_drafts_visit_created_at_idx").on(t.visitId, t.createdAt),
+}));
+
+// ============================================
 // v2 Spine: Property / Visit / Timeline
 // ============================================
 

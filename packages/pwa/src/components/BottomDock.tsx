@@ -54,6 +54,13 @@ export const BottomDock: React.FC = () => {
       isActive: isActive('/sarah'),
     },
     {
+      id: 'presentation',
+      label: 'Pack',
+      icon: '📄',
+      onClick: () => navigate('/presentation'),
+      isActive: isActive('/presentation'),
+    },
+    {
       id: 'knowledge',
       label: 'Knowledge',
       icon: '📚',

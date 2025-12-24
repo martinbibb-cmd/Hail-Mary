@@ -9,7 +9,7 @@
  */
 
 import { Router, Request, Response } from "express";
-import { desc, eq, like } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like } from "drizzle-orm";
 import { db } from "../db/drizzle-client";
 import { spineProperties, spineTimelineEvents, spineVisits } from "../db/drizzle-schema";
 
@@ -64,6 +64,78 @@ router.get("/feed", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error loading spine feed:", error);
     res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+// GET /visits/:visitId/timeline?types=photo,engineer_output
+// Returns timeline events for a single visit (oldest -> newest), with visit + property info.
+router.get("/visits/:visitId/timeline", async (req: Request, res: Response) => {
+  try {
+    const visitId = req.params.visitId;
+    if (!visitId) return res.status(400).json({ success: false, error: "visitId is required" });
+
+    const typesRaw = typeof req.query.types === "string" ? req.query.types : null;
+    const types =
+      typesRaw && typesRaw.trim()
+        ? typesRaw
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .slice(0, 20)
+        : null;
+
+    const visitRows = await db
+      .select({
+        visit: spineVisits,
+        property: spineProperties,
+      })
+      .from(spineVisits)
+      .innerJoin(spineProperties, eq(spineVisits.propertyId, spineProperties.id))
+      .where(eq(spineVisits.id, visitId))
+      .limit(1);
+
+    if (!visitRows[0]) return res.status(404).json({ success: false, error: "Visit not found" });
+
+    const whereClause = types && types.length > 0
+      ? and(eq(spineTimelineEvents.visitId, visitId), inArray(spineTimelineEvents.type, types))
+      : eq(spineTimelineEvents.visitId, visitId);
+
+    const events = await db
+      .select()
+      .from(spineTimelineEvents)
+      .where(whereClause)
+      .orderBy(asc(spineTimelineEvents.ts))
+      .limit(1000);
+
+    return res.json({
+      success: true,
+      data: {
+        visit: {
+          id: visitRows[0].visit.id,
+          propertyId: visitRows[0].visit.propertyId,
+          startedAt: visitRows[0].visit.startedAt,
+          endedAt: visitRows[0].visit.endedAt,
+        },
+        property: {
+          id: visitRows[0].property.id,
+          addressLine1: visitRows[0].property.addressLine1,
+          addressLine2: visitRows[0].property.addressLine2,
+          town: visitRows[0].property.town,
+          postcode: visitRows[0].property.postcode,
+        },
+        events: events.map((e) => ({
+          id: e.id,
+          visitId: e.visitId,
+          type: e.type,
+          ts: e.ts,
+          payload: e.payload,
+          geo: e.geo,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Error loading visit timeline:", error);
+    return res.status(500).json({ success: false, error: (error as Error).message });
   }
 });
 

@@ -8,7 +8,7 @@
  */
 
 import { Router, type Request, type Response } from "express";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/drizzle-client";
 import { spineProperties, spineTimelineEvents, spineVisits } from "../db/drizzle-schema";
 import { requireAuth } from "../middleware/auth.middleware";
@@ -40,6 +40,20 @@ type EngineerFact = {
 type EngineerOutputPayload = {
   summary: string;
   facts: EngineerFact[];
+  questions: string[];
+  concerns: string[];
+};
+
+type EngineerDiffPayload = {
+  addedFacts: string[];
+  removedFacts: string[];
+  resolvedQuestions: string[];
+  newConcerns: string[];
+  summary: string;
+};
+
+type EngineerOutputForDiff = {
+  facts: string[];
   questions: string[];
   concerns: string[];
 };
@@ -154,6 +168,74 @@ function coerceStringArray(input: unknown, maxItems: number): string[] {
   return out;
 }
 
+function coerceFactTextArray(input: unknown, maxItems: number): string[] {
+  if (!Array.isArray(input)) return [];
+  const out: string[] = [];
+  for (const v of input) {
+    if (typeof v === "string") {
+      const s = normalizeWhitespace(v);
+      if (s) out.push(s);
+    } else if (isRecord(v) && typeof v.text === "string") {
+      const s = normalizeWhitespace(v.text);
+      if (s) out.push(s);
+    }
+    if (out.length >= maxItems) break;
+  }
+  return out;
+}
+
+function toEngineerOutputForDiff(payload: unknown): EngineerOutputForDiff | null {
+  if (!isRecord(payload)) return null;
+  const facts = coerceFactTextArray(payload.facts, 50);
+  const questions = coerceStringArray(payload.questions, 50).map((q) => normalizeWhitespace(q));
+  const concerns = coerceStringArray(payload.concerns, 50).map((c) => normalizeWhitespace(c));
+
+  return {
+    facts: uniqStrings(facts),
+    questions: uniqStrings(questions),
+    concerns: uniqStrings(concerns),
+  };
+}
+
+function computeEngineerDiff(prev: EngineerOutputForDiff, next: EngineerOutputForDiff): EngineerDiffPayload {
+  const key = (s: string) => normalizeWhitespace(s).toLowerCase();
+  const prevFacts = prev.facts.map(normalizeWhitespace).filter(Boolean);
+  const nextFacts = next.facts.map(normalizeWhitespace).filter(Boolean);
+  const prevQuestions = prev.questions.map(normalizeWhitespace).filter(Boolean);
+  const nextQuestions = next.questions.map(normalizeWhitespace).filter(Boolean);
+  const prevConcerns = prev.concerns.map(normalizeWhitespace).filter(Boolean);
+  const nextConcerns = next.concerns.map(normalizeWhitespace).filter(Boolean);
+
+  const prevFactSet = new Set(prevFacts.map(key));
+  const nextFactSet = new Set(nextFacts.map(key));
+  const prevQSet = new Set(prevQuestions.map(key));
+  const nextQSet = new Set(nextQuestions.map(key));
+  const prevConcernSet = new Set(prevConcerns.map(key));
+  const nextConcernSet = new Set(nextConcerns.map(key));
+
+  const addedFacts = nextFacts.filter((f) => !prevFactSet.has(key(f)));
+  const removedFacts = prevFacts.filter((f) => !nextFactSet.has(key(f)));
+  const resolvedQuestions = prevQuestions.filter((q) => !nextQSet.has(key(q)));
+  const newConcerns = nextConcerns.filter((c) => !prevConcernSet.has(key(c)));
+
+  const parts: string[] = [];
+  if (addedFacts.length) parts.push(`+${addedFacts.length} fact${addedFacts.length === 1 ? "" : "s"}`);
+  if (removedFacts.length) parts.push(`-${removedFacts.length} fact${removedFacts.length === 1 ? "" : "s"}`);
+  if (resolvedQuestions.length)
+    parts.push(`${resolvedQuestions.length} question${resolvedQuestions.length === 1 ? "" : "s"} resolved`);
+  if (newConcerns.length) parts.push(`+${newConcerns.length} concern${newConcerns.length === 1 ? "" : "s"}`);
+
+  const summary = parts.length > 0 ? `Engineer update: ${parts.join(", ")}.` : "Engineer update: No changes detected vs previous run.";
+
+  return {
+    addedFacts,
+    removedFacts,
+    resolvedQuestions,
+    newConcerns,
+    summary,
+  };
+}
+
 function coerceConfidence(input: unknown): EngineerFactConfidence | undefined {
   if (input === "high" || input === "medium" || input === "low") return input;
   return undefined;
@@ -252,6 +334,15 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
     const mode = asNonEmptyString(body.mode) ?? "survey";
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(401).json({ success: false, error: "User account not properly configured" });
+
+    // 0) Load previous Engineer output for this visit (if any) for diffing.
+    const prevEngineerRows = await db
+      .select({ payload: spineTimelineEvents.payload })
+      .from(spineTimelineEvents)
+      .where(and(eq(spineTimelineEvents.visitId, visitId), eq(spineTimelineEvents.type, "engineer_output")))
+      .orderBy(desc(spineTimelineEvents.ts))
+      .limit(1);
+    const prevForDiff = prevEngineerRows[0] ? toEngineerOutputForDiff(prevEngineerRows[0].payload) : null;
 
     // 1) Validate visit exists + load property basics
     const visitRows = await db
@@ -466,18 +557,43 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
       }
     }
 
-    // 6) Save TimelineEvent(type="engineer_output")
+    // 6) Compute + save TimelineEvent(type="engineer_diff") (if previous exists), then save new output.
+    const now = new Date();
+    let diffEventId: string | null = null;
+
+    if (prevForDiff) {
+      const nextForDiff: EngineerOutputForDiff = {
+        facts: engineerOutput.facts.map((f) => normalizeWhitespace(f.text)).filter(Boolean),
+        questions: engineerOutput.questions.map((q) => normalizeWhitespace(q)).filter(Boolean),
+        concerns: engineerOutput.concerns.map((c) => normalizeWhitespace(c)).filter(Boolean),
+      };
+
+      const diffPayload = computeEngineerDiff(prevForDiff, nextForDiff);
+      const diffTs = new Date(now.getTime() + 1); // ensure diff appears above output in feed ordering
+
+      const diffInserted = await db
+        .insert(spineTimelineEvents)
+        .values({
+          visitId,
+          type: "engineer_diff",
+          ts: diffTs,
+          payload: diffPayload,
+        })
+        .returning({ eventId: spineTimelineEvents.id });
+      diffEventId = diffInserted[0]?.eventId ?? null;
+    }
+
     const inserted = await db
       .insert(spineTimelineEvents)
       .values({
         visitId,
         type: "engineer_output",
-        ts: new Date(),
+        ts: now,
         payload: engineerOutput,
       })
       .returning({ eventId: spineTimelineEvents.id });
 
-    return res.status(201).json({ success: true, data: { eventId: inserted[0].eventId } });
+    return res.status(201).json({ success: true, data: { eventId: inserted[0].eventId, diffEventId } });
   } catch (error) {
     const statusCode = typeof (error as any)?.statusCode === "number" ? (error as any).statusCode : 500;
     if (statusCode >= 500) console.error("Error running engineer:", error);

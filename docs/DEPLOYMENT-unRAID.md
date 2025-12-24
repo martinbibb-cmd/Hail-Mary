@@ -231,36 +231,83 @@ To access Hail-Mary from anywhere, set up a Cloudflare Tunnel.
 4. Name it (e.g., `unraid-tunnel`)
 5. Install the connector on unRAID (use the Docker option)
 
-### Step 2: Add Public Hostname
+### Step 2: Configure Public Hostnames
 
-1. In your tunnel configuration, click **Add a public hostname**
+Configure two public hostnames for optimal routing:
+
+#### 2.1: API Route (Direct to API Service)
+
+For API endpoints, route directly to the API service on port 3001:
+
+1. Click **Add a public hostname**
 2. Configure as follows:
 
 | Setting | Value |
 |---------|-------|
 | Subdomain | `hailmary` (or your choice) |
 | Domain | Select your domain |
+| Path | `/api/*` |
 | Service Type | `HTTP` |
-| URL | `hailmary-pwa:8080` |
+| URL | `192.168.x.x:3001` (your unRAID IP) |
 
-> **Note:** If using Docker's default network mode, you may need to use the container's internal IP or the host IP. The service name `hailmary-pwa` works when the cloudflared connector is on the same Docker network.
+> **Important:** This route must be listed **above** the catch-all route in your tunnel configuration.
 
-### Step 3: Alternative - Use Host IP
+#### 2.2: PWA/UI Route (Catch-all to PWA)
 
-If the container name doesn't resolve, use your unRAID server's IP:
+For the UI and all other routes, use the PWA service on port 8080:
+
+1. Click **Add a public hostname**
+2. Configure as follows:
 
 | Setting | Value |
 |---------|-------|
+| Subdomain | `hailmary` (or your choice) |
+| Domain | Select your domain |
+| Path | (leave empty for catch-all) |
 | Service Type | `HTTP` |
 | URL | `192.168.x.x:8080` (your unRAID IP) |
 
-### Step 4: Access Your App
+### Step 3: Verify Route Order
+
+Ensure your tunnel configuration has routes in this order:
+
+1. **First:** `hailmary.your-domain.com/api/*` → `http://192.168.x.x:3001`
+2. **Second:** `hailmary.your-domain.com` → `http://192.168.x.x:8080` (catch-all)
+
+The order matters! The `/api/*` route must be processed before the catch-all route.
+
+### Step 4: Restart Tunnel Connector
+
+After configuring routes, restart your tunnel connector:
+
+```bash
+docker restart <tunnel-connector-container-name>
+```
+
+### Step 5: Verify Configuration
+
+Test the routing:
+
+```bash
+# Test API health endpoint (should return JSON, not 502)
+curl -i https://hailmary.your-domain.com/api/health
+
+# Test authentication endpoint (should return 401/403, not 502)
+curl -i https://hailmary.your-domain.com/api/auth/me
+
+# Test UI access (should return HTML)
+curl -i https://hailmary.your-domain.com
+```
+
+### Step 6: Access Your App
 
 Your Hail-Mary app is now available at:
 
 ```
 https://hailmary.your-domain.com
 ```
+
+All API requests to `/api/*` are routed directly to the API service, while UI requests go through the PWA/nginx service.
 
 ## Security Recommendations
 

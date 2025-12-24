@@ -100,8 +100,8 @@ services:
         condition: service_healthy
     networks:
       - hailmary-network
-    expose:
-      - "3001"
+    ports:
+      - "3001:3001"
     labels:
       net.unraid.docker.managed: "composeman"
       net.unraid.docker.icon: "https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/docs/icons/api.png"

@@ -80,8 +80,8 @@ services:
         condition: service_completed_successfully
     networks:
       - hailmary-network
-    expose:
-      - "3001"
+    ports:
+      - "3001:3001"
 
   # Hail-Mary Assistant Service
   hailmary-assistant:

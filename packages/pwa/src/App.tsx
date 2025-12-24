@@ -1,4 +1,4 @@
-import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom'
+import { Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import type {
   Customer,
@@ -28,6 +28,7 @@ import { useSpineStore } from './stores/spineStore'
 import { ActivePropertyBar } from './components/ActivePropertyBar'
 import { SpinePropertyPage } from './pages/SpinePropertyPage'
 import { SpinePlaceholderPage } from './pages/SpinePlaceholderPage'
+import { SpineCameraPage } from './pages/SpineCameraPage'
 
 // Simple API client
 const api = {
@@ -648,6 +649,7 @@ function App() {
   const { profile } = useCognitiveProfile()
   const isFocusProfile = profile === 'focus'
   const layout = useLayoutMode()
+  const location = useLocation()
   const { hydrate } = useLeadStore()
   const hydrateSpine = useSpineStore((s) => s.hydrate)
   
@@ -659,7 +661,7 @@ function App() {
 
   // Determine if using desktop or touch workspace
   const isDesktop = layout === 'desktop'
-  const showBottomDock = true
+  const showBottomDock = !location.pathname.startsWith('/camera')
 
   // Main content component (shared between both workspaces)
   const mainContent = (
@@ -695,7 +697,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage layout={layout} />} />
           <Route path="/properties/:id" element={<SpinePropertyPage />} />
-          <Route path="/camera" element={<SpinePlaceholderPage title="Camera" subtitle="Placeholder in PR #1." />} />
+          <Route path="/camera" element={<SpineCameraPage />} />
           <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />
           <Route path="/engineer" element={<SpinePlaceholderPage title="Engineer" subtitle="Placeholder in PR #1." />} />
           <Route path="/knowledge" element={<SpinePlaceholderPage title="Knowledge" subtitle="Placeholder in PR #1." />} />

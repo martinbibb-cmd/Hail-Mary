@@ -1,0 +1,246 @@
+.spine-camera {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  z-index: 200;
+}
+
+.spine-camera__topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 2;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+}
+
+.spine-camera__btn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.spine-camera__pill {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  max-width: min(70vw, 560px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spine-camera__pill--muted {
+  opacity: 0.8;
+}
+
+.spine-camera__stage {
+  position: absolute;
+  inset: 0;
+}
+
+.spine-camera__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.spine-camera__canvas {
+  display: none;
+}
+
+.spine-camera__controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 2;
+}
+
+.spine-camera__shutter {
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  background: #fff;
+  border: 6px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.spine-camera__hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 10px;
+  border-radius: 999px;
+}
+
+.spine-camera__review {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+
+.spine-camera__preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.spine-camera__form {
+  background: rgba(0, 0, 0, 0.7);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spine-camera__label {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.spine-camera__form input {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.spine-camera__review-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.spine-camera__micro {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.spine-camera__error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px;
+  z-index: 3;
+  text-align: center;
+}
+
+/* Attach sheet */
+.spine-camera__sheet {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+  z-index: 5;
+}
+
+.spine-camera__sheet-card {
+  width: min(720px, 100%);
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spine-camera__sheet-title {
+  font-weight: 900;
+  font-size: 16px;
+}
+
+.spine-camera__sheet-sub,
+.spine-camera__sheet-muted {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+}
+
+.spine-camera__sheet-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spine-camera__sheet-section-title {
+  font-weight: 800;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.spine-camera__visit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spine-camera__visit-item {
+  text-align: left;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.spine-camera__visit-title {
+  font-weight: 900;
+}
+
+.spine-camera__visit-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.spine-camera__quick-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.spine-camera__quick-grid input {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.spine-camera__sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+

@@ -210,5 +210,94 @@ router.post("/visits", async (req: Request, res: Response) => {
   }
 });
 
+// POST /visits/:visitId/events - create a timeline event for a visit
+router.post("/visits/:visitId/events", async (req: Request, res: Response) => {
+  try {
+    const visitId = req.params.visitId;
+    if (!visitId) return res.status(400).json({ success: false, error: "visitId is required" });
+
+    const body = req.body as Partial<{
+      type: string;
+      ts?: string;
+      payload: {
+        imageUrl: string;
+        caption?: string | null;
+        device?: string | null;
+      };
+      geo:
+        | {
+            lat: number;
+            lng: number;
+            accuracy?: number;
+            ts?: string;
+          }
+        | null;
+    }>;
+
+    if (body.type !== "photo") {
+      return res.status(400).json({ success: false, error: "Only type=photo is supported" });
+    }
+
+    const imageUrl = body.payload?.imageUrl;
+    if (typeof imageUrl !== "string" || !imageUrl.trim()) {
+      return res.status(400).json({ success: false, error: "payload.imageUrl is required" });
+    }
+
+    // Ensure visit exists
+    const [visit] = await db.select({ id: spineVisits.id }).from(spineVisits).where(eq(spineVisits.id, visitId)).limit(1);
+    if (!visit) return res.status(404).json({ success: false, error: "Visit not found" });
+
+    const caption = typeof body.payload?.caption === "string" ? body.payload.caption : null;
+    const device = typeof body.payload?.device === "string" ? body.payload.device : null;
+
+    // Event timestamp: prefer body.ts, then geo.ts, otherwise now
+    let ts = new Date();
+    const bodyTs = typeof body.ts === "string" ? new Date(body.ts) : null;
+    if (bodyTs && !Number.isNaN(bodyTs.getTime())) ts = bodyTs;
+    const geoTs = body.geo && typeof body.geo.ts === "string" ? new Date(body.geo.ts) : null;
+    if (!(bodyTs && !Number.isNaN(bodyTs.getTime())) && geoTs && !Number.isNaN(geoTs.getTime())) ts = geoTs;
+
+    const geo =
+      body.geo && typeof body.geo.lat === "number" && typeof body.geo.lng === "number"
+        ? {
+            lat: body.geo.lat,
+            lng: body.geo.lng,
+            accuracy: typeof body.geo.accuracy === "number" ? body.geo.accuracy : undefined,
+            ts: geoTs && !Number.isNaN(geoTs.getTime()) ? geoTs.toISOString() : undefined,
+          }
+        : null;
+
+    const [event] = await db
+      .insert(spineTimelineEvents)
+      .values({
+        visitId,
+        type: "photo",
+        ts,
+        payload: {
+          imageUrl,
+          caption,
+          device,
+        },
+        geo,
+      })
+      .returning();
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: event.id,
+        visitId: event.visitId,
+        type: event.type,
+        ts: event.ts,
+        payload: event.payload,
+        geo: event.geo,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating spine timeline event:", error);
+    return res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
 export default router;
 

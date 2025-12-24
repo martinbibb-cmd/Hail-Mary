@@ -181,13 +181,12 @@ router.post('/explain', async (req: Request, res: Response) => {
  * v2 Spine: Sarah Chat (read-only intelligence)
  *
  * POST /api/sarah/chat
- * body: { visitId: string, message: string, useKnowledgeBase?: boolean }
+ * body: { visitId: string, message: string, mode?: "engineer_explain" | "visit_kb", useKnowledgeBase?: boolean }
  *
  * Sarah reads:
  * - property summary
- * - latest engineer_output for this visit (if any)
- * - optional recent transcripts for this visit
- * - optional Knowledge Base passages (if enabled)
+ * - latest engineer_output for this visit (required in engineer_explain mode)
+ * - optional Knowledge Base passages (only in visit_kb mode)
  *
  * Returns: { reply: string, citations: Array<{ docId: string; title: string; ref: string }> }
  *
@@ -202,7 +201,9 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const message = asNonEmptyString(req.body?.message);
     if (!visitId) return res.status(400).json({ error: 'visitId is required' });
     if (!message) return res.status(400).json({ error: 'message is required' });
-    const useKnowledgeBase = asBoolean(req.body?.useKnowledgeBase) ?? true;
+    const modeRaw = asNonEmptyString(req.body?.mode);
+    const mode = (modeRaw === 'visit_kb' || modeRaw === 'engineer_explain' ? modeRaw : null) ?? 'engineer_explain';
+    const useKnowledgeBase = asBoolean(req.body?.useKnowledgeBase) ?? true; // only used for legacy visit_kb mode
 
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(401).json({ error: 'User account not properly configured' });
@@ -224,7 +225,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
 
     if (!visitRows[0]) return res.status(404).json({ error: 'Visit not found' });
 
-    // 2) Load latest engineer_output for this visit (optional)
+    // 2) Load latest engineer_output for this visit
     const engineerRows = await db
       .select({
         id: spineTimelineEvents.id,
@@ -235,25 +236,6 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       .where(and(eq(spineTimelineEvents.visitId, visitId), eq(spineTimelineEvents.type, 'engineer_output')))
       .orderBy(desc(spineTimelineEvents.ts))
       .limit(1);
-
-    // 3) Optional transcripts (recent)
-    const transcriptRows = await db
-      .select({
-        ts: spineTimelineEvents.ts,
-        payload: spineTimelineEvents.payload,
-      })
-      .from(spineTimelineEvents)
-      .where(and(eq(spineTimelineEvents.visitId, visitId), inArray(spineTimelineEvents.type, ['transcript'])))
-      .orderBy(desc(spineTimelineEvents.ts))
-      .limit(3);
-
-    const transcripts = transcriptRows
-      .map((t) => ({
-        occurredAt: t.ts.toISOString(),
-        text: safeTextFromPayload(t.payload) ?? '',
-      }))
-      .filter((t) => t.text.trim().length > 0)
-      .reverse(); // chronological
 
     const propertySummary = {
       addressLine1: visitRows[0].addressLine1,
@@ -270,11 +252,16 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
         }
       : null;
 
-    // 4) KB retrieval
+    // Required for the new default behavior: Sarah explains Engineer output only.
+    if (mode === 'engineer_explain' && !engineerContext) {
+      return res.json({ reply: 'Run Engineer first so I have something to explain.', citations: [] });
+    }
+
+    // 3) KB retrieval (legacy / explicit mode only)
     const topK = 5;
     let kbError: string | null = null;
     let kbPassages: Array<{ title: string; docId: string; ref: string; text: string }> = [];
-    if (useKnowledgeBase) {
+    if (mode === 'visit_kb' && useKnowledgeBase) {
       try {
         kbPassages = await kbSearchForAccount(accountIdStrict, message, topK);
       } catch (e) {
@@ -285,7 +272,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
 
     // If KB is enabled and we *successfully* found 0 sources, enforce the required UX:
     // Sarah must say "I can’t find a source in KB for that" and ask for missing detail.
-    if (useKnowledgeBase && !kbError && kbPassages.length === 0) {
+    if (mode === 'visit_kb' && useKnowledgeBase && !kbError && kbPassages.length === 0) {
       const reply =
         `I can’t find a source in KB for that.\n\n` +
         `What’s the exact model (e.g. “Worcester Greenstar 4000 25/30/35”) and the flue type/route (horizontal/vertical, and where it terminates)?`;
@@ -300,74 +287,131 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       text: p.text,
     }));
 
-    // 5) Call LLM (fallback to safe template response if no keys)
+    // 4) Call LLM (fallback to safe template response if no keys)
     const openaiKey = (process.env.OPENAI_API_KEY || (await getOpenaiApiKey()))?.trim();
     if (!openaiKey) {
+      if (mode === 'engineer_explain') {
+        const engineerOutput = engineerContext?.engineerOutput as any;
+        const summary = typeof engineerOutput?.summary === 'string' ? engineerOutput.summary.trim() : '';
+        const questions = Array.isArray(engineerOutput?.questions) ? engineerOutput.questions.filter((q: any) => typeof q === 'string' && q.trim()) : [];
+        const concerns = Array.isArray(engineerOutput?.concerns) ? engineerOutput.concerns.filter((c: any) => typeof c === 'string' && c.trim()) : [];
+        const facts = Array.isArray(engineerOutput?.facts) ? engineerOutput.facts : [];
+        const factTexts = facts
+          .map((f: any) => (typeof f?.text === 'string' ? f.text.trim() : ''))
+          .filter((t: string) => t.length > 0)
+          .slice(0, 6);
+
+        const reply = [
+          'Here’s what the latest Engineer run is saying, in plain English (no extra assumptions):',
+          '',
+          summary ? `Summary: ${summary}` : 'Summary: (none provided)',
+          '',
+          factTexts.length > 0 ? `Key points:\n${factTexts.map((t: string) => `- ${t}`).join('\n')}` : 'Key points: (none provided)',
+          '',
+          questions.length > 0 ? `What you likely need to do next:\n${questions.slice(0, 6).map((t: string) => `- ${t}`).join('\n')}` : '',
+          concerns.length > 0 ? `Risks / concerns to watch:\n${concerns.slice(0, 6).map((t: string) => `- ${t}`).join('\n')}` : '',
+          '',
+          'If you want, ask: “Explain this for a customer” or “Which single check should I do first?” and I’ll rephrase using only this Engineer output.',
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        return res.json({ reply, citations: [] });
+      }
+
       const reply =
         `I can help answer questions using:\n` +
-        `- This visit (property, Engineer output if available, transcripts)\n` +
-        (useKnowledgeBase ? `- Knowledge Base (if documents exist)\n` : `- (Knowledge Base is OFF)\n`) +
+        `- This visit (property, Engineer output if available)\n` +
+        (mode === 'visit_kb' && useKnowledgeBase ? `- Knowledge Base (if documents exist)\n` : `- (Knowledge Base is OFF)\n`) +
         `\n` +
-        `I can’t add new measurements or compliance claims beyond what was recorded in the timeline.\n\n` +
+        `I can’t add new measurements or compliance claims beyond what was recorded.\n\n` +
         `Ask a specific question and I’ll walk through it.`;
       return res.json({ reply, citations: [] });
     }
 
     const system = [
-      'You are Sarah, a read-only assistant for a site survey visit.',
+      mode === 'engineer_explain'
+        ? 'You are Sarah. You explain the latest Engineer output in plain English.'
+        : 'You are Sarah, a read-only assistant for a site survey visit.',
       '',
-      'You will be given TWO separated contexts:',
-      'A) Visit facts (property summary, latest engineer_output if any, and recent transcripts).',
-      'B) Knowledge Base sources (technical docs).',
+      mode === 'engineer_explain'
+        ? 'You will be given ONE context: (A) Property summary + latest Engineer output.'
+        : 'You will be given TWO separated contexts:\nA) Visit facts (property summary, latest engineer_output if any, and recent transcripts).\nB) Knowledge Base sources (technical docs).',
       '',
       'Behaviour rules:',
-      '- Treat Visit facts and KB facts separately; never mix them up.',
-      '- You must NOT invent site-specific measurements, model numbers, site conditions, or compliance claims not present in Visit facts.',
-      '- You must NOT silently "upgrade" Engineer facts. If Engineer output is missing/unclear, say what is missing.',
+      ...(mode === 'engineer_explain'
+        ? [
+            '- You may ONLY use the provided Engineer output and property summary.',
+            '- You may NOT introduce new technical claims, measurements, model numbers, site conditions, or compliance assertions.',
+            '- You may reference citations already attached to Engineer facts (docId/title/ref) but you may NOT invent sources.',
+            '- If the user asks something outside the Engineer output, say what is missing and suggest running Engineer again or adding the missing info.',
+            '- Your job is to explain/rephrase and suggest next actions based on Engineer questions/concerns.',
+          ]
+        : [
+            '- Treat Visit facts and KB facts separately; never mix them up.',
+            '- You must NOT invent site-specific measurements, model numbers, site conditions, or compliance claims not present in Visit facts.',
+            '- You must NOT silently "upgrade" Engineer facts. If Engineer output is missing/unclear, say what is missing.',
+          ]),
       '- You must NOT write timeline events or run Engineer (read-only).',
       '',
-      'Knowledge Base + citations rules:',
-      '- Any technical claim taken from KB MUST be cited.',
-      '- Use ONLY the provided KB source IDs (e.g. "S1"). Never invent document IDs/titles/refs.',
-      '- If something is not supported by the provided KB sources, you MUST say so.',
-      '',
-      'Output format:',
-      '- Return STRICT JSON (no markdown) with keys: {"reply": string, "citations": string[]}.',
-      '- "citations" is a list of KB source IDs actually used (may be empty).',
-      '',
-      'Clarifications:',
-      '- If the question needs missing details (e.g. boiler model, flue type, measured clearance), ask exactly ONE clarifying question.',
+      ...(mode === 'engineer_explain'
+        ? [
+            'Output format:',
+            '- Return STRICT JSON (no markdown) with keys: {"reply": string}.',
+          ]
+        : [
+            'Knowledge Base + citations rules:',
+            '- Any technical claim taken from KB MUST be cited.',
+            '- Use ONLY the provided KB source IDs (e.g. "S1"). Never invent document IDs/titles/refs.',
+            '- If something is not supported by the provided KB sources, you MUST say so.',
+            '',
+            'Output format:',
+            '- Return STRICT JSON (no markdown) with keys: {"reply": string, "citations": string[]}.',
+            '- "citations" is a list of KB source IDs actually used (may be empty).',
+            '',
+            'Clarifications:',
+            '- If the question needs missing details (e.g. boiler model, flue type, measured clearance), ask exactly ONE clarifying question.',
+          ]),
     ].join('\n');
 
-    const kbBlock = useKnowledgeBase
-      ? kbSources.length > 0
-        ? [
-            'Knowledge Base sources (use these for citations):',
-            ...kbSources.map((s) => {
-              const safe = String(s.text || '').replace(/\s+/g, ' ').trim();
-              const clipped = safe.length > 1200 ? `${safe.slice(0, 1200)}…` : safe;
-              return `- [${s.sourceId}] docId=${s.docId} title="${s.title}" ref=${s.ref} text="${clipped}"`;
-            }),
-          ].join('\n')
-        : kbError
-          ? `Knowledge Base sources: UNAVAILABLE (${kbError})`
-          : 'Knowledge Base sources: NONE_FOUND'
-      : 'Knowledge Base: DISABLED_BY_USER';
+    const kbBlock =
+      mode === 'visit_kb'
+        ? useKnowledgeBase
+          ? kbSources.length > 0
+            ? [
+                'Knowledge Base sources (use these for citations):',
+                ...kbSources.map((s) => {
+                  const safe = String(s.text || '').replace(/\s+/g, ' ').trim();
+                  const clipped = safe.length > 1200 ? `${safe.slice(0, 1200)}…` : safe;
+                  return `- [${s.sourceId}] docId=${s.docId} title="${s.title}" ref=${s.ref} text="${clipped}"`;
+                }),
+              ].join('\n')
+            : kbError
+              ? `Knowledge Base sources: UNAVAILABLE (${kbError})`
+              : 'Knowledge Base sources: NONE_FOUND'
+          : 'Knowledge Base: DISABLED_BY_USER'
+        : 'Knowledge Base: DISABLED (engineer_explain mode)';
 
     const user = [
       'Visit context:',
       `Property summary: ${JSON.stringify(propertySummary)}`,
       `Latest engineer_output (if any): ${JSON.stringify(engineerContext)}`,
-      transcripts.length > 0 ? `Recent transcripts (optional): ${JSON.stringify(transcripts)}` : 'Recent transcripts: none',
-      '',
-      kbBlock,
+      ...(mode === 'visit_kb' ? ['', kbBlock] : []),
       '',
       `User question: ${message}`,
       '',
       'Response style:',
-      '- If Knowledge Base is DISABLED_BY_USER, do not reference manuals/regulations and do not cite KB sources.',
-      '- If answering from KB, phrase it explicitly (e.g. "From the <title>...").',
-      '- If answering from the visit, phrase it explicitly (e.g. "From this visit...").',
+      ...(mode === 'engineer_explain'
+        ? [
+            '- Explain in plain English.',
+            '- Rephrase the Engineer summary/facts without adding new claims.',
+            '- Suggest next actions based on Engineer questions/concerns.',
+          ]
+        : [
+            '- If Knowledge Base is DISABLED_BY_USER, do not reference manuals/regulations and do not cite KB sources.',
+            '- If answering from KB, phrase it explicitly (e.g. "From the <title>...").',
+            '- If answering from the visit, phrase it explicitly (e.g. "From this visit...").',
+          ]),
     ].join('\n');
 
     const llmRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -408,6 +452,12 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     }
 
     const reply = typeof parsed?.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : content;
+
+    // engineer_explain returns no KB citations (Engineer citations live on the Engineer output itself).
+    if (mode === 'engineer_explain') {
+      return res.json({ reply, citations: [] });
+    }
+
     const citedIdsRaw = Array.isArray(parsed?.citations) ? parsed.citations : [];
     const citedIds = citedIdsRaw.filter((x: unknown) => typeof x === 'string' && /^S\d+$/.test(x));
     const citations = citedIds

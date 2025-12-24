@@ -29,6 +29,7 @@ import { ActivePropertyBar } from './components/ActivePropertyBar'
 import { SpinePropertyPage } from './pages/SpinePropertyPage'
 import { SpinePlaceholderPage } from './pages/SpinePlaceholderPage'
 import { SpineCameraPage } from './pages/SpineCameraPage'
+import { SpineEngineerPage } from './pages/SpineEngineerPage'
 
 // Simple API client
 const api = {
@@ -699,7 +700,7 @@ function App() {
           <Route path="/properties/:id" element={<SpinePropertyPage />} />
           <Route path="/camera" element={<SpineCameraPage />} />
           <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />
-          <Route path="/engineer" element={<SpinePlaceholderPage title="Engineer" subtitle="Placeholder in PR #1." />} />
+          <Route path="/engineer" element={<SpineEngineerPage />} />
           <Route path="/knowledge" element={<SpinePlaceholderPage title="Knowledge" subtitle="Placeholder in PR #1." />} />
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<NewCustomer />} />

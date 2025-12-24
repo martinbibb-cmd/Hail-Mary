@@ -19,13 +19,13 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "../db/drizzle-client";
 import { assets, visitEvents, visitSessions } from "../db/drizzle-schema";
-import { requireAuth, blockGuest } from "../middleware/auth.middleware";
+import { optionalAuth } from "../middleware/auth.middleware";
 import type { ApiResponse } from "@hail-mary/shared";
 
 const router = Router();
 
-router.use(requireAuth);
-router.use(blockGuest);
+// Use optional auth to allow unauthenticated access for PWA photo/asset uploads
+router.use(optionalAuth);
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "../../data");
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");

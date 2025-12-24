@@ -95,3 +95,28 @@ export function blockGuest(req: Request, res: Response, next: NextFunction): voi
 
   next();
 }
+
+/**
+ * Middleware for optional authentication
+ * Extracts user from JWT cookie if present, but allows request to continue without auth
+ * This is useful for endpoints that work without authentication but can use user context if available
+ */
+export function optionalAuth(req: Request, res: Response, next: NextFunction): void {
+  const token = req.cookies?.[COOKIE_NAME];
+
+  if (!token) {
+    // No token present - continue without user
+    next();
+    return;
+  }
+
+  const user = getCurrentUserFromToken(token);
+
+  if (user) {
+    // Valid token - attach user to request
+    req.user = user;
+  }
+
+  // Continue regardless of token validity
+  next();
+}

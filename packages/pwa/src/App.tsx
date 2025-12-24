@@ -1,4 +1,4 @@
-import { Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import type {
   Customer,
@@ -31,6 +31,8 @@ import { SpinePlaceholderPage } from './pages/SpinePlaceholderPage'
 import { SpineCameraPage } from './pages/SpineCameraPage'
 import { SpineEngineerPage } from './pages/SpineEngineerPage'
 import { SpineSarahPage } from './pages/SpineSarahPage'
+import { SpineKnowledgePage } from './pages/SpineKnowledgePage'
+import { SpineKnowledgeDocPage } from './pages/SpineKnowledgeDocPage'
 
 // Simple API client
 const api = {
@@ -651,7 +653,6 @@ function App() {
   const { profile } = useCognitiveProfile()
   const isFocusProfile = profile === 'focus'
   const layout = useLayoutMode()
-  const location = useLocation()
   const { hydrate } = useLeadStore()
   const hydrateSpine = useSpineStore((s) => s.hydrate)
   
@@ -663,7 +664,7 @@ function App() {
 
   // Determine if using desktop or touch workspace
   const isDesktop = layout === 'desktop'
-  const showBottomDock = !location.pathname.startsWith('/camera')
+  const showBottomDock = !isDesktop
 
   // Main content component (shared between both workspaces)
   const mainContent = (
@@ -703,7 +704,8 @@ function App() {
           <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />
           <Route path="/engineer" element={<SpineEngineerPage />} />
           <Route path="/sarah" element={<SpineSarahPage />} />
-          <Route path="/knowledge" element={<SpinePlaceholderPage title="Knowledge" subtitle="Placeholder in PR #1." />} />
+          <Route path="/knowledge" element={<SpineKnowledgePage />} />
+          <Route path="/knowledge/doc/:docId/page/:pageNo" element={<SpineKnowledgeDocPage />} />
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<NewCustomer />} />
           <Route path="/customers/:id" element={<CustomerDetail />} />

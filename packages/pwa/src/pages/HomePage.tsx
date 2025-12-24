@@ -108,6 +108,7 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const setActiveProperty = useSpineStore((s) => s.setActiveProperty);
+  const setActiveVisitId = useSpineStore((s) => s.setActiveVisitId);
 
   const isDesktop = layout === 'desktop';
 
@@ -183,6 +184,14 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   const [propertyResults, setPropertyResults] = useState<SpineProperty[]>([]);
   const [propertyLoading, setPropertyLoading] = useState(false);
 
+  // v2 spine: Add property modal (minimal fields)
+  const [addOpen, setAddOpen] = useState(false);
+  const [addPostcode, setAddPostcode] = useState('');
+  const [addAddressLine1, setAddAddressLine1] = useState('');
+  const [addTown, setAddTown] = useState('');
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
   useEffect(() => {
     const q = postcodeQuery.trim();
     if (!q) {
@@ -207,6 +216,88 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
     return () => window.clearTimeout(handle);
   }, [postcodeQuery]);
 
+  const createVisitForProperty = async (propertyId: string): Promise<string> => {
+    const res = await fetch('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ propertyId }),
+    });
+    const json = (await res.json()) as ApiResponse<{ id: string }>;
+    if (!res.ok || !json.success || !json.data?.id) {
+      throw new Error(json.error || 'Failed to create visit');
+    }
+    return json.data.id;
+  };
+
+  const selectPropertyAndCreateVisit = async (p: SpineProperty) => {
+    setActiveProperty({
+      id: p.id,
+      addressLine1: p.addressLine1,
+      addressLine2: p.addressLine2,
+      town: p.town,
+      postcode: p.postcode,
+    });
+
+    const visitId = await createVisitForProperty(p.id);
+    setActiveVisitId(visitId);
+  };
+
+  const openAddModal = () => {
+    setAddError(null);
+    setAddPostcode(postcodeQuery.trim());
+    setAddAddressLine1('');
+    setAddTown('');
+    setAddOpen(true);
+  };
+
+  const submitAddProperty = async () => {
+    const postcode = addPostcode.trim();
+    const addressLine1 = addAddressLine1.trim();
+    const town = addTown.trim();
+    if (!postcode || !addressLine1) {
+      setAddError('Postcode and Address line 1 are required.');
+      return;
+    }
+
+    setAddSaving(true);
+    setAddError(null);
+    try {
+      const propRes = await fetch('/api/properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          postcode,
+          addressLine1,
+          town: town || null,
+        }),
+      });
+      const propJson = (await propRes.json()) as ApiResponse<SpineProperty>;
+      if (!propRes.ok || !propJson.success || !propJson.data) {
+        throw new Error(propJson.error || 'Failed to create property');
+      }
+
+      const created = propJson.data;
+
+      // Optimistic: keep results fresh for current query
+      const q = postcodeQuery.trim();
+      if (q) {
+        setPropertyResults((prev) => {
+          const withoutDup = prev.filter((x) => x.id !== created.id);
+          return [created, ...withoutDup];
+        });
+      }
+
+      await selectPropertyAndCreateVisit(created);
+      setAddOpen(false);
+    } catch (e) {
+      setAddError(e instanceof Error ? e.message : 'Failed to create property');
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
   return (
     <div className="home-page">
       <div className="home-hero">
@@ -219,8 +310,15 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
       <div className={`home-grid ${isDesktop ? 'home-grid--desktop' : 'home-grid--stacked'}`}>
         <section className={`home-section home-section--full`}>
           <div className="home-section__header">
-            <h2>Postcode search</h2>
-            <p>Search does not redirect. Active property is optional.</p>
+            <div className="home-section__header-row">
+              <div>
+                <h2>Property</h2>
+                <p>Postcode-first: search existing or add a new one.</p>
+              </div>
+              <button className="home-properties__btn home-properties__btn--primary" onClick={openAddModal}>
+                Add property
+              </button>
+            </div>
           </div>
 
           <div className="home-postcode">
@@ -255,16 +353,12 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                     <button
                       className="home-properties__btn home-properties__btn--primary"
                       onClick={() =>
-                        setActiveProperty({
-                          id: p.id,
-                          addressLine1: p.addressLine1,
-                          addressLine2: p.addressLine2,
-                          town: p.town,
-                          postcode: p.postcode,
+                        selectPropertyAndCreateVisit(p).catch((e) => {
+                          alert(e instanceof Error ? e.message : 'Failed to select property');
                         })
                       }
                     >
-                      Set active
+                      Select
                     </button>
                   </div>
                 </div>
@@ -272,6 +366,46 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
             </div>
           ) : null}
         </section>
+
+        {addOpen ? (
+          <div className="home-modal">
+            <div className="home-modal__overlay" onClick={() => (!addSaving ? setAddOpen(false) : null)} />
+            <div className="home-modal__card" role="dialog" aria-modal="true" aria-label="Add property">
+              <div className="home-modal__header">
+                <div className="home-modal__title">Add property</div>
+                <button className="home-modal__close" onClick={() => setAddOpen(false)} disabled={addSaving} aria-label="Close">
+                  ✕
+                </button>
+              </div>
+
+              <div className="home-modal__body">
+                <label className="home-modal__label">
+                  Postcode *
+                  <input value={addPostcode} onChange={(e) => setAddPostcode(e.target.value)} placeholder="e.g. SW1A 1AA" />
+                </label>
+                <label className="home-modal__label">
+                  Address line 1 *
+                  <input value={addAddressLine1} onChange={(e) => setAddAddressLine1(e.target.value)} placeholder="e.g. 10 Downing St" />
+                </label>
+                <label className="home-modal__label">
+                  Town (optional)
+                  <input value={addTown} onChange={(e) => setAddTown(e.target.value)} placeholder="e.g. London" />
+                </label>
+
+                {addError ? <div className="home-modal__error">{addError}</div> : null}
+              </div>
+
+              <div className="home-modal__actions">
+                <button className="btn-secondary" onClick={() => setAddOpen(false)} disabled={addSaving}>
+                  Cancel
+                </button>
+                <button className="btn-primary" onClick={submitAddProperty} disabled={addSaving}>
+                  {addSaving ? 'Creating…' : 'Create & select'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <section className={`home-section home-section--full`}>
           <div className="home-section__header">

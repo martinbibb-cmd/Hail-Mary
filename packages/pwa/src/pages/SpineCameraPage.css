@@ -3,7 +3,8 @@
   inset: 0;
   background: #000;
   color: #fff;
-  z-index: 200;
+  /* Keep below bottom dock (nav is dock-only) */
+  z-index: 80;
 }
 
 .spine-camera__topbar {
@@ -66,7 +67,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 22px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   align-items: center;

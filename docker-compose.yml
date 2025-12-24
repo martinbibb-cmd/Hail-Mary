@@ -80,9 +80,9 @@ services:
         condition: service_completed_successfully
     networks:
       - hailmary-network
-    # Internal only - not exposed externally
-    expose:
-      - "3001"
+    # Exposed for Cloudflare tunnel direct access
+    ports:
+      - "3001:3001"
 
   # Hail-Mary Assistant Service
   hailmary-assistant:

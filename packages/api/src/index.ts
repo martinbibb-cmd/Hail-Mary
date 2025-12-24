@@ -22,6 +22,7 @@ import { getOpenaiApiKey } from './services/workerKeys.service';
 // Import routes
 import authRouter from './routes/auth';
 import adminRouter from './routes/admin';
+import adminMediaRouter from './routes/adminMedia';
 import nasRouter from './routes/nas';
 import customersRouter from './routes/customers';
 import productsRouter from './routes/products';
@@ -49,6 +50,7 @@ import uploadsRouter from './routes/uploads';
 import ingestRouter from './routes/ingest';
 import engineerRouter from './routes/engineer';
 import customerSummaryRouter from './routes/customerSummary';
+import presentationDraftsRouter from './routes/presentationDrafts';
 
 import path from 'path';
 
@@ -312,6 +314,9 @@ app.get('/health/db', async (_req, res) => {
 // Auth should not be blocked by Rocky/AI limits; it has its own generous limiter.
 app.use('/api/auth/me', wrapLimiter('auth-me', authMeLimiter));
 app.use('/api/auth', wrapLimiter('auth', authLimiter), authRouter);
+// PR12: "admin media" is curated by admins but read by engineers; do NOT gate with requireAdmin.
+// Mount before /api/admin to avoid adminRouter intercepting the path.
+app.use('/api/admin/media', adminMediaRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/nas', nasRouter);
 app.use('/api/customers', customersRouter);
@@ -340,6 +345,7 @@ app.use('/api', uploadsRouter); // local uploads helper for v2 spine camera
 app.use('/api/ingest', ingestRouter); // Companion -> timeline ingest endpoints
 app.use('/api/engineer', engineerRouter); // v2 Spine: manual Engineer runs -> timeline
 app.use('/api/customer', customerSummaryRouter); // v2 Spine: customer-friendly summary from latest engineer_output
+app.use('/api/presentation', presentationDraftsRouter); // PR12b: presentation drafts (customer packs)
 
 // 404 handler
 app.use((_req, res) => {

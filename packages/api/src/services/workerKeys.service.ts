@@ -1,13 +1,15 @@
 /**
  * Worker Keys Service
- * 
- * Fetches API keys from Cloudflare Worker
- * URL: hail-mary.martinbibb.workers.dev
- * 
- * The worker provides keys in this order:
- * 1. GEMINI_API_KEY
- * 2. OPENAI_API_KEY
- * 3. ANTHROPIC_API_KEY
+ *
+ * Historical note:
+ * Some earlier iterations expected the Cloudflare Worker to return raw API keys.
+ * The current worker design (see `packages/worker`) exposes ONLY health/config
+ * (e.g. GET /health) and never returns secrets.
+ *
+ * Therefore:
+ * - We treat the worker as an optional hint only.
+ * - If the worker is unreachable/misconfigured, we return empty keys and let
+ *   callers fall back to server env vars (OPENAI_API_KEY, etc).
  */
 
 const WORKER_URL = 'https://hail-mary.martinbibb.workers.dev';
@@ -18,10 +20,13 @@ interface WorkerKeysResponse {
   anthropicApiKey?: string;
 }
 
-interface WorkerRawResponse {
-  GEMINI_API_KEY?: string;
-  OPENAI_API_KEY?: string;
-  ANTHROPIC_API_KEY?: string;
+interface WorkerHealthResponse {
+  ok?: boolean;
+  providers?: {
+    gemini?: boolean;
+    openai?: boolean;
+    anthropic?: boolean;
+  };
 }
 
 let cachedKeys: WorkerKeysResponse | null = null;
@@ -34,7 +39,7 @@ const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
  */
 async function fetchKeysFromWorker(): Promise<WorkerKeysResponse> {
   try {
-    const response = await fetch(WORKER_URL, {
+    const response = await fetch(`${WORKER_URL}/health`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -42,18 +47,20 @@ async function fetchKeysFromWorker(): Promise<WorkerKeysResponse> {
     });
 
     if (!response.ok) {
-      throw new Error(`Worker responded with status ${response.status}`);
+      console.warn(`Worker /health responded with status ${response.status}`);
+      return {};
     }
 
-    const data = (await response.json()) as WorkerRawResponse;
-    return {
-      geminiApiKey: data.GEMINI_API_KEY,
-      openaiApiKey: data.OPENAI_API_KEY,
-      anthropicApiKey: data.ANTHROPIC_API_KEY,
-    };
+    const data = (await response.json()) as WorkerHealthResponse;
+    // Worker does not return secrets; return empty keys and let callers fall back.
+    if (data?.providers) {
+      console.log('Worker providers configured:', data.providers);
+    }
+    return {};
   } catch (error) {
-    console.error('Failed to fetch keys from worker:', error);
-    throw new Error('Failed to fetch API keys from worker');
+    console.warn('Worker /health not reachable:', error);
+    // Non-fatal: callers should fall back to environment variables.
+    return {};
   }
 }
 

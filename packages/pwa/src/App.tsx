@@ -34,6 +34,7 @@ import { SpineSarahPage } from './pages/SpineSarahPage'
 import { SpineKnowledgePage } from './pages/SpineKnowledgePage'
 import { SpineKnowledgeDocPage } from './pages/SpineKnowledgeDocPage'
 import { CustomerSummaryPage } from './pages/CustomerSummaryPage'
+import { PresentationPage } from './pages/PresentationPage'
 
 // Simple API client
 const api = {
@@ -705,6 +706,7 @@ function App() {
           <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />
           <Route path="/engineer" element={<SpineEngineerPage />} />
           <Route path="/customer-summary" element={<CustomerSummaryPage />} />
+          <Route path="/presentation" element={<PresentationPage />} />
           <Route path="/sarah" element={<SpineSarahPage />} />
           <Route path="/knowledge" element={<SpineKnowledgePage />} />
           <Route path="/knowledge/doc/:docId/page/:pageNo" element={<SpineKnowledgeDocPage />} />

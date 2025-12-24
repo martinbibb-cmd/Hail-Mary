@@ -72,6 +72,9 @@ export const leads = pgTable("leads", {
   accountId: integer("account_id")
     .references(() => accounts.id)
     .notNull(),
+  // User assignment for access control
+  assignedUserId: integer("assigned_user_id")
+    .references(() => users.id),
   // Contact information
   firstName: varchar("first_name", { length: 255 }).notNull(),
   lastName: varchar("last_name", { length: 255 }).notNull(),

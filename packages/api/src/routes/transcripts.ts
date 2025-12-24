@@ -12,14 +12,13 @@ import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
 import { transcriptAggregates, transcriptSegments, transcriptSessions } from "../db/drizzle-schema";
 import { and, asc, desc, eq, gt, isNotNull, sql } from "drizzle-orm";
-import { requireAuth, blockGuest } from "../middleware/auth.middleware";
+import { optionalAuth } from "../middleware/auth.middleware";
 import type { ApiResponse } from "@hail-mary/shared";
 
 const router = Router();
 
-// Keep consistent with other lead endpoints
-router.use(requireAuth);
-router.use(blockGuest);
+// Use optional auth to allow unauthenticated access for PWA functionality
+router.use(optionalAuth);
 
 type IngestSegment = {
   seq: number;

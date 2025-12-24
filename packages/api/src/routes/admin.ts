@@ -12,6 +12,9 @@ import { Router, Request, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { listAllUsers, adminResetUserPassword, adminGenerateResetToken, AuthError } from '../services/auth.service';
 import adminSystemRouter from './admin.system';
+import { db } from '../db/drizzle-client';
+import { leads } from '../db/drizzle-schema';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
 
@@ -110,6 +113,109 @@ router.post('/users/:userId/reset-password', async (req: Request, res: Response)
     return res.status(500).json({
       success: false,
       error: 'Failed to reset password',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/leads/:leadId/assign
+ * Assign a lead to a specific user
+ * Body: { userId: number }
+ */
+router.post('/leads/:leadId/assign', async (req: Request, res: Response) => {
+  try {
+    const leadId = parseInt(req.params.leadId, 10);
+    const { userId } = req.body;
+
+    if (isNaN(leadId) || leadId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid lead ID is required',
+      });
+    }
+
+    if (!userId || isNaN(parseInt(userId, 10)) || parseInt(userId, 10) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid user ID is required',
+      });
+    }
+
+    const targetUserId = parseInt(userId, 10);
+
+    // Update lead assignment
+    const result = await db
+      .update(leads)
+      .set({ assignedUserId: targetUserId, updatedAt: new Date() })
+      .where(eq(leads.id, leadId))
+      .returning();
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Lead assigned successfully',
+      data: {
+        leadId,
+        assignedUserId: targetUserId,
+      },
+    });
+  } catch (error) {
+    console.error('Error assigning lead:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to assign lead',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/leads/:leadId/unassign
+ * Remove user assignment from a lead
+ */
+router.post('/leads/:leadId/unassign', async (req: Request, res: Response) => {
+  try {
+    const leadId = parseInt(req.params.leadId, 10);
+
+    if (isNaN(leadId) || leadId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid lead ID is required',
+      });
+    }
+
+    // Remove assignment by setting to null
+    const result = await db
+      .update(leads)
+      .set({ assignedUserId: null, updatedAt: new Date() })
+      .where(eq(leads.id, leadId))
+      .returning();
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Lead unassigned successfully',
+      data: {
+        leadId,
+        assignedUserId: null,
+      },
+    });
+  } catch (error) {
+    console.error('Error unassigning lead:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to unassign lead',
     });
   }
 });

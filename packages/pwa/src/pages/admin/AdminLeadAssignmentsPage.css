@@ -1,0 +1,258 @@
+/* Admin Lead Assignments Page Styles */
+
+.admin-page {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.admin-container {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #333;
+}
+
+.info-message {
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  padding: 16px;
+  margin-bottom: 24px;
+  border-radius: 4px;
+}
+
+.info-message p {
+  margin: 0;
+  color: #1565c0;
+}
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.alert-error {
+  background: #ffebee;
+  color: #c62828;
+  border-left: 4px solid #c62828;
+}
+
+.alert-success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-left: 4px solid #2e7d32;
+}
+
+.leads-table {
+  margin-bottom: 32px;
+  overflow-x: auto;
+}
+
+.leads-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.leads-table thead {
+  background: #f5f5f5;
+}
+
+.leads-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #666;
+  border-bottom: 2px solid #ddd;
+}
+
+.leads-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.leads-table tr:hover {
+  background: #f9f9f9;
+}
+
+.text-muted {
+  color: #999;
+  font-size: 0.9em;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-new {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-contacted {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.status-qualified {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.status-quoted {
+  background: #e0f2f1;
+  color: #00796b;
+}
+
+.status-won {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.status-lost {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.assigned-user {
+  color: #333;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.9em;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary {
+  background: #757575;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #616161;
+}
+
+.btn-small.btn-secondary {
+  padding: 6px 12px;
+  font-size: 0.9em;
+}
+
+.user-select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9em;
+  background: white;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.user-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.user-select:hover:not(:disabled) {
+  border-color: #2196f3;
+}
+
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card:nth-child(2) {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stat-card:nth-child(3) {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-card:nth-child(4) {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.stat-value {
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .leads-table {
+    font-size: 0.9em;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .user-select {
+    width: 100%;
+  }
+
+  .stats-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}

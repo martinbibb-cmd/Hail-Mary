@@ -13,10 +13,11 @@ import { Router, type Request, type Response } from "express";
 import { desc, eq } from "drizzle-orm";
 import { db } from "../db/drizzle-client";
 import { presentationDrafts, spineVisits } from "../db/drizzle-schema";
-import { requireAuth } from "../middleware/auth.middleware";
+import { optionalAuth } from "../middleware/auth.middleware";
 
 const router = Router();
-router.use(requireAuth);
+// Use optional auth to allow unauthenticated access for PWA draft saving
+router.use(optionalAuth);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

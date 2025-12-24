@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { LayoutMode } from '../hooks/useLayoutMode';
 import { useSpineStore } from '../stores/spineStore';
 import './HomePage.css';
@@ -58,6 +58,30 @@ const eventTypeIcon = (type: string): string => {
 
 const truncate = (s: string, max = 140) => (s.length <= max ? s : `${s.slice(0, max - 1)}…`);
 
+const toStringArray = (input: unknown): string[] => {
+  if (!Array.isArray(input)) return [];
+  return input.filter((v) => typeof v === 'string' && v.trim()).map((v) => String(v).trim());
+};
+
+const renderEngineerSection = (title: string, items: string[]) => {
+  return (
+    <div className="home-engineer__section">
+      <div className="home-engineer__label">{title}</div>
+      {items.length === 0 ? (
+        <div className="home-engineer__empty">None</div>
+      ) : (
+        <ul className="home-engineer__list">
+          {items.map((t, idx) => (
+            <li key={`${title}-${idx}`} className="home-engineer__li">
+              {t}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const summarizePayload = (_type: string, payload: any): string => {
   if (payload == null) return '';
   if (typeof payload === 'string') return truncate(payload);
@@ -82,6 +106,7 @@ const summarizePayload = (_type: string, payload: any): string => {
 
 export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const setActiveProperty = useSpineStore((s) => s.setActiveProperty);
 
   const isDesktop = layout === 'desktop';
@@ -90,6 +115,15 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   const [feed, setFeed] = useState<SpineFeedEvent[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
+  const [highlightEventId, setHighlightEventId] = useState<string | null>(() => {
+    const s = (location.state as any)?.highlightEventId;
+    return typeof s === 'string' && s.trim() ? s.trim() : null;
+  });
+
+  useEffect(() => {
+    const s = (location.state as any)?.highlightEventId;
+    if (typeof s === 'string' && s.trim()) setHighlightEventId(s.trim());
+  }, [location.state]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +150,24 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!highlightEventId) return;
+    if (feedLoading) return;
+    if (!feed.some((e) => e.id === highlightEventId)) return;
+
+    // Allow DOM paint before scroll
+    const handle = window.setTimeout(() => {
+      const el = document.getElementById(`spine-event-${highlightEventId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+
+    const clear = window.setTimeout(() => setHighlightEventId(null), 5000);
+    return () => {
+      window.clearTimeout(handle);
+      window.clearTimeout(clear);
+    };
+  }, [feed, feedLoading, highlightEventId]);
 
   const feedByDay = useMemo(() => {
     const groups: Record<string, SpineFeedEvent[]> = {};
@@ -240,6 +292,7 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                   <div className="home-feed__day-title">{day}</div>
                   <div className="home-feed__list">
                     {events.map((e) => {
+                      const isHighlighted = !!highlightEventId && e.id === highlightEventId;
                       const summary = summarizePayload(e.type, e.payload);
                       const photoUrl =
                         e.type === 'photo' && e.payload && typeof (e.payload as any).imageUrl === 'string'
@@ -249,8 +302,20 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                         e.type === 'photo' && e.payload && typeof (e.payload as any).caption === 'string'
                           ? String((e.payload as any).caption)
                           : '';
+
+                      const engineerPayload = e.type === 'engineer_output' && e.payload && typeof e.payload === 'object' ? (e.payload as any) : null;
+                      const engineerSummary =
+                        engineerPayload && typeof engineerPayload.summary === 'string' ? String(engineerPayload.summary) : '';
+                      const engineerFacts = engineerPayload ? toStringArray(engineerPayload.facts) : [];
+                      const engineerQuestions = engineerPayload ? toStringArray(engineerPayload.questions) : [];
+                      const engineerConcerns = engineerPayload ? toStringArray(engineerPayload.concerns) : [];
+
                       return (
-                        <div key={e.id} className="home-feed__item">
+                        <div
+                          key={e.id}
+                          id={`spine-event-${e.id}`}
+                          className={`home-feed__item ${isHighlighted ? 'home-feed__item--highlight' : ''}`}
+                        >
                           <div className="home-feed__item-title">
                             <span className="home-feed__type">
                               <span className="home-feed__icon" aria-hidden="true">
@@ -266,7 +331,17 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                             {e.property.addressLine1 ? `${e.property.addressLine1} • ` : ''}
                             {e.property.postcode}
                           </div>
-                          {photoUrl ? (
+                          {e.type === 'engineer_output' ? (
+                            <div className="home-engineer">
+                              <div className="home-engineer__section">
+                                <div className="home-engineer__label">Summary</div>
+                                <div className="home-engineer__text">{engineerSummary || '—'}</div>
+                              </div>
+                              {renderEngineerSection('Facts', engineerFacts)}
+                              {renderEngineerSection('Open questions', engineerQuestions)}
+                              {renderEngineerSection('Concerns', engineerConcerns)}
+                            </div>
+                          ) : photoUrl ? (
                             <div className="home-feed__photo">
                               <img className="home-feed__photo-img" src={photoUrl} alt="Photo" loading="lazy" />
                               {photoCaption ? <div className="home-feed__photo-caption">{photoCaption}</div> : null}

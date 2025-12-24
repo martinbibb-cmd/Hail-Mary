@@ -30,6 +30,7 @@ import { SpinePropertyPage } from './pages/SpinePropertyPage'
 import { SpinePlaceholderPage } from './pages/SpinePlaceholderPage'
 import { SpineCameraPage } from './pages/SpineCameraPage'
 import { SpineEngineerPage } from './pages/SpineEngineerPage'
+import { SpineSarahPage } from './pages/SpineSarahPage'
 
 // Simple API client
 const api = {
@@ -701,6 +702,7 @@ function App() {
           <Route path="/camera" element={<SpineCameraPage />} />
           <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />
           <Route path="/engineer" element={<SpineEngineerPage />} />
+          <Route path="/sarah" element={<SpineSarahPage />} />
           <Route path="/knowledge" element={<SpinePlaceholderPage title="Knowledge" subtitle="Placeholder in PR #1." />} />
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<NewCustomer />} />
@@ -713,7 +715,7 @@ function App() {
           <Route path="/diary" element={<DiaryApp />} />
           <Route path="/visit" element={<VisitAppWithGuard />} />
           <Route path="/rocky" element={<RockyToolWithGuard />} />
-          <Route path="/sarah" element={<SarahToolWithGuard />} />
+          <Route path="/tools/sarah" element={<SarahToolWithGuard />} />
           <Route path="/photos" element={<PhotosAppWithGuard />} />
           <Route path="/profile" element={<ProfileApp />} />
           <Route path="/files" element={<FilesApp />} />

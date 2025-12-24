@@ -46,6 +46,7 @@ import sessionRouter from './routes/session';
 import systemRecommendationsRouter from './routes/systemRecommendations';
 import spineRouter from './routes/spine';
 import uploadsRouter from './routes/uploads';
+import ingestRouter from './routes/ingest';
 
 import path from 'path';
 
@@ -334,6 +335,7 @@ app.use('/api/ai', wrapLimiter('ai', aiLimiter), aiRouter); // AI Gateway (serve
 app.use('/api/session', sessionRouter); // Session management (active lead persistence)
 app.use('/api', spineRouter); // v2 Spine (all-activity feed + postcode-first properties)
 app.use('/api', uploadsRouter); // local uploads helper for v2 spine camera
+app.use('/api/ingest', ingestRouter); // Companion -> timeline ingest endpoints
 
 // 404 handler
 app.use((_req, res) => {

@@ -1,19 +1,28 @@
 /**
- * Option A Transcription Ingestion Routes (live segments)
+ * Transcription Routes
  *
- * Endpoints:
+ * Option A Ingestion (live segments):
  * - POST /api/leads/:leadId/transcripts/sessions
  * - POST /api/transcripts/sessions/:sessionId/segments   (idempotent upsert by sessionId+seq)
  * - GET  /api/transcripts/sessions/:sessionId/segments?afterSeq=N
  * - POST /api/transcripts/sessions/:sessionId/finalize
+ *
+ * Postcode-based paste/upload (PR13):
+ * - POST /api/transcripts                         (paste/type transcript)
+ * - POST /api/transcripts/upload                  (upload .txt/.md file)
+ * - GET  /api/transcripts?postcode=...            (list transcripts)
+ * - GET  /api/transcripts/:id                     (get transcript detail)
  */
 
 import { Router, Request, Response } from "express";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { db } from "../db/drizzle-client";
 import { transcriptAggregates, transcriptSegments, transcriptSessions } from "../db/drizzle-schema";
 import { and, asc, desc, eq, gt, isNotNull, sql } from "drizzle-orm";
-import { optionalAuth } from "../middleware/auth.middleware";
-import type { ApiResponse } from "@hail-mary/shared";
+import { optionalAuth, requireAuth } from "../middleware/auth.middleware";
+import type { ApiResponse, PaginatedResponse } from "@hail-mary/shared";
 
 const router = Router();
 
@@ -278,6 +287,263 @@ router.post("/transcripts/sessions/:sessionId/finalize", async (req: Request, re
   } catch (error) {
     console.error("Error finalizing transcript session (Option A):", error);
     const response: ApiResponse<null> = { success: false, error: (error as Error).message };
+    return res.status(500).json(response);
+  }
+});
+
+// ============================================
+// Postcode-based Paste/Upload Routes (PR13)
+// ============================================
+
+// Multer setup for transcript file uploads
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), "../../data/transcripts");
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      cb(null, UPLOADS_DIR);
+    },
+    filename: (_req, file, cb) => {
+      const uniqueName = `${Date.now()}-${file.originalname}`;
+      cb(null, uniqueName);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (_req, file, cb) => {
+    const allowedExtensions = ['.txt', '.md', '.json'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      cb(new Error(`File type not allowed. Allowed: ${allowedExtensions.join(', ')}`));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+/**
+ * POST /api/transcripts
+ * Create a transcript from pasted/typed text
+ */
+router.post("/", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { postcode, title, text, source, notes } = req.body;
+
+    if (!postcode || typeof postcode !== 'string') {
+      const response: ApiResponse<null> = { success: false, error: "postcode is required" };
+      return res.status(400).json(response);
+    }
+
+    if (!text || typeof text !== 'string') {
+      const response: ApiResponse<null> = { success: false, error: "text is required" };
+      return res.status(400).json(response);
+    }
+
+    // Auto-generate title if not provided
+    const now = new Date();
+    const autoTitle = title || `Transcript ${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+
+    const [inserted] = await db
+      .insert(transcriptSessions)
+      .values({
+        userId,
+        postcode: postcode.trim().toUpperCase(),
+        title: autoTitle,
+        rawText: text,
+        source: source || 'manual',
+        status: 'new',
+        notes: notes || null,
+        startedAt: now,
+      })
+      .returning();
+
+    const response: ApiResponse<{ transcript: typeof inserted }> = {
+      success: true,
+      data: { transcript: inserted },
+      message: "Transcript created successfully",
+    };
+    return res.status(201).json(response);
+  } catch (error) {
+    console.error("Error creating transcript:", error);
+    const response: ApiResponse<null> = {
+      success: false,
+      error: (error as Error).message,
+    };
+    return res.status(500).json(response);
+  }
+});
+
+/**
+ * POST /api/transcripts/upload
+ * Upload a transcript file (.txt, .md, .json)
+ */
+router.post("/upload", requireAuth, upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const file = req.file;
+
+    if (!file) {
+      const response: ApiResponse<null> = { success: false, error: "No file uploaded" };
+      return res.status(400).json(response);
+    }
+
+    const { postcode, title, notes } = req.body;
+
+    if (!postcode || typeof postcode !== 'string') {
+      // Clean up uploaded file
+      fs.unlinkSync(file.path);
+      const response: ApiResponse<null> = { success: false, error: "postcode is required" };
+      return res.status(400).json(response);
+    }
+
+    // Read file contents
+    const fileContents = fs.readFileSync(file.path, 'utf-8');
+
+    // Auto-generate title from filename if not provided
+    const now = new Date();
+    const autoTitle = title || file.originalname;
+
+    const [inserted] = await db
+      .insert(transcriptSessions)
+      .values({
+        userId,
+        postcode: postcode.trim().toUpperCase(),
+        title: autoTitle,
+        rawText: fileContents,
+        source: 'upload',
+        status: 'new',
+        notes: notes || null,
+        startedAt: now,
+      })
+      .returning();
+
+    // Clean up uploaded file after storing in DB
+    fs.unlinkSync(file.path);
+
+    const response: ApiResponse<{ transcript: typeof inserted }> = {
+      success: true,
+      data: { transcript: inserted },
+      message: "Transcript uploaded successfully",
+    };
+    return res.status(201).json(response);
+  } catch (error) {
+    console.error("Error uploading transcript:", error);
+    // Clean up file on error
+    if (req.file?.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error("Error cleaning up file:", cleanupError);
+      }
+    }
+    const response: ApiResponse<null> = {
+      success: false,
+      error: (error as Error).message,
+    };
+    return res.status(500).json(response);
+  }
+});
+
+/**
+ * GET /api/transcripts?postcode=...&page=1&limit=50
+ * List transcripts with optional postcode filter
+ */
+router.get("/", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const postcode = req.query.postcode as string | undefined;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const conditions = [eq(transcriptSessions.userId, userId)];
+
+    if (postcode) {
+      conditions.push(eq(transcriptSessions.postcode, postcode.trim().toUpperCase()));
+    }
+
+    // Get total count
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(transcriptSessions)
+      .where(and(...conditions));
+
+    const total = Number(countResult?.count ?? 0);
+    const totalPages = Math.ceil(total / limit);
+
+    // Get paginated results
+    const rows = await db
+      .select()
+      .from(transcriptSessions)
+      .where(and(...conditions))
+      .orderBy(desc(transcriptSessions.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    const response: PaginatedResponse<typeof rows[0]> = {
+      success: true,
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
+    return res.json(response);
+  } catch (error) {
+    console.error("Error listing transcripts:", error);
+    const response: ApiResponse<null> = {
+      success: false,
+      error: (error as Error).message,
+    };
+    return res.status(500).json(response);
+  }
+});
+
+/**
+ * GET /api/transcripts/:id
+ * Get transcript detail by ID
+ */
+router.get("/:id", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const id = parseId(req.params.id);
+
+    if (!id) {
+      const response: ApiResponse<null> = { success: false, error: "Invalid transcript ID" };
+      return res.status(400).json(response);
+    }
+
+    const [transcript] = await db
+      .select()
+      .from(transcriptSessions)
+      .where(
+        and(
+          eq(transcriptSessions.id, id),
+          eq(transcriptSessions.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (!transcript) {
+      const response: ApiResponse<null> = { success: false, error: "Transcript not found" };
+      return res.status(404).json(response);
+    }
+
+    const response: ApiResponse<{ transcript: typeof transcript }> = {
+      success: true,
+      data: { transcript },
+    };
+    return res.json(response);
+  } catch (error) {
+    console.error("Error getting transcript:", error);
+    const response: ApiResponse<null> = {
+      success: false,
+      error: (error as Error).message,
+    };
     return res.status(500).json(response);
   }
 });

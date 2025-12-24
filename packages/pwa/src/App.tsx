@@ -21,6 +21,9 @@ import { HomePage } from './pages/HomePage'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
 import { DiaryApp } from './os/apps/diary/DiaryApp'
+import { TranscriptsApp } from './os/apps/transcripts/TranscriptsApp'
+import { PhotoLibraryApp } from './os/apps/photo-library/PhotoLibraryApp'
+import { ScansApp } from './os/apps/scans/ScansApp'
 import { BottomDock } from './components/BottomDock'
 import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
@@ -724,8 +727,11 @@ function App() {
           <Route path="/rocky" element={<RockyToolWithGuard />} />
           <Route path="/tools/sarah" element={<SarahToolWithGuard />} />
           <Route path="/photos" element={<PhotosAppWithGuard />} />
+          <Route path="/photo-library" element={<PhotoLibraryApp />} />
+          <Route path="/scans" element={<ScansApp />} />
           <Route path="/profile" element={<ProfileApp />} />
           <Route path="/files" element={<FilesApp />} />
+          <Route path="/transcripts" element={<TranscriptsApp />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/nas" element={<AdminNasPage />} />
           <Route path="/admin/lead-assignments" element={<AdminLeadAssignmentsPage />} />

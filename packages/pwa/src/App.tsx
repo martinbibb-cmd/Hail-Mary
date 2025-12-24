@@ -683,6 +683,7 @@ function App() {
             <li><Link to="/customers">Customers</Link></li>
             <li><Link to="/quotes">Quotes</Link></li>
             <li><Link to="/leads">Leads</Link></li>
+            <li><Link to="/profile">⚙️ Settings</Link></li>
           </ul>
         </nav>
       )}

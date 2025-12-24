@@ -2,7 +2,7 @@
  * Bottom Dock
  * 
  * v2 Spine dock (placeholders for now).
- * Contains 6 items: Home, Camera, Voice, Engineer, Sarah, Knowledge.
+ * Contains 8 items: Home, Camera, Voice, Engineer, Sarah, Pack, Knowledge, Settings.
  */
 
 import React from 'react';
@@ -66,6 +66,13 @@ export const BottomDock: React.FC = () => {
       icon: '📚',
       onClick: () => navigate('/knowledge'),
       isActive: isActive('/knowledge'),
+    },
+    {
+      id: 'profile',
+      label: 'Settings',
+      icon: '⚙️',
+      onClick: () => navigate('/profile'),
+      isActive: isActive('/profile') || isActive('/admin'),
     },
   ];
 

@@ -61,8 +61,10 @@ export function SpineCameraPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const [stream, setStream] = useState<MediaStream | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const startingRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
+  const [restarting, setRestarting] = useState(false)
 
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null)
   const [capturedGeo, setCapturedGeo] = useState<GeoCapture>(null)
@@ -79,30 +81,54 @@ export function SpineCameraPage() {
   const [quickPostcode, setQuickPostcode] = useState('')
   const [pendingSave, setPendingSave] = useState(false)
 
+  const stopCamera = useCallback(() => {
+    const s = streamRef.current
+    if (s) s.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+  }, [])
+
   const startCamera = useCallback(async () => {
+    if (startingRef.current) return
+    startingRef.current = true
     try {
       setError(null)
+      stopCamera()
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+        video: { facingMode: { ideal: 'environment' } },
         audio: false,
       })
 
-      setStream(mediaStream)
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-        await videoRef.current.play()
+      streamRef.current = mediaStream
+
+      const v = videoRef.current
+      if (v) {
+        v.srcObject = mediaStream
+        // Safari can be finicky: call play() and surface failures.
+        try {
+          await v.play()
+        } catch (e) {
+          stopCamera()
+          throw e
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to start camera'
       setError(msg)
+    } finally {
+      startingRef.current = false
     }
-  }, [])
+  }, [stopCamera])
 
-  const stopCamera = useCallback(() => {
-    if (stream) stream.getTracks().forEach((t) => t.stop())
-    setStream(null)
-    if (videoRef.current) videoRef.current.srcObject = null
-  }, [stream])
+  const restartCamera = useCallback(async () => {
+    setRestarting(true)
+    try {
+      await startCamera()
+    } finally {
+      setRestarting(false)
+    }
+  }, [startCamera])
 
   // Request location permission on entering camera screen (best-effort)
   useEffect(() => {
@@ -122,7 +148,31 @@ export function SpineCameraPage() {
 
   useEffect(() => {
     startCamera()
-    return () => stopCamera()
+
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      const s = streamRef.current
+      const tracks = s ? s.getTracks() : []
+      const hasLive = tracks.length > 0 && tracks.every((t) => t.readyState === 'live')
+      if (!s || !hasLive) {
+        startCamera()
+        return
+      }
+      // If we still have a stream, try to resume playback (Safari may pause video element).
+      const v = videoRef.current
+      if (v) {
+        v.play().catch(() => {
+          // fall back to restart; user can also tap Restart.
+          startCamera()
+        })
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      stopCamera()
+    }
   }, [startCamera, stopCamera])
 
   const capture = useCallback(async () => {
@@ -338,9 +388,6 @@ export function SpineCameraPage() {
   return (
     <div className="spine-camera">
       <div className="spine-camera__topbar">
-        <button className="spine-camera__btn" onClick={() => navigate('/')}>
-          ← Home
-        </button>
         <div className="spine-camera__status">
           {activeProperty ? (
             <span className="spine-camera__pill">
@@ -350,13 +397,16 @@ export function SpineCameraPage() {
             <span className="spine-camera__pill spine-camera__pill--muted">No active property</span>
           )}
         </div>
+        <button className="spine-camera__btn" onClick={restartCamera} disabled={restarting} aria-label="Restart camera">
+          {restarting ? 'Restarting…' : 'Restart'}
+        </button>
       </div>
 
       {error ? (
         <div className="spine-camera__error">
           <div>{error}</div>
-          <button className="btn-primary" onClick={startCamera}>
-            Try again
+          <button className="btn-primary" onClick={restartCamera}>
+            Restart camera
           </button>
         </div>
       ) : null}

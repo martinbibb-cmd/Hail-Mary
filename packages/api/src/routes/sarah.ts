@@ -24,6 +24,15 @@ import { kbSearch as kbSearchForAccount } from '../services/kbSearch.service';
 
 const router = Router();
 
+type EngineerFactCitation = { docId: string; title: string; ref: string };
+type EngineerFactConfidence = 'high' | 'medium' | 'low';
+type EngineerFact = {
+  text: string;
+  citations: EngineerFactCitation[];
+  confidence?: EngineerFactConfidence;
+  verified?: boolean;
+};
+
 function asNonEmptyString(input: unknown): string | null {
   return typeof input === 'string' && input.trim() ? input.trim() : null;
 }
@@ -36,6 +45,65 @@ function asBoolean(input: unknown): boolean | null {
     if (v === 'false') return false;
   }
   return null;
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return !!input && typeof input === 'object' && !Array.isArray(input);
+}
+
+function toEngineerExplainContext(payload: unknown): {
+  summary: string;
+  facts: EngineerFact[];
+  questions: string[];
+  concerns: string[];
+} {
+  if (!isRecord(payload)) return { summary: '', facts: [], questions: [], concerns: [] };
+
+  const summary = typeof payload.summary === 'string' ? payload.summary.trim() : '';
+
+  const toStringArray = (input: unknown, maxItems: number): string[] => {
+    if (!Array.isArray(input)) return [];
+    const out: string[] = [];
+    for (const v of input) {
+      if (typeof v !== 'string') continue;
+      const s = v.trim();
+      if (!s) continue;
+      out.push(s);
+      if (out.length >= maxItems) break;
+    }
+    return out;
+  };
+
+  const factsRaw = Array.isArray(payload.facts) ? payload.facts : [];
+  const facts: EngineerFact[] = [];
+  for (const f of factsRaw) {
+    if (!isRecord(f)) continue;
+    const text = typeof f.text === 'string' ? f.text.trim() : '';
+    if (!text) continue;
+
+    const citationsRaw = Array.isArray(f.citations) ? f.citations : [];
+    const citations: EngineerFactCitation[] = citationsRaw
+      .filter(isRecord)
+      .map((c) => ({
+        docId: typeof c.docId === 'string' ? c.docId.trim() : String(c.docId ?? '').trim(),
+        title: typeof c.title === 'string' ? c.title.trim() : String(c.title ?? '').trim(),
+        ref: typeof c.ref === 'string' ? c.ref.trim() : String(c.ref ?? '').trim(),
+      }))
+      .filter((c) => c.docId && c.title && c.ref)
+      .slice(0, 6);
+
+    const confidence =
+      f.confidence === 'high' || f.confidence === 'medium' || f.confidence === 'low' ? f.confidence : undefined;
+    const verified = typeof f.verified === 'boolean' ? f.verified : undefined;
+
+    facts.push({ text, citations, confidence, verified });
+    if (facts.length >= 12) break;
+  }
+
+  const questions = toStringArray(payload.questions, 12);
+  const concerns = toStringArray(payload.concerns, 12);
+
+  return { summary, facts, questions, concerns };
 }
 
 function safeTextFromPayload(payload: unknown): string | null {
@@ -203,7 +271,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     if (!message) return res.status(400).json({ error: 'message is required' });
     const modeRaw = asNonEmptyString(req.body?.mode);
     const mode = (modeRaw === 'visit_kb' || modeRaw === 'engineer_explain' ? modeRaw : null) ?? 'engineer_explain';
-    const useKnowledgeBase = asBoolean(req.body?.useKnowledgeBase) ?? true; // only used for legacy visit_kb mode
+    const useKnowledgeBase = asBoolean(req.body?.useKnowledgeBase) ?? true; // only used for explicit visit_kb mode
 
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(401).json({ error: 'User account not properly configured' });
@@ -244,16 +312,16 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       visitStartedAt: visitRows[0].startedAt.toISOString(),
     };
 
-    const engineerContext = engineerRows[0]
+    const engineerExplain = engineerRows[0]
       ? {
           engineerEventId: engineerRows[0].id,
           engineerEventAt: engineerRows[0].ts.toISOString(),
-          engineerOutput: engineerRows[0].payload,
+          engineer: toEngineerExplainContext(engineerRows[0].payload),
         }
       : null;
 
     // Required for the new default behavior: Sarah explains Engineer output only.
-    if (mode === 'engineer_explain' && !engineerContext) {
+    if (mode === 'engineer_explain' && !engineerExplain) {
       return res.json({ reply: 'Run Engineer first so I have something to explain.', citations: [] });
     }
 
@@ -291,15 +359,12 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const openaiKey = (process.env.OPENAI_API_KEY || (await getOpenaiApiKey()))?.trim();
     if (!openaiKey) {
       if (mode === 'engineer_explain') {
-        const engineerOutput = engineerContext?.engineerOutput as any;
-        const summary = typeof engineerOutput?.summary === 'string' ? engineerOutput.summary.trim() : '';
-        const questions = Array.isArray(engineerOutput?.questions) ? engineerOutput.questions.filter((q: any) => typeof q === 'string' && q.trim()) : [];
-        const concerns = Array.isArray(engineerOutput?.concerns) ? engineerOutput.concerns.filter((c: any) => typeof c === 'string' && c.trim()) : [];
-        const facts = Array.isArray(engineerOutput?.facts) ? engineerOutput.facts : [];
-        const factTexts = facts
-          .map((f: any) => (typeof f?.text === 'string' ? f.text.trim() : ''))
-          .filter((t: string) => t.length > 0)
-          .slice(0, 6);
+        const engineerOutput = engineerExplain?.engineer;
+        const summary = engineerOutput?.summary?.trim?.() ? String(engineerOutput.summary).trim() : '';
+        const questions = Array.isArray(engineerOutput?.questions) ? engineerOutput!.questions : [];
+        const concerns = Array.isArray(engineerOutput?.concerns) ? engineerOutput!.concerns : [];
+        const facts = Array.isArray(engineerOutput?.facts) ? engineerOutput!.facts : [];
+        const factTexts = facts.map((f: any) => String(f?.text || '').trim()).filter(Boolean).slice(0, 6);
 
         const reply = [
           'Here’s what the latest Engineer run is saying, in plain English (no extra assumptions):',
@@ -342,10 +407,12 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       ...(mode === 'engineer_explain'
         ? [
             '- You may ONLY use the provided Engineer output and property summary.',
-            '- You may NOT introduce new technical claims, measurements, model numbers, site conditions, or compliance assertions.',
+            '- You may NOT introduce new technical claims of any kind. Do not infer/assume details that are not explicitly present.',
+            '- You may NOT invent measurements, model numbers, site conditions, or compliance assertions.',
             '- You may reference citations already attached to Engineer facts (docId/title/ref) but you may NOT invent sources.',
             '- If the user asks something outside the Engineer output, say what is missing and suggest running Engineer again or adding the missing info.',
-            '- Your job is to explain/rephrase and suggest next actions based on Engineer questions/concerns.',
+            '- Your job is to explain/rephrase and suggest next actions based only on Engineer questions/concerns.',
+            '- If the user asks for a numerical value, regulation requirement, or pass/fail judgement that is not in the Engineer output, say it is not present and list exactly what data would be needed to answer.',
           ]
         : [
             '- Treat Visit facts and KB facts separately; never mix them up.',
@@ -395,7 +462,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const user = [
       'Visit context:',
       `Property summary: ${JSON.stringify(propertySummary)}`,
-      `Latest engineer_output (if any): ${JSON.stringify(engineerContext)}`,
+      `Latest engineer_output (if any): ${JSON.stringify(engineerExplain)}`,
       ...(mode === 'visit_kb' ? ['', kbBlock] : []),
       '',
       `User question: ${message}`,
@@ -404,8 +471,8 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       ...(mode === 'engineer_explain'
         ? [
             '- Explain in plain English.',
-            '- Rephrase the Engineer summary/facts without adding new claims.',
-            '- Suggest next actions based on Engineer questions/concerns.',
+            '- Rephrase the Engineer summary/facts without adding any new facts.',
+            '- Suggest next actions based on Engineer questions/concerns (and only those).',
           ]
         : [
             '- If Knowledge Base is DISABLED_BY_USER, do not reference manuals/regulations and do not cite KB sources.',

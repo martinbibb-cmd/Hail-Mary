@@ -22,7 +22,8 @@ type ChatMessage = {
 }
 
 type EngineerFactCitation = { docId: string; title: string; ref: string }
-type EngineerFact = { text: string; citations: EngineerFactCitation[] }
+type EngineerFactConfidence = 'high' | 'medium' | 'low'
+type EngineerFact = { text: string; citations: EngineerFactCitation[]; verified?: boolean; confidence?: EngineerFactConfidence }
 
 const toStringArray = (input: unknown): string[] => {
   if (!Array.isArray(input)) return []
@@ -34,7 +35,7 @@ const toEngineerFacts = (input: unknown): EngineerFact[] => {
   const out: EngineerFact[] = []
   for (const v of input) {
     if (typeof v === 'string' && v.trim()) {
-      out.push({ text: v.trim(), citations: [] })
+      out.push({ text: v.trim(), citations: [], verified: false })
       continue
     }
     if (!v || typeof v !== 'object' || Array.isArray(v)) continue
@@ -52,7 +53,11 @@ const toEngineerFacts = (input: unknown): EngineerFact[] => {
         })
       )
       .filter((c: EngineerFactCitation) => c.docId.trim() && c.title.trim() && c.ref.trim())
-    out.push({ text, citations })
+
+    const verified = typeof obj.verified === 'boolean' ? obj.verified : undefined
+    const confidence: EngineerFactConfidence | undefined = obj.confidence === 'high' || obj.confidence === 'medium' || obj.confidence === 'low' ? obj.confidence : undefined
+
+    out.push({ text, citations, verified, confidence })
   }
   return out
 }
@@ -237,7 +242,8 @@ export function SpineSarahPage() {
                             <ul style={{ marginTop: 6 }}>
                               {f.citations.map((c, cIdx) => (
                                 <li key={`f-${i}-c-${cIdx}`} style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                  <span style={{ color: 'var(--text)' }}>{c.title}</span> <span>({c.docId}, {c.ref})</span>
+                                  <span style={{ color: 'var(--text)' }}>{c.title}</span> <span>{c.ref}</span>{' '}
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({c.docId})</span>
                                 </li>
                               ))}
                             </ul>

@@ -64,7 +64,8 @@ const toStringArray = (input: unknown): string[] => {
 };
 
 type EngineerFactCitation = { docId: string; title: string; ref: string };
-type EngineerFact = { text: string; citations: EngineerFactCitation[] };
+type EngineerFactConfidence = 'high' | 'medium' | 'low';
+type EngineerFact = { text: string; citations: EngineerFactCitation[]; verified?: boolean; confidence?: EngineerFactConfidence };
 
 const toEngineerFacts = (input: unknown): EngineerFact[] => {
   if (!Array.isArray(input)) return [];
@@ -72,7 +73,7 @@ const toEngineerFacts = (input: unknown): EngineerFact[] => {
   const out: EngineerFact[] = [];
   for (const v of input) {
     if (typeof v === 'string' && v.trim()) {
-      out.push({ text: v.trim(), citations: [] });
+      out.push({ text: v.trim(), citations: [], verified: false });
       continue;
     }
     if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
@@ -91,7 +92,10 @@ const toEngineerFacts = (input: unknown): EngineerFact[] => {
       )
       .filter((c: EngineerFactCitation) => c.docId.trim() && c.title.trim() && c.ref.trim());
 
-    out.push({ text, citations });
+    const verified = typeof obj.verified === 'boolean' ? obj.verified : undefined;
+    const confidence: EngineerFactConfidence | undefined = obj.confidence === 'high' || obj.confidence === 'medium' || obj.confidence === 'low' ? obj.confidence : undefined;
+
+    out.push({ text, citations, verified, confidence });
   }
   return out;
 };
@@ -137,9 +141,8 @@ const renderEngineerFactsSection = (facts: EngineerFact[]) => {
                     {f.citations.map((c, cIdx) => (
                       <li key={`fact-${idx}-c-${cIdx}`} className="home-engineer__sources-li">
                         <span className="home-engineer__sources-title">{c.title}</span>{' '}
-                        <span className="home-engineer__sources-ref">
-                          ({c.docId}, {c.ref})
-                        </span>
+                        <span className="home-engineer__sources-ref">{c.ref}</span>{' '}
+                        <span className="home-engineer__sources-docid">({c.docId})</span>
                       </li>
                     ))}
                   </ul>

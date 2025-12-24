@@ -28,9 +28,13 @@ type EngineerFactCitation = {
   ref: string;
 };
 
+type EngineerFactConfidence = "high" | "medium" | "low";
+
 type EngineerFact = {
   text: string;
   citations: EngineerFactCitation[];
+  confidence?: EngineerFactConfidence;
+  verified?: boolean;
 };
 
 type EngineerOutputPayload = {
@@ -150,6 +154,11 @@ function coerceStringArray(input: unknown, maxItems: number): string[] {
   return out;
 }
 
+function coerceConfidence(input: unknown): EngineerFactConfidence | undefined {
+  if (input === "high" || input === "medium" || input === "low") return input;
+  return undefined;
+}
+
 function isUnverifiedFact(text: string): boolean {
   return /^unverified\b/i.test(text.trim());
 }
@@ -175,7 +184,13 @@ function normalizeEngineerFactsFromLlm(
     const normalizedText =
       citations.length > 0 || isUnverifiedFact(text) ? text : `Unverified – site check required: ${text}`;
 
-    out.push({ text: normalizedText, citations });
+    // Optional hints from the LLM; we still enforce our own guardrails.
+    const confidence = coerceConfidence(raw.confidence);
+    const verifiedHint = typeof raw.verified === "boolean" ? raw.verified : undefined;
+    const verified =
+      citations.length === 0 || isUnverifiedFact(normalizedText) ? false : verifiedHint ?? true;
+
+    out.push({ text: normalizedText, citations, confidence, verified });
     if (out.length >= 12) break;
   }
   return out;
@@ -190,16 +205,25 @@ function buildEngineerFallbackOutput(context: EngineerContext, mode: string): En
     facts.push({
       text: `Unverified – site check required: Captured ${transcriptCount} transcript event${transcriptCount === 1 ? "" : "s"}.`,
       citations: [],
+      confidence: "low",
+      verified: false,
     });
   }
   if (notesCount > 0) {
     facts.push({
       text: `Unverified – site check required: Captured ${notesCount} note event${notesCount === 1 ? "" : "s"}.`,
       citations: [],
+      confidence: "low",
+      verified: false,
     });
   }
   if (facts.length === 0) {
-    facts.push({ text: "Unverified – site check required: No transcript or note events yet for this visit.", citations: [] });
+    facts.push({
+      text: "Unverified – site check required: No transcript or note events yet for this visit.",
+      citations: [],
+      confidence: "low",
+      verified: false,
+    });
   }
 
   const questions: string[] = [];
@@ -345,10 +369,11 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
           "- If a fact is not directly supported by at least one provided KB source, either OMIT it or mark it as:",
           '  \"Unverified – site check required: <fact>\"',
           "- Any fact that is NOT marked Unverified MUST include citations (one or more source IDs).",
+          "- If a fact has ZERO citations, it MUST be marked verified=false and MUST start with \"Unverified\".",
           "- Use ONLY the provided source IDs in citations. Never invent doc IDs/titles/refs.",
           "",
           "Output must be STRICT JSON (no markdown) with keys:",
-          '{ "summary": string, "facts": Array<{ "text": string, "citations": string[] }>, "questions": string[], "concerns": string[] }',
+          '{ "summary": string, "facts": Array<{ "text": string, "citations": string[], "confidence"?: "high"|"medium"|"low", "verified"?: boolean }>, "questions": string[], "concerns": string[] }',
           "",
           "Facts guidance:",
           "- Each fact should be a single, checkable claim.",
@@ -434,6 +459,8 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
           engineerOutput.facts = engineerOutput.facts.map((f) => ({
             text: isUnverifiedFact(f.text) ? f.text : `Unverified – site check required: ${f.text}`,
             citations: [],
+            confidence: f.confidence ?? "low",
+            verified: false,
           }));
         }
       }

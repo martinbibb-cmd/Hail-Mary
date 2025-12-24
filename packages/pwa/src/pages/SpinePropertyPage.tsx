@@ -22,6 +22,7 @@ export function SpinePropertyPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const setActiveProperty = useSpineStore((s) => s.setActiveProperty)
+  const setActiveVisitId = useSpineStore((s) => s.setActiveVisitId)
 
   useEffect(() => {
     let cancelled = false
@@ -72,7 +73,10 @@ export function SpinePropertyPage() {
       alert(json.error || 'Failed to start visit')
       return
     }
-    alert(`Visit started: ${json.data?.id}`)
+    if (json.data?.id) {
+      setActiveVisitId(json.data.id)
+      alert(`Visit started: ${json.data.id}`)
+    }
   }
 
   if (loading) return <div className="loading">Loading property...</div>

@@ -45,6 +45,9 @@ import aiRouter from './routes/ai';
 import sessionRouter from './routes/session';
 import systemRecommendationsRouter from './routes/systemRecommendations';
 import spineRouter from './routes/spine';
+import uploadsRouter from './routes/uploads';
+
+import path from 'path';
 
 // API version - kept in sync with package.json
 export const API_VERSION = '0.2.0';
@@ -54,6 +57,11 @@ app.set('trust proxy', 1);
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 const IS_DEV = (process.env.NODE_ENV || 'development') !== 'production';
+
+// Local uploads (Option A)
+// Served as: GET /uploads/<filename>
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+app.use('/uploads', express.static(path.join(DATA_DIR, 'uploads')));
 
 // Trust proxy - required when running behind nginx/Docker/Cloudflare
 // This must be set before rate-limit middleware to prevent ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
@@ -325,6 +333,7 @@ app.use('/api/knowledge', knowledgeRouter); // Knowledge ingest system
 app.use('/api/ai', wrapLimiter('ai', aiLimiter), aiRouter); // AI Gateway (server-side proxy to Cloudflare Worker)
 app.use('/api/session', sessionRouter); // Session management (active lead persistence)
 app.use('/api', spineRouter); // v2 Spine (all-activity feed + postcode-first properties)
+app.use('/api', uploadsRouter); // local uploads helper for v2 spine camera
 
 // 404 handler
 app.use((_req, res) => {

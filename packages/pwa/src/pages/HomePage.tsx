@@ -241,6 +241,14 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                   <div className="home-feed__list">
                     {events.map((e) => {
                       const summary = summarizePayload(e.type, e.payload);
+                      const photoUrl =
+                        e.type === 'photo' && e.payload && typeof (e.payload as any).imageUrl === 'string'
+                          ? String((e.payload as any).imageUrl)
+                          : null;
+                      const photoCaption =
+                        e.type === 'photo' && e.payload && typeof (e.payload as any).caption === 'string'
+                          ? String((e.payload as any).caption)
+                          : '';
                       return (
                         <div key={e.id} className="home-feed__item">
                           <div className="home-feed__item-title">
@@ -258,7 +266,14 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
                             {e.property.addressLine1 ? `${e.property.addressLine1} • ` : ''}
                             {e.property.postcode}
                           </div>
-                          {summary ? <div className="home-feed__payload">{summary}</div> : null}
+                          {photoUrl ? (
+                            <div className="home-feed__photo">
+                              <img className="home-feed__photo-img" src={photoUrl} alt="Photo" loading="lazy" />
+                              {photoCaption ? <div className="home-feed__photo-caption">{photoCaption}</div> : null}
+                            </div>
+                          ) : summary ? (
+                            <div className="home-feed__payload">{summary}</div>
+                          ) : null}
                         </div>
                       );
                     })}

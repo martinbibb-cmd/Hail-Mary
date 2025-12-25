@@ -124,7 +124,9 @@ export const quotes = pgTable("quotes", {
     .notNull(),
   leadId: integer("lead_id")
     .references(() => leads.id)
-    .notNull(),
+    .notNull(), // kept for backward compat
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
   status: varchar("status", { length: 50 }).default("draft").notNull(), // draft, sent, accepted, rejected, expired
   title: varchar("title", { length: 255 }),
   validUntil: timestamp("valid_until", { withTimezone: true }),
@@ -190,7 +192,9 @@ export const visitSessions = pgTable("visit_sessions", {
     .notNull(),
   leadId: integer("lead_id")
     .references(() => leads.id)
-    .notNull(),
+    .notNull(), // kept for backward compat
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
   startedAt: timestamp("started_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -207,7 +211,9 @@ export const mediaAttachments = pgTable("media_attachments", {
     .notNull(),
   leadId: integer("lead_id")
     .references(() => leads.id)
-    .notNull(),
+    .notNull(), // kept for backward compat
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
   type: varchar("type", { length: 50 }).notNull(), // photo, video, measurement, other
   url: text("url").notNull(),
   description: text("description"),
@@ -291,7 +297,9 @@ export const visitObservations = pgTable("visit_observations", {
 // Transcript sessions - one survey visit -> one primary transcript session
 export const transcriptSessions = pgTable("transcript_sessions", {
   id: serial("id").primaryKey(),
-  leadId: integer("lead_id").references(() => leads.id),
+  leadId: integer("lead_id").references(() => leads.id), // kept for backward compat
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
   userId: integer("user_id").references(() => users.id), // user who created it
   postcode: varchar("postcode", { length: 20 }), // postcode anchor for property
   title: varchar("title", { length: 255 }), // e.g. "Transcript 2025-12-24 09:55"
@@ -423,7 +431,9 @@ export const photos = pgTable("photos", {
   userId: integer("user_id")
     .references(() => users.id)
     .notNull(),
-  postcode: varchar("postcode", { length: 20 }).notNull(), // postcode anchor for property
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
+  postcode: varchar("postcode", { length: 20 }).notNull(), // postcode anchor for property (kept for backward compat)
   filename: varchar("filename", { length: 255 }).notNull(),
   mimeType: varchar("mime_type", { length: 100 }).notNull(),
   size: integer("size").notNull(), // file size in bytes
@@ -448,7 +458,9 @@ export const scans = pgTable("scans", {
   userId: integer("user_id")
     .references(() => users.id)
     .notNull(),
-  postcode: varchar("postcode", { length: 20 }).notNull(), // postcode anchor for property
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
+  postcode: varchar("postcode", { length: 20 }).notNull(), // postcode anchor for property (kept for backward compat)
   kind: varchar("kind", { length: 50 }).default("lidar").notNull(), // lidar, photogrammetry, other
   filename: varchar("filename", { length: 255 }).notNull(),
   mimeType: varchar("mime_type", { length: 100 }).notNull(),

@@ -477,69 +477,6 @@ router.post("/:id/note-entries", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/addresses/:addressId/appointments
- * Create appointment for address
- */
-router.post("/addresses/:addressId/appointments", async (req: Request, res: Response) => {
-  try {
-    const userId = req.user!.id;
-    const isAdmin = req.user!.role === 'admin';
-    const addressId = req.params.addressId;
-
-    // Check address access
-    const accessibleAddressIds = await getAccessibleAddressIds(userId, isAdmin);
-    if (!accessibleAddressIds.includes(addressId)) {
-      const response: ApiResponse<null> = {
-        success: false,
-        error: "Address not found or access denied",
-      };
-      return res.status(404).json(response);
-    }
-
-    const { type, status, startAt, endAt, assignedUserId, notes } = req.body;
-
-    if (!type || !startAt) {
-      const response: ApiResponse<null> = {
-        success: false,
-        error: "type and startAt are required",
-      };
-      return res.status(400).json(response);
-    }
-
-    // Only admin can assign to other users
-    const finalAssignedUserId = isAdmin && assignedUserId ? assignedUserId : userId;
-
-    const [inserted] = await db
-      .insert(addressAppointments)
-      .values({
-        addressId,
-        type,
-        status: status || 'PLANNED',
-        startAt: new Date(startAt),
-        endAt: endAt ? new Date(endAt) : null,
-        createdByUserId: userId,
-        assignedUserId: finalAssignedUserId,
-        notesRichText: notes?.trim() || null,
-      })
-      .returning();
-
-    const response: ApiResponse<{ appointment: typeof inserted }> = {
-      success: true,
-      data: { appointment: inserted },
-      message: "Appointment created successfully",
-    };
-    return res.status(201).json(response);
-  } catch (error) {
-    console.error("Error creating appointment:", error);
-    const response: ApiResponse<null> = {
-      success: false,
-      error: (error as Error).message,
-    };
-    return res.status(500).json(response);
-  }
-});
-
-/**
  * GET /api/address-appointments/:id/note-entries
  * List note entries
  */

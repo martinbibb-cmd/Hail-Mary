@@ -55,6 +55,7 @@ import ingestRouter from './routes/ingest';
 import engineerRouter from './routes/engineer';
 import customerSummaryRouter from './routes/customerSummary';
 import presentationDraftsRouter from './routes/presentationDrafts';
+import userSettingsRouter from './routes/userSettings';
 
 import path from 'path';
 
@@ -376,6 +377,7 @@ app.use('/api/ingest', ingestRouter); // Companion -> timeline ingest endpoints
 app.use('/api/engineer', engineerRouter); // v2 Spine: manual Engineer runs -> timeline
 app.use('/api/customer', customerSummaryRouter); // v2 Spine: customer-friendly summary from latest engineer_output
 app.use('/api/presentation', presentationDraftsRouter); // PR12b: presentation drafts (customer packs)
+app.use('/api/user-settings', userSettingsRouter); // User preferences and settings persistence
 
 // 404 handler
 app.use((_req, res) => {

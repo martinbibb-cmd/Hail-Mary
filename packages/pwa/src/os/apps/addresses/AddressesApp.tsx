@@ -16,6 +16,7 @@ interface Address {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  assignedUserId?: number | null;
 }
 
 export const AddressesApp: React.FC = () => {
@@ -23,6 +24,7 @@ export const AddressesApp: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -63,14 +65,25 @@ export const AddressesApp: React.FC = () => {
   };
 
   const handleOpenModal = () => {
+    setEditingAddress(null);
     setShowModal(true);
     setError(null);
     setSuccess(null);
     resetForm();
   };
 
+  const handleEditAddress = (address: Address, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingAddress(address);
+    setShowModal(true);
+    setError(null);
+    setSuccess(null);
+    loadFormData(address);
+  };
+
   const handleCloseModal = () => {
     setShowModal(false);
+    setEditingAddress(null);
     resetForm();
   };
 
@@ -87,6 +100,19 @@ export const AddressesApp: React.FC = () => {
     setNotes('');
   };
 
+  const loadFormData = (address: Address) => {
+    setLine1(address.line1);
+    setLine2(address.line2 || '');
+    setTown(address.town || '');
+    setCounty(address.county || '');
+    setPostcode(address.postcode);
+    setCountry(address.country);
+    setCustomerName(address.customerName || '');
+    setPhone(address.phone || '');
+    setEmail(address.email || '');
+    setNotes(address.notes || '');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -99,8 +125,11 @@ export const AddressesApp: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/addresses', {
-        method: 'POST',
+      const url = editingAddress ? `/api/addresses/${editingAddress.id}` : '/api/addresses';
+      const method = editingAddress ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -122,17 +151,44 @@ export const AddressesApp: React.FC = () => {
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('Address created successfully!');
+        setSuccess(editingAddress ? 'Address updated successfully!' : 'Address created successfully!');
         await fetchAddresses();
         handleCloseModal();
       } else {
-        setError(data.error || 'Failed to create address');
+        setError(data.error || `Failed to ${editingAddress ? 'update' : 'create'} address`);
       }
     } catch (err) {
-      console.error('Error creating address:', err);
-      setError('Failed to create address');
+      console.error(`Error ${editingAddress ? 'updating' : 'creating'} address:`, err);
+      setError(`Failed to ${editingAddress ? 'update' : 'create'} address`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAddress = async (address: Address, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!confirm(`Are you sure you want to delete the address for ${address.customerName || address.line1}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/addresses/${address.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess('Address deleted successfully!');
+        await fetchAddresses();
+      } else {
+        setError(data.error || 'Failed to delete address');
+      }
+    } catch (err) {
+      console.error('Error deleting address:', err);
+      setError('Failed to delete address');
     }
   };
 
@@ -149,6 +205,13 @@ export const AddressesApp: React.FC = () => {
         <div className="alert alert-success">
           {success}
           <button onClick={() => setSuccess(null)}>×</button>
+        </div>
+      )}
+
+      {error && !showModal && (
+        <div className="alert alert-error">
+          {error}
+          <button onClick={() => setError(null)}>×</button>
         </div>
       )}
 
@@ -190,7 +253,23 @@ export const AddressesApp: React.FC = () => {
             >
               <div className="address-header">
                 <h3>{address.customerName || 'Unnamed Property'}</h3>
-                <span className="postcode-badge">{address.postcode}</span>
+                <div className="address-actions">
+                  <span className="postcode-badge">{address.postcode}</span>
+                  <button
+                    className="btn-icon btn-edit"
+                    onClick={(e) => handleEditAddress(address, e)}
+                    title="Edit address"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    className="btn-icon btn-delete"
+                    onClick={(e) => handleDeleteAddress(address, e)}
+                    title="Delete address"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
               <div className="address-details">
                 <p>{address.line1}</p>
@@ -208,12 +287,12 @@ export const AddressesApp: React.FC = () => {
         </div>
       )}
 
-      {/* Create Address Modal */}
+      {/* Create/Edit Address Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Create New Address</h3>
+              <h3>{editingAddress ? 'Edit Address' : 'Create New Address'}</h3>
               <button className="modal-close" onClick={handleCloseModal}>
                 ×
               </button>
@@ -363,7 +442,7 @@ export const AddressesApp: React.FC = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary" disabled={saving}>
-                  {saving ? 'Creating...' : 'Create Address'}
+                  {saving ? (editingAddress ? 'Updating...' : 'Creating...') : (editingAddress ? 'Update Address' : 'Create Address')}
                 </button>
               </div>
             </form>

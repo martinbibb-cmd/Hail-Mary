@@ -93,6 +93,43 @@ export const AdminUsersPage: React.FC = () => {
     }
   };
 
+  const handleUpdateRole = async (userId: number, newRole: 'admin' | 'user') => {
+    setProcessingUserId(userId);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ role: newRole }),
+      });
+      const data = await res.json();
+
+      if (res.status === 401 || res.status === 403) {
+        setError('Access denied. Admin privileges required.');
+      } else if (res.status === 404) {
+        setError('User not found.');
+      } else if (res.status === 400) {
+        setError(data.error || 'Invalid request');
+      } else if (data.success) {
+        const user = users.find(u => u.id === userId);
+        const userName = user ? `${user.name} (${user.email})` : `user ID ${userId}`;
+        setSuccess(`Successfully ${newRole === 'admin' ? 'promoted' : 'demoted'} ${userName} to ${newRole}`);
+        // Reload users to get updated data
+        await loadUsers();
+      } else {
+        setError(data.error || 'Failed to update user role');
+      }
+    } catch (err) {
+      setError('Failed to update user role');
+      console.error('Error updating user role:', err);
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="admin-page">
@@ -166,9 +203,29 @@ export const AdminUsersPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-                
-                {user.authProvider === 'local' && (
-                  <div className="user-actions">
+
+                <div className="user-actions">
+                  {/* Role management buttons */}
+                  {user.role === 'admin' ? (
+                    <button
+                      className="btn-secondary btn-sm"
+                      onClick={() => handleUpdateRole(user.id, 'user')}
+                      disabled={processingUserId === user.id}
+                    >
+                      {processingUserId === user.id ? 'Processing...' : 'Remove Admin'}
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-primary btn-sm"
+                      onClick={() => handleUpdateRole(user.id, 'admin')}
+                      disabled={processingUserId === user.id}
+                    >
+                      {processingUserId === user.id ? 'Processing...' : 'Promote to Admin'}
+                    </button>
+                  )}
+
+                  {/* Password reset for local users */}
+                  {user.authProvider === 'local' && (
                     <button
                       className="btn-secondary btn-sm"
                       onClick={() => handleGenerateResetLink(user.id)}
@@ -176,8 +233,8 @@ export const AdminUsersPage: React.FC = () => {
                     >
                       {processingUserId === user.id ? 'Generating...' : 'Generate Reset Link'}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ))
           )}

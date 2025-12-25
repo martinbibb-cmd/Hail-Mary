@@ -498,8 +498,8 @@ export const addresses = pgTable("addresses", {
   assignedUserIdx: index("addresses_assigned_user_idx").on(t.assignedUserId),
 }));
 
-// Appointments - child of Address, supports multiple types per address
-export const appointments = pgTable("appointments", {
+// AddressAppointments - child of Address, supports multiple types per address
+export const addressAppointments = pgTable("address_appointments", {
   id: uuid("id").defaultRandom().primaryKey(),
   addressId: uuid("address_id")
     .references(() => addresses.id, { onDelete: "cascade" })
@@ -521,18 +521,18 @@ export const appointments = pgTable("appointments", {
     .defaultNow()
     .notNull(),
 }, (t) => ({
-  addressIdIdx: index("appointments_address_id_idx").on(t.addressId),
-  startAtIdx: index("appointments_start_at_idx").on(t.startAt),
-  typeIdx: index("appointments_type_idx").on(t.type),
-  statusIdx: index("appointments_status_idx").on(t.status),
-  assignedUserIdx: index("appointments_assigned_user_idx").on(t.assignedUserId),
+  addressIdIdx: index("address_appointments_address_id_idx").on(t.addressId),
+  startAtIdx: index("address_appointments_start_at_idx").on(t.startAt),
+  typeIdx: index("address_appointments_type_idx").on(t.type),
+  statusIdx: index("address_appointments_status_idx").on(t.status),
+  assignedUserIdx: index("address_appointments_assigned_user_idx").on(t.assignedUserId),
 }));
 
 // AppointmentNoteEntries - append-only log of notes from various sources
 export const appointmentNoteEntries = pgTable("appointment_note_entries", {
   id: uuid("id").defaultRandom().primaryKey(),
   appointmentId: uuid("appointment_id")
-    .references(() => appointments.id, { onDelete: "cascade" })
+    .references(() => addressAppointments.id, { onDelete: "cascade" })
     .notNull(),
   sourceType: varchar("source_type", { length: 50 }).notNull(), // TRANSCRIPT_FILE, TEXT_PASTE, FILE_UPLOAD, MANUAL_NOTE
   sourceName: varchar("source_name", { length: 255 }), // filename / label
@@ -553,7 +553,7 @@ export const appointmentNoteEntries = pgTable("appointment_note_entries", {
 export const appointmentFiles = pgTable("appointment_files", {
   id: uuid("id").defaultRandom().primaryKey(),
   appointmentId: uuid("appointment_id")
-    .references(() => appointments.id, { onDelete: "cascade" })
+    .references(() => addressAppointments.id, { onDelete: "cascade" })
     .notNull(),
   addressId: uuid("address_id")
     .references(() => addresses.id, { onDelete: "cascade" }), // optional back-reference

@@ -13,7 +13,7 @@
 
 import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
-import { addresses, appointments } from "../db/drizzle-schema";
+import { addresses, addressAppointments } from "../db/drizzle-schema";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.middleware";
 import type { ApiResponse, PaginatedResponse } from "@hail-mary/shared";
@@ -346,9 +346,9 @@ router.get("/:id/appointments", async (req: Request, res: Response) => {
 
     const rows = await db
       .select()
-      .from(appointments)
-      .where(eq(appointments.addressId, addressId))
-      .orderBy(desc(appointments.startAt));
+      .from(addressAppointments)
+      .where(eq(addressAppointments.addressId, addressId))
+      .orderBy(desc(addressAppointments.startAt));
 
     const response: ApiResponse<{ appointments: typeof rows }> = {
       success: true,

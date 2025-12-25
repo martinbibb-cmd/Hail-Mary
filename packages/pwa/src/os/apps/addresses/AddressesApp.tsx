@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import './AddressesApp.css';
 
 interface Address {
@@ -22,7 +21,6 @@ export const AddressesApp: React.FC = () => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchAddresses();

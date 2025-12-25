@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSpineStore } from '../../../stores/spineStore';
 import './AddressesApp.css';
 
 interface Address {
@@ -25,6 +26,7 @@ export const AddressesApp: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const setActiveAddress = useSpineStore((s) => s.setActiveAddress);
 
   // Form state
   const [line1, setLine1] = useState('');
@@ -170,7 +172,22 @@ export const AddressesApp: React.FC = () => {
       {!loading && addresses.length > 0 && (
         <div className="addresses-list">
           {addresses.map((address) => (
-            <div key={address.id} className="address-card">
+            <div
+              key={address.id}
+              className="address-card"
+              onClick={() => {
+                setActiveAddress({
+                  id: address.id,
+                  line1: address.line1,
+                  line2: address.line2,
+                  town: address.town,
+                  postcode: address.postcode,
+                  customerName: address.customerName,
+                });
+                setSuccess(`Set active address: ${address.customerName || address.line1}`);
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               <div className="address-header">
                 <h3>{address.customerName || 'Unnamed Property'}</h3>
                 <span className="postcode-badge">{address.postcode}</span>

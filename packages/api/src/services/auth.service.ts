@@ -636,6 +636,73 @@ export async function adminGenerateResetToken(
 }
 
 /**
+ * Update a user's role (admin only)
+ * @param userId - The ID of the user whose role to update
+ * @param newRole - The new role ('user' | 'admin')
+ * @param adminId - The ID of the admin performing the action
+ */
+export async function updateUserRole(userId: number, newRole: string, adminId: number): Promise<UserPayload> {
+  // Validate role
+  if (newRole !== 'user' && newRole !== 'admin') {
+    throw new AuthError('validation_error', 'Role must be either "user" or "admin"', 400);
+  }
+
+  try {
+    // Find user by ID
+    const foundUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (foundUsers.length === 0) {
+      throw new AuthError('not_found', 'User not found', 404);
+    }
+
+    const user = foundUsers[0];
+
+    // Update user's role
+    const updated = await db
+      .update(users)
+      .set({
+        role: newRole,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (updated.length === 0) {
+      throw new AuthError('internal_error', 'Failed to update user role', 500);
+    }
+
+    const updatedUser = updated[0];
+
+    // Log the action for audit trail
+    console.log(`[Admin] User ${user.email} (ID: ${userId}) role changed from "${user.role}" to "${newRole}" by admin ID: ${adminId}`);
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      accountId: updatedUser.accountId ?? undefined,
+      authProvider: updatedUser.authProvider,
+      role: updatedUser.role,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
+    };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    if (isDatabaseError(error)) {
+      console.error('Database error updating user role:', error);
+      throw new AuthError('database_error', 'A database error occurred.', 500);
+    }
+    console.error('Unexpected error updating user role:', error);
+    throw new AuthError('internal_error', 'An unexpected error occurred.', 500);
+  }
+}
+
+/**
  * Google OAuth profile data
  */
 export interface GoogleProfile {

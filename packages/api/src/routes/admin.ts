@@ -10,7 +10,7 @@
 
 import { Router, Request, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
-import { listAllUsers, adminResetUserPassword, adminGenerateResetToken, AuthError } from '../services/auth.service';
+import { listAllUsers, adminResetUserPassword, adminGenerateResetToken, updateUserRole, AuthError } from '../services/auth.service';
 import adminSystemRouter from './admin.system';
 import { db } from '../db/drizzle-client';
 import { leads } from '../db/drizzle-schema';
@@ -113,6 +113,69 @@ router.post('/users/:userId/reset-password', async (req: Request, res: Response)
     return res.status(500).json({
       success: false,
       error: 'Failed to reset password',
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/users/:userId/role
+ * Update a user's role (promote to admin or demote to user)
+ * Body: { role: 'admin' | 'user' }
+ */
+router.patch('/users/:userId/role', async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    const { role } = req.body;
+
+    if (isNaN(userId) || userId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid user ID is required',
+      });
+    }
+
+    if (!role || (role !== 'user' && role !== 'admin')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Role must be either "user" or "admin"',
+      });
+    }
+
+    const adminUser = req.user;
+    if (!adminUser) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+      });
+    }
+
+    // Prevent admins from demoting themselves
+    if (userId === adminUser.id && role === 'user') {
+      return res.status(400).json({
+        success: false,
+        error: 'You cannot demote yourself. Ask another admin to change your role.',
+      });
+    }
+
+    const updatedUser = await updateUserRole(userId, role, adminUser.id);
+
+    return res.json({
+      success: true,
+      message: `User role updated to ${role}`,
+      data: updatedUser,
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        code: error.code,
+        error: error.message,
+      });
+    }
+    console.error('Error updating user role:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to update user role',
     });
   }
 });

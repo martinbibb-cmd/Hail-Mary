@@ -1,0 +1,129 @@
+.module-launcher {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.module-launcher-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.module-launcher-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.module-launcher-subtitle {
+  margin: 0;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.module-tile {
+  background: white;
+  color: #333;
+  border: none;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  min-height: 100px;
+}
+
+.module-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.module-tile:active {
+  transform: translateY(-2px);
+}
+
+.module-icon {
+  font-size: 3rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.module-info {
+  flex: 1;
+}
+
+.module-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.module-description {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .module-launcher {
+    padding: 1.5rem 1rem;
+  }
+
+  .module-launcher-header h1 {
+    font-size: 2rem;
+  }
+
+  .module-launcher-subtitle {
+    font-size: 1rem;
+  }
+
+  .module-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .module-tile {
+    padding: 1.25rem;
+    min-height: 80px;
+  }
+
+  .module-icon {
+    font-size: 2.5rem;
+  }
+
+  .module-title {
+    font-size: 1.1rem;
+  }
+
+  .module-description {
+    font-size: 0.85rem;
+  }
+}
+
+/* Tablet */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .module-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

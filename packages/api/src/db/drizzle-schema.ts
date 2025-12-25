@@ -465,6 +465,130 @@ export const scans = pgTable("scans", {
 });
 
 // ============================================
+// Addresses & Appointments System
+// ============================================
+
+// Addresses - property addresses with permission-based access
+export const addresses = pgTable("addresses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  createdByUserId: integer("created_by_user_id")
+    .references(() => users.id)
+    .notNull(),
+  assignedUserId: integer("assigned_user_id")
+    .references(() => users.id), // nullable - admin can assign, defaults to creator
+  line1: varchar("line1", { length: 255 }).notNull(),
+  line2: varchar("line2", { length: 255 }),
+  town: varchar("town", { length: 100 }),
+  county: varchar("county", { length: 100 }),
+  postcode: varchar("postcode", { length: 20 }).notNull(),
+  country: varchar("country", { length: 100 }).default("United Kingdom").notNull(),
+  customerName: varchar("customer_name", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 255 }),
+  notes: text("notes"), // address-level summary/rollup
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  postcodeIdx: index("addresses_postcode_idx").on(t.postcode),
+  createdByUserIdx: index("addresses_created_by_user_idx").on(t.createdByUserId),
+  assignedUserIdx: index("addresses_assigned_user_idx").on(t.assignedUserId),
+}));
+
+// Appointments - child of Address, supports multiple types per address
+export const appointments = pgTable("appointments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "cascade" })
+    .notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // SURVEY, REVISIT, CALLBACK, INSTALL, SERVICE_REPAIR
+  status: varchar("status", { length: 50 }).default("PLANNED").notNull(), // PLANNED, CONFIRMED, COMPLETED, CANCELLED
+  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+  endAt: timestamp("end_at", { withTimezone: true }),
+  createdByUserId: integer("created_by_user_id")
+    .references(() => users.id)
+    .notNull(),
+  assignedUserId: integer("assigned_user_id")
+    .references(() => users.id), // nullable - for team scheduling
+  notesRichText: text("notes_rich_text"), // aggregated/concatenated notes view
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  addressIdIdx: index("appointments_address_id_idx").on(t.addressId),
+  startAtIdx: index("appointments_start_at_idx").on(t.startAt),
+  typeIdx: index("appointments_type_idx").on(t.type),
+  statusIdx: index("appointments_status_idx").on(t.status),
+  assignedUserIdx: index("appointments_assigned_user_idx").on(t.assignedUserId),
+}));
+
+// AppointmentNoteEntries - append-only log of notes from various sources
+export const appointmentNoteEntries = pgTable("appointment_note_entries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  appointmentId: uuid("appointment_id")
+    .references(() => appointments.id, { onDelete: "cascade" })
+    .notNull(),
+  sourceType: varchar("source_type", { length: 50 }).notNull(), // TRANSCRIPT_FILE, TEXT_PASTE, FILE_UPLOAD, MANUAL_NOTE
+  sourceName: varchar("source_name", { length: 255 }), // filename / label
+  rawText: text("raw_text"), // original content
+  parsedJson: jsonb("parsed_json"), // structured parsed data
+  renderedNote: text("rendered_note").notNull(), // what appears in notes aggregation
+  createdByUserId: integer("created_by_user_id")
+    .references(() => users.id)
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  appointmentIdCreatedAtIdx: index("appointment_note_entries_appt_created_idx").on(t.appointmentId, t.createdAt),
+}));
+
+// FileUploads - files attached to appointments
+export const appointmentFiles = pgTable("appointment_files", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  appointmentId: uuid("appointment_id")
+    .references(() => appointments.id, { onDelete: "cascade" })
+    .notNull(),
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "cascade" }), // optional back-reference
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  size: integer("size").notNull(),
+  storagePath: text("storage_path").notNull(),
+  createdByUserId: integer("created_by_user_id")
+    .references(() => users.id)
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  appointmentIdIdx: index("appointment_files_appointment_id_idx").on(t.appointmentId),
+}));
+
+// UserSettings - per-user preferences (including dock customization)
+export const userSettings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  dockModules: jsonb("dock_modules"), // array of module IDs for bottom dock
+  preferences: jsonb("preferences"), // other user preferences
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// ============================================
 // Media Receiver: Assets + Visit Events
 // ============================================
 

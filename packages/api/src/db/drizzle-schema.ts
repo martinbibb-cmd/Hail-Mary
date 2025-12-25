@@ -292,6 +292,9 @@ export const visitObservations = pgTable("visit_observations", {
 export const transcriptSessions = pgTable("transcript_sessions", {
   id: serial("id").primaryKey(),
   leadId: integer("lead_id").references(() => leads.id),
+  userId: integer("user_id").references(() => users.id), // user who created it
+  postcode: varchar("postcode", { length: 20 }), // postcode anchor for property
+  title: varchar("title", { length: 255 }), // e.g. "Transcript 2025-12-24 09:55"
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -299,16 +302,22 @@ export const transcriptSessions = pgTable("transcript_sessions", {
     .defaultNow()
     .notNull(),
   // Option A ingestion metadata (live streaming)
-  source: varchar("source", { length: 100 }), // e.g. "atlas", "ios", "android", "worker"
+  source: varchar("source", { length: 100 }), // e.g. "atlas", "ios", "android", "worker", "manual", "upload", "companion"
   deviceId: varchar("device_id", { length: 255 }),
   startedAt: timestamp("started_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
-  status: varchar("status", { length: 50 }).default("recording").notNull(), // recording, processing, completed, error
+  status: varchar("status", { length: 50 }).default("recording").notNull(), // recording, processing, completed, error, new, processed
   durationSeconds: integer("duration_seconds"),
   language: varchar("language", { length: 20 }).default("en-GB").notNull(),
   notes: text("notes"),
+  // Paste/upload fields
+  rawText: text("raw_text"), // pasted or uploaded transcript text
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  error: text("error"), // error message if processing failed
+  summary: text("summary"), // AI-generated summary
+  extractedJson: text("extracted_json"), // JSON string of extracted data from Sarah/Engineer
 });
 
 // Transcript audio chunks - chunked audio files for progressive upload
@@ -400,6 +409,53 @@ export const files = pgTable("files", {
   size: integer("size").notNull(), // file size in bytes
   storagePath: text("storage_path").notNull(), // path on disk
   category: varchar("category", { length: 50 }).default("other"), // photos, quotes, exports, other
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Photos - postcode-based property photos (PR14)
+export const photos = pgTable("photos", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  postcode: varchar("postcode", { length: 20 }).notNull(), // postcode anchor for property
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  size: integer("size").notNull(), // file size in bytes
+  width: integer("width"), // image width in pixels
+  height: integer("height"), // image height in pixels
+  storagePath: text("storage_path").notNull(), // path on disk or URL
+  notes: text("notes"), // user notes/description
+  tag: varchar("tag", { length: 100 }), // e.g. boiler, flue, meter, rads, cylinder, consumer_unit
+  latitude: numeric("latitude", { precision: 10, scale: 7 }), // GPS latitude
+  longitude: numeric("longitude", { precision: 10, scale: 7 }), // GPS longitude
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// Scans - postcode-based scan sessions (PR15 - LiDAR placeholder)
+export const scans = pgTable("scans", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  postcode: varchar("postcode", { length: 20 }).notNull(), // postcode anchor for property
+  kind: varchar("kind", { length: 50 }).default("lidar").notNull(), // lidar, photogrammetry, other
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  size: integer("size").notNull(), // file size in bytes
+  storagePath: text("storage_path").notNull(), // path on disk
+  deviceId: varchar("device_id", { length: 255 }), // e.g. iPhone model
+  notes: text("notes"), // user notes/description
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -35,6 +35,8 @@ import filesRouter from './routes/files';
 import assetsRouter from './routes/assets';
 import transcriptionRouter from './routes/transcription';
 import transcriptsRouter from './routes/transcripts';
+import photosRouter from './routes/photos';
+import scansRouter from './routes/scans';
 import depotNotesRouter from './routes/depotNotes';
 import surveyHelperRouter from './routes/surveyHelper';
 import voiceNotesRouter from './routes/voiceNotes';
@@ -350,6 +352,8 @@ app.use('/api/leads', systemRecommendationsRouter); // System recommendation rou
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/visit-sessions', visitSessionsRouter);
 app.use('/api/files', filesRouter);
+app.use('/api/photos', photosRouter); // PR14: postcode-based property photos
+app.use('/api/scans', scansRouter); // PR15: postcode-based scan sessions (LiDAR placeholder)
 app.use('/api', assetsRouter); // media receiver (assets + visit_events)
 app.use('/api/transcription', transcriptionRouter);
 app.use('/api', transcriptsRouter); // Option A live transcript ingestion

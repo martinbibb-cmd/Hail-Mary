@@ -358,7 +358,6 @@ app.use('/api/photos', photosRouter); // PR14: postcode-based property photos
 app.use('/api/scans', scansRouter); // PR15: postcode-based scan sessions (LiDAR placeholder)
 app.use('/api/addresses', addressesRouter); // Address management with permissions
 app.use('/api/address-appointments', addressAppointmentsRouter); // Address-based appointments with diary feed
-app.use('/api', addressAppointmentsRouter); // Mounted here for /addresses/:id/appointments endpoint
 app.use('/api', assetsRouter); // media receiver (assets + visit_events)
 app.use('/api/transcription', transcriptionRouter);
 app.use('/api', transcriptsRouter); // Option A live transcript ingestion

@@ -1,18 +1,19 @@
 import { create } from 'zustand'
 
-export interface ActivePropertySummary {
+export interface ActiveAddressSummary {
   id: string
-  addressLine1: string
-  addressLine2?: string | null
+  line1: string
+  line2?: string | null
   town?: string | null
   postcode: string
+  customerName?: string | null
 }
 
 interface SpineStoreState {
-  activeProperty: ActivePropertySummary | null
+  activeAddress: ActiveAddressSummary | null
   activeVisitId: string | null
-  setActiveProperty: (property: ActivePropertySummary) => void
-  clearActiveProperty: () => void
+  setActiveAddress: (address: ActiveAddressSummary) => void
+  clearActiveAddress: () => void
   setActiveVisitId: (visitId: string) => void
   clearActiveVisit: () => void
   hydrate: () => void
@@ -21,28 +22,28 @@ interface SpineStoreState {
 const STORAGE_KEY = 'hail-mary:v2-spine-store'
 
 export const useSpineStore = create<SpineStoreState>((set) => ({
-  activeProperty: null,
+  activeAddress: null,
   activeVisitId: null,
 
-  setActiveProperty: (property) => {
+  setActiveAddress: (address) => {
     set((prev) => ({
-      activeProperty: property,
-      // If property changes, any previous active visit is no longer safe to use.
-      activeVisitId: prev.activeProperty?.id === property.id ? prev.activeVisitId : null,
+      activeAddress: address,
+      // If address changes, any previous active visit is no longer safe to use.
+      activeVisitId: prev.activeAddress?.id === address.id ? prev.activeVisitId : null,
     }))
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       const prev = raw ? (JSON.parse(raw) as any) : {}
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prev, activeProperty: property, activeVisitId: prev?.activeProperty?.id === property.id ? prev.activeVisitId : null }))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prev, activeAddress: address, activeVisitId: prev?.activeAddress?.id === address.id ? prev.activeVisitId : null }))
     } catch {
       // ignore
     }
   },
 
-  clearActiveProperty: () => {
-    set({ activeProperty: null, activeVisitId: null })
+  clearActiveAddress: () => {
+    set({ activeAddress: null, activeVisitId: null })
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeProperty: null, activeVisitId: null }))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeAddress: null, activeVisitId: null }))
     } catch {
       // ignore
     }
@@ -74,9 +75,10 @@ export const useSpineStore = create<SpineStoreState>((set) => ({
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return
-      const parsed = JSON.parse(raw) as { activeProperty?: ActivePropertySummary | null; activeVisitId?: string | null }
+      const parsed = JSON.parse(raw) as { activeAddress?: ActiveAddressSummary | null; activeVisitId?: string | null; activeProperty?: any }
       set({
-        activeProperty: parsed?.activeProperty ?? null,
+        // Support legacy activeProperty key for backward compat
+        activeAddress: parsed?.activeAddress ?? parsed?.activeProperty ?? null,
         activeVisitId: parsed?.activeVisitId ?? null,
       })
     } catch {

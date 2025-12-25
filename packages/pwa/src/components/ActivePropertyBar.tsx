@@ -1,8 +1,8 @@
 /**
  * TopBar (v2 spine)
  *
- * Always visible. If no active property is set, shows "All properties".
- * Setting an active property is an accelerator, not a requirement.
+ * Always visible. If no active address is set, shows "All properties".
+ * Setting an active address is an accelerator, not a requirement.
  */
 
 import { useNavigate } from 'react-router-dom'
@@ -11,12 +11,12 @@ import './ActivePropertyBar.css'
 
 export function ActivePropertyBar() {
   const navigate = useNavigate()
-  const activeProperty = useSpineStore((s) => s.activeProperty)
-  const clearActiveProperty = useSpineStore((s) => s.clearActiveProperty)
+  const activeAddress = useSpineStore((s) => s.activeAddress)
+  const clearActiveAddress = useSpineStore((s) => s.clearActiveAddress)
 
   const handleLeftClick = () => {
-    if (!activeProperty) return
-    navigate(`/properties/${activeProperty.id}`)
+    if (!activeAddress) return
+    navigate(`/addresses`)
   }
 
   return (
@@ -25,11 +25,11 @@ export function ActivePropertyBar() {
         type="button"
         className="active-property-bar__left"
         onClick={handleLeftClick}
-        aria-label={activeProperty ? 'Open active property' : 'All properties'}
+        aria-label={activeAddress ? 'Open active address' : 'All properties'}
       >
-        {activeProperty ? (
+        {activeAddress ? (
           <span className="active-property-bar__value">
-            {activeProperty.addressLine1} • {activeProperty.postcode}
+            {activeAddress.customerName || activeAddress.line1} • {activeAddress.postcode}
           </span>
         ) : (
           <span className="active-property-bar__value active-property-bar__value--muted">All properties</span>
@@ -37,9 +37,9 @@ export function ActivePropertyBar() {
       </button>
 
       <div className="active-property-bar__right">
-        {activeProperty ? (
+        {activeAddress ? (
           <>
-            <button className="active-property-bar__btn active-property-bar__btn--subtle" onClick={clearActiveProperty}>
+            <button className="active-property-bar__btn active-property-bar__btn--subtle" onClick={clearActiveAddress}>
               Clear
             </button>
           </>

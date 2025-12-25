@@ -18,12 +18,14 @@ import { useLayoutMode } from './hooks/useLayoutMode'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage } from './pages/admin'
 import { HomePage } from './pages/HomePage'
+import { ModuleLauncher } from './pages/ModuleLauncher'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
 import { DiaryApp } from './os/apps/diary/DiaryApp'
 import { TranscriptsApp } from './os/apps/transcripts/TranscriptsApp'
 import { PhotoLibraryApp } from './os/apps/photo-library/PhotoLibraryApp'
 import { ScansApp } from './os/apps/scans/ScansApp'
+import { AddressesApp } from './os/apps/addresses/AddressesApp'
 import { BottomDock } from './components/BottomDock'
 import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
@@ -704,7 +706,9 @@ function App() {
           </div>
         )}
         <Routes>
-          <Route path="/" element={<HomePage layout={layout} />} />
+          <Route path="/" element={<ModuleLauncher />} />
+          <Route path="/home" element={<ModuleLauncher />} />
+          <Route path="/addresses" element={<AddressesApp />} />
           <Route path="/properties/:id" element={<SpinePropertyPage />} />
           <Route path="/camera" element={<SpineCameraPage />} />
           <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />

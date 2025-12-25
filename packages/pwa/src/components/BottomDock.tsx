@@ -23,7 +23,21 @@ export const BottomDock: React.FC = () => {
       label: 'Home',
       icon: '🏠',
       onClick: () => navigate('/'),
-      isActive: location.pathname === '/',
+      isActive: location.pathname === '/' || location.pathname === '/home',
+    },
+    {
+      id: 'addresses',
+      label: 'Addresses',
+      icon: '🏘️',
+      onClick: () => navigate('/addresses'),
+      isActive: isActive('/addresses'),
+    },
+    {
+      id: 'diary',
+      label: 'Diary',
+      icon: '📅',
+      onClick: () => navigate('/diary'),
+      isActive: isActive('/diary'),
     },
     {
       id: 'camera',

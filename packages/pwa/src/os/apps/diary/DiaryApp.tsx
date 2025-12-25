@@ -1,131 +1,289 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventClickArg, DateSelectArg } from '@fullcalendar/core'
 import { format } from 'date-fns'
+import { useSpineStore } from '../../../stores/spineStore'
 import './DiaryApp.css'
 
-export type EventType = 'site_visit' | 'installation' | 'follow_up' | 'callback'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+
+export type AppointmentType = 'SURVEY' | 'REVISIT' | 'CALLBACK' | 'INSTALL' | 'SERVICE_REPAIR'
+export type AppointmentStatus = 'PLANNED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
+
+export interface Appointment {
+  id: string
+  addressId: string
+  type: AppointmentType
+  status: AppointmentStatus
+  startAt: string
+  endAt: string | null
+  createdByUserId: number
+  assignedUserId: number | null
+  notesRichText: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 export interface DiaryEvent {
   id: string
   title: string
   start: Date
   end: Date
-  type: EventType
-  leadId?: number
-  leadName?: string
-  notes?: string
+  type: AppointmentType
+  status: AppointmentStatus
+  addressId: string
+  notes?: string | null
 }
 
-const eventTypeColors: Record<EventType, string> = {
-  site_visit: '#e94560',
-  installation: '#27c93f',
-  follow_up: '#ffbd2e',
-  callback: '#007aff',
+const appointmentTypeColors: Record<AppointmentType, string> = {
+  SURVEY: '#3b82f6',
+  INSTALL: '#10b981',
+  REVISIT: '#f59e0b',
+  CALLBACK: '#8b5cf6',
+  SERVICE_REPAIR: '#ef4444',
 }
 
-const eventTypeLabels: Record<EventType, string> = {
-  site_visit: 'Site Visit',
-  installation: 'Installation',
-  follow_up: 'Follow-up',
-  callback: 'Callback',
+const appointmentTypeLabels: Record<AppointmentType, string> = {
+  SURVEY: 'Survey',
+  INSTALL: 'Installation',
+  REVISIT: 'Revisit',
+  CALLBACK: 'Callback',
+  SERVICE_REPAIR: 'Service/Repair',
+}
+
+const appointmentStatusLabels: Record<AppointmentStatus, string> = {
+  PLANNED: 'Planned',
+  CONFIRMED: 'Confirmed',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
 }
 
 export const DiaryApp: React.FC = () => {
-  const [events, setEvents] = useState<DiaryEvent[]>([
-    // Sample events for demo
-    {
-      id: '1',
-      title: 'Site Visit - John Smith',
-      start: new Date(),
-      end: new Date(Date.now() + 2 * 60 * 60 * 1000),
-      type: 'site_visit',
-      leadName: 'John Smith',
-    },
-    {
-      id: '2',
-      title: 'Installation - 23 Oak St',
-      start: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      end: new Date(Date.now() + 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
-      type: 'installation',
-    },
-  ])
+  const { activeAddress } = useSpineStore()
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<DiaryEvent | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isNewEvent, setIsNewEvent] = useState(false)
   const [newEventData, setNewEventData] = useState<Partial<DiaryEvent>>({})
 
+  // Fetch appointments from API
+  const fetchAppointments = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await fetch(`${API_BASE_URL}/api/address-appointments`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch appointments')
+      }
+
+      const data = await response.json()
+
+      if (data.success && data.data?.appointments) {
+        setAppointments(data.data.appointments)
+      } else {
+        throw new Error(data.error || 'Failed to fetch appointments')
+      }
+    } catch (err) {
+      setError((err as Error).message)
+      console.error('Error fetching appointments:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Load appointments on mount
+  useEffect(() => {
+    fetchAppointments()
+  }, [fetchAppointments])
+
   const handleEventClick = useCallback((info: EventClickArg) => {
-    const event = events.find(e => e.id === info.event.id)
-    if (event) {
+    const appointment = appointments.find(a => a.id === info.event.id)
+    if (appointment) {
+      const event: DiaryEvent = {
+        id: appointment.id,
+        title: appointmentTypeLabels[appointment.type],
+        start: new Date(appointment.startAt),
+        end: new Date(appointment.endAt || appointment.startAt),
+        type: appointment.type,
+        status: appointment.status,
+        addressId: appointment.addressId,
+        notes: appointment.notesRichText,
+      }
       setSelectedEvent(event)
       setIsModalOpen(true)
       setIsNewEvent(false)
     }
-  }, [events])
+  }, [appointments])
 
   const handleDateSelect = useCallback((info: DateSelectArg) => {
+    if (!activeAddress) {
+      alert('Please select an address first from the Addresses app')
+      return
+    }
+
     setNewEventData({
       start: info.start,
       end: info.end,
-      type: 'site_visit',
+      type: 'SURVEY',
+      status: 'PLANNED',
+      addressId: activeAddress.id,
     })
     setIsNewEvent(true)
     setIsModalOpen(true)
-  }, [])
+  }, [activeAddress])
 
-  const handleCreateEvent = useCallback(() => {
-    if (!newEventData.title || !newEventData.start) return
-
-    const newEvent: DiaryEvent = {
-      id: `event-${Date.now()}`,
-      title: newEventData.title,
-      start: newEventData.start,
-      end: newEventData.end || new Date(newEventData.start.getTime() + 60 * 60 * 1000),
-      type: newEventData.type || 'site_visit',
-      notes: newEventData.notes,
+  const handleCreateEvent = useCallback(async () => {
+    if (!newEventData.start || !newEventData.type || !newEventData.addressId) {
+      alert('Please fill in all required fields')
+      return
     }
 
-    setEvents(prev => [...prev, newEvent])
-    setIsModalOpen(false)
-    setNewEventData({})
-  }, [newEventData])
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/addresses/${newEventData.addressId}/appointments`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            type: newEventData.type,
+            status: newEventData.status || 'PLANNED',
+            startAt: newEventData.start.toISOString(),
+            endAt: newEventData.end?.toISOString() || null,
+            notes: newEventData.notes || null,
+          }),
+        }
+      )
 
-  const handleDeleteEvent = useCallback(() => {
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create appointment')
+      }
+
+      // Refresh appointments
+      await fetchAppointments()
+
+      setIsModalOpen(false)
+      setNewEventData({})
+    } catch (err) {
+      alert(`Error creating appointment: ${(err as Error).message}`)
+      console.error('Error creating appointment:', err)
+    }
+  }, [newEventData, fetchAppointments])
+
+  const handleUpdateEvent = useCallback(async (updates: Partial<Appointment>) => {
     if (!selectedEvent) return
-    setEvents(prev => prev.filter(e => e.id !== selectedEvent.id))
-    setIsModalOpen(false)
-    setSelectedEvent(null)
-  }, [selectedEvent])
 
-  const calendarEvents = events.map(event => ({
-    id: event.id,
-    title: event.title,
-    start: event.start,
-    end: event.end,
-    backgroundColor: eventTypeColors[event.type],
-    borderColor: eventTypeColors[event.type],
-  }))
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/address-appointments/${selectedEvent.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(updates),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update appointment')
+      }
+
+      // Refresh appointments
+      await fetchAppointments()
+
+      setIsModalOpen(false)
+      setSelectedEvent(null)
+    } catch (err) {
+      alert(`Error updating appointment: ${(err as Error).message}`)
+      console.error('Error updating appointment:', err)
+    }
+  }, [selectedEvent, fetchAppointments])
+
+  const handleDeleteEvent = useCallback(async () => {
+    if (!selectedEvent) return
+
+    if (!confirm('Are you sure you want to cancel this appointment?')) return
+
+    // Mark as cancelled instead of deleting
+    await handleUpdateEvent({ status: 'CANCELLED' })
+  }, [selectedEvent, handleUpdateEvent])
+
+  // Convert appointments to calendar events
+  const calendarEvents = appointments
+    .filter(apt => apt.status !== 'CANCELLED') // Hide cancelled appointments
+    .map(appointment => ({
+      id: appointment.id,
+      title: `${appointmentTypeLabels[appointment.type]} - ${appointmentStatusLabels[appointment.status]}`,
+      start: new Date(appointment.startAt),
+      end: new Date(appointment.endAt || appointment.startAt),
+      backgroundColor: appointmentTypeColors[appointment.type],
+      borderColor: appointmentTypeColors[appointment.type],
+    }))
+
+  if (loading && appointments.length === 0) {
+    return (
+      <div className="diary-app">
+        <div className="diary-header">
+          <h2>🗓 Diary</h2>
+        </div>
+        <div className="diary-loading">
+          <p>Loading appointments...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="diary-app">
       <div className="diary-header">
         <h2>🗓 Diary</h2>
+        {activeAddress && (
+          <div className="diary-active-address">
+            <span className="diary-address-label">Active:</span>
+            <span className="diary-address-value">
+              {activeAddress.customerName} - {activeAddress.postcode}
+            </span>
+          </div>
+        )}
         <div className="diary-legend">
-          {Object.entries(eventTypeLabels).map(([type, label]) => (
+          {Object.entries(appointmentTypeLabels).map(([type, label]) => (
             <span key={type} className="diary-legend-item">
-              <span 
-                className="diary-legend-dot" 
-                style={{ backgroundColor: eventTypeColors[type as EventType] }}
+              <span
+                className="diary-legend-dot"
+                style={{ backgroundColor: appointmentTypeColors[type as AppointmentType] }}
               />
               {label}
             </span>
           ))}
         </div>
       </div>
+
+      {error && (
+        <div className="diary-error">
+          <p>⚠️ {error}</p>
+          <button onClick={fetchAppointments}>Retry</button>
+        </div>
+      )}
 
       <div className="diary-calendar">
         <FullCalendar
@@ -151,7 +309,7 @@ export const DiaryApp: React.FC = () => {
         <div className="diary-modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="diary-modal" onClick={e => e.stopPropagation()}>
             <div className="diary-modal-header">
-              <h3>{isNewEvent ? 'New Event' : selectedEvent?.title}</h3>
+              <h3>{isNewEvent ? 'New Appointment' : selectedEvent?.title}</h3>
               <button className="diary-modal-close" onClick={() => setIsModalOpen(false)}>
                 ✕
               </button>
@@ -160,27 +318,38 @@ export const DiaryApp: React.FC = () => {
             <div className="diary-modal-content">
               {isNewEvent ? (
                 <>
-                  <div className="diary-form-row">
-                    <label>Title</label>
-                    <input
-                      type="text"
-                      value={newEventData.title || ''}
-                      onChange={e => setNewEventData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Event title..."
-                    />
-                  </div>
+                  {!activeAddress && (
+                    <div className="diary-warning">
+                      ⚠️ Please select an address first from the Addresses app
+                    </div>
+                  )}
 
                   <div className="diary-form-row">
                     <label>Type</label>
                     <select
-                      value={newEventData.type || 'site_visit'}
-                      onChange={e => setNewEventData(prev => ({ 
-                        ...prev, 
-                        type: e.target.value as EventType 
+                      value={newEventData.type || 'SURVEY'}
+                      onChange={e => setNewEventData(prev => ({
+                        ...prev,
+                        type: e.target.value as AppointmentType
                       }))}
                     >
-                      {Object.entries(eventTypeLabels).map(([type, label]) => (
+                      {Object.entries(appointmentTypeLabels).map(([type, label]) => (
                         <option key={type} value={type}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="diary-form-row">
+                    <label>Status</label>
+                    <select
+                      value={newEventData.status || 'PLANNED'}
+                      onChange={e => setNewEventData(prev => ({
+                        ...prev,
+                        status: e.target.value as AppointmentStatus
+                      }))}
+                    >
+                      {Object.entries(appointmentStatusLabels).map(([status, label]) => (
+                        <option key={status} value={status}>{label}</option>
                       ))}
                     </select>
                   </div>
@@ -209,19 +378,26 @@ export const DiaryApp: React.FC = () => {
                     <button className="btn-secondary" onClick={() => setIsModalOpen(false)}>
                       Cancel
                     </button>
-                    <button className="btn-primary" onClick={handleCreateEvent}>
-                      Create Event
+                    <button
+                      className="btn-primary"
+                      onClick={handleCreateEvent}
+                      disabled={!activeAddress}
+                    >
+                      Create Appointment
                     </button>
                   </div>
                 </>
               ) : selectedEvent && (
                 <>
                   <div className="diary-event-detail">
-                    <span 
+                    <span
                       className="diary-event-type-badge"
-                      style={{ backgroundColor: eventTypeColors[selectedEvent.type] }}
+                      style={{ backgroundColor: appointmentTypeColors[selectedEvent.type] }}
                     >
-                      {eventTypeLabels[selectedEvent.type]}
+                      {appointmentTypeLabels[selectedEvent.type]}
+                    </span>
+                    <span className="diary-event-status-badge">
+                      {appointmentStatusLabels[selectedEvent.status]}
                     </span>
                   </div>
 
@@ -234,23 +410,35 @@ export const DiaryApp: React.FC = () => {
                     </p>
                   </div>
 
-                  {selectedEvent.leadName && (
-                    <div className="diary-event-detail">
-                      <label>👤 Lead</label>
-                      <p>{selectedEvent.leadName}</p>
-                    </div>
-                  )}
-
                   {selectedEvent.notes && (
                     <div className="diary-event-detail">
                       <label>📝 Notes</label>
-                      <p>{selectedEvent.notes}</p>
+                      <div
+                        className="diary-notes-content"
+                        dangerouslySetInnerHTML={{ __html: selectedEvent.notes }}
+                      />
                     </div>
                   )}
 
                   <div className="diary-modal-actions">
+                    {selectedEvent.status === 'PLANNED' && (
+                      <button
+                        className="btn-primary"
+                        onClick={() => handleUpdateEvent({ status: 'CONFIRMED' })}
+                      >
+                        Confirm
+                      </button>
+                    )}
+                    {selectedEvent.status === 'CONFIRMED' && (
+                      <button
+                        className="btn-success"
+                        onClick={() => handleUpdateEvent({ status: 'COMPLETED' })}
+                      >
+                        Mark Complete
+                      </button>
+                    )}
                     <button className="btn-danger" onClick={handleDeleteEvent}>
-                      Delete
+                      Cancel Appointment
                     </button>
                   </div>
                 </>

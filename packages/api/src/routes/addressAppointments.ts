@@ -18,7 +18,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db } from "../db/drizzle-client";
-import { addresses, appointments, appointmentNoteEntries, appointmentFiles } from "../db/drizzle-schema";
+import { addresses, addressAppointments, appointmentNoteEntries, appointmentFiles } from "../db/drizzle-schema";
 import { and, desc, eq, gte, lte, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.middleware";
 import type { ApiResponse, PaginatedResponse } from "@hail-mary/shared";
@@ -84,8 +84,8 @@ async function canAccessAppointment(appointmentId: string, userId: number, isAdm
 
   const [appointment] = await db
     .select()
-    .from(appointments)
-    .where(eq(appointments.id, appointmentId))
+    .from(addressAppointments)
+    .where(eq(addressAppointments.id, appointmentId))
     .limit(1);
 
   if (!appointment) return false;
@@ -146,12 +146,12 @@ async function regenerateAppointmentNotes(appointmentId: string): Promise<void> 
   const aggregatedNotes = entries.map(e => e.renderedNote).join('\n');
 
   await db
-    .update(appointments)
+    .update(addressAppointments)
     .set({
       notesRichText: aggregatedNotes,
       updatedAt: new Date(),
     })
-    .where(eq(appointments.id, appointmentId));
+    .where(eq(addressAppointments.id, appointmentId));
 }
 
 /**
@@ -173,20 +173,20 @@ router.get("/", async (req: Request, res: Response) => {
 
     // Date range filter
     if (from) {
-      filters.push(gte(appointments.startAt, new Date(from)));
+      filters.push(gte(addressAppointments.startAt, new Date(from)));
     }
     if (to) {
-      filters.push(lte(appointments.startAt, new Date(to)));
+      filters.push(lte(addressAppointments.startAt, new Date(to)));
     }
 
     // Type filter
     if (type) {
-      filters.push(eq(appointments.type, type));
+      filters.push(eq(addressAppointments.type, type));
     }
 
     // Status filter
     if (status) {
-      filters.push(eq(appointments.status, status));
+      filters.push(eq(addressAppointments.status, status));
     }
 
     // Permission filter
@@ -198,9 +198,9 @@ router.get("/", async (req: Request, res: Response) => {
       // 1. Assigned to me, OR
       // 2. Address is accessible to me
       const permissionFilter = or(
-        eq(appointments.assignedUserId, userId),
+        eq(addressAppointments.assignedUserId, userId),
         ...(accessibleAddressIds.length > 0
-          ? accessibleAddressIds.map(id => eq(appointments.addressId, id))
+          ? accessibleAddressIds.map(id => eq(addressAppointments.addressId, id))
           : [sql`false`])
       );
 
@@ -211,9 +211,9 @@ router.get("/", async (req: Request, res: Response) => {
 
     const rows = await db
       .select()
-      .from(appointments)
+      .from(addressAppointments)
       .where(whereClause)
-      .orderBy(appointments.startAt)
+      .orderBy(addressAppointments.startAt)
       .limit(500); // Reasonable limit for diary view
 
     const response: ApiResponse<{ appointments: typeof rows }> = {
@@ -252,8 +252,8 @@ router.get("/:id", async (req: Request, res: Response) => {
 
     const [appointment] = await db
       .select()
-      .from(appointments)
-      .where(eq(appointments.id, appointmentId))
+      .from(addressAppointments)
+      .where(eq(addressAppointments.id, appointmentId))
       .limit(1);
 
     if (!appointment) {
@@ -315,9 +315,9 @@ router.patch("/:id", async (req: Request, res: Response) => {
     }
 
     const [updated] = await db
-      .update(appointments)
+      .update(addressAppointments)
       .set(updates)
-      .where(eq(appointments.id, appointmentId))
+      .where(eq(addressAppointments.id, appointmentId))
       .returning();
 
     const response: ApiResponse<{ appointment: typeof updated }> = {
@@ -510,7 +510,7 @@ router.post("/addresses/:addressId/appointments", async (req: Request, res: Resp
     const finalAssignedUserId = isAdmin && assignedUserId ? assignedUserId : userId;
 
     const [inserted] = await db
-      .insert(appointments)
+      .insert(addressAppointments)
       .values({
         addressId,
         type,

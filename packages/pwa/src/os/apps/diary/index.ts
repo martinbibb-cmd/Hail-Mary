@@ -1,2 +1,2 @@
 export { DiaryApp } from './DiaryApp'
-export type { DiaryEvent, EventType } from './DiaryApp'
+export type { DiaryEvent, AppointmentType, AppointmentStatus } from './DiaryApp'

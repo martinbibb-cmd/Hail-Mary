@@ -21,7 +21,7 @@ export function SpinePropertyPage() {
   const [property, setProperty] = useState<SpineProperty | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const setActiveProperty = useSpineStore((s) => s.setActiveProperty)
+  const setActiveAddress = useSpineStore((s) => s.setActiveAddress)
   const setActiveVisitId = useSpineStore((s) => s.setActiveVisitId)
 
   useEffect(() => {
@@ -51,10 +51,10 @@ export function SpinePropertyPage() {
 
   const handleSetActive = () => {
     if (!property) return
-    setActiveProperty({
+    setActiveAddress({
       id: property.id,
-      addressLine1: property.addressLine1,
-      addressLine2: property.addressLine2,
+      line1: property.addressLine1,
+      line2: property.addressLine2,
       town: property.town,
       postcode: property.postcode,
     })

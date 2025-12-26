@@ -53,9 +53,9 @@ async function getBestGeo(): Promise<GeoCapture> {
 export function SpineCameraPage() {
   const navigate = useNavigate()
 
-  const activeProperty = useSpineStore((s) => s.activeProperty)
+  const activeAddress = useSpineStore((s) => s.activeAddress)
   const activeVisitId = useSpineStore((s) => s.activeVisitId)
-  const setActiveProperty = useSpineStore((s) => s.setActiveProperty)
+  const setActiveAddress = useSpineStore((s) => s.setActiveAddress)
   const setActiveVisitId = useSpineStore((s) => s.setActiveVisitId)
 
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -244,12 +244,12 @@ export function SpineCameraPage() {
   const ensureVisitId = useCallback(async (): Promise<string | null> => {
     if (activeVisitId) return activeVisitId
 
-    if (activeProperty?.id) {
+    if (activeAddress?.id) {
       const res = await fetch('/api/visits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ propertyId: activeProperty.id }),
+        body: JSON.stringify({ propertyId: activeAddress.id }),
       })
       const json = (await res.json()) as any
       if (!json?.success || !json?.data?.id) throw new Error(json?.error || 'Failed to create visit')
@@ -261,7 +261,7 @@ export function SpineCameraPage() {
     setAttachOpen(true)
     loadRecentVisits()
     return null
-  }, [activeVisitId, activeProperty?.id, loadRecentVisits, setActiveVisitId])
+  }, [activeVisitId, activeAddress?.id, loadRecentVisits, setActiveVisitId])
 
   const uploadAndCreateEvent = useCallback(
     async (visitId: string) => {
@@ -359,10 +359,10 @@ export function SpineCameraPage() {
       if (!propRes.ok || !propJson?.success || !propJson?.data?.id) throw new Error(propJson?.error || 'Failed to create property')
 
       const p = propJson.data
-      setActiveProperty({
+      setActiveAddress({
         id: p.id,
-        addressLine1: p.addressLine1,
-        addressLine2: p.addressLine2,
+        line1: p.addressLine1,
+        line2: p.addressLine2,
         town: p.town,
         postcode: p.postcode,
       })
@@ -383,15 +383,15 @@ export function SpineCameraPage() {
     } finally {
       setAttachLoading(false)
     }
-  }, [quickAddressLine1, quickPostcode, setActiveProperty, setActiveVisitId])
+  }, [quickAddressLine1, quickPostcode, setActiveAddress, setActiveVisitId])
 
   return (
     <div className="spine-camera">
       <div className="spine-camera__topbar">
         <div className="spine-camera__status">
-          {activeProperty ? (
+          {activeAddress ? (
             <span className="spine-camera__pill">
-              {activeProperty.addressLine1} • {activeProperty.postcode}
+              {activeAddress.line1} • {activeAddress.postcode}
             </span>
           ) : (
             <span className="spine-camera__pill spine-camera__pill--muted">No active property</span>
@@ -465,10 +465,10 @@ export function SpineCameraPage() {
                       key={v.visitId}
                       className="spine-camera__visit-item"
                       onClick={() => {
-                        setActiveProperty({
+                        setActiveAddress({
                           id: v.property.id,
-                          addressLine1: v.property.addressLine1,
-                          addressLine2: v.property.addressLine2,
+                          line1: v.property.addressLine1,
+                          line2: v.property.addressLine2,
                           town: v.property.town,
                           postcode: v.property.postcode,
                         })

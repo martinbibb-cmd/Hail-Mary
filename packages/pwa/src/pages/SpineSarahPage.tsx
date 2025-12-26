@@ -69,7 +69,7 @@ const safeSummary = (payload: any): string => {
 }
 
 export function SpineSarahPage() {
-  const activeProperty = useSpineStore((s) => s.activeProperty)
+  const activeAddress = useSpineStore((s) => s.activeAddress)
   const activeVisitId = useSpineStore((s) => s.activeVisitId)
 
   const [feed, setFeed] = useState<SpineFeedEvent[]>([])
@@ -196,7 +196,7 @@ export function SpineSarahPage() {
       <div className="detail-card">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-            Active property: {activeProperty ? `${activeProperty.addressLine1} • ${activeProperty.postcode}` : 'None'}
+            Active property: {activeAddress ? `${activeAddress.line1} • ${activeAddress.postcode}` : 'None'}
           </div>
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Active visit: {activeVisitId ?? 'None'}</div>
         </div>

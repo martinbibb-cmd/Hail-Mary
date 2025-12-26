@@ -164,7 +164,7 @@ router.patch("/", async (req: Request, res: Response) => {
     if (preferences !== undefined) {
       // Merge preferences with existing ones
       updates.preferences = {
-        ...existing.preferences,
+        ...(typeof existing.preferences === 'object' && existing.preferences !== null ? existing.preferences : {}),
         ...preferences,
       };
     }

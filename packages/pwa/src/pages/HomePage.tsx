@@ -190,7 +190,7 @@ const summarizePayload = (_type: string, payload: any): string => {
 export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const setActiveProperty = useSpineStore((s) => s.setActiveProperty);
+  const setActiveAddress = useSpineStore((s) => s.setActiveAddress);
   const setActiveVisitId = useSpineStore((s) => s.setActiveVisitId);
   const activeVisitId = useSpineStore((s) => s.activeVisitId);
 
@@ -331,10 +331,10 @@ export const HomePage: React.FC<HomePageProps> = ({ layout }) => {
   };
 
   const selectPropertyAndCreateVisit = async (p: SpineProperty) => {
-    setActiveProperty({
+    setActiveAddress({
       id: p.id,
-      addressLine1: p.addressLine1,
-      addressLine2: p.addressLine2,
+      line1: p.addressLine1,
+      line2: p.addressLine2,
       town: p.town,
       postcode: p.postcode,
     });

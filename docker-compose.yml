@@ -23,9 +23,7 @@ services:
 
   # Database Migrator Service - Runs once to set up database
   hailmary-migrator:
-    build:
-      context: .
-      dockerfile: packages/api/Dockerfile
+    image: ghcr.io/martinbibb-cmd/hail-mary-api:latest
     container_name: hailmary-migrator
     env_file: .env
     environment:
@@ -51,9 +49,7 @@ services:
 
   # Hail-Mary API Service
   hailmary-api:
-    build:
-      context: .
-      dockerfile: packages/api/Dockerfile
+    image: ghcr.io/martinbibb-cmd/hail-mary-api:latest
     container_name: hailmary-api
     restart: unless-stopped
     env_file: .env
@@ -86,9 +82,7 @@ services:
 
   # Hail-Mary Assistant Service
   hailmary-assistant:
-    build:
-      context: .
-      dockerfile: packages/assistant/Dockerfile
+    image: ghcr.io/martinbibb-cmd/hail-mary-assistant:latest
     container_name: hailmary-assistant
     restart: unless-stopped
     env_file: .env
@@ -109,9 +103,7 @@ services:
 
   # Hail-Mary PWA (Frontend + Nginx Reverse Proxy)
   hailmary-pwa:
-    build:
-      context: .
-      dockerfile: packages/pwa/Dockerfile
+    image: ghcr.io/martinbibb-cmd/hail-mary-pwa:latest
     container_name: hailmary-pwa
     restart: unless-stopped
     depends_on:

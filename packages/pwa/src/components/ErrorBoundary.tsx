@@ -18,6 +18,9 @@ interface State {
   error: Error | null;
 }
 
+// List of localStorage keys that may cause issues and should be cleared on error recovery
+const RECOVERABLE_STORAGE_KEYS = ['dockItems'];
+
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -35,9 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
   handleClearAndReload = () => {
     try {
       // Clear potentially problematic localStorage items
-      // Starting with dockItems, but can be extended
-      const keysToRemove = ['dockItems'];
-      keysToRemove.forEach(key => {
+      RECOVERABLE_STORAGE_KEYS.forEach(key => {
         try {
           localStorage.removeItem(key);
           console.log(`[ErrorBoundary] Cleared ${key} from localStorage`);

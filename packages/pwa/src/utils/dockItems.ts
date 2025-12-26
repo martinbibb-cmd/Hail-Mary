@@ -2,12 +2,12 @@
  * Utility functions for managing dock items in localStorage
  */
 
-// Default visible dock items
-export const DEFAULT_DOCK_ITEMS = [
+// Default visible dock items (readonly to prevent accidental mutations)
+export const DEFAULT_DOCK_ITEMS: readonly string[] = [
   'home', 'addresses', 'diary', 'camera', 'photo-library',
   'transcripts', 'scans', 'engineer', 'sarah', 'presentation',
   'knowledge', 'profile'
-];
+] as const;
 
 /**
  * Safely load dock items from localStorage with validation
@@ -17,7 +17,7 @@ export function loadDockItems(): string[] {
   try {
     const stored = localStorage.getItem('dockItems');
     if (!stored) {
-      return DEFAULT_DOCK_ITEMS;
+      return [...DEFAULT_DOCK_ITEMS];
     }
 
     const parsed = JSON.parse(stored);
@@ -30,7 +30,7 @@ export function loadDockItems(): string[] {
     // Invalid format - clear and return default
     console.warn('[loadDockItems] Invalid dockItems format in localStorage, resetting to default');
     localStorage.removeItem('dockItems');
-    return DEFAULT_DOCK_ITEMS;
+    return [...DEFAULT_DOCK_ITEMS];
   } catch (error) {
     // JSON parse error or localStorage access error - clear and return default
     console.warn('[loadDockItems] Failed to parse dockItems from localStorage, resetting to default', error);
@@ -39,7 +39,7 @@ export function loadDockItems(): string[] {
     } catch {
       // If we can't even clear localStorage, just continue with defaults
     }
-    return DEFAULT_DOCK_ITEMS;
+    return [...DEFAULT_DOCK_ITEMS];
   }
 }
 

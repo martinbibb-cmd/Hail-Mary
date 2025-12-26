@@ -11,6 +11,7 @@ import React, { useRef, useState } from 'react';
 import { useAuth } from '../../../auth';
 import { useWallpaper, builtInWallpapers, Wallpaper } from '../../wallpaper';
 import { cognitiveProfiles, useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext';
+import { loadDockItems, saveDockItems, DEFAULT_DOCK_ITEMS } from '../../../utils/dockItems';
 import { AdminSystem } from './AdminSystem';
 import { AdminAddressAssignment } from './AdminAddressAssignment';
 import './SettingsApp.css';
@@ -32,13 +33,6 @@ const ALL_DOCK_ITEMS = [
   { id: 'profile', label: 'Settings', icon: '⚙️' },
 ];
 
-// Default visible dock items (matches current hardcoded dock)
-const DEFAULT_DOCK_ITEMS = [
-  'home', 'addresses', 'diary', 'camera', 'photo-library',
-  'transcripts', 'scans', 'engineer', 'sarah', 'presentation',
-  'knowledge', 'profile'
-];
-
 export const SettingsApp: React.FC = () => {
   const { user, logout } = useAuth();
   const {
@@ -54,10 +48,7 @@ export const SettingsApp: React.FC = () => {
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
 
   // Dock customization state
-  const [selectedDockItems, setSelectedDockItems] = useState<string[]>(() => {
-    const stored = localStorage.getItem('dockItems');
-    return stored ? JSON.parse(stored) : DEFAULT_DOCK_ITEMS;
-  });
+  const [selectedDockItems, setSelectedDockItems] = useState<string[]>(() => loadDockItems());
 
   const handleLogout = async () => {
     await logout();
@@ -94,16 +85,12 @@ export const SettingsApp: React.FC = () => {
       : [...selectedDockItems, itemId];
 
     setSelectedDockItems(newSelection);
-    localStorage.setItem('dockItems', JSON.stringify(newSelection));
-
-    // Dispatch custom event to notify BottomDock of changes
-    window.dispatchEvent(new CustomEvent('dockItemsChanged'));
+    saveDockItems(newSelection);
   };
 
   const handleResetDock = () => {
     setSelectedDockItems(DEFAULT_DOCK_ITEMS);
-    localStorage.setItem('dockItems', JSON.stringify(DEFAULT_DOCK_ITEMS));
-    window.dispatchEvent(new CustomEvent('dockItemsChanged'));
+    saveDockItems(DEFAULT_DOCK_ITEMS);
   };
 
   const handleUpdate = async () => {

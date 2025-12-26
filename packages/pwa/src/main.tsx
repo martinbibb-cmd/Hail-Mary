@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
 import { CognitiveProfileProvider } from './cognitive/CognitiveProfileContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { registerSW } from 'virtual:pwa-register'
 import { backgroundTranscriptionProcessor } from './services/backgroundTranscriptionProcessor'
 
@@ -27,10 +28,12 @@ backgroundTranscriptionProcessor.initialize()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <CognitiveProfileProvider>
-        <App />
-      </CognitiveProfileProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <CognitiveProfileProvider>
+          <App />
+        </CognitiveProfileProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>,
 )

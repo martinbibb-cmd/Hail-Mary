@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { loadDockItems, DEFAULT_DOCK_ITEMS } from '../utils/dockItems';
 import './BottomDock.css';
 
 // All available dock items
@@ -26,28 +27,22 @@ const ALL_DOCK_ITEMS = [
   { id: 'profile', label: 'Settings', icon: '⚙️', path: '/profile' },
 ];
 
-// Default visible dock items
-const DEFAULT_DOCK_ITEMS = [
-  'home', 'addresses', 'diary', 'camera', 'photo-library',
-  'transcripts', 'scans', 'engineer', 'sarah', 'presentation',
-  'knowledge', 'profile'
-];
-
 export const BottomDock: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   // Load selected items from localStorage
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(() => {
-    const stored = localStorage.getItem('dockItems');
-    return stored ? JSON.parse(stored) : DEFAULT_DOCK_ITEMS;
-  });
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(() => loadDockItems());
 
   // Listen for dock customization changes
   useEffect(() => {
     const handleDockItemsChanged = () => {
-      const stored = localStorage.getItem('dockItems');
-      setSelectedItemIds(stored ? JSON.parse(stored) : DEFAULT_DOCK_ITEMS);
+      try {
+        setSelectedItemIds(loadDockItems());
+      } catch (error) {
+        console.error('[BottomDock] Error handling dockItemsChanged event', error);
+        setSelectedItemIds(DEFAULT_DOCK_ITEMS);
+      }
     };
 
     window.addEventListener('dockItemsChanged', handleDockItemsChanged);

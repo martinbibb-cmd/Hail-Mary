@@ -2,45 +2,37 @@
  * Utility functions for managing dock items in localStorage
  */
 
-// Default visible dock items (readonly to prevent accidental mutations)
-export const DEFAULT_DOCK_ITEMS: readonly string[] = [
-  'home', 'addresses', 'diary', 'camera', 'photo-library',
-  'transcripts', 'scans', 'engineer', 'sarah', 'presentation',
-  'knowledge', 'profile'
-] as const;
+import { safeGetJSON, safeSetJSON } from '../lib/storage';
+import { DEFAULT_DOCK_ITEMS, coerceDockItems } from '../lib/dock';
+
+// Re-export DEFAULT_DOCK_ITEMS for backward compatibility
+export { DEFAULT_DOCK_ITEMS };
 
 /**
  * Safely load dock items from localStorage with validation
  * Returns DEFAULT_DOCK_ITEMS if stored value is invalid
  */
 export function loadDockItems(): string[] {
-  try {
-    const stored = localStorage.getItem('dockItems');
-    if (!stored) {
-      return [...DEFAULT_DOCK_ITEMS];
-    }
+  const raw = safeGetJSON<unknown>('dockItems');
+  
+  if (!raw) {
+    return [...DEFAULT_DOCK_ITEMS];
+  }
 
-    const parsed = JSON.parse(stored);
-    
-    // Validate that it's an array of strings
-    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-      return parsed;
-    }
-
+  const coerced = coerceDockItems(raw);
+  
+  if (!coerced) {
     // Invalid format - clear and return default
     console.warn('[loadDockItems] Invalid dockItems format in localStorage, resetting to default');
-    localStorage.removeItem('dockItems');
-    return [...DEFAULT_DOCK_ITEMS];
-  } catch (error) {
-    // JSON parse error or localStorage access error - clear and return default
-    console.warn('[loadDockItems] Failed to parse dockItems from localStorage, resetting to default', error);
     try {
       localStorage.removeItem('dockItems');
     } catch {
-      // If we can't even clear localStorage, just continue with defaults
+      // If we can't clear localStorage, just continue with defaults
     }
     return [...DEFAULT_DOCK_ITEMS];
   }
+
+  return coerced;
 }
 
 /**
@@ -49,12 +41,12 @@ export function loadDockItems(): string[] {
  * @returns true if successful, false otherwise
  */
 export function saveDockItems(items: string[]): boolean {
-  try {
-    localStorage.setItem('dockItems', JSON.stringify(items));
-    window.dispatchEvent(new CustomEvent('dockItemsChanged'));
-    return true;
-  } catch (error) {
-    console.error('[saveDockItems] Failed to save dock items to localStorage', error);
-    return false;
+  const success = safeSetJSON('dockItems', items);
+  
+  if (success) {
+    // Use Event instead of CustomEvent for Safari compatibility
+    window.dispatchEvent(new Event('dockItemsChanged'));
   }
+  
+  return success;
 }

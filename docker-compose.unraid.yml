@@ -8,10 +8,14 @@
 #
 # Environment variables (set in .env file):
 #   - APPDATA_PATH: Path to appdata folder (default: /mnt/user/appdata/hailmary)
+#   - IMAGE_TAG: Docker image tag to use (default: latest)
 #   - JWT_SECRET: Secret for JWT authentication
 #   - GEMINI_API_KEY: API key for Gemini AI (optional)
 #   - PWA_PORT: Port to expose PWA (default: 8080)
 #   - BASE_URL: Your domain URL for the application
+#
+# Note: Only main branch publishes :latest images. For branch deployments,
+# set IMAGE_TAG=<branch-name> in .env (e.g., IMAGE_TAG=staging)
 
 services:
   # PostgreSQL Database
@@ -42,7 +46,7 @@ services:
 
   # Database Migrator Service - Runs once to set up database
   hailmary-migrator:
-    image: ghcr.io/martinbibb-cmd/hail-mary-api:latest
+    image: ghcr.io/martinbibb-cmd/hail-mary-api:${IMAGE_TAG:-latest}
     container_name: hailmary-migrator
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-hailmary}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@hailmary-postgres:5432/${POSTGRES_DB:-hailmary}
@@ -72,7 +76,7 @@ services:
 
   # Hail-Mary API Service
   hailmary-api:
-    image: ghcr.io/martinbibb-cmd/hail-mary-api:latest
+    image: ghcr.io/martinbibb-cmd/hail-mary-api:${IMAGE_TAG:-latest}
     container_name: hailmary-api
     restart: unless-stopped
     environment:
@@ -108,7 +112,7 @@ services:
 
   # Hail-Mary Assistant Service
   hailmary-assistant:
-    image: ghcr.io/martinbibb-cmd/hail-mary-assistant:latest
+    image: ghcr.io/martinbibb-cmd/hail-mary-assistant:${IMAGE_TAG:-latest}
     container_name: hailmary-assistant
     restart: unless-stopped
     environment:
@@ -130,7 +134,7 @@ services:
 
   # Hail-Mary PWA (Frontend + Nginx Reverse Proxy)
   hailmary-pwa:
-    image: ghcr.io/martinbibb-cmd/hail-mary-pwa:latest
+    image: ghcr.io/martinbibb-cmd/hail-mary-pwa:${IMAGE_TAG:-latest}
     container_name: hailmary-pwa
     restart: unless-stopped
     depends_on:

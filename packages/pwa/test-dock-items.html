@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dock Items localStorage Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.6;
+    }
+    .test-case {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    .test-case h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-right: 0.5rem;
+    }
+    button:hover {
+      background: #5568d3;
+    }
+    .result {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: #fff;
+      border-left: 3px solid #667eea;
+    }
+    .success {
+      border-left-color: #00b894;
+    }
+    .error {
+      border-left-color: #d63031;
+    }
+    pre {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔧 Dock Items localStorage Test Suite</h1>
+  <p>
+    This test suite validates that the PWA handles invalid localStorage dockItems gracefully
+    without causing white-screen errors.
+  </p>
+
+  <div class="test-case">
+    <h3>Test 1: Invalid JSON</h3>
+    <p>Sets dockItems to invalid JSON string.</p>
+    <button onclick="runTest('test1')">Run Test</button>
+    <button onclick="reloadPage()">Reload to Test</button>
+    <div id="test1-result" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-case">
+    <h3>Test 2: Object Instead of Array</h3>
+    <p>Sets dockItems to a JSON object instead of an array.</p>
+    <button onclick="runTest('test2')">Run Test</button>
+    <button onclick="reloadPage()">Reload to Test</button>
+    <div id="test2-result" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-case">
+    <h3>Test 3: Array with Non-String Values</h3>
+    <p>Sets dockItems to an array containing numbers.</p>
+    <button onclick="runTest('test3')">Run Test</button>
+    <button onclick="reloadPage()">Reload to Test</button>
+    <div id="test3-result" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-case">
+    <h3>Test 4: Null Value</h3>
+    <p>Sets dockItems to JSON null.</p>
+    <button onclick="runTest('test4')">Run Test</button>
+    <button onclick="reloadPage()">Reload to Test</button>
+    <div id="test4-result" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-case">
+    <h3>Test 5: Empty String</h3>
+    <p>Sets dockItems to an empty string.</p>
+    <button onclick="runTest('test5')">Run Test</button>
+    <button onclick="reloadPage()">Reload to Test</button>
+    <div id="test5-result" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-case">
+    <h3>Test 6: Valid Array (Control)</h3>
+    <p>Sets dockItems to a valid array of strings.</p>
+    <button onclick="runTest('test6')">Run Test</button>
+    <button onclick="reloadPage()">Reload to Test</button>
+    <div id="test6-result" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-case">
+    <h3>Test 7: Clear localStorage</h3>
+    <p>Removes dockItems from localStorage.</p>
+    <button onclick="runTest('test7')">Run Test</button>
+    <button onclick="reloadPage()">Reload to Test</button>
+    <div id="test7-result" class="result" style="display:none;"></div>
+  </div>
+
+  <div style="margin-top: 2rem; padding: 1rem; background: #fff3cd; border-radius: 8px;">
+    <h3>Current localStorage State</h3>
+    <pre id="current-state"></pre>
+    <button onclick="updateCurrentState()">Refresh State</button>
+  </div>
+
+  <script>
+    const tests = {
+      test1: {
+        name: "Invalid JSON",
+        value: '{invalid json}',
+        expectedBehavior: "Should clear and use default"
+      },
+      test2: {
+        name: "Object Instead of Array",
+        value: '{"home": true, "camera": true}',
+        expectedBehavior: "Should clear and use default"
+      },
+      test3: {
+        name: "Array with Non-String Values",
+        value: '[1, 2, 3]',
+        expectedBehavior: "Should clear and use default"
+      },
+      test4: {
+        name: "Null Value",
+        value: 'null',
+        expectedBehavior: "Should use default"
+      },
+      test5: {
+        name: "Empty String",
+        value: '',
+        expectedBehavior: "Should use default"
+      },
+      test6: {
+        name: "Valid Array",
+        value: '["home", "camera", "profile"]',
+        expectedBehavior: "Should use provided array"
+      },
+      test7: {
+        name: "Clear localStorage",
+        value: null,
+        expectedBehavior: "Should use default"
+      }
+    };
+
+    function runTest(testId) {
+      const test = tests[testId];
+      const resultEl = document.getElementById(`${testId}-result`);
+      
+      try {
+        if (test.value === null) {
+          localStorage.removeItem('dockItems');
+        } else {
+          localStorage.setItem('dockItems', test.value);
+        }
+        
+        resultEl.innerHTML = `
+          <strong>✓ Test set successfully</strong><br>
+          Value: <code>${test.value || '(removed)'}</code><br>
+          Expected: ${test.expectedBehavior}<br>
+          <em>Click "Reload to Test" to verify the app doesn't crash</em>
+        `;
+        resultEl.className = 'result success';
+        resultEl.style.display = 'block';
+        
+        updateCurrentState();
+      } catch (error) {
+        resultEl.innerHTML = `
+          <strong>✗ Test failed</strong><br>
+          Error: ${error.message}
+        `;
+        resultEl.className = 'result error';
+        resultEl.style.display = 'block';
+      }
+    }
+
+    function reloadPage() {
+      window.location.reload();
+    }
+
+    function updateCurrentState() {
+      const dockItems = localStorage.getItem('dockItems');
+      const stateEl = document.getElementById('current-state');
+      stateEl.textContent = `dockItems: ${dockItems === null ? '(not set)' : dockItems}`;
+    }
+
+    // Initialize
+    updateCurrentState();
+  </script>
+</body>
+</html>

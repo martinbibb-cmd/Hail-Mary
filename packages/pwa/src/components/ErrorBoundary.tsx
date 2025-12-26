@@ -34,9 +34,17 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleClearAndReload = () => {
     try {
-      // Clear problematic localStorage items
-      localStorage.removeItem('dockItems');
-      console.log('[ErrorBoundary] Cleared dockItems from localStorage');
+      // Clear potentially problematic localStorage items
+      // Starting with dockItems, but can be extended
+      const keysToRemove = ['dockItems'];
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          console.log(`[ErrorBoundary] Cleared ${key} from localStorage`);
+        } catch (error) {
+          console.error(`[ErrorBoundary] Failed to clear ${key}`, error);
+        }
+      });
     } catch (error) {
       console.error('[ErrorBoundary] Failed to clear localStorage', error);
     }

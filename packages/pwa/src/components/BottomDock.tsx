@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { loadDockItems, DEFAULT_DOCK_ITEMS } from '../utils/dockItems';
 import './BottomDock.css';
 
 // All available dock items
@@ -25,47 +26,6 @@ const ALL_DOCK_ITEMS = [
   { id: 'trajectory', label: 'Journey', icon: '🌱', path: '/trajectory' },
   { id: 'profile', label: 'Settings', icon: '⚙️', path: '/profile' },
 ];
-
-// Default visible dock items
-const DEFAULT_DOCK_ITEMS = [
-  'home', 'addresses', 'diary', 'camera', 'photo-library',
-  'transcripts', 'scans', 'engineer', 'sarah', 'presentation',
-  'knowledge', 'profile'
-];
-
-/**
- * Safely load dock items from localStorage with validation
- * Returns DEFAULT_DOCK_ITEMS if stored value is invalid
- */
-function loadDockItems(): string[] {
-  try {
-    const stored = localStorage.getItem('dockItems');
-    if (!stored) {
-      return DEFAULT_DOCK_ITEMS;
-    }
-
-    const parsed = JSON.parse(stored);
-    
-    // Validate that it's an array of strings
-    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-      return parsed;
-    }
-
-    // Invalid format - clear and return default
-    console.warn('[BottomDock] Invalid dockItems format in localStorage, resetting to default');
-    localStorage.removeItem('dockItems');
-    return DEFAULT_DOCK_ITEMS;
-  } catch (error) {
-    // JSON parse error or localStorage access error - clear and return default
-    console.warn('[BottomDock] Failed to parse dockItems from localStorage, resetting to default', error);
-    try {
-      localStorage.removeItem('dockItems');
-    } catch {
-      // If we can't even clear localStorage, just continue with defaults
-    }
-    return DEFAULT_DOCK_ITEMS;
-  }
-}
 
 export const BottomDock: React.FC = () => {
   const navigate = useNavigate();

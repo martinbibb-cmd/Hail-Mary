@@ -8,7 +8,8 @@ import { format } from 'date-fns'
 import { useSpineStore } from '../../../stores/spineStore'
 import './DiaryApp.css'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+// Use relative URL to work in both dev and production
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export type AppointmentType = 'SURVEY' | 'REVISIT' | 'CALLBACK' | 'INSTALL' | 'SERVICE_REPAIR'
 export type AppointmentStatus = 'PLANNED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
@@ -77,7 +78,10 @@ export const DiaryApp: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`${API_BASE_URL}/api/address-appointments`, {
+      const url = `${API_BASE_URL}/api/address-appointments`
+      console.log('Fetching appointments from:', url)
+
+      const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -85,7 +89,9 @@ export const DiaryApp: React.FC = () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to fetch appointments')
+        const errorText = await response.text()
+        console.error('Fetch failed with status:', response.status, errorText)
+        throw new Error(`Failed to fetch appointments (${response.status})`)
       }
 
       const data = await response.json()
@@ -96,7 +102,8 @@ export const DiaryApp: React.FC = () => {
         throw new Error(data.error || 'Failed to fetch appointments')
       }
     } catch (err) {
-      setError((err as Error).message)
+      const errorMessage = (err as Error).message || 'Unknown error'
+      setError(errorMessage)
       console.error('Error fetching appointments:', err)
     } finally {
       setLoading(false)

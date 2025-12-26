@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSpineStore } from '../../../stores/spineStore';
 import './PhotoLibraryApp.css';
 
 interface Photo {
@@ -40,6 +41,7 @@ const PHOTO_TAGS = [
 ];
 
 export const PhotoLibraryApp: React.FC = () => {
+  const activeAddress = useSpineStore((s) => s.activeAddress);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,8 +104,14 @@ export const PhotoLibraryApp: React.FC = () => {
   };
 
   const handleOpenModal = () => {
+    if (!activeAddress) {
+      alert('Please select an address first from the Addresses app');
+      return;
+    }
     setShowModal(true);
     resetForm();
+    // Auto-set postcode from active address
+    setPostcode(activeAddress.postcode);
   };
 
   const handleCloseModal = () => {
@@ -167,8 +175,8 @@ export const PhotoLibraryApp: React.FC = () => {
   };
 
   const handleUploadAll = async () => {
-    if (!postcode.trim()) {
-      alert('Postcode is required');
+    if (!activeAddress || !postcode.trim()) {
+      alert('Please select an address first from the Addresses app');
       return;
     }
 
@@ -376,19 +384,17 @@ export const PhotoLibraryApp: React.FC = () => {
                 </div>
               )}
 
-              <div className="form-group">
-                <label htmlFor="postcode">
-                  Postcode <span className="required">*</span>
-                </label>
-                <input
-                  id="postcode"
-                  type="text"
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-                  placeholder="e.g. SW1A 1AA"
-                  disabled={uploading}
-                />
-              </div>
+              {activeAddress && (
+                <div className="active-address-info">
+                  <div className="info-label">Attaching to:</div>
+                  <div className="info-value">
+                    <strong>{activeAddress.customerName || activeAddress.line1}</strong>
+                    {activeAddress.line2 && <div>{activeAddress.line2}</div>}
+                    {activeAddress.town && <div>{activeAddress.town}</div>}
+                    <div>{activeAddress.postcode}</div>
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label htmlFor="photos">
@@ -399,7 +405,6 @@ export const PhotoLibraryApp: React.FC = () => {
                   id="photos"
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   multiple
                   onChange={handleFileSelect}
                   disabled={uploading}

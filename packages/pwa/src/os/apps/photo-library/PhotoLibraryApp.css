@@ -284,6 +284,38 @@
   word-break: break-word;
 }
 
+.active-address-info {
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.active-address-info .info-label {
+  font-size: 0.85rem;
+  color: #1976d2;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.active-address-info .info-value {
+  color: #333;
+  line-height: 1.5;
+}
+
+.active-address-info .info-value strong {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.active-address-info .info-value div {
+  font-size: 0.9rem;
+  color: #666;
+}
+
 .form-group {
   margin-bottom: 1.25rem;
 }

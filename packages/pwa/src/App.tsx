@@ -25,6 +25,7 @@ import { TranscriptsApp } from './os/apps/transcripts/TranscriptsApp'
 import { PhotoLibraryApp } from './os/apps/photo-library/PhotoLibraryApp'
 import { ScansApp } from './os/apps/scans/ScansApp'
 import { AddressesApp } from './os/apps/addresses/AddressesApp'
+import { TrajectoryApp } from './os/apps/trajectory/TrajectoryApp'
 import { BottomDock } from './components/BottomDock'
 import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
@@ -732,6 +733,7 @@ function App() {
           <Route path="/photos" element={<PhotosAppWithGuard />} />
           <Route path="/photo-library" element={<PhotoLibraryApp />} />
           <Route path="/scans" element={<ScansApp />} />
+          <Route path="/trajectory" element={<TrajectoryApp />} />
           <Route path="/profile" element={<ProfileApp />} />
           <Route path="/files" element={<FilesApp />} />
           <Route path="/transcripts" element={<TranscriptsApp />} />

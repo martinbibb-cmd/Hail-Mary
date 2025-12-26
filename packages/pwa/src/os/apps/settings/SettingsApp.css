@@ -386,3 +386,129 @@
     width: 100%;
   }
 }
+
+/* Dock customization */
+.dock-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dock-item-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  border: 2px solid var(--window-border, rgba(139, 119, 91, 0.15));
+  border-radius: 12px;
+  background: var(--surface-primary, #fff);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dock-item-card:hover:not(.locked) {
+  border-color: var(--text-muted, rgba(60, 50, 40, 0.4));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.dock-item-card.selected {
+  border-color: var(--accent, #6b8e23);
+  background: var(--accent-soft, rgba(107, 142, 35, 0.08));
+  box-shadow: 0 0 0 2px var(--accent-soft, rgba(107, 142, 35, 0.3));
+}
+
+.dock-item-card.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--surface-secondary, rgba(139, 119, 91, 0.05));
+}
+
+.dock-item-card input[type="checkbox"] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.dock-item-card.locked input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.dock-item-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.dock-item-label {
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+}
+
+.dock-item-lock {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.dock-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-reset-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--window-border, rgba(139, 119, 91, 0.25));
+  background: var(--surface-primary, #fff);
+  color: var(--text-primary, rgba(60, 50, 40, 0.95));
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-reset-btn:hover {
+  background: var(--surface-hover, rgba(139, 119, 91, 0.08));
+  border-color: var(--text-muted, rgba(60, 50, 40, 0.4));
+}
+
+.dock-items-count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted, rgba(60, 50, 40, 0.6));
+}
+
+@media (max-width: 640px) {
+  .dock-items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .dock-item-card {
+    padding: 12px 8px;
+  }
+
+  .dock-item-icon {
+    font-size: 28px;
+  }
+
+  .dock-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-reset-btn {
+    width: 100%;
+  }
+}

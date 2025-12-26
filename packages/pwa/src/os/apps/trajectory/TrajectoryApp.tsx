@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../auth';
-import { useSpineStore } from '../../../store/spineStore';
+import { useSpineStore } from '../../../stores/spineStore';
 import './TrajectoryApp.css';
 
 interface Scenario {

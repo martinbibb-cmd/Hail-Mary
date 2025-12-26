@@ -39,6 +39,40 @@ const DEFAULT_DOCK_ITEMS = [
   'knowledge', 'profile'
 ];
 
+/**
+ * Safely load dock items from localStorage with validation
+ * Returns DEFAULT_DOCK_ITEMS if stored value is invalid
+ */
+function loadDockItems(): string[] {
+  try {
+    const stored = localStorage.getItem('dockItems');
+    if (!stored) {
+      return DEFAULT_DOCK_ITEMS;
+    }
+
+    const parsed = JSON.parse(stored);
+    
+    // Validate that it's an array of strings
+    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+      return parsed;
+    }
+
+    // Invalid format - clear and return default
+    console.warn('[SettingsApp] Invalid dockItems format in localStorage, resetting to default');
+    localStorage.removeItem('dockItems');
+    return DEFAULT_DOCK_ITEMS;
+  } catch (error) {
+    // JSON parse error or localStorage access error - clear and return default
+    console.warn('[SettingsApp] Failed to parse dockItems from localStorage, resetting to default', error);
+    try {
+      localStorage.removeItem('dockItems');
+    } catch {
+      // If we can't even clear localStorage, just continue with defaults
+    }
+    return DEFAULT_DOCK_ITEMS;
+  }
+}
+
 export const SettingsApp: React.FC = () => {
   const { user, logout } = useAuth();
   const {
@@ -54,10 +88,7 @@ export const SettingsApp: React.FC = () => {
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
 
   // Dock customization state
-  const [selectedDockItems, setSelectedDockItems] = useState<string[]>(() => {
-    const stored = localStorage.getItem('dockItems');
-    return stored ? JSON.parse(stored) : DEFAULT_DOCK_ITEMS;
-  });
+  const [selectedDockItems, setSelectedDockItems] = useState<string[]>(() => loadDockItems());
 
   const handleLogout = async () => {
     await logout();
@@ -94,16 +125,27 @@ export const SettingsApp: React.FC = () => {
       : [...selectedDockItems, itemId];
 
     setSelectedDockItems(newSelection);
-    localStorage.setItem('dockItems', JSON.stringify(newSelection));
-
-    // Dispatch custom event to notify BottomDock of changes
-    window.dispatchEvent(new CustomEvent('dockItemsChanged'));
+    
+    // Persist as JSON array of string IDs only
+    try {
+      localStorage.setItem('dockItems', JSON.stringify(newSelection));
+      // Dispatch custom event to notify BottomDock of changes
+      window.dispatchEvent(new CustomEvent('dockItemsChanged'));
+    } catch (error) {
+      console.error('[SettingsApp] Failed to save dock items to localStorage', error);
+    }
   };
 
   const handleResetDock = () => {
     setSelectedDockItems(DEFAULT_DOCK_ITEMS);
-    localStorage.setItem('dockItems', JSON.stringify(DEFAULT_DOCK_ITEMS));
-    window.dispatchEvent(new CustomEvent('dockItemsChanged'));
+    
+    // Persist valid default value
+    try {
+      localStorage.setItem('dockItems', JSON.stringify(DEFAULT_DOCK_ITEMS));
+      window.dispatchEvent(new CustomEvent('dockItemsChanged'));
+    } catch (error) {
+      console.error('[SettingsApp] Failed to reset dock items in localStorage', error);
+    }
   };
 
   const handleUpdate = async () => {

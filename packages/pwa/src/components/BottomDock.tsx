@@ -33,21 +33,56 @@ const DEFAULT_DOCK_ITEMS = [
   'knowledge', 'profile'
 ];
 
+/**
+ * Safely load dock items from localStorage with validation
+ * Returns DEFAULT_DOCK_ITEMS if stored value is invalid
+ */
+function loadDockItems(): string[] {
+  try {
+    const stored = localStorage.getItem('dockItems');
+    if (!stored) {
+      return DEFAULT_DOCK_ITEMS;
+    }
+
+    const parsed = JSON.parse(stored);
+    
+    // Validate that it's an array of strings
+    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+      return parsed;
+    }
+
+    // Invalid format - clear and return default
+    console.warn('[BottomDock] Invalid dockItems format in localStorage, resetting to default');
+    localStorage.removeItem('dockItems');
+    return DEFAULT_DOCK_ITEMS;
+  } catch (error) {
+    // JSON parse error or localStorage access error - clear and return default
+    console.warn('[BottomDock] Failed to parse dockItems from localStorage, resetting to default', error);
+    try {
+      localStorage.removeItem('dockItems');
+    } catch {
+      // If we can't even clear localStorage, just continue with defaults
+    }
+    return DEFAULT_DOCK_ITEMS;
+  }
+}
+
 export const BottomDock: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   // Load selected items from localStorage
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(() => {
-    const stored = localStorage.getItem('dockItems');
-    return stored ? JSON.parse(stored) : DEFAULT_DOCK_ITEMS;
-  });
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(() => loadDockItems());
 
   // Listen for dock customization changes
   useEffect(() => {
     const handleDockItemsChanged = () => {
-      const stored = localStorage.getItem('dockItems');
-      setSelectedItemIds(stored ? JSON.parse(stored) : DEFAULT_DOCK_ITEMS);
+      try {
+        setSelectedItemIds(loadDockItems());
+      } catch (error) {
+        console.error('[BottomDock] Error handling dockItemsChanged event', error);
+        setSelectedItemIds(DEFAULT_DOCK_ITEMS);
+      }
     };
 
     window.addEventListener('dockItemsChanged', handleDockItemsChanged);

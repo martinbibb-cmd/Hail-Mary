@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSpineStore } from '../../../stores/spineStore';
+import { useAuth } from '../../../auth';
 import './AddressesApp.css';
 
 interface Address {
@@ -19,8 +20,17 @@ interface Address {
   assignedUserId?: number | null;
 }
 
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export const AddressesApp: React.FC = () => {
+  const { user } = useAuth();
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -29,6 +39,7 @@ export const AddressesApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const setActiveAddress = useSpineStore((s) => s.setActiveAddress);
+  const isAdmin = user?.role === 'admin';
 
   // Form state
   const [line1, setLine1] = useState('');
@@ -41,10 +52,31 @@ export const AddressesApp: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [assignedUserId, setAssignedUserId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchAddresses();
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [isAdmin]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        setUsers(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
+  };
 
   const fetchAddresses = async () => {
     try {
@@ -98,6 +130,7 @@ export const AddressesApp: React.FC = () => {
     setPhone('');
     setEmail('');
     setNotes('');
+    setAssignedUserId(null);
   };
 
   const loadFormData = (address: Address) => {
@@ -111,6 +144,7 @@ export const AddressesApp: React.FC = () => {
     setPhone(address.phone || '');
     setEmail(address.email || '');
     setNotes(address.notes || '');
+    setAssignedUserId(address.assignedUserId || null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,6 +179,7 @@ export const AddressesApp: React.FC = () => {
           phone: phone.trim() || undefined,
           email: email.trim() || undefined,
           notes: notes.trim() || undefined,
+          assignedUserId: assignedUserId || undefined,
         }),
       });
 
@@ -436,6 +471,25 @@ export const AddressesApp: React.FC = () => {
                   disabled={saving}
                 />
               </div>
+
+              {isAdmin && users.length > 0 && (
+                <div className="form-group">
+                  <label htmlFor="assignedUserId">Assign to User (optional)</label>
+                  <select
+                    id="assignedUserId"
+                    value={assignedUserId || ''}
+                    onChange={(e) => setAssignedUserId(e.target.value ? parseInt(e.target.value) : null)}
+                    disabled={saving}
+                  >
+                    <option value="">Select a user...</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={handleCloseModal} disabled={saving}>

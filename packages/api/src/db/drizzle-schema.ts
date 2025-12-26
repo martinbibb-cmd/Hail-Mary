@@ -1072,3 +1072,145 @@ export const leadSystemRecommendations = pgTable("lead_system_recommendations", 
   createdByUserId: integer("created_by_user_id")
     .references(() => users.id), // nullable - may be from API or UI
 });
+
+// ============================================
+// Trajectory Engine - Carbon/Cost Projections
+// ============================================
+
+// Assumptions snapshots - monthly energy prices, grid intensity, policy flags
+export const assumptionsSnapshots = pgTable("assumptions_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  regionCode: varchar("region_code", { length: 20 }).notNull(), // e.g. "UK-GB"
+  periodStart: timestamp("period_start", { withTimezone: true }).notNull(), // month bucket start
+  periodEnd: timestamp("period_end", { withTimezone: true }).notNull(), // month bucket end
+  electricityUnitPPerKwh: numeric("electricity_unit_p_per_kwh", { precision: 10, scale: 2 }).notNull(),
+  electricityOffpeakPPerKwh: numeric("electricity_offpeak_p_per_kwh", { precision: 10, scale: 2 }),
+  gasUnitPPerKwh: numeric("gas_unit_p_per_kwh", { precision: 10, scale: 2 }).notNull(),
+  elecStandingChargePPerDay: numeric("elec_standing_charge_p_per_day", { precision: 10, scale: 2 }),
+  gasStandingChargePPerDay: numeric("gas_standing_charge_p_per_day", { precision: 10, scale: 2 }),
+  gridIntensityGco2ePerKwh: numeric("grid_intensity_gco2e_per_kwh", { precision: 10, scale: 2 }).notNull(),
+  gasIntensityGco2ePerKwh: numeric("gas_intensity_gco2e_per_kwh", { precision: 10, scale: 2 }).notNull(),
+  policyFlags: jsonb("policy_flags"), // { "BUS_available": true, "BUS_grant_gbp": 7500, ... }
+  sourceMeta: jsonb("source_meta"), // provenance, urls, etc
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  regionPeriodIdx: index("assumptions_snapshots_region_period_idx").on(t.regionCode, t.periodStart),
+}));
+
+// Property models - heat loss & fabric characteristics
+export const propertyModels = pgTable("property_models", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable - can exist without lead
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable - can exist without property
+  modelVersion: integer("model_version").notNull().default(1),
+  floorAreaM2: numeric("floor_area_m2", { precision: 10, scale: 2 }),
+  ageBand: varchar("age_band", { length: 100 }), // pre-1919, 1919-1944, etc.
+  construction: jsonb("construction"), // wall/roof/floor/windows U-values or category
+  infiltrationAch: numeric("infiltration_ach", { precision: 5, scale: 2 }), // air changes per hour
+  zones: jsonb("zones"), // array of zone objects with heat_loss_w_per_k
+  defaultSetpoints: jsonb("default_setpoints"), // { living: 21, bedrooms: 18 }
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("property_models_lead_id_idx").on(t.leadId),
+}));
+
+// Occupancy profiles - who's home when, comfort priorities
+export const occupancyProfiles = pgTable("occupancy_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable
+  preset: varchar("preset", { length: 50 }).notNull(), // "WFH", "9to5_out", "shift", "always_home"
+  schedule: jsonb("schedule"), // hourly or blocks
+  internalGainsW: numeric("internal_gains_w", { precision: 10, scale: 2 }),
+  comfortPriority: varchar("comfort_priority", { length: 50 }).default("balanced"), // "comfort", "balanced", "saver"
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("occupancy_profiles_lead_id_idx").on(t.leadId),
+}));
+
+// DHW profiles - hot water usage patterns
+export const dhwProfiles = pgTable("dhw_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable
+  occupants: integer("occupants").notNull(),
+  showersPerDay: numeric("showers_per_day", { precision: 5, scale: 2 }).notNull(),
+  bathsPerWeek: numeric("baths_per_week", { precision: 5, scale: 2 }).notNull(),
+  targetTempC: numeric("target_temp_c", { precision: 5, scale: 2 }).default("50").notNull(),
+  coldInletTempC: numeric("cold_inlet_temp_c", { precision: 5, scale: 2 }),
+  mixergyEnabled: boolean("mixergy_enabled").default(false).notNull(),
+  mixergyStrategy: jsonb("mixergy_strategy"), // { "topup_temp":45, "offpeak_window":"00:30-04:30" }
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("dhw_profiles_lead_id_idx").on(t.leadId),
+}));
+
+// Scenarios - tech stack + control strategy combinations
+export const scenarios = pgTable("scenarios", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable
+  name: varchar("name", { length: 255 }).notNull(),
+  techStack: jsonb("tech_stack").notNull(), // { space_heat: [...], dhw: [...], cooling: {...} }
+  controlStrategy: jsonb("control_strategy").notNull(), // lockout temps, zoning, priority, etc
+  capex: jsonb("capex"), // { "low": 3500, "mid": 5200, "high": 7800 }
+  disruptionScore: integer("disruption_score"), // 1-5
+  assumptionsOverrides: jsonb("assumptions_overrides"), // optional per-scenario overrides
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("scenarios_lead_id_idx").on(t.leadId),
+}));
+
+// Journeys - staged retrofit paths over time
+export const journeys = pgTable("journeys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable
+  name: varchar("name", { length: 255 }).notNull(),
+  steps: jsonb("steps").notNull(), // [ { step:1, scenario_id:"uuid-a", start_date:"2026-02-01" }, ... ]
+  reportPins: jsonb("report_pins"), // { "assumptions_snapshot_id": "...", "grid_decarb_path": "central" }
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("journeys_lead_id_idx").on(t.leadId),
+}));

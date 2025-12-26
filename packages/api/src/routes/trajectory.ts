@@ -1066,4 +1066,543 @@ router.delete("/journeys/:id", async (req: Request, res: Response) => {
   }
 });
 
+// ============================================
+// Projection Engine - Mock Implementation (PR2)
+// ============================================
+
+// UK seasonality weights (sum = 1.0, higher in winter months)
+const UK_MONTHLY_SEASONALITY = [
+  0.14, // Jan
+  0.13, // Feb
+  0.11, // Mar
+  0.08, // Apr
+  0.05, // May
+  0.03, // Jun
+  0.02, // Jul
+  0.03, // Aug
+  0.05, // Sep
+  0.09, // Oct
+  0.12, // Nov
+  0.15, // Dec
+];
+
+// Occupancy preset multipliers
+const OCCUPANCY_MULTIPLIERS: Record<string, number> = {
+  WFH: 1.15,
+  always_home: 1.25,
+  "9to5_out": 0.90,
+  shift: 1.00,
+};
+
+// Grid decarb path multipliers (applied to grid intensity over time)
+const GRID_DECARB_PATHS: Record<string, (year: number, baseYear: number) => number> = {
+  central: (year: number, baseYear: number) => {
+    const yearsDiff = year - baseYear;
+    return Math.max(0.4, 1.0 - yearsDiff * 0.04); // -4% per year, floor at 40%
+  },
+  fast: (year: number, baseYear: number) => {
+    const yearsDiff = year - baseYear;
+    return Math.max(0.2, 1.0 - yearsDiff * 0.06); // -6% per year, floor at 20%
+  },
+  slow: (year: number, baseYear: number) => {
+    const yearsDiff = year - baseYear;
+    return Math.max(0.6, 1.0 - yearsDiff * 0.02); // -2% per year, floor at 60%
+  },
+};
+
+interface MockEngineInputs {
+  propertyModel: any;
+  occupancyProfile: any;
+  dhwProfile: any;
+  scenario: any;
+  assumptionsSnapshot: any;
+  gridDecarbPath: string;
+  horizonYears: number;
+  startYear: number;
+}
+
+interface MonthlyProjection {
+  period_start: string;
+  space_heat: {
+    kwh_by_tech: Record<string, number>;
+    elec_kwh: number;
+    gas_kwh: number;
+  };
+  dhw: {
+    kwh_by_tech: Record<string, number>;
+    elec_kwh: number;
+    gas_kwh: number;
+  };
+  totals: {
+    elec_kwh: number;
+    gas_kwh: number;
+    cost_gbp: number;
+    carbon_kgco2e: number;
+  };
+  confidence: {
+    low_factor: number;
+    high_factor: number;
+  };
+}
+
+interface YearlyProjection {
+  year: number;
+  elec_kwh: number;
+  gas_kwh: number;
+  cost_gbp: number;
+  carbon_kgco2e: number;
+}
+
+/**
+ * Mock projection engine - deterministic calculations
+ * Returns consistent outputs based on inputs for UI development
+ */
+function calculateMockProjection(inputs: MockEngineInputs) {
+  const {
+    propertyModel,
+    occupancyProfile,
+    dhwProfile,
+    scenario,
+    assumptionsSnapshot,
+    gridDecarbPath,
+    horizonYears,
+    startYear,
+  } = inputs;
+
+  // Calculate baseline annual space heat kWh
+  let baselineSpaceHeatKwh = 0;
+  if (propertyModel.zones && Array.isArray(propertyModel.zones) && propertyModel.zones.length > 0) {
+    // Sum heat_loss_w_per_k from all zones
+    baselineSpaceHeatKwh = propertyModel.zones.reduce((sum: number, zone: any) => {
+      return sum + (zone.heat_loss_w_per_k || 0);
+    }, 0) * 35; // Simple constant multiplier
+  } else if (propertyModel.floorAreaM2) {
+    // Fallback: floor area * 90 kWh/m2
+    baselineSpaceHeatKwh = parseFloat(propertyModel.floorAreaM2) * 90;
+  } else {
+    // Default estimate
+    baselineSpaceHeatKwh = 12000;
+  }
+
+  // Apply occupancy multiplier
+  const occupancyMultiplier = OCCUPANCY_MULTIPLIERS[occupancyProfile.preset] || 1.0;
+  const annualSpaceHeatKwh = baselineSpaceHeatKwh * occupancyMultiplier;
+
+  // Calculate DHW baseline (litres/day -> kWh/day -> annual)
+  const litresPerDay =
+    (dhwProfile.showersPerDay || 0) * 45 +
+    ((dhwProfile.bathsPerWeek || 0) * 80) / 7 +
+    (dhwProfile.occupants || 1) * 10;
+  const tempDelta = parseFloat(dhwProfile.targetTempC || "50") - 10; // cold inlet ~10C
+  const dhwKwhPerDay = (litresPerDay * 4.186 * tempDelta) / 3600;
+  const annualDhwKwh = dhwKwhPerDay * 365;
+
+  // Confidence band
+  const hasZoneData = propertyModel.zones && Array.isArray(propertyModel.zones) && propertyModel.zones.length > 0;
+  const confidenceLow = hasZoneData ? 0.88 : 0.75;
+  const confidenceHigh = hasZoneData ? 1.12 : 1.25;
+
+  // Generate monthly projections
+  const monthly: MonthlyProjection[] = [];
+  const baseYear = startYear;
+
+  for (let yearOffset = 0; yearOffset < horizonYears; yearOffset++) {
+    const year = baseYear + yearOffset;
+
+    // Apply grid decarb path
+    const decarbFunction = GRID_DECARB_PATHS[gridDecarbPath] || GRID_DECARB_PATHS.central;
+    const gridIntensityMultiplier = decarbFunction(year, baseYear);
+    const gridIntensity = parseFloat(assumptionsSnapshot.gridIntensityGco2ePerKwh) * gridIntensityMultiplier;
+    const gasIntensity = parseFloat(assumptionsSnapshot.gasIntensityGco2ePerKwh);
+
+    // Energy prices
+    const elecRate = parseFloat(assumptionsSnapshot.electricityUnitPPerKwh) / 100; // convert pence to pounds
+    const gasRate = parseFloat(assumptionsSnapshot.gasUnitPPerKwh) / 100;
+
+    for (let month = 0; month < 12; month++) {
+      const monthlySpaceHeat = annualSpaceHeatKwh * UK_MONTHLY_SEASONALITY[month];
+      const monthlyDhw = annualDhwKwh / 12;
+
+      // Allocate space heat by tech stack
+      const spaceHeatByTech: Record<string, number> = {};
+      let spaceHeatElecKwh = 0;
+      let spaceHeatGasKwh = 0;
+
+      if (scenario.techStack && scenario.techStack.space_heat) {
+        for (const tech of scenario.techStack.space_heat) {
+          const techType = tech.type;
+          const servedFraction = 1.0 / scenario.techStack.space_heat.length; // Simple equal split
+          const techKwh = monthlySpaceHeat * servedFraction;
+
+          if (techType === "air_to_air" || techType === "heat_pump") {
+            const scop = tech.scop || tech.seasonal_cop || 3.0;
+            const elecKwh = techKwh / Math.max(1.0, scop);
+            spaceHeatByTech[techType] = elecKwh;
+            spaceHeatElecKwh += elecKwh;
+          } else if (techType === "gas_boiler") {
+            const eff = tech.seasonal_eff || 0.85;
+            const gasKwh = techKwh / Math.max(0.65, eff);
+            spaceHeatByTech[techType] = gasKwh;
+            spaceHeatGasKwh += gasKwh;
+          }
+        }
+      } else {
+        // Default: 100% gas boiler
+        const gasKwh = monthlySpaceHeat / 0.85;
+        spaceHeatByTech.gas_boiler = gasKwh;
+        spaceHeatGasKwh = gasKwh;
+      }
+
+      // Allocate DHW by tech stack
+      const dhwByTech: Record<string, number> = {};
+      let dhwElecKwh = 0;
+      let dhwGasKwh = 0;
+
+      if (scenario.techStack && scenario.techStack.dhw) {
+        for (const tech of scenario.techStack.dhw) {
+          const techType = tech.type;
+
+          if (techType === "mixergy" && dhwProfile.mixergyEnabled) {
+            // Mixergy: 70% from electric (top slice efficiency)
+            const elecFraction = 0.7;
+            dhwElecKwh = monthlyDhw * elecFraction;
+            dhwGasKwh = monthlyDhw * (1 - elecFraction) / 0.85;
+            dhwByTech.mixergy_elec = dhwElecKwh;
+            dhwByTech.gas = dhwGasKwh;
+          } else if (techType === "electric" || techType === "heat_pump") {
+            const cop = tech.cop || 2.5;
+            dhwElecKwh = monthlyDhw / Math.max(1.0, cop);
+            dhwByTech[techType] = dhwElecKwh;
+          } else {
+            // Gas DHW
+            dhwGasKwh = monthlyDhw / 0.80;
+            dhwByTech.gas = dhwGasKwh;
+          }
+        }
+      } else {
+        // Default: gas DHW
+        dhwGasKwh = monthlyDhw / 0.80;
+        dhwByTech.gas = dhwGasKwh;
+      }
+
+      // Totals
+      const totalElecKwh = spaceHeatElecKwh + dhwElecKwh;
+      const totalGasKwh = spaceHeatGasKwh + dhwGasKwh;
+
+      // Cost calculation
+      const elecCost = totalElecKwh * elecRate;
+      const gasCost = totalGasKwh * gasRate;
+      const standingCharges =
+        ((parseFloat(assumptionsSnapshot.elecStandingChargePPerDay || "0") +
+          parseFloat(assumptionsSnapshot.gasStandingChargePPerDay || "0")) *
+          30) /
+        100; // 30 days, convert pence to pounds
+      const totalCostGbp = elecCost + gasCost + standingCharges;
+
+      // Carbon calculation
+      const totalCarbonKgCo2e = (totalElecKwh * gridIntensity + totalGasKwh * gasIntensity) / 1000; // gCO2e -> kgCO2e
+
+      // Build monthly projection
+      const periodDate = new Date(year, month, 1);
+      monthly.push({
+        period_start: periodDate.toISOString().split("T")[0],
+        space_heat: {
+          kwh_by_tech: spaceHeatByTech,
+          elec_kwh: Math.round(spaceHeatElecKwh * 10) / 10,
+          gas_kwh: Math.round(spaceHeatGasKwh * 10) / 10,
+        },
+        dhw: {
+          kwh_by_tech: dhwByTech,
+          elec_kwh: Math.round(dhwElecKwh * 10) / 10,
+          gas_kwh: Math.round(dhwGasKwh * 10) / 10,
+        },
+        totals: {
+          elec_kwh: Math.round(totalElecKwh * 10) / 10,
+          gas_kwh: Math.round(totalGasKwh * 10) / 10,
+          cost_gbp: Math.round(totalCostGbp * 100) / 100,
+          carbon_kgco2e: Math.round(totalCarbonKgCo2e * 100) / 100,
+        },
+        confidence: {
+          low_factor: confidenceLow,
+          high_factor: confidenceHigh,
+        },
+      });
+    }
+  }
+
+  // Aggregate into yearly
+  const yearly: YearlyProjection[] = [];
+  for (let yearOffset = 0; yearOffset < horizonYears; yearOffset++) {
+    const year = baseYear + yearOffset;
+    const yearMonths = monthly.slice(yearOffset * 12, (yearOffset + 1) * 12);
+
+    const yearElecKwh = yearMonths.reduce((sum, m) => sum + m.totals.elec_kwh, 0);
+    const yearGasKwh = yearMonths.reduce((sum, m) => sum + m.totals.gas_kwh, 0);
+    const yearCostGbp = yearMonths.reduce((sum, m) => sum + m.totals.cost_gbp, 0);
+    const yearCarbonKgCo2e = yearMonths.reduce((sum, m) => sum + m.totals.carbon_kgco2e, 0);
+
+    yearly.push({
+      year,
+      elec_kwh: Math.round(yearElecKwh),
+      gas_kwh: Math.round(yearGasKwh),
+      cost_gbp: Math.round(yearCostGbp * 100) / 100,
+      carbon_kgco2e: Math.round(yearCarbonKgCo2e),
+    });
+  }
+
+  // Summary
+  const year1 = yearly[0];
+  const year10 = yearly[Math.min(9, yearly.length - 1)];
+  const disruptionScore = scenario.disruptionScore || 3;
+  const comfortScore = occupancyProfile.comfortPriority === "comfort" ? 5 : occupancyProfile.comfortPriority === "saver" ? 3 : 4;
+
+  return {
+    monthly,
+    yearly,
+    summary: {
+      year_1: {
+        cost_gbp: year1.cost_gbp,
+        carbon_kgco2e: year1.carbon_kgco2e,
+      },
+      year_10: {
+        cost_gbp: year10.cost_gbp,
+        carbon_kgco2e: year10.carbon_kgco2e,
+      },
+      disruption_score: disruptionScore,
+      comfort_score: comfortScore,
+    },
+  };
+}
+
+/**
+ * POST /api/trajectory/projections/scenario
+ * Generate cost/carbon projection for a single scenario
+ */
+router.post("/projections/scenario", async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const isAdmin = req.user!.role === 'admin';
+
+    const {
+      lead_id,
+      property_model_id,
+      occupancy_profile_id,
+      dhw_profile_id,
+      scenario_id,
+      horizon_years,
+      assumptions_snapshot_id,
+      grid_decarb_path,
+    } = req.body;
+
+    // Validate required fields
+    if (!property_model_id || !occupancy_profile_id || !dhw_profile_id || !scenario_id) {
+      return res.status(400).json({
+        success: false,
+        error: "property_model_id, occupancy_profile_id, dhw_profile_id, and scenario_id are required",
+      });
+    }
+
+    // Check permissions if lead_id provided
+    if (lead_id && !isAdmin && !(await canAccessLead(lead_id, userId, isAdmin))) {
+      return res.status(403).json({ success: false, error: "Access denied" });
+    }
+
+    // Fetch entities
+    const [propertyModel] = await db.select().from(propertyModels).where(eq(propertyModels.id, property_model_id)).limit(1);
+    const [occupancyProfile] = await db.select().from(occupancyProfiles).where(eq(occupancyProfiles.id, occupancy_profile_id)).limit(1);
+    const [dhwProfile] = await db.select().from(dhwProfiles).where(eq(dhwProfiles.id, dhw_profile_id)).limit(1);
+    const [scenario] = await db.select().from(scenarios).where(eq(scenarios.id, scenario_id)).limit(1);
+
+    if (!propertyModel || !occupancyProfile || !dhwProfile || !scenario) {
+      return res.status(404).json({ success: false, error: "One or more entities not found" });
+    }
+
+    // Resolve assumptions snapshot
+    let assumptionsSnapshot;
+    if (assumptions_snapshot_id) {
+      [assumptionsSnapshot] = await db
+        .select()
+        .from(assumptionsSnapshots)
+        .where(eq(assumptionsSnapshots.id, assumptions_snapshot_id))
+        .limit(1);
+    } else {
+      // Use latest for UK-GB
+      [assumptionsSnapshot] = await db
+        .select()
+        .from(assumptionsSnapshots)
+        .where(eq(assumptionsSnapshots.regionCode, "UK-GB"))
+        .orderBy(desc(assumptionsSnapshots.periodStart))
+        .limit(1);
+    }
+
+    if (!assumptionsSnapshot) {
+      return res.status(404).json({ success: false, error: "No assumptions snapshot found" });
+    }
+
+    // Calculate projection
+    const horizonYrs = horizon_years || 10;
+    const gridPath = grid_decarb_path || "central";
+    const startYear = new Date().getFullYear();
+
+    const projection = calculateMockProjection({
+      propertyModel,
+      occupancyProfile,
+      dhwProfile,
+      scenario,
+      assumptionsSnapshot,
+      gridDecarbPath: gridPath,
+      horizonYears: horizonYrs,
+      startYear,
+    });
+
+    // Build response
+    const response = {
+      success: true,
+      data: {
+        metadata: {
+          lead_id: lead_id || null,
+          property_model_id,
+          occupancy_profile_id,
+          dhw_profile_id,
+          scenario_id,
+          journey_id: null,
+          assumptions_snapshot_id: assumptionsSnapshot.id,
+          region_code: assumptionsSnapshot.regionCode,
+          grid_decarb_path: gridPath,
+          engine_version: "0.1-mock",
+          generated_at: new Date().toISOString(),
+        },
+        ...projection,
+      },
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error("Error generating scenario projection:", error);
+    return res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+/**
+ * POST /api/trajectory/projections/journey
+ * Generate cost/carbon projection for a staged journey
+ */
+router.post("/projections/journey", async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const isAdmin = req.user!.role === 'admin';
+
+    const {
+      lead_id,
+      property_model_id,
+      occupancy_profile_id,
+      dhw_profile_id,
+      journey_id,
+      horizon_years,
+      assumptions_snapshot_id,
+      grid_decarb_path,
+    } = req.body;
+
+    // Validate required fields
+    if (!property_model_id || !occupancy_profile_id || !dhw_profile_id || !journey_id) {
+      return res.status(400).json({
+        success: false,
+        error: "property_model_id, occupancy_profile_id, dhw_profile_id, and journey_id are required",
+      });
+    }
+
+    // Check permissions
+    if (lead_id && !isAdmin && !(await canAccessLead(lead_id, userId, isAdmin))) {
+      return res.status(403).json({ success: false, error: "Access denied" });
+    }
+
+    // Fetch entities
+    const [propertyModel] = await db.select().from(propertyModels).where(eq(propertyModels.id, property_model_id)).limit(1);
+    const [occupancyProfile] = await db.select().from(occupancyProfiles).where(eq(occupancyProfiles.id, occupancy_profile_id)).limit(1);
+    const [dhwProfile] = await db.select().from(dhwProfiles).where(eq(dhwProfiles.id, dhw_profile_id)).limit(1);
+    const [journey] = await db.select().from(journeys).where(eq(journeys.id, journey_id)).limit(1);
+
+    if (!propertyModel || !occupancyProfile || !dhwProfile || !journey) {
+      return res.status(404).json({ success: false, error: "One or more entities not found" });
+    }
+
+    // Resolve assumptions snapshot
+    let assumptionsSnapshot;
+    if (assumptions_snapshot_id) {
+      [assumptionsSnapshot] = await db
+        .select()
+        .from(assumptionsSnapshots)
+        .where(eq(assumptionsSnapshots.id, assumptions_snapshot_id))
+        .limit(1);
+    } else {
+      [assumptionsSnapshot] = await db
+        .select()
+        .from(assumptionsSnapshots)
+        .where(eq(assumptionsSnapshots.regionCode, "UK-GB"))
+        .orderBy(desc(assumptionsSnapshots.periodStart))
+        .limit(1);
+    }
+
+    if (!assumptionsSnapshot) {
+      return res.status(404).json({ success: false, error: "No assumptions snapshot found" });
+    }
+
+    // For journey projections, use first scenario as baseline (PR2 simplification)
+    // In PR3, we'll properly handle scenario transitions by date
+    const journeySteps = (journey.steps || []) as any[];
+    if (!journeySteps || journeySteps.length === 0) {
+      return res.status(400).json({ success: false, error: "Journey has no steps" });
+    }
+
+    const firstStep = journeySteps[0];
+    const [scenario] = await db.select().from(scenarios).where(eq(scenarios.id, firstStep.scenario_id)).limit(1);
+
+    if (!scenario) {
+      return res.status(404).json({ success: false, error: "Scenario not found in journey step" });
+    }
+
+    // Calculate projection
+    const horizonYrs = horizon_years || 10;
+    const gridPath = grid_decarb_path || "central";
+    const startYear = new Date().getFullYear();
+
+    const projection = calculateMockProjection({
+      propertyModel,
+      occupancyProfile,
+      dhwProfile,
+      scenario,
+      assumptionsSnapshot,
+      gridDecarbPath: gridPath,
+      horizonYears: horizonYrs,
+      startYear,
+    });
+
+    // Build response
+    const response = {
+      success: true,
+      data: {
+        metadata: {
+          lead_id: lead_id || null,
+          property_model_id,
+          occupancy_profile_id,
+          dhw_profile_id,
+          scenario_id: null,
+          journey_id,
+          assumptions_snapshot_id: assumptionsSnapshot.id,
+          region_code: assumptionsSnapshot.regionCode,
+          grid_decarb_path: gridPath,
+          engine_version: "0.1-mock",
+          generated_at: new Date().toISOString(),
+        },
+        ...projection,
+      },
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error("Error generating journey projection:", error);
+    return res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
 export default router;

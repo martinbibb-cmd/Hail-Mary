@@ -370,14 +370,5 @@ class BackgroundTranscriptionProcessor {
 // Export singleton instance
 export const backgroundTranscriptionProcessor = BackgroundTranscriptionProcessor.getInstance();
 
-// Auto-initialize on module load (runs once when app starts)
-if (typeof window !== 'undefined') {
-  // Wait for app to be ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      backgroundTranscriptionProcessor.initialize();
-    });
-  } else {
-    backgroundTranscriptionProcessor.initialize();
-  }
-}
+// NOTE: Initialization is now handled in main.tsx after window load
+// to prevent iOS Safari/PWA crashes from module-time initialization

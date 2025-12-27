@@ -1,3 +1,45 @@
+// --- EMERGENCY WHITE-SCREEN DEBUG (remove after fix) ---
+(function installFatalOverlay() {
+  const show = (title: string, err?: unknown) => {
+    const msg =
+      err instanceof Error
+        ? `${err.message}\n\n${err.stack ?? ""}`
+        : typeof err === "string"
+          ? err
+          : JSON.stringify(err, null, 2);
+
+    document.documentElement.style.background = "#0b0b0b";
+    
+    // Create overlay using DOM methods to avoid XSS vulnerabilities
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'padding:16px;font-family:ui-monospace,Menlo,monospace;color:#ff6b6b;white-space:pre-wrap;';
+    
+    const titleDiv = document.createElement('div');
+    titleDiv.style.cssText = 'font-weight:800;margin-bottom:10px;';
+    titleDiv.textContent = title;
+    
+    const msgDiv = document.createElement('div');
+    msgDiv.textContent = msg;
+    
+    overlay.appendChild(titleDiv);
+    overlay.appendChild(msgDiv);
+    document.body.innerHTML = '';
+    document.body.appendChild(overlay);
+  };
+
+  window.addEventListener("error", (e: ErrorEvent) => {
+    show("🔥 FATAL window.error", e.error ?? e.message);
+  });
+
+  window.addEventListener("unhandledrejection", (e: PromiseRejectionEvent) => {
+    show("🔥 FATAL unhandledrejection", e.reason ?? e);
+  });
+
+  // breadcrumb that proves main.tsx executed
+  console.log("🔥 main.tsx loaded");
+})();
+// --- END EMERGENCY DEBUG ---
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -7,84 +49,6 @@ import { CognitiveProfileProvider } from './cognitive/CognitiveProfileContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { registerSW } from 'virtual:pwa-register'
 import { backgroundTranscriptionProcessor } from './services/backgroundTranscriptionProcessor'
-
-// ========================================================================
-// GLOBAL ERROR HANDLER - Catches errors BEFORE React ErrorBoundary mounts
-// ========================================================================
-let globalErrorContainer: HTMLDivElement | null = null
-
-function showGlobalError(message: string, error?: Error) {
-  console.error('[GlobalErrorHandler]', message, error)
-
-  if (!globalErrorContainer) {
-    globalErrorContainer = document.createElement('div')
-    globalErrorContainer.id = 'global-error-overlay'
-    globalErrorContainer.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: #1a1a1a;
-      color: #ff4444;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: system-ui, -apple-system, sans-serif;
-      z-index: 999999;
-      padding: 20px;
-    `
-
-    const content = document.createElement('div')
-    content.style.cssText = `
-      max-width: 600px;
-      text-align: center;
-    `
-
-    content.innerHTML = `
-      <h1 style="color: #ff4444; margin-bottom: 20px;">⚠️ App Failed to Boot</h1>
-      <p style="color: #ccc; margin-bottom: 20px;">${message}</p>
-      ${error ? `<pre style="background: #000; padding: 15px; border-radius: 8px; overflow: auto; text-align: left; font-size: 12px;">${error.stack || error.toString()}</pre>` : ''}
-      <button id="global-error-reload" style="
-        background: #ff4444;
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        font-size: 16px;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-top: 20px;
-      ">Clear Storage & Reload</button>
-    `
-
-    globalErrorContainer.appendChild(content)
-    document.body.appendChild(globalErrorContainer)
-
-    document.getElementById('global-error-reload')?.addEventListener('click', () => {
-      try {
-        localStorage.clear()
-        sessionStorage.clear()
-      } catch {
-        // ignore
-      }
-      window.location.reload()
-    })
-  }
-}
-
-// Catch synchronous errors
-window.addEventListener('error', (event) => {
-  showGlobalError('Unhandled runtime error', event.error)
-  event.preventDefault()
-})
-
-// Catch async errors (Promise rejections)
-window.addEventListener('unhandledrejection', (event) => {
-  showGlobalError('Unhandled promise rejection', event.reason)
-  event.preventDefault()
-})
-
-console.log('[App] Global error handlers installed')
 
 // Register service worker for PWA (PROD only).
 // In dev, skip SW registration to avoid "cached old build" pain.
@@ -99,21 +63,30 @@ if (import.meta.env.PROD) {
   })
 }
 
-// Initialize background transcription processor
+// Initialize background transcription processor - DELAYED UNTIL AFTER WINDOW LOAD
 // This enables continuous transcription even when navigating away from visit pages
-console.log('[App] Initializing background transcription processor')
-
+// Guarded to only run in real browser context, after page load, to prevent iOS Safari/PWA crashes
 try {
-  backgroundTranscriptionProcessor.initialize()
-} catch (error) {
-  console.error('[App] Failed to initialize background transcription processor:', error)
-  // Continue booting - transcription is non-critical
+  if (typeof window !== "undefined") {
+    window.addEventListener("load", () => {
+      try {
+        console.log("[App] Initializing background transcription processor (delayed)");
+        backgroundTranscriptionProcessor.initialize();
+      } catch (e) {
+        console.error("[Transcription] init failed", e);
+      }
+    });
+  }
+} catch (e) {
+  console.error("[Transcription] wrapper failed", e);
 }
 
 // ========================================================================
 // BOOT MARKER - Confirms code execution reaches React initialization
 // ========================================================================
 console.log('[App] 🚀 Starting React initialization...')
+
+console.log("🧠 before createRoot");
 
 try {
   const rootElement = document.getElementById('root')
@@ -123,7 +96,11 @@ try {
 
   console.log('[App] ✅ Root element found, creating React root...')
 
-  ReactDOM.createRoot(rootElement).render(
+  const root = ReactDOM.createRoot(rootElement)
+  
+  console.log("🧠 after createRoot");
+
+  root.render(
     <React.StrictMode>
       <ErrorBoundary>
         <BrowserRouter>
@@ -135,31 +112,9 @@ try {
     </React.StrictMode>,
   )
 
+  console.log("✅ after render()");
   console.log('[App] ✅ React root created and rendering')
-
-  // Add temporary visual boot marker (removed after 3 seconds)
-  const bootMarker = document.createElement('div')
-  bootMarker.id = 'boot-marker'
-  bootMarker.style.cssText = `
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    background: #00ff00;
-    color: #000;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 12px;
-    z-index: 999999;
-    pointer-events: none;
-  `
-  bootMarker.textContent = '✅ APP BOOTED'
-  document.body.appendChild(bootMarker)
-
-  setTimeout(() => {
-    bootMarker.remove()
-  }, 3000)
 } catch (error) {
-  showGlobalError('Failed to initialize React', error as Error)
+  console.error('[App] Failed to initialize React', error)
   throw error
 }

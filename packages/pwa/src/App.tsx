@@ -15,6 +15,7 @@ import { AuthProvider, AuthGuard, ResetPasswordPage, useAuth } from './auth'
 import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useLayoutMode } from './hooks/useLayoutMode'
+import { apiFetch } from './services/apiClient'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage } from './pages/admin'
 import { ModuleLauncher } from './pages/ModuleLauncher'
@@ -44,26 +45,21 @@ import { PresentationPage } from './pages/PresentationPage'
 // Simple API client
 const api = {
   async get<T>(url: string): Promise<T> {
-    const res = await fetch(url, { credentials: 'include' })
-    return res.json()
+    return apiFetch<T>(url)
   },
   async post<T>(url: string, data: unknown): Promise<T> {
-    const res = await fetch(url, {
+    return apiFetch<T>(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(data),
     })
-    return res.json()
   },
   async put<T>(url: string, data: unknown): Promise<T> {
-    const res = await fetch(url, {
+    return apiFetch<T>(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(data),
     })
-    return res.json()
   },
 }
 

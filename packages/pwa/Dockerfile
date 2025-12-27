@@ -78,6 +78,9 @@ FROM nginx:alpine AS production
 # Copy custom nginx configuration
 COPY packages/pwa/nginx.conf /etc/nginx/nginx.conf
 
+# Copy nginx conf.d overrides for service worker compatibility
+COPY packages/pwa/nginx/conf.d/*.conf /etc/nginx/conf.d/
+
 # Copy built PWA files from builder stage
 COPY --from=builder /app/packages/pwa/dist /usr/share/nginx/html
 

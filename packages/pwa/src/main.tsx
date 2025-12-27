@@ -9,20 +9,30 @@
           : JSON.stringify(err, null, 2);
 
     document.documentElement.style.background = "#0b0b0b";
-    document.body.innerHTML = `
-      <div style="padding:16px;font-family:ui-monospace,Menlo,monospace;color:#ff6b6b;white-space:pre-wrap;">
-        <div style="font-weight:800;margin-bottom:10px;">${title}</div>
-        ${msg}
-      </div>
-    `;
+    
+    // Create overlay using DOM methods to avoid XSS vulnerabilities
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'padding:16px;font-family:ui-monospace,Menlo,monospace;color:#ff6b6b;white-space:pre-wrap;';
+    
+    const titleDiv = document.createElement('div');
+    titleDiv.style.cssText = 'font-weight:800;margin-bottom:10px;';
+    titleDiv.textContent = title;
+    
+    const msgDiv = document.createElement('div');
+    msgDiv.textContent = msg;
+    
+    overlay.appendChild(titleDiv);
+    overlay.appendChild(msgDiv);
+    document.body.innerHTML = '';
+    document.body.appendChild(overlay);
   };
 
-  window.addEventListener("error", (e) => {
-    show("🔥 FATAL window.error", (e as any).error ?? e.message);
+  window.addEventListener("error", (e: ErrorEvent) => {
+    show("🔥 FATAL window.error", e.error ?? e.message);
   });
 
-  window.addEventListener("unhandledrejection", (e) => {
-    show("🔥 FATAL unhandledrejection", (e as any).reason ?? e);
+  window.addEventListener("unhandledrejection", (e: PromiseRejectionEvent) => {
+    show("🔥 FATAL unhandledrejection", e.reason ?? e);
   });
 
   // breadcrumb that proves main.tsx executed
@@ -57,7 +67,6 @@ if (import.meta.env.PROD) {
 // This enables continuous transcription even when navigating away from visit pages
 // Guarded to only run in real browser context, after page load, to prevent iOS Safari/PWA crashes
 try {
-  // only run in real browser context, after page load
   if (typeof window !== "undefined") {
     window.addEventListener("load", () => {
       try {

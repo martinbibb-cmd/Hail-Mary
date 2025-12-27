@@ -6,7 +6,9 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { AuthUser, RegisterDto, LoginDto, AuthResponse } from '@hail-mary/shared';
+import { apiFetch, UNAUTHORIZED_EVENT } from '../services/apiClient';
 
 interface NasUser {
   id: number;
@@ -73,40 +75,14 @@ function getFriendlyErrorMessage(code?: string, fallback?: string): string {
 // API helper for auth requests
 const authApi = {
   async post<T>(url: string, data?: unknown): Promise<T> {
-    const res = await fetch(url, {
+    return apiFetch<T>(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // Important: include cookies
       body: data ? JSON.stringify(data) : undefined,
     });
-
-    // Always try to parse JSON, even for error responses
-    // The backend always returns JSON for both success and error cases
-    const json = await res.json();
-
-    // Check if response was successful
-    if (!res.ok) {
-      // If response has error info, it will be in json
-      console.error(`API error (${res.status}):`, json);
-    }
-
-    return json;
   },
   async get<T>(url: string): Promise<T> {
-    const res = await fetch(url, {
-      method: 'GET',
-      credentials: 'include', // Important: include cookies
-    });
-
-    // Always try to parse JSON, even for error responses
-    const json = await res.json();
-
-    // Check if response was successful
-    if (!res.ok) {
-      console.error(`API error (${res.status}):`, json);
-    }
-
-    return json;
+    return apiFetch<T>(url, { method: 'GET' });
   },
 };
 
@@ -116,6 +92,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
   const [nasMode, setNasMode] = useState(false); // Deprecated, kept for backwards compatibility
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleUnauthorized = () => {
+      setUser(null);
+      setError(null);
+      setLoading(false);
+      navigate('/login', { replace: true });
+    };
+
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, [navigate]);
 
   // Fetch auth configuration on mount
   useEffect(() => {

@@ -53,14 +53,62 @@ import { backgroundTranscriptionProcessor } from './services/backgroundTranscrip
 // Register service worker for PWA (PROD only).
 // In dev, skip SW registration to avoid "cached old build" pain.
 if (import.meta.env.PROD) {
-  void registerSW({
+  const updateSW = registerSW({
     onNeedRefresh() {
-      console.log('New content available, will auto-update.')
+      console.log('[SW] New content available, will auto-update.')
+      // Show a visible update banner
+      showUpdateBanner(() => {
+        updateSW(true) // Force immediate update
+      })
     },
     onOfflineReady() {
-      console.log('App ready to work offline.')
+      console.log('[SW] App ready to work offline.')
     },
   })
+}
+
+// Update banner for visible PWA updates
+function showUpdateBanner(onUpdate: () => void) {
+  const banner = document.createElement('div')
+  banner.id = 'update-banner'
+  banner.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #1a73e8;
+    color: white;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 10000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+  `
+  
+  const message = document.createElement('span')
+  message.textContent = '🔄 Update available'
+  
+  const button = document.createElement('button')
+  button.textContent = 'Reload'
+  button.style.cssText = `
+    background: white;
+    color: #1a73e8;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+  `
+  button.onclick = () => {
+    onUpdate() // This calls updateSW(true) which triggers the update and reload
+  }
+  
+  banner.appendChild(message)
+  banner.appendChild(button)
+  document.body.appendChild(banner)
 }
 
 // Initialize background transcription processor - DELAYED UNTIL AFTER WINDOW LOAD
@@ -85,6 +133,8 @@ try {
 // BOOT MARKER - Confirms code execution reaches React initialization
 // ========================================================================
 console.log('[App] 🚀 Starting React initialization...')
+console.log('[App] BUILD_ID:', __APP_VERSION__, 'Built:', __BUILD_TIME__)
+console.log('[App] Build timestamp:', new Date(__BUILD_TIME__).toLocaleString())
 
 console.log("🧠 before createRoot");
 

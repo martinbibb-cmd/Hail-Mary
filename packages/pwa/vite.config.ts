@@ -71,6 +71,9 @@ export default defineConfig({
         categories: ['business', 'productivity']
       },
       workbox: {
+        // Ensure immediate update behavior - skipWaiting + clientsClaim
+        skipWaiting: true,
+        clientsClaim: true,
         // Limit precache to essential assets only (reduces build time)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
         globIgnores: [

@@ -103,8 +103,7 @@ function showUpdateBanner(onUpdate: () => void) {
     font-size: 14px;
   `
   button.onclick = () => {
-    onUpdate()
-    window.location.reload()
+    onUpdate() // This calls updateSW(true) which triggers the update and reload
   }
   
   banner.appendChild(message)

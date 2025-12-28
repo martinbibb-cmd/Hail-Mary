@@ -1,0 +1,145 @@
+# Docker Compose Configuration for Hail-Mary (Local Build)
+# Builds images locally instead of pulling from GitHub Container Registry
+#
+# This is the recommended compose file for:
+# - Beelink baseline migration (establishing clean state)
+# - Development/testing on a single machine
+# - Any scenario where you want to build from source
+#
+# Usage:
+#   1. Clone repository to /opt/atlas/Hail-Mary (or your preferred location)
+#   2. Copy .env.example to .env and configure
+#   3. docker compose -f docker-compose.local.yml up -d --build
+#
+# Environment variables (set in .env file):
+#   - POSTGRES_PASSWORD: Database password (required)
+#   - JWT_SECRET: Secret for JWT authentication (required)
+#   - DATABASE_URL: PostgreSQL connection URL (required)
+#   - GEMINI_API_KEY: API key for Gemini AI (optional)
+#   - PWA_PORT: Port to expose PWA (default: 3000)
+#   - BASE_URL: Your domain URL for the application
+
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  hailmary-postgres:
+    image: postgres:17-alpine
+    container_name: hailmary-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hailmary}
+      POSTGRES_USER: ${POSTGRES_USER:-hailmary}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hailmary-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hailmary}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Database Migrator Service - Runs once to set up database
+  hailmary-migrator:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: hailmary-migrator
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env}
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      # Initial admin credentials for seeding
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@hailmary.local}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-HailMary2024!}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Admin}
+      # Guest user credentials
+      GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
+      GUEST_PASSWORD: ${GUEST_PASSWORD:-guestpass}
+    command: npm run db:init -w packages/api
+    restart: no
+    depends_on:
+      hailmary-postgres:
+        condition: service_healthy
+    networks:
+      - hailmary-network
+
+  # Hail-Mary API Service (Built Locally)
+  hailmary-api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: hailmary-api
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      BASE_URL: ${BASE_URL:-http://localhost:3000}
+      NODE_ENV: production
+      # Sarah (LLM Explanation Layer) Configuration
+      SARAH_BASE_URL: ${SARAH_BASE_URL:-https://hail-mary.martinbibb.workers.dev}
+      SARAH_VOICE_NOTES_PATH: ${SARAH_VOICE_NOTES_PATH:-/v1/voice-notes}
+      SARAH_CHAT_PATH: ${SARAH_CHAT_PATH:-/v1/chat}
+      SARAH_TRANSCRIBE_PATH: ${SARAH_TRANSCRIBE_PATH:-/v1/transcribe}
+    command: npm run start -w packages/api
+    depends_on:
+      hailmary-postgres:
+        condition: service_healthy
+      hailmary-migrator:
+        condition: service_completed_successfully
+    networks:
+      - hailmary-network
+    # Exposed for direct API access (e.g., Cloudflare tunnel)
+    ports:
+      - "3001:3001"
+
+  # Hail-Mary Assistant Service (Built Locally)
+  hailmary-assistant:
+    build:
+      context: .
+      dockerfile: packages/assistant/Dockerfile
+    container_name: hailmary-assistant
+    restart: unless-stopped
+    environment:
+      ASSISTANT_PORT: 3002
+      API_BASE_URL: http://hailmary-api:3001
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env}
+      NODE_ENV: production
+    depends_on:
+      - hailmary-api
+    networks:
+      - hailmary-network
+    # Internal only - not exposed externally
+    expose:
+      - "3002"
+
+  # Hail-Mary PWA (Frontend + Nginx Reverse Proxy) (Built Locally)
+  hailmary-pwa:
+    build:
+      context: .
+      dockerfile: packages/pwa/Dockerfile
+    container_name: hailmary-pwa
+    restart: unless-stopped
+    depends_on:
+      - hailmary-api
+      - hailmary-assistant
+    networks:
+      - hailmary-network
+    # Only this service is exposed externally
+    ports:
+      - "${PWA_PORT:-3000}:8080"
+
+networks:
+  hailmary-network:
+    driver: bridge
+    name: hailmary-network
+
+volumes:
+  postgres_data:
+    name: hailmary-postgres-data

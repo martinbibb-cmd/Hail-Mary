@@ -1074,6 +1074,38 @@ export const leadSystemRecommendations = pgTable("lead_system_recommendations", 
 });
 
 // ============================================
+// Heat Loss Surveys - Physics-First Approach
+// ============================================
+
+// Heat loss surveys - comprehensive physics-based heat loss surveys
+export const heatLossSurveys = pgTable("heat_loss_surveys", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id, { onDelete: "cascade" })
+    .notNull(),
+  surveyorId: integer("surveyor_id")
+    .references(() => users.id),
+  surveyDate: timestamp("survey_date", { withTimezone: true }).notNull(),
+  // Main survey data stored as JSONB (full HeatLossSurvey schema)
+  surveyData: jsonb("survey_data").notNull(),
+  // Denormalized fields for quick queries
+  wholeHouseHeatLossW: integer("whole_house_heat_loss_w"),
+  wholeHouseHeatLossKw: numeric("whole_house_heat_loss_kw", { precision: 10, scale: 2 }),
+  recommendedBoilerSizeKw: numeric("recommended_boiler_size_kw", { precision: 10, scale: 2 }),
+  calculationMethod: varchar("calculation_method", { length: 50 }), // MCS, room_by_room, whole_house_estimate
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("heat_loss_surveys_lead_id_idx").on(t.leadId),
+  surveyorIdIdx: index("heat_loss_surveys_surveyor_id_idx").on(t.surveyorId),
+  surveyDateIdx: index("heat_loss_surveys_survey_date_idx").on(t.surveyDate),
+}));
+
+// ============================================
 // Trajectory Engine - Carbon/Cost Projections
 // ============================================
 

@@ -1,0 +1,491 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Residential Heat Loss Survey - Physics-First Schema",
+  "description": "Comprehensive schema for professional heat loss surveys combining high-tech sensors with engineering measurements",
+  "type": "object",
+  "properties": {
+    "survey_metadata": {
+      "type": "object",
+      "properties": {
+        "survey_id": { "type": "string", "format": "uuid" },
+        "lead_id": { "type": "integer" },
+        "surveyor_id": { "type": "integer" },
+        "survey_date": { "type": "string", "format": "date-time" },
+        "weather_conditions": {
+          "type": "object",
+          "properties": {
+            "external_temp_c": { "type": "number" },
+            "wind_speed_ms": { "type": "number" },
+            "humidity_percent": { "type": "number" }
+          }
+        },
+        "design_conditions": {
+          "type": "object",
+          "properties": {
+            "design_external_temp_c": { "type": "number", "default": -3 },
+            "desired_internal_temp_c": { "type": "number", "default": 21 }
+          }
+        }
+      },
+      "required": ["survey_id", "survey_date"]
+    },
+    "property_envelope": {
+      "type": "object",
+      "properties": {
+        "floor_area_m2": { "type": "number" },
+        "volume_m3": { "type": "number" },
+        "walls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "wall_id": { "type": "string" },
+              "orientation": { "type": "string", "enum": ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] },
+              "area_m2": { "type": "number" },
+              "thickness_mm": { "type": "number" },
+              "construction_type": { "type": "string", "enum": ["solid", "cavity_unfilled", "cavity_filled", "timber_frame", "other"] },
+              "insulation_type": { "type": "string" },
+              "insulation_thickness_mm": { "type": "number" },
+              "u_value_calculated": { "type": "number", "description": "W/m²K from tables" },
+              "u_value_measured": { "type": "number", "description": "W/m²K from thermal camera and delta-T measurement" },
+              "surface_temp_c": { "type": "number", "description": "From thermal camera" },
+              "moisture_percent": { "type": "number", "description": "From moisture meter" },
+              "cavity_status": {
+                "type": "object",
+                "properties": {
+                  "inspected": { "type": "boolean" },
+                  "method": { "type": "string", "enum": ["boroscope", "visual", "assumed"] },
+                  "insulation_present": { "type": "boolean" },
+                  "insulation_condition": { "type": "string", "enum": ["good", "slumped", "partial", "none", "unknown"] },
+                  "cavity_width_mm": { "type": "number" }
+                }
+              },
+              "photo_evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "photo_id": { "type": "string" },
+                    "url": { "type": "string", "format": "uri" },
+                    "type": { "type": "string", "enum": ["visible", "thermal", "boroscope"] },
+                    "timestamp": { "type": "string", "format": "date-time" },
+                    "notes": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "required": ["wall_id", "area_m2"]
+          }
+        },
+        "windows_doors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "element_id": { "type": "string" },
+              "type": { "type": "string", "enum": ["window", "door", "french_door", "skylight"] },
+              "location": { "type": "string" },
+              "width_m": { "type": "number" },
+              "height_m": { "type": "number" },
+              "area_m2": { "type": "number" },
+              "glazing_type": { "type": "string", "enum": ["single", "double", "triple", "secondary"] },
+              "frame_material": { "type": "string", "enum": ["upvc", "timber", "aluminium", "composite"] },
+              "u_value": { "type": "number", "description": "W/m²K" },
+              "air_tightness": { "type": "string", "enum": ["good", "fair", "poor"] },
+              "trickle_vents": { "type": "boolean" },
+              "photo_evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "photo_id": { "type": "string" },
+                    "url": { "type": "string", "format": "uri" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            },
+            "required": ["element_id", "type", "area_m2"]
+          }
+        },
+        "roof": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["pitched", "flat", "mixed"] },
+            "area_m2": { "type": "number" },
+            "insulation_type": { "type": "string" },
+            "insulation_thickness_mm": { "type": "number" },
+            "u_value": { "type": "number", "description": "W/m²K" },
+            "loft_access": { "type": "boolean" },
+            "photo_evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "photo_id": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "timestamp": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "floor": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["solid", "suspended", "mixed"] },
+            "area_m2": { "type": "number" },
+            "insulation_present": { "type": "boolean" },
+            "insulation_thickness_mm": { "type": "number" },
+            "u_value": { "type": "number", "description": "W/m²K" }
+          }
+        },
+        "ventilation": {
+          "type": "object",
+          "properties": {
+            "trickle_vents_count": { "type": "integer" },
+            "extractor_fans": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "location": { "type": "string" },
+                  "type": { "type": "string", "enum": ["mechanical", "passive"] }
+                }
+              }
+            },
+            "air_tightness_test_done": { "type": "boolean" },
+            "air_changes_per_hour": { "type": "number" },
+            "draftiness_assessment": { "type": "string", "enum": ["low", "medium", "high"] }
+          }
+        }
+      }
+    },
+    "rooms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "room_id": { "type": "string" },
+          "name": { "type": "string" },
+          "floor_level": { "type": "integer" },
+          "dimensions": {
+            "type": "object",
+            "properties": {
+              "length_m": { "type": "number" },
+              "width_m": { "type": "number" },
+              "height_m": { "type": "number" },
+              "floor_area_m2": { "type": "number" },
+              "volume_m3": { "type": "number" }
+            },
+            "required": ["floor_area_m2", "volume_m3"]
+          },
+          "lidar_scan": {
+            "type": "object",
+            "properties": {
+              "scan_id": { "type": "string" },
+              "scan_date": { "type": "string", "format": "date-time" },
+              "device": { "type": "string" },
+              "accuracy_mm": { "type": "number" }
+            }
+          },
+          "orientation": { "type": "string", "enum": ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "internal"] },
+          "external_walls_count": { "type": "integer" },
+          "design_temp_c": { "type": "number" },
+          "calculated_heat_loss_w": { "type": "number" },
+          "heat_loss_w_per_k": { "type": "number" },
+          "photo_evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "photo_id": { "type": "string" },
+                "url": { "type": "string", "format": "uri" },
+                "type": { "type": "string", "enum": ["visible", "thermal", "360"] },
+                "timestamp": { "type": "string", "format": "date-time" }
+              }
+            }
+          }
+        },
+        "required": ["room_id", "name", "dimensions"]
+      }
+    },
+    "emitters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "emitter_id": { "type": "string" },
+          "room_id": { "type": "string" },
+          "type": { "type": "string", "enum": ["radiator", "underfloor", "fan_convector", "other"] },
+          "radiator_details": {
+            "type": "object",
+            "properties": {
+              "panel_type": { "type": "string", "enum": ["P+", "K1", "K2", "K3", "other"], "description": "P+ = single panel, K1 = single convector, K2 = double convector, K3 = triple convector" },
+              "material": { "type": "string", "enum": ["steel", "aluminium", "cast_iron"] },
+              "height_mm": { "type": "number" },
+              "width_mm": { "type": "number" },
+              "depth_mm": { "type": "number" },
+              "surface_area_m2": { "type": "number", "description": "Calculated from LiDAR or manual measurement" },
+              "output_at_dt50": { "type": "number", "description": "Watts at ΔT=50K (flow 75°C, room 20°C)" },
+              "output_at_dt35": { "type": "number", "description": "Watts at ΔT=35K (flow 45°C, room 20°C) for heat pump compatibility" },
+              "output_at_dt30": { "type": "number", "description": "Watts at ΔT=30K (flow 40°C, room 20°C)" }
+            }
+          },
+          "condition": { "type": "string", "enum": ["good", "fair", "poor", "corroded"] },
+          "valve_type": { "type": "string", "enum": ["trv", "lockshield", "none", "thermostatic"] },
+          "photo_evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "photo_id": { "type": "string" },
+                "url": { "type": "string", "format": "uri" },
+                "timestamp": { "type": "string", "format": "date-time" }
+              }
+            }
+          }
+        },
+        "required": ["emitter_id", "room_id", "type"]
+      }
+    },
+    "system_hydraulics": {
+      "type": "object",
+      "properties": {
+        "boiler": {
+          "type": "object",
+          "properties": {
+            "make": { "type": "string" },
+            "model": { "type": "string" },
+            "type": { "type": "string", "enum": ["combi", "system", "regular", "heat_only"] },
+            "output_kw": { "type": "number" },
+            "age_years": { "type": "integer" },
+            "condition": { "type": "string", "enum": ["good", "fair", "poor"] }
+          }
+        },
+        "pipework": {
+          "type": "object",
+          "properties": {
+            "flow_pipe_diameter_mm": { "type": "number", "enum": [10, 15, 22, 28, 35], "description": "Main flow pipe from boiler" },
+            "return_pipe_diameter_mm": { "type": "number", "enum": [10, 15, 22, 28, 35] },
+            "distribution_type": { "type": "string", "enum": ["microbore", "standard_two_pipe", "single_pipe", "mixed"] },
+            "insulation_present": { "type": "boolean" },
+            "insulation_condition": { "type": "string", "enum": ["good", "fair", "poor", "none"] },
+            "pipe_measurements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "location": { "type": "string" },
+                  "diameter_mm": { "type": "number" },
+                  "measurement_tool": { "type": "string", "enum": ["calliper", "visual", "template"] },
+                  "photo_evidence": {
+                    "type": "object",
+                    "properties": {
+                      "photo_id": { "type": "string" },
+                      "url": { "type": "string", "format": "uri" },
+                      "timestamp": { "type": "string", "format": "date-time" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pump": {
+          "type": "object",
+          "properties": {
+            "make": { "type": "string" },
+            "model": { "type": "string" },
+            "speed_settings": { "type": "integer" },
+            "current_setting": { "type": "integer" },
+            "head_meters": { "type": "number" },
+            "flow_rate_lpm": { "type": "number" }
+          }
+        },
+        "water_quality": {
+          "type": "object",
+          "properties": {
+            "sludge_check_done": { "type": "boolean" },
+            "sludge_level": { "type": "string", "enum": ["none", "low", "medium", "high"] },
+            "inhibitor_present": { "type": "boolean" },
+            "inhibitor_type": { "type": "string" },
+            "filter_fitted": { "type": "boolean" },
+            "filter_type": { "type": "string" },
+            "filter_condition": { "type": "string", "enum": ["clean", "dirty", "blocked"] },
+            "water_sample": {
+              "type": "object",
+              "properties": {
+                "ph": { "type": "number" },
+                "tds_ppm": { "type": "number" },
+                "color": { "type": "string" }
+              }
+            }
+          }
+        },
+        "system_volume_litres": { "type": "number" },
+        "expansion_vessel_size_litres": { "type": "number" }
+      }
+    },
+    "thermal_imaging": {
+      "type": "object",
+      "properties": {
+        "camera_model": { "type": "string", "description": "e.g., FLIR One, Seek Thermal" },
+        "calibration_date": { "type": "string", "format": "date" },
+        "ambient_temp_c": { "type": "number" },
+        "external_temp_c": { "type": "number" },
+        "thermal_images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "image_id": { "type": "string" },
+              "location": { "type": "string" },
+              "wall_id": { "type": "string" },
+              "url": { "type": "string", "format": "uri" },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "internal_surface_temp_c": { "type": "number" },
+              "external_surface_temp_c": { "type": "number" },
+              "delta_t": { "type": "number", "description": "Temperature difference across element" },
+              "calculated_u_value": { "type": "number", "description": "W/m²K calculated from delta-T" },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "invasive_checks": {
+      "type": "object",
+      "properties": {
+        "boroscope_inspections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "inspection_id": { "type": "string" },
+              "wall_id": { "type": "string" },
+              "location": { "type": "string" },
+              "device_model": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "findings": {
+                "type": "object",
+                "properties": {
+                  "cavity_width_mm": { "type": "number" },
+                  "insulation_present": { "type": "boolean" },
+                  "insulation_type": { "type": "string" },
+                  "insulation_condition": { "type": "string", "enum": ["good", "slumped", "partial", "wet", "none"] },
+                  "moisture_visible": { "type": "boolean" },
+                  "debris_present": { "type": "boolean" }
+                }
+              },
+              "video_url": { "type": "string", "format": "uri" },
+              "photos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "photo_id": { "type": "string" },
+                    "url": { "type": "string", "format": "uri" }
+                  }
+                }
+              },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "moisture_readings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "reading_id": { "type": "string" },
+              "location": { "type": "string" },
+              "wall_id": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "meter_type": { "type": "string", "enum": ["capacitance", "resistance", "infrared"] },
+              "moisture_percent": { "type": "number" },
+              "material": { "type": "string", "enum": ["masonry", "timber", "plaster"] },
+              "depth_mm": { "type": "number" },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "heat_loss_calculations": {
+      "type": "object",
+      "properties": {
+        "calculation_method": { "type": "string", "enum": ["MCS", "room_by_room", "whole_house_estimate"] },
+        "design_conditions": {
+          "type": "object",
+          "properties": {
+            "external_design_temp_c": { "type": "number", "default": -3 },
+            "internal_design_temp_c": { "type": "number", "default": 21 }
+          }
+        },
+        "room_heat_losses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "room_id": { "type": "string" },
+              "fabric_loss_w": { "type": "number" },
+              "ventilation_loss_w": { "type": "number" },
+              "total_loss_w": { "type": "number" },
+              "loss_w_per_m2": { "type": "number" }
+            }
+          }
+        },
+        "whole_house_heat_loss_w": { "type": "number" },
+        "whole_house_heat_loss_kw": { "type": "number" },
+        "heat_loss_per_m2": { "type": "number" },
+        "safety_margin_percent": { "type": "number", "default": 10 },
+        "recommended_boiler_size_kw": { "type": "number" }
+      }
+    },
+    "equipment_used": {
+      "type": "object",
+      "properties": {
+        "lidar_device": { "type": "string", "description": "e.g., iPhone 14 Pro, iPad Pro 2024" },
+        "thermal_camera": { "type": "string", "description": "e.g., FLIR One Pro, Seek Thermal Compact Pro" },
+        "moisture_meter": { "type": "string" },
+        "boroscope": { "type": "string" },
+        "callipers": { "type": "string" },
+        "laser_measure": { "type": "string" }
+      }
+    },
+    "recommendations": {
+      "type": "object",
+      "properties": {
+        "immediate_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "fabric_improvements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "improvement": { "type": "string" },
+              "priority": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+              "estimated_heat_loss_reduction_w": { "type": "number" },
+              "estimated_cost_gbp": { "type": "number" }
+            }
+          }
+        },
+        "system_improvements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "improvement": { "type": "string" },
+              "priority": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+              "estimated_cost_gbp": { "type": "number" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["survey_metadata", "property_envelope", "rooms", "heat_loss_calculations"]
+}

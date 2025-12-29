@@ -358,9 +358,9 @@ export const TYPICAL_U_VALUES = {
   },
   roof: {
     uninsulated: 2.3,
-    100mm_insulation: 0.4,
-    200mm_insulation: 0.16,
-    270mm_insulation: 0.13,
+    insulation_100mm: 0.4,
+    insulation_200mm: 0.16,
+    insulation_270mm: 0.13,
   },
   floor: {
     solid_uninsulated: 0.7,

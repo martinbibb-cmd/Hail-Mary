@@ -27,7 +27,7 @@ export interface PhotoEvidence {
 
 export type ConditionRating = 'good' | 'fair' | 'poor';
 
-export type Priority = 'critical' | 'high' | 'medium' | 'low';
+export type HeatLossPriority = 'critical' | 'high' | 'medium' | 'low';
 
 // ============================================
 // Survey Metadata
@@ -282,7 +282,7 @@ export interface WaterSample {
   color?: string;
 }
 
-export interface WaterQuality {
+export interface HeatLossWaterQuality {
   sludge_check_done?: boolean;
   sludge_level?: SludgeLevel;
   inhibitor_present?: boolean;
@@ -297,7 +297,7 @@ export interface SystemHydraulics {
   boiler?: Boiler;
   pipework?: Pipework;
   pump?: Pump;
-  water_quality?: WaterQuality;
+  water_quality?: HeatLossWaterQuality;
   system_volume_litres?: number;
   expansion_vessel_size_litres?: number;
 }
@@ -422,14 +422,14 @@ export interface EquipmentUsed {
 
 export interface FabricImprovement {
   improvement: string;
-  priority: Priority;
+  priority: HeatLossPriority;
   estimated_heat_loss_reduction_w?: number;
   estimated_cost_gbp?: number;
 }
 
 export interface SystemImprovement {
   improvement: string;
-  priority: Priority;
+  priority: HeatLossPriority;
   estimated_cost_gbp?: number;
 }
 

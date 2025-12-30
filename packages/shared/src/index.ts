@@ -5,3 +5,5 @@ export * from './moduleRegistry';
 export * from './core';
 export * from './rocky';
 export * from './sarah';
+export * from './utils/heat-loss-physics';
+export * from './utils/atlas-heat-loss';

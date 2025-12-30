@@ -15,6 +15,45 @@
 
 export type Orientation = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
 
+// ============================================
+// Data Confidence & Audit Trail (Atlas v1.1)
+// ============================================
+
+/**
+ * Source types for data confidence hierarchy
+ * LIDAR > MANUAL > SATELLITE in terms of accuracy
+ */
+export type DataSourceType = 'LIDAR' | 'MANUAL' | 'SATELLITE' | 'THERMAL_CAMERA' | 'BOROSCOPE' | 'ASSUMED' | 'TABLE_LOOKUP';
+
+/**
+ * Confidence score for any input field
+ * High: Direct measurement (LIDAR, Thermal Camera, Boroscope)
+ * Medium: Manual measurement or recent satellite data
+ * Low: Assumptions or table lookups
+ */
+export type ConfidenceScore = 'high' | 'medium' | 'low';
+
+/**
+ * Audit trail entry for tracking assumptions and data sources
+ */
+export interface AuditTrailEntry {
+  field_name: string;
+  value: string | number;
+  source_type: DataSourceType;
+  confidence_score: ConfidenceScore;
+  timestamp: Date | string;
+  notes?: string;
+}
+
+/**
+ * Surface classification for heat loss calculations
+ */
+export type SurfaceClassification = 
+  | 'EXTERNAL'              // External wall/surface (full ΔT)
+  | 'PARTY_WALL'            // Heated adjacent space (0 ΔT, not a discount!)
+  | 'UNHEATED_ADJACENT'     // Unheated space like garage (partial ΔT)
+  | 'GROUND_FLOOR';         // Ground contact (special calculation)
+
 export type PhotoType = 'visible' | 'thermal' | 'boroscope' | '360';
 
 export interface PhotoEvidence {
@@ -85,6 +124,10 @@ export interface Wall {
   moisture_percent?: number; // From moisture meter
   cavity_status?: CavityStatus;
   photo_evidence?: PhotoEvidence[];
+  // Atlas v1.1: Data confidence and surface classification
+  surface_classification?: SurfaceClassification;
+  confidence_score?: ConfidenceScore;
+  source_type?: DataSourceType;
 }
 
 export type GlazingType = 'single' | 'double' | 'triple' | 'secondary';
@@ -384,23 +427,80 @@ export interface InvasiveChecks {
 
 export type CalculationMethod = 'MCS' | 'room_by_room' | 'whole_house_estimate';
 
+/**
+ * Thermal bridging configuration (Atlas v1.1)
+ * Uses global uplift factor instead of junction-by-junction psi-values for MVP
+ */
+export interface ThermalBridgingConfig {
+  enabled: boolean;
+  uplift_factor_percent: number; // Default: 10%
+  notes?: string;
+}
+
+/**
+ * Setback and recovery configuration (Atlas v1.1)
+ * User-defined uplift based on occupancy patterns and intermittency
+ */
+export interface SetbackRecoveryConfig {
+  enabled: boolean;
+  uplift_factor_percent: number; // e.g., 20% for intermittent heating
+  occupancy_pattern?: 'continuous' | 'intermittent' | 'occasional';
+  notes?: string;
+}
+
+/**
+ * Airtightness and infiltration configuration (Atlas v1.1)
+ */
+export interface AirtightnessConfig {
+  source: 'age_band' | 'n50_test' | 'assumed';
+  n50_value?: number; // Air changes per hour at 50Pa
+  conversion_factor?: number; // Typically 20 for normal exposure
+  effective_ach?: number; // n50 / conversion_factor
+  age_band?: string; // e.g., "pre-1919", "1919-1944", "1945-1964"
+  notes?: string;
+}
+
+/**
+ * Emitter adequacy check result (Atlas v1.1 - The Killer Feature)
+ */
+export interface EmitterAdequacy {
+  emitter_id: string;
+  room_id: string;
+  room_heat_loss_w: number;
+  current_output_at_mwt_75: number; // Traditional system (ΔT=50K)
+  current_output_at_mwt_55: number; // Transition (ΔT=35K)
+  current_output_at_mwt_45: number; // Heat pump (ΔT=30K)
+  adequate_at_mwt_75: boolean;
+  adequate_at_mwt_55: boolean;
+  adequate_at_mwt_45: boolean;
+  recommended_action: 'ok' | 'upsize' | 'major_upsize' | 'replace';
+  notes?: string;
+}
+
 export interface RoomHeatLoss {
   room_id: string;
   fabric_loss_w?: number;
   ventilation_loss_w?: number;
+  thermal_bridging_w?: number; // Atlas v1.1
+  setback_recovery_w?: number; // Atlas v1.1
   total_loss_w?: number;
   loss_w_per_m2?: number;
+  emitter_adequacy?: EmitterAdequacy; // Atlas v1.1
 }
 
 export interface HeatLossCalculations {
   calculation_method: CalculationMethod;
   design_conditions?: DesignConditions;
+  thermal_bridging_config?: ThermalBridgingConfig; // Atlas v1.1
+  setback_recovery_config?: SetbackRecoveryConfig; // Atlas v1.1
+  airtightness_config?: AirtightnessConfig; // Atlas v1.1
   room_heat_losses?: RoomHeatLoss[];
   whole_house_heat_loss_w?: number;
   whole_house_heat_loss_kw?: number;
   heat_loss_per_m2?: number;
   safety_margin_percent?: number;
   recommended_boiler_size_kw?: number;
+  audit_trail?: AuditTrailEntry[]; // Atlas v1.1: Full assumption tracking
 }
 
 // ============================================

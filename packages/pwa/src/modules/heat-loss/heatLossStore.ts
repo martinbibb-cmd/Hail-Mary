@@ -13,14 +13,12 @@ import type {
   RoomHeatLoss,
   DesignConditions,
   ThermalBridgingConfig,
-  SetbackRecoveryConfig,
   AirtightnessConfig,
 } from '@hail-mary/shared';
 import type { FlowTemp, RoomSummary, AdequacyStatus, HeatLossState } from './types';
 import {
   calculateRoomConfidence,
   calculateWholeHouseConfidence,
-  confidenceToColor,
 } from './confidenceUtils';
 
 interface HeatLossStore extends HeatLossState {
@@ -51,17 +49,9 @@ const initialState: HeatLossState = {
 /**
  * Get adequacy status from emitter adequacy result
  */
-function getAdequacyStatus(
-  adequacy: { adequate: boolean; shortfall_w: number } | undefined
-): AdequacyStatus {
-  if (!adequacy) return 'unknown';
-
-  if (adequacy.adequate) return 'ok';
-
-  // Shortfall > 500W is major
-  if (adequacy.shortfall_w > 500) return 'major_upsize';
-
-  return 'upsize';
+function getAdequacyStatus(adequate: boolean | undefined): AdequacyStatus {
+  if (adequate === undefined) return 'unknown';
+  return adequate ? 'ok' : 'upsize';
 }
 
 /**
@@ -92,7 +82,7 @@ function buildRoomSummaries(
       return {
         room_id: roomHeatLoss.room_id,
         room_name: roomHeatLoss.room_id,
-        heat_loss_w: roomHeatLoss.total_heat_loss_w,
+        heat_loss_w: roomHeatLoss.total_loss_w || 0,
         confidence_color: 'red' as const,
         confidence_score: 0,
         risk_icons: [],
@@ -110,14 +100,14 @@ function buildRoomSummaries(
 
     // Extract adequacy for different flow temps from emitter_adequacy
     const adequacy = roomHeatLoss.emitter_adequacy;
-    const adequacy_45 = getAdequacyStatus(adequacy?.adequacy_at_45c);
-    const adequacy_55 = getAdequacyStatus(adequacy?.adequacy_at_55c);
-    const adequacy_75 = getAdequacyStatus(adequacy?.adequacy_at_75c);
+    const adequacy_45 = getAdequacyStatus(adequacy?.adequate_at_mwt_45);
+    const adequacy_55 = getAdequacyStatus(adequacy?.adequate_at_mwt_55);
+    const adequacy_75 = getAdequacyStatus(adequacy?.adequate_at_mwt_75);
 
     return {
       room_id: roomHeatLoss.room_id,
-      room_name: room.room_name || roomHeatLoss.room_id,
-      heat_loss_w: roomHeatLoss.total_heat_loss_w,
+      room_name: room.name || roomHeatLoss.room_id,
+      heat_loss_w: roomHeatLoss.total_loss_w || 0,
       confidence_color: confidence.color,
       confidence_score: confidence.score,
       risk_icons: confidence.riskIcons,
@@ -173,12 +163,12 @@ export const useHeatLossStore = create<HeatLossStore>((set, get) => ({
         } as DesignConditions,
         thermalBridgingConfig: {
           enabled: true,
-          uplift_percent: 10,
+          uplift_factor_percent: 10,
         } as ThermalBridgingConfig,
         airtightnessConfig: {
-          method: 'age_band' as const,
+          source: 'age_band' as const,
           age_band: '1981-1990',
-          ach_at_50pa: 10,
+          n50_value: 10,
         } as AirtightnessConfig,
       };
 

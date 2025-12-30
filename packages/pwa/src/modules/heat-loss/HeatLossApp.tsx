@@ -24,18 +24,9 @@ export const HeatLossApp: React.FC = () => {
 
   const { selectedRoomId, roomSummaries } = useHeatLossStore();
 
-  const handleNavigateToRoom = (roomId: string) => {
-    useHeatLossStore.getState().selectRoom(roomId);
-    setView('room_detail');
-  };
-
   const handleBackToDashboard = () => {
     useHeatLossStore.getState().selectRoom(null);
     setView('dashboard');
-  };
-
-  const handleOpenUpgradeSheet = () => {
-    setShowUpgradeSheet(true);
   };
 
   const handleCloseUpgradeSheet = () => {

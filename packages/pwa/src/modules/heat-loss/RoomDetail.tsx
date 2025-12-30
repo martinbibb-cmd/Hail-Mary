@@ -9,7 +9,7 @@ import { useHeatLossStore } from './heatLossStore';
 import { AuditDrawer } from './AuditDrawer';
 import { getSourceBadgeLabel } from './confidenceUtils';
 import type { SurfaceRow } from './types';
-import type { RoomHeatLoss, Wall, AuditTrailEntry } from '@hail-mary/shared';
+import type { RoomHeatLoss, Wall } from '@hail-mary/shared';
 import './HeatLoss.css';
 
 interface RoomDetailProps {
@@ -62,18 +62,14 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
 
   // Get adequacy for current flow temp
   const adequacy = roomHeatLoss.emitter_adequacy;
-  const currentAdequacy =
+  const currentAdequate =
     selectedFlowTemp === 45
-      ? adequacy?.adequacy_at_45c
+      ? adequacy?.adequate_at_mwt_45
       : selectedFlowTemp === 55
-      ? adequacy?.adequacy_at_55c
-      : adequacy?.adequacy_at_75c;
+      ? adequacy?.adequate_at_mwt_55
+      : adequacy?.adequate_at_mwt_75;
 
-  const adequacyStatus = currentAdequacy?.adequate
-    ? '✅ OK'
-    : currentAdequacy?.shortfall_w && currentAdequacy.shortfall_w > 500
-    ? '❌ Major Upsize'
-    : '⚠️ Upsize';
+  const adequacyStatus = currentAdequate ? '✅ OK' : '⚠️ Upsize';
 
   const handleSurfaceClick = (surfaceId: string) => {
     setSelectedSurface(surfaceId);
@@ -92,14 +88,14 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
         <button className="back-btn" onClick={onBack}>
           ← Back
         </button>
-        <h2>{room?.room_name || roomId}</h2>
+        <h2>{room?.name || roomId}</h2>
       </div>
 
       {/* Result & Adequacy */}
       <div className="room-result-card">
         <div className="result-value">
           <span className="result-number">
-            {(roomHeatLoss.total_heat_loss_w / 1000).toFixed(2)}
+            {((roomHeatLoss.total_loss_w || 0) / 1000).toFixed(2)}
           </span>
           <span className="result-unit">kW</span>
         </div>
@@ -109,46 +105,39 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
             <span className="adequacy-temp">45°C</span>
             <span
               className={`adequacy-badge ${
-                adequacy?.adequacy_at_45c?.adequate
+                adequacy?.adequate_at_mwt_45
                   ? 'adequacy-ok'
                   : 'adequacy-upsize'
               }`}
             >
-              {adequacy?.adequacy_at_45c?.adequate ? '✅' : '⚠️'}
+              {adequacy?.adequate_at_mwt_45 ? '✅' : '⚠️'}
             </span>
           </div>
           <div className="adequacy-item">
             <span className="adequacy-temp">55°C</span>
             <span
               className={`adequacy-badge ${
-                adequacy?.adequacy_at_55c?.adequate
+                adequacy?.adequate_at_mwt_55
                   ? 'adequacy-ok'
                   : 'adequacy-upsize'
               }`}
             >
-              {adequacy?.adequacy_at_55c?.adequate ? '✅' : '⚠️'}
+              {adequacy?.adequate_at_mwt_55 ? '✅' : '⚠️'}
             </span>
           </div>
           <div className="adequacy-item">
             <span className="adequacy-temp">75°C</span>
             <span
               className={`adequacy-badge ${
-                adequacy?.adequacy_at_75c?.adequate
+                adequacy?.adequate_at_mwt_75
                   ? 'adequacy-ok'
                   : 'adequacy-upsize'
               }`}
             >
-              {adequacy?.adequacy_at_75c?.adequate ? '✅' : '⚠️'}
+              {adequacy?.adequate_at_mwt_75 ? '✅' : '⚠️'}
             </span>
           </div>
         </div>
-
-        {currentAdequacy && !currentAdequacy.adequate && (
-          <div className="adequacy-warning">
-            Shortfall: {currentAdequacy.shortfall_w.toFixed(0)} W at{' '}
-            {selectedFlowTemp}°C
-          </div>
-        )}
       </div>
 
       {/* Heat Loss Breakdown */}
@@ -162,15 +151,15 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
                 className="breakdown-fill transmission"
                 style={{
                   width: `${
-                    (roomHeatLoss.fabric_heat_loss_w /
-                      roomHeatLoss.total_heat_loss_w) *
+                    ((roomHeatLoss.fabric_loss_w || 0) /
+                      (roomHeatLoss.total_loss_w || 1)) *
                     100
                   }%`,
                 }}
               />
             </div>
             <span className="breakdown-value">
-              {roomHeatLoss.fabric_heat_loss_w.toFixed(0)} W
+              {(roomHeatLoss.fabric_loss_w || 0).toFixed(0)} W
             </span>
           </div>
 
@@ -181,19 +170,19 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
                 className="breakdown-fill ventilation"
                 style={{
                   width: `${
-                    (roomHeatLoss.ventilation_heat_loss_w /
-                      roomHeatLoss.total_heat_loss_w) *
+                    ((roomHeatLoss.ventilation_loss_w || 0) /
+                      (roomHeatLoss.total_loss_w || 1)) *
                     100
                   }%`,
                 }}
               />
             </div>
             <span className="breakdown-value">
-              {roomHeatLoss.ventilation_heat_loss_w.toFixed(0)} W
+              {(roomHeatLoss.ventilation_loss_w || 0).toFixed(0)} W
             </span>
           </div>
 
-          {roomHeatLoss.thermal_bridging_uplift_w > 0 && (
+          {(roomHeatLoss.thermal_bridging_w || 0) > 0 && (
             <div className="breakdown-item">
               <span className="breakdown-label">Thermal Bridging</span>
               <div className="breakdown-bar">
@@ -201,15 +190,15 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
                   className="breakdown-fill thermal-bridge"
                   style={{
                     width: `${
-                      (roomHeatLoss.thermal_bridging_uplift_w /
-                        roomHeatLoss.total_heat_loss_w) *
+                      ((roomHeatLoss.thermal_bridging_w || 0) /
+                        (roomHeatLoss.total_loss_w || 1)) *
                       100
                     }%`,
                   }}
                 />
               </div>
               <span className="breakdown-value">
-                {roomHeatLoss.thermal_bridging_uplift_w.toFixed(0)} W
+                {(roomHeatLoss.thermal_bridging_w || 0).toFixed(0)} W
               </span>
             </div>
           )}

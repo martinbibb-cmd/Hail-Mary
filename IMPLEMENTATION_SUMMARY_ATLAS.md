@@ -117,10 +117,10 @@ Returns JSON with:
 - ✅ Removed `any` types
 - ✅ Improved validation
 
-### Standards Compliance
-- ✅ **MCS 3005-D**: UK Microgeneration Certification Scheme
-- ✅ **BS EN 12831**: European heating system design standard
-- ✅ **UK Building Regulations Part L**: Conservation of fuel and power
+### Standards Alignment
+- **Informed by**: MCS 3005-D / BS EN 12831 / UK Building Regulations Part L
+- **Status**: Calculation structure and terminology aligned with industry standards
+- **Not a compliance certificate**: For formal certification, consult an accredited assessor
 
 ## Files Changed
 

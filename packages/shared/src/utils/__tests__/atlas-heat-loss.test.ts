@@ -22,8 +22,7 @@ import {
   Wall,
   Emitter,
   DesignConditions,
-  SurfaceClassification,
-  RadiatorPanelType,
+  AuditTrailEntry,
 } from '../../types/heat-loss-survey.types';
 
 describe('Atlas Heat Loss API', () => {
@@ -44,7 +43,7 @@ describe('Atlas Heat Loss API', () => {
 
   describe('Party Wall Logic - Critical Fix', () => {
     it('should calculate 0W heat loss for party walls (0 ΔT)', () => {
-      const auditTrail: any[] = [];
+      const auditTrail: AuditTrailEntry[] = [];
       
       const partyWallDeltaT = calculateEffectiveDeltaT(
         'PARTY_WALL',
@@ -60,7 +59,7 @@ describe('Atlas Heat Loss API', () => {
     });
 
     it('should calculate full ΔT for external walls', () => {
-      const auditTrail: any[] = [];
+      const auditTrail: AuditTrailEntry[] = [];
       
       const externalDeltaT = calculateEffectiveDeltaT(
         'EXTERNAL',
@@ -73,7 +72,7 @@ describe('Atlas Heat Loss API', () => {
     });
 
     it('should calculate reduced ΔT for unheated adjacent spaces', () => {
-      const auditTrail: any[] = [];
+      const auditTrail: AuditTrailEntry[] = [];
       
       const unheatedDeltaT = calculateEffectiveDeltaT(
         'UNHEATED_ADJACENT',
@@ -89,7 +88,7 @@ describe('Atlas Heat Loss API', () => {
     });
 
     it('should calculate ground floor ΔT correctly', () => {
-      const auditTrail: any[] = [];
+      const auditTrail: AuditTrailEntry[] = [];
       
       const groundDeltaT = calculateEffectiveDeltaT(
         'GROUND_FLOOR',
@@ -358,7 +357,7 @@ describe('Atlas Heat Loss API', () => {
 
   describe('Airtightness & ACH Calculations', () => {
     it('should convert n50 to effective ACH with default conversion factor', () => {
-      const auditTrail: any[] = [];
+      const auditTrail: AuditTrailEntry[] = [];
       
       const ach = calculateEffectiveACH({
         source: 'n50_test',
@@ -374,7 +373,7 @@ describe('Atlas Heat Loss API', () => {
     });
 
     it('should use age band defaults when test not available', () => {
-      const auditTrail: any[] = [];
+      const auditTrail: AuditTrailEntry[] = [];
       
       const ach = calculateEffectiveACH({
         source: 'age_band',
@@ -387,7 +386,7 @@ describe('Atlas Heat Loss API', () => {
     });
 
     it('should default to average ACH when no data available', () => {
-      const auditTrail: any[] = [];
+      const auditTrail: AuditTrailEntry[] = [];
       
       const ach = calculateEffectiveACH({
         source: 'assumed',

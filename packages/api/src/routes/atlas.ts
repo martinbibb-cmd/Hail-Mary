@@ -47,6 +47,30 @@ interface CalculateHeatLossBody {
 }
 
 /**
+ * Type guards for validation
+ */
+function isValidRoom(room: unknown): room is Room {
+  if (!room || typeof room !== 'object') return false;
+  const r = room as any;
+  return (
+    typeof r.room_id === 'string' &&
+    r.dimensions &&
+    typeof r.dimensions === 'object' &&
+    typeof r.dimensions.floor_area_m2 === 'number' &&
+    typeof r.dimensions.volume_m3 === 'number'
+  );
+}
+
+function isValidWall(wall: unknown): wall is Wall {
+  if (!wall || typeof wall !== 'object') return false;
+  const w = wall as any;
+  return (
+    typeof w.wall_id === 'string' &&
+    typeof w.area_m2 === 'number'
+  );
+}
+
+/**
  * Validate and parse input data
  */
 function validateAndParseInput(body: CalculateHeatLossBody): {
@@ -72,30 +96,22 @@ function validateAndParseInput(body: CalculateHeatLossBody): {
     return { valid: false, error: 'walls array is required' };
   }
 
-  // Basic validation - ensure each room has required fields
+  // Validate each room with type guard
   for (const room of body.rooms) {
-    if (!room || typeof room !== 'object') {
-      return { valid: false, error: 'Invalid room object' };
-    }
-    const r = room as any;
-    if (!r.room_id || !r.dimensions) {
-      return { valid: false, error: 'Each room must have room_id and dimensions' };
-    }
-    if (typeof r.dimensions !== 'object' || 
-        typeof r.dimensions.floor_area_m2 !== 'number' ||
-        typeof r.dimensions.volume_m3 !== 'number') {
-      return { valid: false, error: 'Room dimensions must include floor_area_m2 and volume_m3' };
+    if (!isValidRoom(room)) {
+      return { valid: false, error: 'Each room must have room_id and dimensions (floor_area_m2, volume_m3)' };
     }
   }
 
-  // Basic validation for walls
+  // Validate each wall with type guard
   for (const wall of body.walls) {
-    if (!wall || typeof wall !== 'object') {
-      return { valid: false, error: 'Invalid wall object' };
-    }
-    const w = wall as any;
-    if (!w.wall_id || typeof w.area_m2 !== 'number') {
+    if (!isValidWall(wall)) {
       return { valid: false, error: 'Each wall must have wall_id and area_m2' };
+    }
+    // Check that wall has room_id for proper grouping
+    const w = wall as any;
+    if (!w.room_id || typeof w.room_id !== 'string') {
+      return { valid: false, error: 'Each wall must have a room_id to associate it with a room' };
     }
   }
 
@@ -149,16 +165,13 @@ router.post('/calculate-heat-loss', requireAuth, async (req: Request, res: Respo
     const wallsByRoom = new Map<string, Wall[]>();
     const emittersByRoom = new Map<string, Emitter[]>();
 
-    // Group walls by room (assume walls have room_id or we need to match them)
-    // For now, we'll need to add room_id to walls in the input
+    // Group walls by room (room_id is now required and validated)
     for (const wall of walls) {
-      const roomId = (wall as any).room_id;
-      if (roomId) {
-        if (!wallsByRoom.has(roomId)) {
-          wallsByRoom.set(roomId, []);
-        }
-        wallsByRoom.get(roomId)!.push(wall);
+      const roomId = (wall as any).room_id as string;
+      if (!wallsByRoom.has(roomId)) {
+        wallsByRoom.set(roomId, []);
       }
+      wallsByRoom.get(roomId)!.push(wall);
     }
 
     // Group emitters by room

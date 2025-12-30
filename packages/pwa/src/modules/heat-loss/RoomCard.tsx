@@ -1,48 +1,53 @@
 /**
- * RoomCard - Room summary card for dashboard grid
+ * RoomCard (v2)
  *
- * Shows room name, heat loss, confidence color, and adequacy status
+ * Room summary card with risk flags and instant adequacy toggle
  */
 
 import React from 'react';
 import type { RoomSummary, FlowTemp } from './types';
 import {
   getConfidenceColorClass,
-  getRiskIconLabel,
-} from './confidenceUtils';
-import './HeatLoss.css';
+  getRiskFlagLabel,
+  getRiskFlagIcon,
+} from './confidence';
+import './RoomCard.css';
 
 interface RoomCardProps {
   room: RoomSummary;
   selectedFlowTemp: FlowTemp;
   onRoomClick: () => void;
-  onConfidenceClick: () => void;
 }
 
 export const RoomCard: React.FC<RoomCardProps> = ({
   room,
   selectedFlowTemp,
   onRoomClick,
-  onConfidenceClick,
 }) => {
-  // Get adequacy for selected flow temp
+  // Get adequacy for selected flow temp (instant - no API call)
   const adequacy =
     selectedFlowTemp === 45
-      ? room.adequacy_45
+      ? room.adequacy_at_all_temps.at_45c
       : selectedFlowTemp === 55
-      ? room.adequacy_55
-      : room.adequacy_75;
+      ? room.adequacy_at_all_temps.at_55c
+      : room.adequacy_at_all_temps.at_75c;
 
-  const adequacyLabel =
-    adequacy === 'ok'
-      ? '✅ OK'
-      : adequacy === 'upsize'
-      ? '⚠️ Upsize'
-      : adequacy === 'major_upsize'
-      ? '❌ Major'
-      : '❓ Unknown';
+  const getAdequacyDisplay = () => {
+    if (!adequacy) return { label: '❓ Unknown', className: 'adequacy-unknown' };
 
-  const adequacyClass = `adequacy-${adequacy}`;
+    if (adequacy.adequate) {
+      return { label: '✅ OK', className: 'adequacy-ok' };
+    }
+
+    // Shortfall > 500W is major
+    if (adequacy.shortfall_w > 500) {
+      return { label: '❌ Major', className: 'adequacy-major_upsize' };
+    }
+
+    return { label: '⚠️ Upsize', className: 'adequacy-upsize' };
+  };
+
+  const { label: adequacyLabel, className: adequacyClass } = getAdequacyDisplay();
 
   return (
     <div className="room-card" onClick={onRoomClick}>
@@ -53,11 +58,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
           className={`confidence-chip ${getConfidenceColorClass(
             room.confidence_color
           )}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onConfidenceClick();
-          }}
-          title="Click to upgrade confidence"
+          title={`Confidence: ${room.confidence_score}%`}
         >
           {room.confidence_score}%
         </div>
@@ -77,18 +78,16 @@ export const RoomCard: React.FC<RoomCardProps> = ({
         <span className="adequacy-temp">@ {selectedFlowTemp}°C</span>
       </div>
 
-      {/* Risk Icons */}
-      {room.risk_icons.length > 0 && (
-        <div className="room-risk-icons">
-          {room.risk_icons.map((icon) => (
+      {/* Risk Flags */}
+      {room.risk_flags.length > 0 && (
+        <div className="room-risk-flags">
+          {room.risk_flags.map((flag) => (
             <span
-              key={icon}
-              className="risk-icon"
-              title={getRiskIconLabel(icon)}
+              key={flag}
+              className="risk-flag"
+              title={getRiskFlagLabel(flag)}
             >
-              {icon === 'assumed_wall' && '🧱'}
-              {icon === 'unknown_glazing' && '🪟'}
-              {icon === 'unheated_adjacent' && '❄️'}
+              {getRiskFlagIcon(flag)}
             </span>
           ))}
         </div>

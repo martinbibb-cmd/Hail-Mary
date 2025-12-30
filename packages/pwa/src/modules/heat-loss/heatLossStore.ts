@@ -1,7 +1,7 @@
 /**
- * Heat Loss Store
+ * Heat Loss Store (v2)
  *
- * Zustand store for managing heat loss calculation state
+ * Zustand store with refined 3-layer confidence system
  */
 
 import { create } from 'zustand';
@@ -15,11 +15,19 @@ import type {
   ThermalBridgingConfig,
   AirtightnessConfig,
 } from '@hail-mary/shared';
-import type { FlowTemp, RoomSummary, AdequacyStatus, HeatLossState } from './types';
+import type {
+  FlowTemp,
+  RoomSummary,
+  AdequacyStatus,
+  HeatLossState,
+  AdequacyAtAllTemps,
+  ValidationState,
+} from './types';
 import {
   calculateRoomConfidence,
-  calculateWholeHouseConfidence,
-} from './confidenceUtils';
+  calculateResultConfidence,
+  getValidationState,
+} from './confidence';
 
 interface HeatLossStore extends HeatLossState {
   // Actions
@@ -37,6 +45,7 @@ const initialState: HeatLossState = {
   walls: [],
   emitters: [],
   calculations: null,
+  validationState: 'INCOMPLETE',
   selectedFlowTemp: 55, // Default to 55°C
   selectedRoomId: null,
   isCalculating: false,
@@ -49,13 +58,34 @@ const initialState: HeatLossState = {
 /**
  * Get adequacy status from emitter adequacy result
  */
-function getAdequacyStatus(adequate: boolean | undefined): AdequacyStatus {
-  if (adequate === undefined) return 'unknown';
-  return adequate ? 'ok' : 'upsize';
+function getAdequacyStatus(
+  adequacy: { adequate: boolean; shortfall_w: number } | undefined | null
+): AdequacyStatus {
+  if (!adequacy) return 'unknown';
+
+  if (adequacy.adequate) return 'ok';
+
+  // Shortfall > 500W is major
+  if (adequacy.shortfall_w > 500) return 'major_upsize';
+
+  return 'upsize';
 }
 
 /**
- * Build room summaries from calculation results
+ * Build adequacy at all temps from emitter adequacy result
+ */
+function buildAdequacyAtAllTemps(
+  adequacy: any
+): AdequacyAtAllTemps {
+  return {
+    at_45c: adequacy?.adequacy_at_45c || null,
+    at_55c: adequacy?.adequacy_at_55c || null,
+    at_75c: adequacy?.adequacy_at_75c || null,
+  };
+}
+
+/**
+ * Build room summaries from calculation results (v2)
  */
 function buildRoomSummaries(
   rooms: Room[],
@@ -85,24 +115,13 @@ function buildRoomSummaries(
         heat_loss_w: roomHeatLoss.total_loss_w || 0,
         confidence_color: 'red' as const,
         confidence_score: 0,
-        risk_icons: [],
-        adequacy_45: 'unknown' as const,
-        adequacy_55: 'unknown' as const,
-        adequacy_75: 'unknown' as const,
+        risk_flags: ['MISSING_EXTERNAL_WALLS' as const],
+        adequacy_at_all_temps: buildAdequacyAtAllTemps(roomHeatLoss.emitter_adequacy),
       };
     }
 
-    const confidence = calculateRoomConfidence(
-      room,
-      roomWalls,
-      calculations.audit_trail || []
-    );
-
-    // Extract adequacy for different flow temps from emitter_adequacy
-    const adequacy = roomHeatLoss.emitter_adequacy;
-    const adequacy_45 = getAdequacyStatus(adequacy?.adequate_at_mwt_45);
-    const adequacy_55 = getAdequacyStatus(adequacy?.adequate_at_mwt_55);
-    const adequacy_75 = getAdequacyStatus(adequacy?.adequate_at_mwt_75);
+    // v2 confidence calculation
+    const confidence = calculateRoomConfidence(room, roomWalls);
 
     return {
       room_id: roomHeatLoss.room_id,
@@ -110,10 +129,8 @@ function buildRoomSummaries(
       heat_loss_w: roomHeatLoss.total_loss_w || 0,
       confidence_color: confidence.color,
       confidence_score: confidence.score,
-      risk_icons: confidence.riskIcons,
-      adequacy_45,
-      adequacy_55,
-      adequacy_75,
+      risk_flags: confidence.riskFlags,
+      adequacy_at_all_temps: buildAdequacyAtAllTemps(roomHeatLoss.emitter_adequacy),
     };
   });
 }
@@ -134,6 +151,7 @@ export const useHeatLossStore = create<HeatLossStore>((set, get) => ({
   },
 
   setFlowTemp: (temp) => {
+    // Instant toggle - no API call needed
     set({ selectedFlowTemp: temp });
   },
 
@@ -145,7 +163,7 @@ export const useHeatLossStore = create<HeatLossStore>((set, get) => ({
     const state = get();
 
     if (state.rooms.length === 0) {
-      set({ error: 'No rooms to calculate' });
+      set({ error: 'No rooms to calculate', validationState: 'INCOMPLETE' });
       return;
     }
 
@@ -194,19 +212,34 @@ export const useHeatLossStore = create<HeatLossStore>((set, get) => ({
 
       const calculations: HeatLossCalculations = result.data;
 
-      // Build room summaries
+      // Build room summaries (v2)
       const roomSummaries = buildRoomSummaries(
         state.rooms,
         state.walls,
         calculations
       );
 
-      const wholeHouseConfidence = calculateWholeHouseConfidence(roomSummaries);
+      // Calculate whole-house confidence (v2 - weighted by heat loss)
+      const roomConfidences = new Map(
+        roomSummaries.map((rs) => [rs.room_id, rs.confidence_score])
+      );
+      const wholeHouseConfidence = calculateResultConfidence(
+        calculations.room_heat_losses,
+        roomConfidences
+      );
+
+      // Determine validation state
+      const validationState = getValidationState(
+        state.rooms,
+        state.walls,
+        roomConfidences
+      );
 
       set({
         calculations,
         roomSummaries,
         wholeHouseConfidence,
+        validationState,
         lastCalculatedAt: new Date(),
         isCalculating: false,
         error: null,
@@ -216,6 +249,7 @@ export const useHeatLossStore = create<HeatLossStore>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Unknown error',
         isCalculating: false,
+        validationState: 'INCOMPLETE',
       });
     }
   },

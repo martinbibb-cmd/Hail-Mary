@@ -5,7 +5,7 @@
  */
 
 import type { Wall } from '@hail-mary/shared';
-import type { RiskFlag, UpgradeAction } from './types.v2';
+import type { RiskFlag, UpgradeAction } from './types';
 
 /**
  * Generate upgrade actions for a room based on risk flags

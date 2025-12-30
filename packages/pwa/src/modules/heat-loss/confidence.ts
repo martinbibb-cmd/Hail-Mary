@@ -13,7 +13,7 @@ import type {
   RoomHeatLoss,
   DataSourceType,
 } from '@hail-mary/shared';
-import type { ConfidenceColor, RiskFlag, ValidationState } from './types.v2';
+import type { ConfidenceColor, RiskFlag, ValidationState } from './types';
 
 // ============================================
 // Layer 1: Field Confidence

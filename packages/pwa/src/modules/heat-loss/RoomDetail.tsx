@@ -1,16 +1,17 @@
 /**
- * RoomDetail - The "money screen"
+ * RoomDetail (v2)
  *
- * Shows detailed heat loss breakdown, surfaces list, and adequacy for a single room
+ * The "money screen" with instant flow temp toggle
  */
 
 import React, { useState } from 'react';
 import { useHeatLossStore } from './heatLossStore';
 import { AuditDrawer } from './AuditDrawer';
-import { getSourceBadgeLabel } from './confidenceUtils';
+import { getSourceBadgeLabel } from './confidence';
 import type { SurfaceRow } from './types';
 import type { RoomHeatLoss, Wall } from '@hail-mary/shared';
-import './HeatLoss.css';
+import { FlowTempToggle } from './FlowTempToggle';
+import './RoomDetail.css';
 
 interface RoomDetailProps {
   roomId: string;
@@ -18,7 +19,7 @@ interface RoomDetailProps {
 }
 
 export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
-  const { calculations, rooms, walls, selectedFlowTemp } = useHeatLossStore();
+  const { calculations, rooms, walls, roomSummaries, selectedFlowTemp, setFlowTemp } = useHeatLossStore();
   const [selectedSurface, setSelectedSurface] = useState<string | null>(null);
   const [showAudit, setShowAudit] = useState(false);
 
@@ -46,6 +47,7 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
 
   const room = rooms.find((r) => r.room_id === roomId);
   const roomWalls = walls.filter((w: Wall) => (w as any).room_id === roomId);
+  const roomSummary = roomSummaries.find((rs) => rs.room_id === roomId);
 
   // Build surface rows
   const surfaceRows: SurfaceRow[] = roomWalls.map((wall) => ({
@@ -55,21 +57,19 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
     classification: wall.surface_classification || 'EXTERNAL',
     heat_loss_w: 0, // TODO: Calculate from wall
     source_badge: wall.source_type || 'ASSUMED',
-    confidence: wall.confidence_score || 'low',
+    confidence_score: wall.confidence_score ? 70 : 20, // Simplified
     u_value: wall.u_value_measured || wall.u_value_calculated,
     area_m2: wall.area_m2,
   }));
 
-  // Get adequacy for current flow temp
-  const adequacy = roomHeatLoss.emitter_adequacy;
-  const currentAdequate =
+  // Get adequacy for current flow temp (instant - from pre-computed data)
+  const adequacy = roomSummary?.adequacy_at_all_temps;
+  const currentAdequacy =
     selectedFlowTemp === 45
-      ? adequacy?.adequate_at_mwt_45
+      ? adequacy?.at_45c
       : selectedFlowTemp === 55
-      ? adequacy?.adequate_at_mwt_55
-      : adequacy?.adequate_at_mwt_75;
-
-  const adequacyStatus = currentAdequate ? '✅ OK' : '⚠️ Upsize';
+      ? adequacy?.at_55c
+      : adequacy?.at_75c;
 
   const handleSurfaceClick = (surfaceId: string) => {
     setSelectedSurface(surfaceId);
@@ -100,41 +100,42 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
           <span className="result-unit">kW</span>
         </div>
 
+        {/* Flow Temp Toggle (Instant) */}
+        <FlowTempToggle
+          selectedTemp={selectedFlowTemp}
+          onTempChange={setFlowTemp}
+        />
+
+        {/* Adequacy Strip */}
         <div className="adequacy-strip">
           <div className="adequacy-item">
             <span className="adequacy-temp">45°C</span>
             <span
               className={`adequacy-badge ${
-                adequacy?.adequate_at_mwt_45
-                  ? 'adequacy-ok'
-                  : 'adequacy-upsize'
+                adequacy?.at_45c?.adequate ? 'adequacy-ok' : 'adequacy-upsize'
               }`}
             >
-              {adequacy?.adequate_at_mwt_45 ? '✅' : '⚠️'}
+              {adequacy?.at_45c?.adequate ? '✅' : '❌'}
             </span>
           </div>
           <div className="adequacy-item">
             <span className="adequacy-temp">55°C</span>
             <span
               className={`adequacy-badge ${
-                adequacy?.adequate_at_mwt_55
-                  ? 'adequacy-ok'
-                  : 'adequacy-upsize'
+                adequacy?.at_55c?.adequate ? 'adequacy-ok' : 'adequacy-upsize'
               }`}
             >
-              {adequacy?.adequate_at_mwt_55 ? '✅' : '⚠️'}
+              {adequacy?.at_55c?.adequate ? '✅' : '❌'}
             </span>
           </div>
           <div className="adequacy-item">
             <span className="adequacy-temp">75°C</span>
             <span
               className={`adequacy-badge ${
-                adequacy?.adequate_at_mwt_75
-                  ? 'adequacy-ok'
-                  : 'adequacy-upsize'
+                adequacy?.at_75c?.adequate ? 'adequacy-ok' : 'adequacy-upsize'
               }`}
             >
-              {adequacy?.adequate_at_mwt_75 ? '✅' : '⚠️'}
+              {adequacy?.at_75c?.adequate ? '✅' : '❌'}
             </span>
           </div>
         </div>

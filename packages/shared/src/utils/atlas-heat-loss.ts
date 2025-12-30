@@ -16,7 +16,6 @@ import {
   Wall,
   Room,
   Emitter,
-  RadiatorDetails,
   HeatLossCalculations,
   RoomHeatLoss,
   DesignConditions,

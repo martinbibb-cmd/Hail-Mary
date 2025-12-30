@@ -11,4 +11,3 @@ export { AuditDrawer } from './AuditDrawer';
 export { UpgradeConfidenceBottomSheet } from './UpgradeConfidenceBottomSheet';
 export { useHeatLossStore } from './heatLossStore';
 export * from './types';
-export * from './confidenceUtils';

@@ -15,7 +15,7 @@ import type { RiskFlag, UpgradeAction } from './types';
 export function getUpgradeActions(
   roomId: string,
   riskFlags: RiskFlag[],
-  walls: Wall[]
+  _walls: Wall[]
 ): UpgradeAction[] {
   const actions: UpgradeAction[] = [];
 

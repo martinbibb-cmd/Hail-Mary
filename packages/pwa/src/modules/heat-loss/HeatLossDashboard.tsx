@@ -23,7 +23,6 @@ export const HeatLossDashboard: React.FC = () => {
     isCalculating,
     error,
     lastCalculatedAt,
-    rooms,
     walls,
     setFlowTemp,
     selectRoom,

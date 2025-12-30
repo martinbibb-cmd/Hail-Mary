@@ -64,12 +64,6 @@ export const RoomDetail: React.FC<RoomDetailProps> = ({ roomId, onBack }) => {
 
   // Get adequacy for current flow temp (instant - from pre-computed data)
   const adequacy = roomSummary?.adequacy_at_all_temps;
-  const currentAdequacy =
-    selectedFlowTemp === 45
-      ? adequacy?.at_45c
-      : selectedFlowTemp === 55
-      ? adequacy?.at_55c
-      : adequacy?.at_75c;
 
   const handleSurfaceClick = (surfaceId: string) => {
     setSelectedSurface(surfaceId);

@@ -1,9 +1,11 @@
 /**
- * Atlas Heat Loss API (Verified v1.1)
- * 
- * Room-by-room heat loss calculations following MCS 3005-D and BS EN 12831.
+ * Atlas Heat Loss API (Verified v1.2)
+ *
+ * Room-by-room heat loss calculations informed by MCS 3005-D and BS EN 12831 concepts.
  * This is the "reality check" Engineer logic focusing on practical MVP features.
- * 
+ *
+ * ⚠️ Not a compliance certificate - for formal MCS certification, consult an accredited assessor.
+ *
  * Key Principles:
  * 1. Data Truth Hierarchy: LIDAR > MANUAL > SATELLITE
  * 2. Party Walls: Calculated with 0 ΔT (NOT a percentage discount)
@@ -23,10 +25,12 @@ import {
   SetbackRecoveryConfig,
   AirtightnessConfig,
   EmitterAdequacy,
+  EmitterAdequacyMethod,
   AuditTrailEntry,
   SurfaceClassification,
   ConfidenceScore,
   DataSourceType,
+  UnheatedAdjacentConfig,
 } from '../types/heat-loss-survey.types';
 
 import {
@@ -50,7 +54,191 @@ export const ATLAS_DEFAULTS = {
   SAFETY_MARGIN_PERCENT: 10,
   MIN_ROOM_TEMP_C: 18, // Bedrooms
   STANDARD_ROOM_TEMP_C: 21, // Living areas
+  UNHEATED_ADJACENT_OFFSET_C: 5, // Default: external + 5°C for garages, porches, etc.
 } as const;
+
+// ============================================
+// Input Validation
+// ============================================
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  value?: unknown;
+}
+
+/**
+ * Validate design conditions for common edge cases
+ */
+export function validateDesignConditions(
+  designConditions: DesignConditions
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // External temp should be reasonable for UK (-10 to 20°C)
+  if (designConditions.design_external_temp_c < -10 || designConditions.design_external_temp_c > 20) {
+    errors.push({
+      field: 'design_external_temp_c',
+      message: 'External design temperature outside typical UK range (-10 to 20°C)',
+      value: designConditions.design_external_temp_c,
+    });
+  }
+
+  // Internal temp should be reasonable (10 to 30°C)
+  if (designConditions.desired_internal_temp_c < 10 || designConditions.desired_internal_temp_c > 30) {
+    errors.push({
+      field: 'desired_internal_temp_c',
+      message: 'Internal design temperature outside reasonable range (10 to 30°C)',
+      value: designConditions.desired_internal_temp_c,
+    });
+  }
+
+  // ΔT must be positive
+  if (designConditions.desired_internal_temp_c <= designConditions.design_external_temp_c) {
+    errors.push({
+      field: 'temperature_difference',
+      message: 'Internal temperature must be greater than external temperature',
+      value: `Internal: ${designConditions.desired_internal_temp_c}°C, External: ${designConditions.design_external_temp_c}°C`,
+    });
+  }
+
+  return errors;
+}
+
+/**
+ * Validate room dimensions for common edge cases
+ */
+export function validateRoom(room: Room): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // Floor area must be positive
+  if (room.dimensions.floor_area_m2 <= 0) {
+    errors.push({
+      field: `room.${room.room_id}.floor_area_m2`,
+      message: 'Floor area must be positive',
+      value: room.dimensions.floor_area_m2,
+    });
+  }
+
+  // Floor area should be reasonable (0.5 to 200 m² for typical rooms)
+  if (room.dimensions.floor_area_m2 < 0.5 || room.dimensions.floor_area_m2 > 200) {
+    errors.push({
+      field: `room.${room.room_id}.floor_area_m2`,
+      message: 'Floor area outside typical range (0.5 to 200 m²)',
+      value: room.dimensions.floor_area_m2,
+    });
+  }
+
+  // Volume must be positive
+  if (room.dimensions.volume_m3 <= 0) {
+    errors.push({
+      field: `room.${room.room_id}.volume_m3`,
+      message: 'Volume must be positive',
+      value: room.dimensions.volume_m3,
+    });
+  }
+
+  // Implied ceiling height should be reasonable (1.5 to 6m)
+  const impliedHeight = room.dimensions.volume_m3 / room.dimensions.floor_area_m2;
+  if (impliedHeight < 1.5 || impliedHeight > 6) {
+    errors.push({
+      field: `room.${room.room_id}.ceiling_height`,
+      message: 'Implied ceiling height outside typical range (1.5 to 6m)',
+      value: `${impliedHeight.toFixed(2)}m (volume/floor_area)`,
+    });
+  }
+
+  return errors;
+}
+
+/**
+ * Validate wall data for common edge cases
+ */
+export function validateWall(wall: Wall): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // Area must be positive
+  if (wall.area_m2 <= 0) {
+    errors.push({
+      field: `wall.${wall.wall_id}.area_m2`,
+      message: 'Wall area must be positive',
+      value: wall.area_m2,
+    });
+  }
+
+  // Area should be reasonable (0.1 to 100 m²)
+  if (wall.area_m2 < 0.1 || wall.area_m2 > 100) {
+    errors.push({
+      field: `wall.${wall.wall_id}.area_m2`,
+      message: 'Wall area outside typical range (0.1 to 100 m²)',
+      value: wall.area_m2,
+    });
+  }
+
+  // U-value must be positive if provided
+  const uValue = wall.u_value_measured ?? wall.u_value_calculated;
+  if (uValue !== undefined && uValue <= 0) {
+    errors.push({
+      field: `wall.${wall.wall_id}.u_value`,
+      message: 'U-value must be positive',
+      value: uValue,
+    });
+  }
+
+  // U-value should be reasonable (0.1 to 5.0 W/m²K)
+  if (uValue !== undefined && (uValue < 0.1 || uValue > 5.0)) {
+    errors.push({
+      field: `wall.${wall.wall_id}.u_value`,
+      message: 'U-value outside typical range (0.1 to 5.0 W/m²K)',
+      value: uValue,
+    });
+  }
+
+  return errors;
+}
+
+/**
+ * Validate airtightness config
+ */
+export function validateAirtightnessConfig(
+  config: AirtightnessConfig
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  if (config.source === 'n50_test') {
+    if (config.n50_value === undefined) {
+      errors.push({
+        field: 'airtightness.n50_value',
+        message: 'n50_value required when source is "n50_test"',
+      });
+    } else if (config.n50_value <= 0) {
+      errors.push({
+        field: 'airtightness.n50_value',
+        message: 'n50_value must be positive',
+        value: config.n50_value,
+      });
+    } else if (config.n50_value < 0.1 || config.n50_value > 30) {
+      errors.push({
+        field: 'airtightness.n50_value',
+        message: 'n50_value outside typical range (0.1 to 30 ACH@50Pa)',
+        value: config.n50_value,
+      });
+    }
+
+    // Conversion factor should be reasonable (10 to 30)
+    if (config.conversion_factor !== undefined) {
+      if (config.conversion_factor < 10 || config.conversion_factor > 30) {
+        errors.push({
+          field: 'airtightness.conversion_factor',
+          message: 'Conversion factor outside typical range (10 to 30)',
+          value: config.conversion_factor,
+        });
+      }
+    }
+  }
+
+  return errors;
+}
 
 // ============================================
 // Audit Trail Management
@@ -82,7 +270,7 @@ export function createAuditEntry(
 
 /**
  * Calculate effective ΔT for a surface based on classification
- * 
+ *
  * CRITICAL: Party walls use 0 ΔT (not a discount!)
  * This is the "reality check" fix from the problem statement.
  */
@@ -90,7 +278,8 @@ export function calculateEffectiveDeltaT(
   surfaceClassification: SurfaceClassification,
   internalTempC: number,
   externalTempC: number,
-  auditTrail: AuditTrailEntry[]
+  auditTrail: AuditTrailEntry[],
+  unheatedAdjacentConfig?: UnheatedAdjacentConfig
 ): number {
   let deltaT: number;
   let notes: string;
@@ -109,11 +298,43 @@ export function calculateEffectiveDeltaT(
       break;
 
     case 'UNHEATED_ADJACENT':
-      // Unheated space (e.g., garage): partial ΔT
-      // Assume unheated space is 5°C warmer than outside
-      const unheatedTempC = externalTempC + 5;
+      // Unheated space (e.g., garage, porch, stairwell): partial ΔT
+      // Use explicit config or default to external + 5°C
+      let unheatedTempC: number;
+      let method: string;
+
+      if (unheatedAdjacentConfig) {
+        if (unheatedAdjacentConfig.method === 'fixed' && unheatedAdjacentConfig.fixed_temp_c !== undefined) {
+          unheatedTempC = unheatedAdjacentConfig.fixed_temp_c;
+          method = `fixed at ${unheatedTempC}°C`;
+        } else if (unheatedAdjacentConfig.method === 'user_provided' && unheatedAdjacentConfig.user_temp_c !== undefined) {
+          unheatedTempC = unheatedAdjacentConfig.user_temp_c;
+          method = `user-provided ${unheatedTempC}°C`;
+        } else {
+          // offset_from_external or fallback
+          const offset = unheatedAdjacentConfig.offset_from_external_c ?? ATLAS_DEFAULTS.UNHEATED_ADJACENT_OFFSET_C;
+          unheatedTempC = externalTempC + offset;
+          method = `external + ${offset}°C = ${unheatedTempC}°C`;
+        }
+      } else {
+        // Default: external + 5°C
+        unheatedTempC = externalTempC + ATLAS_DEFAULTS.UNHEATED_ADJACENT_OFFSET_C;
+        method = `default: external + ${ATLAS_DEFAULTS.UNHEATED_ADJACENT_OFFSET_C}°C = ${unheatedTempC}°C`;
+      }
+
       deltaT = internalTempC - unheatedTempC;
-      notes = `Unheated adjacent: assumed ${unheatedTempC}°C, ΔT = ${deltaT}K`;
+      notes = `Unheated adjacent space: ${method}, ΔT = ${deltaT}K`;
+
+      // Add explicit audit for unheated adjacent temp assumption
+      auditTrail.push(
+        createAuditEntry(
+          'unheated_adjacent_temp_c',
+          unheatedTempC,
+          'ASSUMED',
+          'low',
+          `Unheated adjacent space temperature: ${method}`
+        )
+      );
       break;
 
     case 'GROUND_FLOOR':
@@ -164,7 +385,28 @@ export function calculateEffectiveACH(
     const conversionFactor = config.conversion_factor ?? ATLAS_DEFAULTS.N50_CONVERSION_FACTOR;
     effectiveACH = config.n50_value / conversionFactor;
     notes = `Airtightness from test: n50=${config.n50_value}, conversion=${conversionFactor}, ACH=${effectiveACH.toFixed(2)}`;
-    
+
+    // Explicit audit entry for the n50 conversion itself
+    auditTrail.push(
+      createAuditEntry(
+        'n50_conversion',
+        conversionFactor,
+        'ASSUMED',
+        'medium',
+        `n50 to ACH conversion factor: ${conversionFactor} (typical 20 for normal exposure; higher = more sheltered)`
+      )
+    );
+
+    auditTrail.push(
+      createAuditEntry(
+        'n50_measured',
+        config.n50_value,
+        'MANUAL',
+        'high',
+        `Air permeability test result: ${config.n50_value} ACH @ 50Pa`
+      )
+    );
+
     auditTrail.push(
       createAuditEntry('airtightness_ach', effectiveACH, 'MANUAL', 'high', notes)
     );
@@ -255,14 +497,20 @@ export function calculateRoomHeatLoss(input: RoomHeatLossInput): RoomHeatLossOut
 
   // 1. FABRIC LOSS - Calculate for each wall
   let fabricLossW = 0;
-  
+
   for (const wall of walls) {
     const uValue = wall.u_value_measured ?? wall.u_value_calculated ?? TYPICAL_U_VALUES.walls.cavity_unfilled;
     const areaM2 = wall.area_m2;
     const classification = wall.surface_classification ?? 'EXTERNAL';
-    
+
     // Calculate effective ΔT based on classification
-    const deltaT = calculateEffectiveDeltaT(classification, internalTempC, externalTempC, auditTrail);
+    const deltaT = calculateEffectiveDeltaT(
+      classification,
+      internalTempC,
+      externalTempC,
+      auditTrail,
+      designConditions.unheated_adjacent_config
+    );
     
     // CRITICAL: Party walls will have deltaT = 0, so loss = 0W
     const wallLoss = calculateHeatLoss({ u_value: uValue, area_m2: areaM2, delta_t: deltaT });
@@ -394,7 +642,21 @@ export function calculateRoomHeatLoss(input: RoomHeatLossInput): RoomHeatLossOut
       } else {
         recommendedAction = 'replace';
       }
-      
+
+      // Determine output calculation method
+      const hasCatalogueData = !!(
+        radiatorDetails.output_at_dt50 ||
+        radiatorDetails.output_at_dt35 ||
+        radiatorDetails.output_at_dt30
+      );
+
+      const method: EmitterAdequacyMethod = {
+        rating_standard: 'EN442 ΔT50',
+        exponent_used: 1.3,
+        catalogue_provided: hasCatalogueData,
+        output_calculation_method: hasCatalogueData ? 'catalogue' : 'estimated',
+      };
+
       emitterAdequacy = {
         emitter_id: emitter.emitter_id,
         room_id: room.room_id,
@@ -406,16 +668,18 @@ export function calculateRoomHeatLoss(input: RoomHeatLossInput): RoomHeatLossOut
         adequate_at_mwt_55: output55.output_watts >= requiredW,
         adequate_at_mwt_45: output45.output_watts >= requiredW,
         recommended_action: recommendedAction,
+        method,
         notes: `Radiator ${radiatorDetails.panel_type}, ${radiatorDetails.height_mm}x${radiatorDetails.width_mm}mm`,
       };
       
+      // Add audit entry for emitter adequacy
       auditTrail.push(
         createAuditEntry(
           `emitter_${emitter.emitter_id}_adequacy`,
           recommendedAction,
           'MANUAL',
-          'high',
-          `Output at 45°C: ${output45.output_watts}W vs required ${totalLossW}W (+10% margin)`
+          hasCatalogueData ? 'high' : 'medium',
+          `Output at 45°C: ${output45.output_watts}W vs required ${totalLossW}W (+10% margin). Method: ${method.output_calculation_method}${hasCatalogueData ? '' : ' (indicative - no catalogue data)'}`
         )
       );
     }
@@ -472,6 +736,41 @@ export function calculatePropertyHeatLoss(input: PropertyHeatLossInput): HeatLos
   const allAuditTrail: AuditTrailEntry[] = [];
   const roomHeatLosses: RoomHeatLoss[] = [];
   let totalHeatLossW = 0;
+
+  // Add design conditions to audit trail (first-class)
+  allAuditTrail.push(
+    createAuditEntry(
+      'design_conditions_external_temp_c',
+      designConditions.design_external_temp_c,
+      'TABLE_LOOKUP',
+      'high',
+      `Design external temperature: ${designConditions.design_external_temp_c}°C (MCS standard for UK)`
+    )
+  );
+
+  allAuditTrail.push(
+    createAuditEntry(
+      'design_conditions_internal_temp_c',
+      designConditions.desired_internal_temp_c,
+      'MANUAL',
+      'high',
+      `Design internal temperature: ${designConditions.desired_internal_temp_c}°C (default living areas)`
+    )
+  );
+
+  // If unheated adjacent config is provided, add to audit
+  if (designConditions.unheated_adjacent_config) {
+    const config = designConditions.unheated_adjacent_config;
+    allAuditTrail.push(
+      createAuditEntry(
+        'unheated_adjacent_method',
+        config.method,
+        'MANUAL',
+        'medium',
+        `Unheated adjacent space method: ${config.method}`
+      )
+    );
+  }
 
   // Calculate heat loss for each room
   for (const room of rooms) {
@@ -535,19 +834,25 @@ export function calculatePropertyHeatLoss(input: PropertyHeatLossInput): HeatLos
 export const AtlasHeatLoss = {
   // Defaults
   DEFAULTS: ATLAS_DEFAULTS,
-  
+
+  // Validation
+  validateDesignConditions,
+  validateRoom,
+  validateWall,
+  validateAirtightnessConfig,
+
   // Audit trail
   createAuditEntry,
-  
+
   // Surface calculations
   calculateEffectiveDeltaT,
-  
+
   // Airtightness
   calculateEffectiveACH,
-  
+
   // Room calculations
   calculateRoomHeatLoss,
-  
+
   // Property calculations
   calculatePropertyHeatLoss,
 };

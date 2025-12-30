@@ -78,9 +78,25 @@ export interface WeatherConditions {
   humidity_percent?: number;
 }
 
+/**
+ * Temperature model for unheated adjacent spaces
+ */
+export type UnheatedAdjacentMethod = 'fixed' | 'offset_from_external' | 'user_provided';
+
+export interface UnheatedAdjacentConfig {
+  method: UnheatedAdjacentMethod;
+  /** Fixed temperature (°C) if method is 'fixed' */
+  fixed_temp_c?: number;
+  /** Offset from external temp (°C) if method is 'offset_from_external' */
+  offset_from_external_c?: number;
+  /** User-provided temperature (°C) if method is 'user_provided' */
+  user_temp_c?: number;
+}
+
 export interface DesignConditions {
   design_external_temp_c: number; // Default: -3°C for UK
   desired_internal_temp_c: number; // Default: 21°C
+  unheated_adjacent_config?: UnheatedAdjacentConfig; // Explicit model for unheated spaces
 }
 
 export interface SurveyMetadata {
@@ -461,7 +477,17 @@ export interface AirtightnessConfig {
 }
 
 /**
- * Emitter adequacy check result (Atlas v1.1 - The Killer Feature)
+ * Emitter adequacy method metadata
+ */
+export interface EmitterAdequacyMethod {
+  rating_standard: string; // e.g., "EN442 ΔT50"
+  exponent_used: number; // e.g., 1.3 for radiators
+  catalogue_provided: boolean; // True if using manufacturer catalogue data
+  output_calculation_method: 'estimated' | 'catalogue' | 'measured';
+}
+
+/**
+ * Emitter adequacy check result (Atlas v1.2 - The Killer Feature)
  */
 export interface EmitterAdequacy {
   emitter_id: string;
@@ -474,6 +500,7 @@ export interface EmitterAdequacy {
   adequate_at_mwt_55: boolean;
   adequate_at_mwt_45: boolean;
   recommended_action: 'ok' | 'upsize' | 'major_upsize' | 'replace';
+  method?: EmitterAdequacyMethod; // Calculation method metadata
   notes?: string;
 }
 

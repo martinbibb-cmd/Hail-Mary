@@ -381,8 +381,13 @@ cd packages/shared
 npm test
 ```
 
-## Standards Compliance
+## Standards Alignment
 
+**Standards alignment**: Calculation structure and terminology informed by MCS 3005-D and BS EN 12831 concepts.
+
+**⚠️ Not a compliance certificate**: This tool provides engineering calculations aligned with industry standards but is not a certified compliance tool. For formal MCS certification or Building Regulations approval, consult an accredited assessor.
+
+**Reference standards:**
 - **MCS 3005-D**: UK Microgeneration Certification Scheme for heat pump installations
 - **BS EN 12831**: European standard for heating system design and heat load calculation
 - **UK Building Regulations Part L**: Conservation of fuel and power

@@ -1,74 +1,28 @@
 /**
- * UpgradeConfidenceBottomSheet - Context-aware confidence improvement actions
+ * UpgradeConfidenceBottomSheet (v2)
  *
- * Shows fastest ways to upgrade confidence based on what's missing
+ * Deterministic upgrade actions via getUpgradeActions()
  */
 
 import React from 'react';
 import type { RoomSummary, UpgradeAction } from './types';
-import { getNextBestActionMessage } from './confidenceUtils';
-import './HeatLoss.css';
+import type { Wall } from '@hail-mary/shared';
+import { getUpgradeActions, getNextBestActionMessage } from './upgradeActions';
+import './bottomSheet.css';
 
 interface UpgradeConfidenceBottomSheetProps {
   room: RoomSummary;
+  walls: Wall[];
   onClose: () => void;
   onActionSelect: (action: UpgradeAction) => void;
 }
 
 export const UpgradeConfidenceBottomSheet: React.FC<
   UpgradeConfidenceBottomSheetProps
-> = ({ room, onClose, onActionSelect }) => {
-  // Build context-aware actions based on risk icons
-  const actions: UpgradeAction[] = [];
-
-  if (room.risk_icons.includes('assumed_wall')) {
-    actions.push({
-      action_id: 'confirm_wall',
-      type: 'confirm_wall',
-      label: 'Confirm Wall Type',
-      description: 'Solid / Cavity / Timber (10 sec)',
-      estimated_time_sec: 10,
-    });
-
-    actions.push({
-      action_id: 'confirm_insulation',
-      type: 'confirm_insulation',
-      label: 'Confirm Insulation Status',
-      description: 'None / Filled / Partial / Unknown (10 sec)',
-      estimated_time_sec: 10,
-    });
-  }
-
-  if (room.risk_icons.includes('unknown_glazing')) {
-    actions.push({
-      action_id: 'scan_geometry',
-      type: 'scan_geometry',
-      label: 'Scan Geometry (RoomPlan)',
-      description: 'Capture room dimensions and surfaces with LiDAR',
-      estimated_time_sec: 60,
-    });
-  }
-
-  if (room.risk_icons.includes('unheated_adjacent')) {
-    actions.push({
-      action_id: 'set_unheated_temp',
-      type: 'set_unheated_temp',
-      label: 'Set Unheated Adjacent Temp',
-      description: 'Model garage/porch temperature (15 sec)',
-      estimated_time_sec: 15,
-    });
-  }
-
-  // Always offer photo attachment
-  actions.push({
-    action_id: 'attach_photo',
-    type: 'attach_photo',
-    label: 'Attach Photo Evidence',
-    description: 'Photo / Thermal / Borescope',
-    estimated_time_sec: 30,
-  });
-
-  const nextBestAction = getNextBestActionMessage(room.risk_icons);
+> = ({ room, walls, onClose, onActionSelect }) => {
+  // Generate deterministic actions based on risk flags
+  const actions = getUpgradeActions(room.room_id, room.risk_flags, walls);
+  const nextBestAction = getNextBestActionMessage(room.risk_flags, walls);
 
   return (
     <div className="bottom-sheet-overlay" onClick={onClose}>
@@ -106,16 +60,18 @@ export const UpgradeConfidenceBottomSheet: React.FC<
               >
                 <div className="action-main">
                   <span className="action-label">{action.label}</span>
-                  <span className="action-description">
-                    {action.description}
-                  </span>
+                  <span className="action-reason">{action.reason}</span>
                 </div>
-                <div className="action-time">
-                  {action.estimated_time_sec} sec
-                </div>
+                <div className="action-time">{action.estimated_time_sec}s</div>
               </button>
             ))}
           </div>
+
+          {actions.length === 0 && (
+            <div className="no-actions">
+              <p>✅ No urgent actions needed - confidence is high!</p>
+            </div>
+          )}
         </div>
 
         <div className="bottom-sheet-footer">

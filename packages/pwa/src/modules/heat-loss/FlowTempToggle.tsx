@@ -6,7 +6,7 @@
 
 import React from 'react';
 import type { FlowTemp } from './types';
-import './HeatLoss.css';
+import './FlowTempToggle.css';
 
 interface FlowTempToggleProps {
   selectedTemp: FlowTemp;

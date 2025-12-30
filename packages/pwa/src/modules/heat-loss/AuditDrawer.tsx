@@ -1,13 +1,13 @@
 /**
- * AuditDrawer - Legal shield + Sarah's fuel
+ * AuditDrawer (v2)
  *
- * Shows audit trail for any field with source, confidence, timestamp, and notes
+ * Opens to latest change + copy snippet functionality
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { AuditTrailEntry } from '@hail-mary/shared';
-import { getSourceBadgeLabel } from './confidenceUtils';
-import './HeatLoss.css';
+import { getSourceBadgeLabel } from './confidence';
+import './bottomSheet.css';
 
 interface AuditDrawerProps {
   surfaceId: string;
@@ -20,10 +20,19 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
   auditEntries,
   onClose,
 }) => {
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
   // Filter audit entries for this surface
   const relevantEntries = auditEntries.filter((entry) =>
     entry.field_name.includes(surfaceId)
   );
+
+  // Sort by timestamp descending (latest first)
+  const sortedEntries = [...relevantEntries].sort((a, b) => {
+    const dateA = typeof a.timestamp === 'string' ? new Date(a.timestamp) : a.timestamp;
+    const dateB = typeof b.timestamp === 'string' ? new Date(b.timestamp) : b.timestamp;
+    return dateB.getTime() - dateA.getTime();
+  });
 
   const formatTimestamp = (timestamp: Date | string) => {
     const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
@@ -43,6 +52,24 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
     }
   };
 
+  const copyAuditSnippet = (entry: AuditTrailEntry, index: number) => {
+    const snippet = [
+      `Field: ${entry.field_name}`,
+      `Value: ${typeof entry.value === 'number' ? entry.value.toFixed(2) : entry.value}`,
+      `Source: ${getSourceBadgeLabel(entry.source_type)}`,
+      `Confidence: ${entry.confidence_score}`,
+      `Timestamp: ${formatTimestamp(entry.timestamp)}`,
+      entry.notes ? `Notes: ${entry.notes}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    navigator.clipboard.writeText(snippet).then(() => {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    });
+  };
+
   return (
     <div className="audit-drawer-overlay" onClick={onClose}>
       <div className="audit-drawer" onClick={(e) => e.stopPropagation()}>
@@ -54,7 +81,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
         </div>
 
         <div className="audit-drawer-content">
-          {relevantEntries.length === 0 && (
+          {sortedEntries.length === 0 && (
             <div className="audit-empty">
               <p>No audit trail entries for this surface.</p>
               <p className="audit-hint">
@@ -64,7 +91,13 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
             </div>
           )}
 
-          {relevantEntries.map((entry, index) => (
+          {sortedEntries.length > 0 && (
+            <div className="audit-latest-badge">
+              📌 Latest entry shown first
+            </div>
+          )}
+
+          {sortedEntries.map((entry, index) => (
             <div key={index} className="audit-entry">
               <div className="audit-entry-header">
                 <span className="audit-field-name">{entry.field_name}</span>
@@ -100,6 +133,15 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
                   <strong>Notes:</strong> {entry.notes}
                 </div>
               )}
+
+              <div className="audit-entry-actions">
+                <button
+                  className="copy-snippet-btn"
+                  onClick={() => copyAuditSnippet(entry, index)}
+                >
+                  {copiedIndex === index ? '✅ Copied!' : '📋 Copy Snippet'}
+                </button>
+              </div>
             </div>
           ))}
         </div>

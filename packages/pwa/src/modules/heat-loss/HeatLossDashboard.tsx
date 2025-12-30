@@ -1,35 +1,42 @@
 /**
- * HeatLossDashboard - Confidence-Color Dashboard
+ * HeatLossDashboard (v2)
  *
- * Main screen showing whole-house heat loss with room-by-room confidence indicators
+ * Confidence-led dashboard with validation state banner
  */
 
 import React from 'react';
 import { useHeatLossStore } from './heatLossStore';
 import { RoomCard } from './RoomCard';
 import { FlowTempToggle } from './FlowTempToggle';
-import {
-  confidenceToColor,
-  getConfidenceColorClass,
-} from './confidenceUtils';
-import './HeatLoss.css';
+import { getConfidenceColorClass } from './confidence';
+import { getTopPriorityAction } from './upgradeActions';
+import type { ValidationState } from './types';
+import './HeatLossDashboard.css';
 
 export const HeatLossDashboard: React.FC = () => {
   const {
     calculations,
     roomSummaries,
     wholeHouseConfidence,
+    validationState,
     selectedFlowTemp,
     isCalculating,
     error,
     lastCalculatedAt,
+    rooms,
+    walls,
     setFlowTemp,
     selectRoom,
   } = useHeatLossStore();
 
   const wholeHouseKw = calculations?.whole_house_heat_loss_kw || 0;
   const wholeHouseW = calculations?.whole_house_heat_loss_w || 0;
-  const confidenceColor = confidenceToColor(wholeHouseConfidence);
+  const confidenceColor =
+    wholeHouseConfidence >= 80
+      ? 'green'
+      : wholeHouseConfidence >= 50
+      ? 'amber'
+      : 'red';
 
   const handleRoomClick = (roomId: string) => {
     selectRoom(roomId);
@@ -37,9 +44,25 @@ export const HeatLossDashboard: React.FC = () => {
     console.log('Navigate to room detail:', roomId);
   };
 
-  const handleConfidenceClick = (roomId: string) => {
-    // TODO: Open upgrade confidence sheet
-    console.log('Open upgrade confidence sheet for:', roomId);
+  const handleUpgradeTopRisk = () => {
+    // Find room with lowest confidence
+    const lowestConfidenceRoom = roomSummaries.reduce((lowest, room) =>
+      room.confidence_score < lowest.confidence_score ? room : lowest
+    );
+
+    if (lowestConfidenceRoom) {
+      const roomWalls = walls.filter(
+        (w: any) => w.room_id === lowestConfidenceRoom.room_id
+      );
+      const topAction = getTopPriorityAction(
+        lowestConfidenceRoom.room_id,
+        lowestConfidenceRoom.risk_flags,
+        roomWalls
+      );
+
+      console.log('Top priority action:', topAction);
+      // TODO: Open upgrade confidence sheet pre-filtered to top action
+    }
   };
 
   return (
@@ -57,6 +80,14 @@ export const HeatLossDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Validation State Banner */}
+      {validationState !== 'READY' && roomSummaries.length > 0 && (
+        <ValidationBanner
+          validationState={validationState}
+          onUpgradeTopRisk={handleUpgradeTopRisk}
+        />
+      )}
 
       {/* Whole House Summary */}
       <div className="hl-summary-card">
@@ -118,7 +149,6 @@ export const HeatLossDashboard: React.FC = () => {
                 room={room}
                 selectedFlowTemp={selectedFlowTemp}
                 onRoomClick={() => handleRoomClick(room.room_id)}
-                onConfidenceClick={() => handleConfidenceClick(room.room_id)}
               />
             ))}
           </div>
@@ -138,6 +168,46 @@ export const HeatLossDashboard: React.FC = () => {
         ⚠️ Not a compliance certificate - for formal MCS certification, consult
         an accredited assessor.
       </div>
+    </div>
+  );
+};
+
+/**
+ * Validation State Banner Component
+ */
+interface ValidationBannerProps {
+  validationState: ValidationState;
+  onUpgradeTopRisk: () => void;
+}
+
+const ValidationBanner: React.FC<ValidationBannerProps> = ({
+  validationState,
+  onUpgradeTopRisk,
+}) => {
+  if (validationState === 'READY') return null;
+
+  const isProvisional = validationState === 'PROVISIONAL';
+
+  return (
+    <div className={`validation-banner ${validationState.toLowerCase()}`}>
+      <div className="banner-icon">
+        {isProvisional ? '⚠️' : '⛔'}
+      </div>
+      <div className="banner-content">
+        <div className="banner-title">
+          {isProvisional ? 'Provisional Result' : 'Incomplete Data'}
+        </div>
+        <div className="banner-message">
+          {isProvisional
+            ? 'Can calculate, but important drivers assumed'
+            : 'Cannot calculate safely - missing required data'}
+        </div>
+      </div>
+      {isProvisional && (
+        <button className="banner-action" onClick={onUpgradeTopRisk}>
+          Upgrade Top Risk
+        </button>
+      )}
     </div>
   );
 };

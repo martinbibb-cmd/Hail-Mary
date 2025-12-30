@@ -1,0 +1,222 @@
+/**
+ * HeatLossDashboard Component Styles
+ */
+
+@import './shared-tokens.css';
+
+.heat-loss-dashboard {
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ============================================
+   Header
+   ============================================ */
+
+.hl-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.hl-title-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hl-title-section h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.hl-last-calc {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ============================================
+   Validation Banner
+   ============================================ */
+
+.validation-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-md, 12px);
+  margin-bottom: 1.5rem;
+  border-left: 4px solid;
+}
+
+.validation-banner.provisional {
+  background: var(--warning-soft, #fef3c7);
+  border-color: var(--warning, #f59e0b);
+  color: var(--warning, #92400e);
+}
+
+.validation-banner.incomplete {
+  background: var(--error-soft, #fee2e2);
+  border-color: var(--error, #dc2626);
+  color: var(--error, #991b1b);
+}
+
+.banner-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.banner-content {
+  flex: 1;
+}
+
+.banner-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.banner-message {
+  font-size: 0.875rem;
+}
+
+.banner-action {
+  padding: 0.5rem 1rem;
+  background: var(--accent, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast, 0.12s);
+}
+
+.banner-action:hover {
+  background: var(--accent-hover, #2563eb);
+}
+
+/* ============================================
+   Summary Card
+   ============================================ */
+
+.hl-summary-card {
+  background: white;
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.hl-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.hl-summary-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.confidence-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.hl-summary-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.hl-summary-meta {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ============================================
+   Rooms Grid
+   ============================================ */
+
+.hl-rooms-section {
+  margin-top: 2rem;
+}
+
+.hl-rooms-section h3 {
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.hl-rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* ============================================
+   Error & Loading States
+   ============================================ */
+
+.hl-error {
+  padding: 1rem;
+  background: var(--error-soft, #fee2e2);
+  border-left: 4px solid var(--error, #dc2626);
+  border-radius: var(--radius-sm, 8px);
+  margin-bottom: 1.5rem;
+  color: var(--error, #991b1b);
+}
+
+.hl-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem;
+}
+
+.hl-empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ============================================
+   Disclaimer
+   ============================================ */
+
+.hl-disclaimer {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: var(--warning-soft, #fef3c7);
+  border-left: 4px solid var(--warning, #f59e0b);
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.875rem;
+  color: var(--warning, #92400e);
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 640px) {
+  .hl-rooms-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hl-summary-value {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}

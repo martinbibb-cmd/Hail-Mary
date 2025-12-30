@@ -4,7 +4,6 @@
  * Context-aware actions driven by risk flag analysis
  */
 
-import type { Wall } from '@hail-mary/shared';
 import type { RiskFlag, UpgradeAction } from './types';
 
 /**
@@ -14,8 +13,7 @@ import type { RiskFlag, UpgradeAction } from './types';
  */
 export function getUpgradeActions(
   roomId: string,
-  riskFlags: RiskFlag[],
-  walls: Wall[]
+  riskFlags: RiskFlag[]
 ): UpgradeAction[] {
   const actions: UpgradeAction[] = [];
 
@@ -132,10 +130,9 @@ export function getUpgradeActions(
  */
 export function getTopPriorityAction(
   roomId: string,
-  riskFlags: RiskFlag[],
-  walls: Wall[]
+  riskFlags: RiskFlag[]
 ): UpgradeAction | null {
-  const actions = getUpgradeActions(roomId, riskFlags, walls);
+  const actions = getUpgradeActions(roomId, riskFlags);
   // Return first action that's not photo attachment
   return actions.find((a) => a.type !== 'attach_photo') || actions[0] || null;
 }
@@ -144,8 +141,7 @@ export function getTopPriorityAction(
  * Get next best action message (one-liner for dashboard)
  */
 export function getNextBestActionMessage(
-  riskFlags: RiskFlag[],
-  walls: Wall[]
+  riskFlags: RiskFlag[]
 ): string {
   if (riskFlags.length === 0) {
     return 'Confidence is high - no urgent actions needed';

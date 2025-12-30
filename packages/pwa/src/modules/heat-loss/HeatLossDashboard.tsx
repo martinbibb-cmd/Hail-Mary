@@ -23,8 +23,6 @@ export const HeatLossDashboard: React.FC = () => {
     isCalculating,
     error,
     lastCalculatedAt,
-    rooms,
-    walls,
     setFlowTemp,
     selectRoom,
   } = useHeatLossStore();
@@ -51,13 +49,9 @@ export const HeatLossDashboard: React.FC = () => {
     );
 
     if (lowestConfidenceRoom) {
-      const roomWalls = walls.filter(
-        (w: any) => w.room_id === lowestConfidenceRoom.room_id
-      );
       const topAction = getTopPriorityAction(
         lowestConfidenceRoom.room_id,
-        lowestConfidenceRoom.risk_flags,
-        roomWalls
+        lowestConfidenceRoom.risk_flags
       );
 
       console.log('Top priority action:', topAction);

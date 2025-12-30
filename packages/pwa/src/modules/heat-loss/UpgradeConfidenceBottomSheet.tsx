@@ -6,23 +6,21 @@
 
 import React from 'react';
 import type { RoomSummary, UpgradeAction } from './types';
-import type { Wall } from '@hail-mary/shared';
 import { getUpgradeActions, getNextBestActionMessage } from './upgradeActions';
 import './bottomSheet.css';
 
 interface UpgradeConfidenceBottomSheetProps {
   room: RoomSummary;
-  walls: Wall[];
   onClose: () => void;
   onActionSelect: (action: UpgradeAction) => void;
 }
 
 export const UpgradeConfidenceBottomSheet: React.FC<
   UpgradeConfidenceBottomSheetProps
-> = ({ room, walls, onClose, onActionSelect }) => {
+> = ({ room, onClose, onActionSelect }) => {
   // Generate deterministic actions based on risk flags
-  const actions = getUpgradeActions(room.room_id, room.risk_flags, walls);
-  const nextBestAction = getNextBestActionMessage(room.risk_flags, walls);
+  const actions = getUpgradeActions(room.room_id, room.risk_flags);
+  const nextBestAction = getNextBestActionMessage(room.risk_flags);
 
   return (
     <div className="bottom-sheet-overlay" onClick={onClose}>

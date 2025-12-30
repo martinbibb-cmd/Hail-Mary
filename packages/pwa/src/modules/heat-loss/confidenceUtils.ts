@@ -50,7 +50,10 @@ export function calculateRoomConfidence(
   let totalConfidence = 0;
   let count = 0;
 
-  // Check geometry confidence (from audit trail or defaults)
+  // Check geometry confidence
+  // Note: RoomDimensions interface doesn't have source_type property,
+  // so we default to ASSUMED. This should be enhanced in future to track
+  // room dimension data sources via audit trail or room metadata.
   const geometrySource = 'ASSUMED'; // Default since RoomDimensions doesn't have source_type
   if (geometrySource === 'LIDAR') {
     totalConfidence += 90;

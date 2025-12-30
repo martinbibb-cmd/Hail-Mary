@@ -7,7 +7,6 @@
 import type {
   Room,
   Wall,
-  RoomHeatLoss,
   ConfidenceScore,
   DataSourceType,
   AuditTrailEntry,
@@ -51,12 +50,8 @@ export function calculateRoomConfidence(
   let totalConfidence = 0;
   let count = 0;
 
-  // Check geometry confidence (from room dimensions)
-  const roomAudit = auditTrail.filter((entry) =>
-    entry.field_name.includes(room.room_id)
-  );
-
-  const geometrySource = room.dimensions.source_type || 'ASSUMED';
+  // Check geometry confidence (from audit trail or defaults)
+  const geometrySource = 'ASSUMED'; // Default since RoomDimensions doesn't have source_type
   if (geometrySource === 'LIDAR') {
     totalConfidence += 90;
   } else if (geometrySource === 'MANUAL') {

@@ -12,68 +12,53 @@ import type { Room, Wall, Emitter } from '@hail-mary/shared';
 export const demoRooms: Room[] = [
   {
     room_id: 'living-room',
-    room_name: 'Living Room',
-    room_type: 'living_room',
+    name: 'Living Room',
     dimensions: {
       floor_area_m2: 20.5,
       volume_m3: 51.25,
-      ceiling_height_m: 2.5,
-      source_type: 'LIDAR',
-      confidence_score: 'high',
+      height_m: 2.5,
     },
-    desired_temp_c: 21,
+    design_temp_c: 21,
   },
   {
     room_id: 'kitchen',
-    room_name: 'Kitchen',
-    room_type: 'kitchen',
+    name: 'Kitchen',
     dimensions: {
       floor_area_m2: 12.0,
       volume_m3: 30.0,
-      ceiling_height_m: 2.5,
-      source_type: 'MANUAL',
-      confidence_score: 'medium',
+      height_m: 2.5,
     },
-    desired_temp_c: 21,
+    design_temp_c: 21,
   },
   {
     room_id: 'bedroom-1',
-    room_name: 'Master Bedroom',
-    room_type: 'bedroom',
+    name: 'Master Bedroom',
     dimensions: {
       floor_area_m2: 15.0,
       volume_m3: 37.5,
-      ceiling_height_m: 2.5,
-      source_type: 'ASSUMED',
-      confidence_score: 'low',
+      height_m: 2.5,
     },
-    desired_temp_c: 18,
+    design_temp_c: 18,
   },
   {
     room_id: 'bedroom-2',
-    room_name: 'Bedroom 2',
-    room_type: 'bedroom',
+    name: 'Bedroom 2',
     dimensions: {
       floor_area_m2: 10.0,
       volume_m3: 25.0,
-      ceiling_height_m: 2.5,
-      source_type: 'ASSUMED',
-      confidence_score: 'low',
+      height_m: 2.5,
     },
-    desired_temp_c: 18,
+    design_temp_c: 18,
   },
   {
     room_id: 'bathroom',
-    room_name: 'Bathroom',
-    room_type: 'bathroom',
+    name: 'Bathroom',
     dimensions: {
       floor_area_m2: 5.0,
       volume_m3: 12.5,
-      ceiling_height_m: 2.5,
-      source_type: 'MANUAL',
-      confidence_score: 'medium',
+      height_m: 2.5,
     },
-    desired_temp_c: 22,
+    design_temp_c: 22,
   },
 ];
 
@@ -84,7 +69,6 @@ export const demoWalls: Wall[] = [
   // Living Room walls
   {
     wall_id: 'living-wall-1',
-    room_id: 'living-room',
     orientation: 'N',
     area_m2: 10.0,
     construction_type: 'cavity_filled',
@@ -95,7 +79,6 @@ export const demoWalls: Wall[] = [
   },
   {
     wall_id: 'living-wall-2',
-    room_id: 'living-room',
     orientation: 'W',
     area_m2: 8.2,
     construction_type: 'cavity_filled',
@@ -106,7 +89,6 @@ export const demoWalls: Wall[] = [
   },
   {
     wall_id: 'living-wall-3',
-    room_id: 'living-room',
     orientation: 'E',
     area_m2: 8.2,
     construction_type: 'solid',
@@ -119,7 +101,6 @@ export const demoWalls: Wall[] = [
   // Kitchen walls
   {
     wall_id: 'kitchen-wall-1',
-    room_id: 'kitchen',
     orientation: 'N',
     area_m2: 6.0,
     construction_type: 'cavity_unfilled',
@@ -130,7 +111,6 @@ export const demoWalls: Wall[] = [
   },
   {
     wall_id: 'kitchen-wall-2',
-    room_id: 'kitchen',
     orientation: 'E',
     area_m2: 4.8,
     construction_type: 'solid',
@@ -143,7 +123,6 @@ export const demoWalls: Wall[] = [
   // Master Bedroom walls
   {
     wall_id: 'bedroom1-wall-1',
-    room_id: 'bedroom-1',
     orientation: 'N',
     area_m2: 7.5,
     construction_type: 'cavity_unfilled',
@@ -154,7 +133,6 @@ export const demoWalls: Wall[] = [
   },
   {
     wall_id: 'bedroom1-wall-2',
-    room_id: 'bedroom-1',
     orientation: 'W',
     area_m2: 6.0,
     construction_type: 'cavity_unfilled',
@@ -167,7 +145,6 @@ export const demoWalls: Wall[] = [
   // Bedroom 2 walls
   {
     wall_id: 'bedroom2-wall-1',
-    room_id: 'bedroom-2',
     orientation: 'S',
     area_m2: 5.0,
     construction_type: 'cavity_unfilled',
@@ -180,7 +157,6 @@ export const demoWalls: Wall[] = [
   // Bathroom walls
   {
     wall_id: 'bathroom-wall-1',
-    room_id: 'bathroom',
     orientation: 'N',
     area_m2: 2.5,
     construction_type: 'cavity_filled',
@@ -198,52 +174,57 @@ export const demoEmitters: Emitter[] = [
   {
     emitter_id: 'living-rad-1',
     room_id: 'living-room',
-    emitter_type: 'radiator',
-    radiator_type: 'double_panel_double_convector',
-    width_mm: 1400,
-    height_mm: 600,
-    length_mm: 1400,
-    output_at_dt50_w: 2800,
+    type: 'radiator',
+    radiator_details: {
+      panel_type: 'K2',
+      height_mm: 600,
+      width_mm: 1400,
+      output_at_dt50: 2800,
+    },
   },
   {
     emitter_id: 'kitchen-rad-1',
     room_id: 'kitchen',
-    emitter_type: 'radiator',
-    radiator_type: 'single_panel',
-    width_mm: 1000,
-    height_mm: 600,
-    length_mm: 1000,
-    output_at_dt50_w: 1200,
+    type: 'radiator',
+    radiator_details: {
+      panel_type: 'P+',
+      height_mm: 600,
+      width_mm: 1000,
+      output_at_dt50: 1200,
+    },
   },
   {
     emitter_id: 'bedroom1-rad-1',
     room_id: 'bedroom-1',
-    emitter_type: 'radiator',
-    radiator_type: 'double_panel_single_convector',
-    width_mm: 1200,
-    height_mm: 600,
-    length_mm: 1200,
-    output_at_dt50_w: 1800,
+    type: 'radiator',
+    radiator_details: {
+      panel_type: 'K1',
+      height_mm: 600,
+      width_mm: 1200,
+      output_at_dt50: 1800,
+    },
   },
   {
     emitter_id: 'bedroom2-rad-1',
     room_id: 'bedroom-2',
-    emitter_type: 'radiator',
-    radiator_type: 'single_panel',
-    width_mm: 800,
-    height_mm: 600,
-    length_mm: 800,
-    output_at_dt50_w: 950,
+    type: 'radiator',
+    radiator_details: {
+      panel_type: 'P+',
+      height_mm: 600,
+      width_mm: 800,
+      output_at_dt50: 950,
+    },
   },
   {
     emitter_id: 'bathroom-rad-1',
     room_id: 'bathroom',
-    emitter_type: 'radiator',
-    radiator_type: 'towel_rail',
-    width_mm: 500,
-    height_mm: 800,
-    length_mm: 500,
-    output_at_dt50_w: 600,
+    type: 'radiator',
+    radiator_details: {
+      panel_type: 'P+',
+      height_mm: 800,
+      width_mm: 500,
+      output_at_dt50: 600,
+    },
   },
 ];
 

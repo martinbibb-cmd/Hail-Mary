@@ -8,12 +8,10 @@ import type {
   Room,
   Wall,
   Emitter,
-  RoomHeatLoss,
   HeatLossCalculations,
   ConfidenceScore,
   DataSourceType,
   SurfaceClassification,
-  AuditTrailEntry,
 } from '@hail-mary/shared';
 
 /**

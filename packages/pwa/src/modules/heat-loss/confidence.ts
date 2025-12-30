@@ -88,7 +88,8 @@ export function calculateRoomConfidence(
   let otherScore = 0;
 
   // 1. Geometry confidence
-  const geometrySource = room.dimensions.source_type || 'ASSUMED';
+  // If room has lidar scan data, use LIDAR source type; otherwise assumed
+  const geometrySource = room.lidar_scan ? 'LIDAR' : 'ASSUMED';
   geometryScore = calculateFieldConfidence(geometrySource);
 
   if (geometryScore < 50) {
@@ -176,7 +177,7 @@ export function calculateResultConfidence(
   if (roomHeatLosses.length === 0) return 0;
 
   const totalHeatLoss = roomHeatLosses.reduce(
-    (sum, r) => sum + r.total_heat_loss_w,
+    (sum, r) => sum + (r.total_loss_w || 0),
     0
   );
 
@@ -186,7 +187,7 @@ export function calculateResultConfidence(
   let weightedSum = 0;
   for (const roomHL of roomHeatLosses) {
     const roomConfidence = roomConfidences.get(roomHL.room_id) || 50;
-    const weight = roomHL.total_heat_loss_w / totalHeatLoss;
+    const weight = (roomHL.total_loss_w || 0) / totalHeatLoss;
     weightedSum += roomConfidence * weight;
   }
 
@@ -202,7 +203,7 @@ export function calculateResultConfidence(
  */
 export function getValidationState(
   rooms: Room[],
-  walls: Wall[],
+  _walls: Wall[],
   roomConfidences: Map<string, number>
 ): ValidationState {
   // Check for critical missing data

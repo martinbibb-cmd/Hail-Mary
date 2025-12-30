@@ -18,10 +18,8 @@ import type {
 import type {
   FlowTemp,
   RoomSummary,
-  AdequacyStatus,
   HeatLossState,
   AdequacyAtAllTemps,
-  ValidationState,
 } from './types';
 import {
   calculateRoomConfidence,
@@ -54,22 +52,6 @@ const initialState: HeatLossState = {
   roomSummaries: [],
   wholeHouseConfidence: 0,
 };
-
-/**
- * Get adequacy status from emitter adequacy result
- */
-function getAdequacyStatus(
-  adequacy: { adequate: boolean; shortfall_w: number } | undefined | null
-): AdequacyStatus {
-  if (!adequacy) return 'unknown';
-
-  if (adequacy.adequate) return 'ok';
-
-  // Shortfall > 500W is major
-  if (adequacy.shortfall_w > 500) return 'major_upsize';
-
-  return 'upsize';
-}
 
 /**
  * Build adequacy at all temps from emitter adequacy result
@@ -224,7 +206,7 @@ export const useHeatLossStore = create<HeatLossStore>((set, get) => ({
         roomSummaries.map((rs) => [rs.room_id, rs.confidence_score])
       );
       const wholeHouseConfidence = calculateResultConfidence(
-        calculations.room_heat_losses,
+        calculations.room_heat_losses || [],
         roomConfidences
       );
 

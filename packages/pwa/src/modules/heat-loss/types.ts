@@ -13,9 +13,10 @@ import type {
   Wall,
   Emitter,
   HeatLossCalculations,
-  ConfidenceScore,
   DataSourceType,
   SurfaceClassification,
+  RoomHeatLoss,
+  AuditTrailEntry,
 } from '@hail-mary/shared';
 
 // ============================================

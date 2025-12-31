@@ -1248,13 +1248,3 @@ export const EXPANDED_DIAGNOSTIC_PATTERNS: Record<string, DiagnosticPattern> = {
     sop_reference: 'SOP-FLUE-002',
   },
 };
-
-// ============================================
-// Export Expanded Catalogs
-// ============================================
-
-export {
-  EXPANDED_BOILER_MODELS,
-  EXPANDED_FAULT_CODES,
-  EXPANDED_DIAGNOSTIC_PATTERNS,
-};

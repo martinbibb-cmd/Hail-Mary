@@ -4,6 +4,16 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./atlas-voice": {
+      "types": "./dist/atlas-voice/index.d.ts",
+      "default": "./dist/atlas-voice/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc && npm run copy-json",
     "copy-json": "mkdir -p dist/core && cp src/core/*.json dist/core/",

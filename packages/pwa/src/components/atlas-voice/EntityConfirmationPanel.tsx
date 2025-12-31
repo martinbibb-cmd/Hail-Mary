@@ -117,7 +117,7 @@ export const EntityConfirmationPanel: React.FC<EntityConfirmationPanelProps> = (
   entities,
   events = [],
   overallConfidence,
-  itemsNeedingConfirmation,
+  itemsNeedingConfirmation: _itemsNeedingConfirmation, // Unused but kept for API compatibility
   onConfirmAll,
   onEntityConfirm,
   onEntityEdit,
@@ -128,7 +128,6 @@ export const EntityConfirmationPanel: React.FC<EntityConfirmationPanelProps> = (
   const [filterNeedsConfirmation, setFilterNeedsConfirmation] = useState(false);
 
   const stats = calculateStats(entities);
-  const entityGroups = groupEntitiesByType(entities);
 
   const filteredEntities = filterNeedsConfirmation
     ? entities.filter((e) => e.metadata.needs_confirmation)

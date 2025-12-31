@@ -630,30 +630,3 @@ export interface EventValidator {
   /** Check if event makes sense given extracted entities */
   validateContextConsistency(event: Event, context: any): ValidationResult;
 }
-
-// ============================================
-// Export all types
-// ============================================
-
-export type {
-  ExtractionMetadata,
-  ConfidenceLevel,
-  ExtractionMethod,
-  Entity,
-  BoilerEntity,
-  ControlSystemEntity,
-  ComponentEntity,
-  FaultCodeEntity,
-  MeasurementEntity,
-  MaterialEntity,
-  Event,
-  DiagnosticObservationEvent,
-  FaultReportedEvent,
-  MeasurementTakenEvent,
-  ActionTakenEvent,
-  ControlLogicEvent,
-  EntityEventExtraction,
-  ValidationResult,
-  EntityValidator,
-  EventValidator,
-};

@@ -19,10 +19,14 @@
     "strictPropertyInitialization": false,
     "outDir": "./dist",
     "rootDir": "./src",
+    "baseUrl": "../..",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "paths": {
+      "@hail-mary/shared/atlas-voice": ["packages/shared/dist/atlas-voice"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/__tests__", "**/*.test.ts", "**/*.spec.ts"]

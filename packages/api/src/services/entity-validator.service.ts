@@ -235,7 +235,7 @@ function validateControlSystemEntity(
     // Verify components are consistent
     if (entity.components && entity.components.length > 0) {
       const unexpectedComponents = entity.components.filter(
-        comp => !catalogSystem.typical_components.includes(comp)
+        (comp: string) => !catalogSystem.typical_components.includes(comp)
       );
 
       if (unexpectedComponents.length > 0) {

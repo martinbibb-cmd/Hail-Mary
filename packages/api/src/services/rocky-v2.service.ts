@@ -90,7 +90,7 @@ function buildRockyFactsFromEntities(
   };
 
   // Extract boiler information
-  const boilerEntities = entities.filter(e => e.type === 'boiler') as BoilerEntity[];
+  const boilerEntities = entities.filter(e => (e as Entity).type === 'boiler') as unknown as BoilerEntity[];
   if (boilerEntities.length > 0) {
     const boiler = boilerEntities[0]; // Take first boiler
     facts.existingSystem = {
@@ -104,7 +104,7 @@ function buildRockyFactsFromEntities(
   }
 
   // Extract control system information
-  const controlEntities = entities.filter(e => e.type === 'control_system') as ControlSystemEntity[];
+  const controlEntities = entities.filter(e => (e as Entity).type === 'control_system') as unknown as ControlSystemEntity[];
   if (controlEntities.length > 0) {
     const control = controlEntities[0];
     // Add to facts (no direct field in v1, but we can note it)
@@ -113,7 +113,7 @@ function buildRockyFactsFromEntities(
   }
 
   // Extract measurements
-  const measurementEntities = entities.filter(e => e.type === 'measurement') as MeasurementEntity[];
+  const measurementEntities = entities.filter(e => (e as Entity).type === 'measurement') as unknown as MeasurementEntity[];
   measurementEntities.forEach(measurement => {
     switch (measurement.measurement_type) {
       case 'pressure':
@@ -137,7 +137,7 @@ function buildRockyFactsFromEntities(
   });
 
   // Extract materials
-  const materialEntities = entities.filter(e => e.type === 'material') as MaterialEntity[];
+  const materialEntities = entities.filter(e => (e as Entity).type === 'material') as unknown as MaterialEntity[];
   facts.materials = materialEntities.map(material => ({
     name: material.name,
     quantity: material.quantity,
@@ -145,7 +145,7 @@ function buildRockyFactsFromEntities(
   }));
 
   // Extract components that might be hazards
-  const componentEntities = entities.filter(e => e.type === 'component') as ComponentEntity[];
+  const componentEntities = entities.filter(e => (e as Entity).type === 'component') as unknown as ComponentEntity[];
   componentEntities.forEach(component => {
     // Check for hazardous states
     if (

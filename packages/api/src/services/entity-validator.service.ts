@@ -23,6 +23,9 @@ import type {
   MaterialEntity,
   ValidationResult,
   ExtractionMethod,
+  Validated,
+  ValidatedEntity,
+  ValidationMeta,
 } from '@hail-mary/shared/atlas-voice';
 
 import {
@@ -68,29 +71,8 @@ export interface EntityValidationContext {
   componentAliases: Record<string, string>;
 }
 
-export interface ValidatedEntity extends Entity {
-  /** Validation result */
-  validation: {
-    /** Whether validation passed */
-    passed: boolean;
-
-    /** Confidence boost/penalty from validation */
-    confidence_adjustment: number;
-
-    /** Validation warnings */
-    warnings: string[];
-
-    /** Validation errors */
-    errors: string[];
-
-    /** Catalog match info */
-    catalog_match?: {
-      matched: boolean;
-      match_type: 'exact' | 'alias' | 'fuzzy' | 'none';
-      matched_value?: any;
-    };
-  };
-}
+// ValidatedEntity and ValidationMeta are now imported from shared schema
+// No need to redeclare here - using the generic Validated<T> wrapper pattern
 
 // ============================================
 // Default Validation Context
@@ -602,6 +584,19 @@ function validateEntity(
         match_type: 'none' as const,
       };
 
+  // Build ValidationMeta using the new schema
+  const validationMeta: ValidationMeta = {
+    passed: validationResult.valid,
+    confidence_adjustment: validationResult.confidence_adjustment || 0,
+    final_confidence: adjustedConfidence,
+    warnings: validationResult.warnings || [],
+    errors: validationResult.errors || [],
+    catalog_match,
+    validated_at: new Date(),
+    schema_version: '1.0',
+  };
+
+  // Return validated entity using generic wrapper pattern
   return {
     ...entity,
     metadata: {
@@ -610,14 +605,8 @@ function validateEntity(
       confidence_level: adjustedConfidenceLevel,
       needs_confirmation: adjustedNeedsConfirmation,
     },
-    validation: {
-      passed: validationResult.valid,
-      confidence_adjustment: validationResult.confidence_adjustment || 0,
-      warnings: validationResult.warnings || [],
-      errors: validationResult.errors || [],
-      catalog_match,
-    },
-  };
+    validation: validationMeta,
+  } as ValidatedEntity;
 }
 
 /**

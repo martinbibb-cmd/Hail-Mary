@@ -9,7 +9,7 @@
  * This module contains NO LLM usage, NO tone, NO prose.
  */
 
-import type { RockyResult } from '@hail-mary/shared/src/rocky/types';
+import type { RockyResult } from '@hail-mary/shared';
 import type { KeyDetails, ChecklistItem } from './components';
 
 interface ExtractionContext {

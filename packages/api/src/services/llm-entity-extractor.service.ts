@@ -305,24 +305,24 @@ ${Object.entries(BOILER_MAKE_ALIASES)
 ## Common Boiler Models
 ${Object.entries(COMMON_BOILER_MODELS)
   .slice(0, 10)
-  .map(([id, model]) => `- ${model.make} ${model.model} (${model.type}, ${model.output_kw}kW)`)
+  .map(([id, model]: [string, any]) => `- ${model.make} ${model.model} (${model.type}, ${model.output_kw}kW)`)
   .join('\n')}
 
 ## Control Systems
 ${Object.entries(CONTROL_SYSTEMS)
-  .map(([id, sys]) => `- ${sys.name}: ${sys.description}`)
+  .map(([id, sys]: [string, any]) => `- ${sys.name}: ${sys.description}`)
   .join('\n')}
 
 ## Component Aliases
 ${Object.entries(COMPONENT_ALIASES)
   .slice(0, 15)
-  .map(([alias, normalized]) => `- "${alias}" → "${normalized}"`)
+  .map(([alias, normalized]: [string, string]) => `- "${alias}" → "${normalized}"`)
   .join('\n')}
 
 ## Known Fault Codes
 ${Object.entries(FAULT_CODES)
   .slice(0, 10)
-  .map(([id, code]) => `- ${code.code} (${code.make}): ${code.description}`)
+  .map(([id, code]: [string, any]) => `- ${code.code} (${code.make}): ${code.description}`)
   .join('\n')}
 
 ---

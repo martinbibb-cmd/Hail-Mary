@@ -592,8 +592,52 @@ export function calculateOverallConfidence(
 }
 
 // ============================================
-// Validation Helpers
+// Validation Types
 // ============================================
+
+/**
+ * Validation metadata attached to entities after validation
+ */
+export interface ValidationMeta {
+  /** Whether validation passed */
+  passed: boolean;
+
+  /** Confidence boost/penalty from validation */
+  confidence_adjustment: number;
+
+  /** Final adjusted confidence after validation */
+  final_confidence: number;
+
+  /** Validation warnings */
+  warnings: string[];
+
+  /** Validation errors */
+  errors: string[];
+
+  /** Catalog match info */
+  catalog_match?: {
+    matched: boolean;
+    match_type: 'exact' | 'alias' | 'fuzzy' | 'none';
+    matched_value?: any;
+  };
+
+  /** When validation occurred */
+  validated_at: Date;
+
+  /** Schema version used for validation */
+  schema_version: string;
+}
+
+/**
+ * Generic wrapper type for validated entities
+ * Avoids TypeScript error from extending union types
+ */
+export type Validated<T extends Entity> = T & { validation: ValidationMeta };
+
+/**
+ * Validated entity union type
+ */
+export type ValidatedEntity = Validated<Entity>;
 
 /**
  * Validation result for an entity or event

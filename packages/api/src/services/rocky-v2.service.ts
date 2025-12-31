@@ -32,12 +32,13 @@ import type {
   MeasurementEntity,
   MaterialEntity,
   EntityEventExtraction,
+  ValidatedEntity,
 } from '@hail-mary/shared/atlas-voice';
 
 import { JARGON_NORMALIZATION } from '@hail-mary/shared/atlas-voice';
 
 import { llmEntityExtractorService } from './llm-entity-extractor.service';
-import { entityValidatorService, type ValidatedEntity } from './entity-validator.service';
+import { entityValidatorService } from './entity-validator.service';
 
 // ============================================
 // Text Normalization (deterministic)
@@ -90,21 +91,28 @@ function buildRockyFactsFromEntities(
   };
 
   // Extract boiler information
-  const boilerEntities = entities.filter(e => e.type === 'boiler') as BoilerEntity[];
+  // Filter for boiler entities and narrow the type
+  const boilerEntities = entities.filter(e => e.type === 'boiler');
   if (boilerEntities.length > 0) {
-    const boiler = boilerEntities[0]; // Take first boiler
-    facts.existingSystem = {
-      boilerMake: boiler.make,
-      boilerModel: boiler.model,
-      boilerAge: boiler.age,
-      systemType: boiler.boiler_type,
-      fuelType: boiler.fuel_type,
-      condition: boiler.condition,
-    };
+    const validated = boilerEntities[0];
+    // Type guard: we know it's a boiler type based on the discriminator
+    if (validated.type === 'boiler') {
+      const boiler = validated as BoilerEntity;
+      facts.existingSystem = {
+        boilerMake: boiler.make,
+        boilerModel: boiler.model,
+        boilerAge: boiler.age,
+        // Map back_boiler to 'other' for Rocky v1 compatibility
+        systemType: boiler.boiler_type === 'back_boiler' ? 'other' : boiler.boiler_type,
+        fuelType: boiler.fuel_type,
+        // Map 'unknown' to 'working' for Rocky v1 compatibility
+        condition: boiler.condition === 'unknown' ? 'working' : boiler.condition,
+      };
+    }
   }
 
   // Extract control system information
-  const controlEntities = entities.filter(e => e.type === 'control_system') as ControlSystemEntity[];
+  const controlEntities = entities.filter(e => e.type === 'control_system');
   if (controlEntities.length > 0) {
     const control = controlEntities[0];
     // Add to facts (no direct field in v1, but we can note it)
@@ -113,52 +121,64 @@ function buildRockyFactsFromEntities(
   }
 
   // Extract measurements
-  const measurementEntities = entities.filter(e => e.type === 'measurement') as MeasurementEntity[];
-  measurementEntities.forEach(measurement => {
-    switch (measurement.measurement_type) {
-      case 'pressure':
-        // System pressure - not in v1 schema but could be added
-        break;
+  const measurementEntities = entities.filter(e => e.type === 'measurement');
+  measurementEntities.forEach(validated => {
+    if (validated.type === 'measurement') {
+      const measurement = validated as MeasurementEntity;
+      switch (measurement.measurement_type) {
+        case 'pressure':
+          // System pressure - not in v1 schema but could be added
+          break;
 
-      case 'pipe_size':
-        facts.measurements!.pipeSize = `${measurement.value}${measurement.unit}`;
-        break;
+        case 'pipe_size':
+          facts.measurements!.pipeSize = `${measurement.value}${measurement.unit}`;
+          break;
 
-      case 'temperature':
-        // Temperature readings - could add to measurements
-        break;
+        case 'temperature':
+          // Temperature readings - could add to measurements
+          break;
 
-      case 'current':
-        if (measurement.context?.toLowerCase().includes('fuse')) {
-          facts.measurements!.mainFuseRating = measurement.value;
-        }
-        break;
+        case 'current':
+          if (measurement.context?.toLowerCase().includes('fuse')) {
+            facts.measurements!.mainFuseRating = measurement.value;
+          }
+          break;
+      }
     }
   });
 
   // Extract materials
-  const materialEntities = entities.filter(e => e.type === 'material') as MaterialEntity[];
-  facts.materials = materialEntities.map(material => ({
-    name: material.name,
-    quantity: material.quantity,
-    unit: material.unit,
-  }));
+  const materialEntities = entities.filter(e => e.type === 'material');
+  facts.materials = materialEntities.map(validated => {
+    if (validated.type === 'material') {
+      const material = validated as MaterialEntity;
+      return {
+        name: material.name,
+        quantity: material.quantity,
+        unit: material.unit,
+      };
+    }
+    return { name: 'unknown', quantity: 0, unit: '' };
+  }).filter(m => m.name !== 'unknown');
 
   // Extract components that might be hazards
-  const componentEntities = entities.filter(e => e.type === 'component') as ComponentEntity[];
-  componentEntities.forEach(component => {
-    // Check for hazardous states
-    if (
-      component.state === 'faulty' ||
-      component.state === 'leaking' ||
-      component.state === 'discharging'
-    ) {
-      facts.hazards = facts.hazards || [];
-      facts.hazards.push({
-        type: `${component.name} ${component.state}`,
-        location: component.location || 'See notes',
-        severity: 'medium',
-      });
+  const componentEntities = entities.filter(e => e.type === 'component');
+  componentEntities.forEach(validated => {
+    if (validated.type === 'component') {
+      const component = validated as ComponentEntity;
+      // Check for hazardous states
+      if (
+        component.state === 'faulty' ||
+        component.state === 'leaking' ||
+        component.state === 'discharging'
+      ) {
+        facts.hazards = facts.hazards || [];
+        facts.hazards.push({
+          type: `${component.name} ${component.state}`,
+          location: component.location || 'See notes',
+          severity: 'medium',
+        });
+      }
     }
   });
 

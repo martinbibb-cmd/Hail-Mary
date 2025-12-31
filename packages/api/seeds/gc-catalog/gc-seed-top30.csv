@@ -1,0 +1,31 @@
+gc_number,manufacturer,brand,model,variant,boiler_type,fuel,ch_output_kw,dhw_output_kw,pump_overrun_required,permanent_live_required,overrun_handled_by,typical_fuse_a,internal_pump_present,internal_diverter_present,height_mm,width_mm,depth_mm,source_ref,notes
+47-311-19,Worcester Bosch,Worcester,Greenstar 4000,25kW,combi,ng,25,25,yes,yes,boiler,3,yes,no,700,440,360,seed:v1,Common combi boiler
+47-311-20,Worcester Bosch,Worcester,Greenstar 4000,30kW,combi,ng,30,30,yes,yes,boiler,3,yes,no,700,440,360,seed:v1,Common combi boiler
+47-311-21,Worcester Bosch,Worcester,Greenstar 4000,35kW,combi,ng,35,35,yes,yes,boiler,3,yes,no,700,440,360,seed:v1,Common combi boiler
+47-341-95,Worcester Bosch,Worcester,Greenstar 8000,30kW,combi,ng,30,30,yes,yes,boiler,3,yes,no,720,440,360,seed:v1,Premium combi range
+47-311-44,Worcester Bosch,Worcester,Greenstar 2000,25kW,combi,ng,25,25,yes,yes,boiler,3,yes,no,700,440,360,seed:v1,Entry level combi
+47-311-45,Worcester Bosch,Worcester,Greenstar 2000,30kW,combi,ng,30,30,yes,yes,boiler,3,yes,no,700,440,360,seed:v1,Entry level combi
+78-311-51,Vaillant,Vaillant,ecoTEC plus,825,combi,ng,25,25,yes,yes,boiler,3,yes,no,720,440,338,seed:v1,Popular Vaillant combi
+78-311-52,Vaillant,Vaillant,ecoTEC plus,832,combi,ng,32,32,yes,yes,boiler,3,yes,no,720,440,338,seed:v1,Popular Vaillant combi
+78-311-53,Vaillant,Vaillant,ecoTEC plus,838,combi,ng,38,38,yes,yes,boiler,3,yes,no,720,440,338,seed:v1,Popular Vaillant combi
+78-341-21,Vaillant,Vaillant,ecoFIT pure,825,combi,ng,25,25,yes,yes,boiler,3,yes,no,720,440,338,seed:v1,Entry level Vaillant
+78-341-22,Vaillant,Vaillant,ecoFIT pure,830,combi,ng,30,30,yes,yes,boiler,3,yes,no,720,440,338,seed:v1,Entry level Vaillant
+70-311-14,Ideal,Ideal,Logic Max,24kW,combi,ng,24,24,yes,yes,boiler,3,yes,no,700,400,340,seed:v1,Popular Ideal combi
+70-311-15,Ideal,Ideal,Logic Max,30kW,combi,ng,30,30,yes,yes,boiler,3,yes,no,700,400,340,seed:v1,Popular Ideal combi
+70-311-16,Ideal,Ideal,Logic Max,35kW,combi,ng,35,35,yes,yes,boiler,3,yes,no,700,400,340,seed:v1,Popular Ideal combi
+70-341-26,Ideal,Ideal,Vogue Max,26kW,combi,ng,26,26,yes,yes,boiler,3,yes,no,770,480,385,seed:v1,Premium Ideal range
+70-341-32,Ideal,Ideal,Vogue Max,32kW,combi,ng,32,32,yes,yes,boiler,3,yes,no,770,480,385,seed:v1,Premium Ideal range
+65-311-08,Baxi,Baxi,EcoBlue Advance,24,combi,ng,24,24,yes,yes,boiler,3,yes,no,700,440,360,seed:v1,Common Baxi combi
+65-311-09,Baxi,Baxi,EcoBlue Advance,28,combi,ng,28,28,yes,yes,boiler,3,yes,no,700,440,360,seed:v1,Common Baxi combi
+65-311-10,Baxi,Baxi,EcoBlue Advance,33,combi,ng,33,33,yes,yes,boiler,3,yes,no,700,440,360,seed:v1,Common Baxi combi
+61-311-31,Main,Main,Eco Elite,25,combi,ng,25,25,yes,yes,boiler,3,yes,no,720,420,370,seed:v1,Main combi range
+61-311-32,Main,Main,Eco Elite,30,combi,ng,30,30,yes,yes,boiler,3,yes,no,720,420,370,seed:v1,Main combi range
+47-311-81,Worcester Bosch,Worcester,Greenstar 4000,12kW,system,ng,12,,yes,yes,boiler,3,yes,yes,700,440,360,seed:v1,System boiler with internal diverter
+47-311-82,Worcester Bosch,Worcester,Greenstar 4000,15kW,system,ng,15,,yes,yes,boiler,3,yes,yes,700,440,360,seed:v1,System boiler with internal diverter
+47-311-83,Worcester Bosch,Worcester,Greenstar 4000,18kW,system,ng,18,,yes,yes,boiler,3,yes,yes,700,440,360,seed:v1,System boiler with internal diverter
+78-311-81,Vaillant,Vaillant,ecoTEC plus,612,system,ng,12,,yes,yes,boiler,3,yes,yes,720,440,338,seed:v1,System boiler
+78-311-82,Vaillant,Vaillant,ecoTEC plus,615,system,ng,15,,yes,yes,boiler,3,yes,yes,720,440,338,seed:v1,System boiler
+78-311-83,Vaillant,Vaillant,ecoTEC plus,618,system,ng,18,,yes,yes,boiler,3,yes,yes,720,440,338,seed:v1,System boiler
+70-311-21,Ideal,Ideal,Logic Max,12kW,system,ng,12,,yes,yes,boiler,3,yes,yes,700,400,340,seed:v1,System boiler
+70-311-22,Ideal,Ideal,Logic Max,15kW,system,ng,15,,yes,yes,boiler,3,yes,yes,700,400,340,seed:v1,System boiler
+70-311-23,Ideal,Ideal,Logic Max,18kW,system,ng,18,,yes,yes,boiler,3,yes,yes,700,400,340,seed:v1,System boiler

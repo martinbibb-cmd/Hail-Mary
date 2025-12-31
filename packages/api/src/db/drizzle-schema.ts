@@ -1246,3 +1246,129 @@ export const journeys = pgTable("journeys", {
 }, (t) => ({
   leadIdIdx: index("journeys_lead_id_idx").on(t.leadId),
 }));
+
+// ============================================
+// GC Boiler Catalog - Truth Layer for Boiler Facts
+// ============================================
+
+// Boiler GC catalog - canonical boiler facts keyed by GC number
+export const boilerGcCatalog = pgTable("boiler_gc_catalog", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gcNumber: text("gc_number").notNull().unique(), // normalized GC number
+  manufacturer: text("manufacturer"),
+  brand: text("brand"), // optional, normalized
+  model: text("model"),
+  variant: text("variant"), // optional, e.g., "30kW"
+  
+  // Boiler classification
+  boilerType: varchar("boiler_type", { length: 50 }), // combi|system|regular|unknown
+  fuel: varchar("fuel", { length: 50 }), // ng|lpg|oil|unknown
+  
+  // Performance specs
+  chOutputKwNominal: numeric("ch_output_kw_nominal", { precision: 10, scale: 2 }),
+  dhwOutputKwNominal: numeric("dhw_output_kw_nominal", { precision: 10, scale: 2 }),
+  modulationMinKw: numeric("modulation_min_kw", { precision: 10, scale: 2 }),
+  modulationMaxKw: numeric("modulation_max_kw", { precision: 10, scale: 2 }),
+  erpEfficiencyPercent: numeric("erp_efficiency_percent", { precision: 5, scale: 2 }),
+  erpClass: text("erp_class"),
+  
+  // Electrical / controls (install-critical)
+  pumpOverrunRequired: boolean("pump_overrun_required"),
+  permanentLiveRequired: boolean("permanent_live_required"),
+  overrunHandledBy: varchar("overrun_handled_by", { length: 50 }), // boiler|external|unknown
+  typicalFuseA: integer("typical_fuse_a"),
+  controlsSupported: jsonb("controls_supported"), // {on_off:true, opentherm:false, ebus:true}
+  
+  // Hydraulic
+  internalPumpPresent: boolean("internal_pump_present"),
+  internalDiverterPresent: boolean("internal_diverter_present"),
+  plateHexPresent: boolean("plate_hex_present"),
+  expansionVesselPresent: boolean("expansion_vessel_present"),
+  
+  // Physical / flue
+  heightMm: integer("height_mm"),
+  widthMm: integer("width_mm"),
+  depthMm: integer("depth_mm"),
+  weightKg: numeric("weight_kg", { precision: 10, scale: 2 }),
+  flueDiameterMm: integer("flue_diameter_mm"),
+  maxFlueLengthM: numeric("max_flue_length_m", { precision: 10, scale: 2 }),
+  plumeKitCompatible: boolean("plume_kit_compatible"),
+  
+  // Metadata
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  status: varchar("status", { length: 50 }).default("active").notNull(), // active|deprecated|draft
+  qualityScore: numeric("quality_score", { precision: 3, scale: 2 }), // 0..1
+  notes: text("notes"),
+}, (t) => ({
+  gcNumberIdx: index("boiler_gc_catalog_gc_number_idx").on(t.gcNumber),
+  manufacturerIdx: index("boiler_gc_catalog_manufacturer_idx").on(t.manufacturer),
+}));
+
+// Boiler GC sources - provenance tracking for catalog entries
+export const boilerGcSources = pgTable("boiler_gc_sources", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gcCatalogId: uuid("gc_catalog_id")
+    .references(() => boilerGcCatalog.id, { onDelete: "cascade" })
+    .notNull(),
+  sourceType: varchar("source_type", { length: 50 }).notNull(), // manufacturer_pdf|datasheet|crowd|manual_entry|web|unknown
+  sourceRef: text("source_ref"), // url OR file key OR "upload:xyz"
+  extractedBy: varchar("extracted_by", { length: 50 }).notNull(), // human|ai|import
+  extractedAt: timestamp("extracted_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  fieldsCovered: jsonb("fields_covered"), // list of fields supported by this source
+  confidence: numeric("confidence", { precision: 3, scale: 2 }), // 0..1
+  rawSnippet: text("raw_snippet"), // optional small excerpt / hash
+  checksum: text("checksum"), // optional: detect duplicates
+}, (t) => ({
+  gcCatalogIdIdx: index("boiler_gc_sources_gc_catalog_id_idx").on(t.gcCatalogId),
+}));
+
+// Boiler GC enrichment queue - missing GC workflow
+export const boilerGcEnrichmentQueue = pgTable("boiler_gc_enrichment_queue", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gcNumber: text("gc_number").notNull(), // normalized input
+  requestedByUserId: integer("requested_by_user_id")
+    .references(() => users.id),
+  requestedFromLeadId: integer("requested_from_lead_id")
+    .references(() => leads.id),
+  context: jsonb("context"), // {photos:[...], brand_guess:"", notes:"", location:"", ...}
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending|searching|candidates_found|needs_human|approved|rejected|merged
+  searchAttempts: integer("search_attempts").default(0).notNull(),
+  lastSearchAt: timestamp("last_search_at", { withTimezone: true }),
+  candidates: jsonb("candidates"), // array of candidate objects
+  chosenCandidate: jsonb("chosen_candidate"), // selected candidate for approval
+  reviewerUserId: integer("reviewer_user_id")
+    .references(() => users.id),
+  reviewerNotes: text("reviewer_notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  gcNumberIdx: index("boiler_gc_enrichment_queue_gc_number_idx").on(t.gcNumber),
+  statusIdx: index("boiler_gc_enrichment_queue_status_idx").on(t.status),
+  createdAtIdx: index("boiler_gc_enrichment_queue_created_at_idx").on(t.createdAt),
+}));
+
+// Boiler GC aliases - handle formatting variants + legacy patterns
+export const boilerGcAliases = pgTable("boiler_gc_aliases", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gcNumberCanonical: text("gc_number_canonical")
+    .notNull()
+    .references(() => boilerGcCatalog.gcNumber, { onDelete: "cascade" }),
+  alias: text("alias").notNull().unique(), // e.g., "47 311 19", "47-311-19"
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  gcNumberCanonicalIdx: index("boiler_gc_aliases_canonical_idx").on(t.gcNumberCanonical),
+  aliasIdx: index("boiler_gc_aliases_alias_idx").on(t.alias),
+}));

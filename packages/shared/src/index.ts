@@ -1,5 +1,6 @@
 export * from './types';
 export * from './types/heat-loss-survey.types';
+export * from './types/gc-catalog.types';
 export * from './surveyHelperSlots';
 export * from './moduleRegistry';
 export * from './core';

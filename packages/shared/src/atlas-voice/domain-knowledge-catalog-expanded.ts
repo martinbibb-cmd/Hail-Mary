@@ -1250,11 +1250,5 @@ export const EXPANDED_DIAGNOSTIC_PATTERNS: Record<string, DiagnosticPattern> = {
 };
 
 // ============================================
-// Export Expanded Catalogs
+// All expanded catalogs are already exported inline above
 // ============================================
-
-export {
-  EXPANDED_BOILER_MODELS,
-  EXPANDED_FAULT_CODES,
-  EXPANDED_DIAGNOSTIC_PATTERNS,
-};

@@ -632,28 +632,5 @@ export interface EventValidator {
 }
 
 // ============================================
-// Export all types
+// All types are already exported inline above
 // ============================================
-
-export type {
-  ExtractionMetadata,
-  ConfidenceLevel,
-  ExtractionMethod,
-  Entity,
-  BoilerEntity,
-  ControlSystemEntity,
-  ComponentEntity,
-  FaultCodeEntity,
-  MeasurementEntity,
-  MaterialEntity,
-  Event,
-  DiagnosticObservationEvent,
-  FaultReportedEvent,
-  MeasurementTakenEvent,
-  ActionTakenEvent,
-  ControlLogicEvent,
-  EntityEventExtraction,
-  ValidationResult,
-  EntityValidator,
-  EventValidator,
-};

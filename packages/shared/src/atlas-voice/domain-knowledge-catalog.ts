@@ -826,25 +826,5 @@ export const JARGON_NORMALIZATION: Array<{
 ];
 
 // ============================================
-// Export all catalogs
+// All catalogs are already exported inline above
 // ============================================
-
-export {
-  BOILER_MAKE_ALIASES,
-  COMMON_BOILER_MODELS,
-  BOILER_MODEL_PATTERNS,
-  CONTROL_SYSTEMS,
-  CONTROL_SYSTEM_PATTERNS,
-  COMPONENT_ALIASES,
-  DIAGNOSTIC_PATTERNS,
-  DIAGNOSTIC_TEXT_PATTERNS,
-  FAULT_CODES,
-  JARGON_NORMALIZATION,
-};
-
-export type {
-  BoilerModel,
-  ControlSystemDefinition,
-  DiagnosticPattern,
-  FaultCode,
-};

@@ -824,3 +824,7 @@ export const JARGON_NORMALIZATION: Array<{
   { pattern: /PRV/gi, replacement: 'PRV', notes: 'Pressure relief valve' },
   { pattern: /pressure\s+relief/gi, replacement: 'PRV' },
 ];
+
+// ============================================
+// All catalogs are already exported inline above
+// ============================================

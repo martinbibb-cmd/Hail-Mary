@@ -674,3 +674,7 @@ export interface EventValidator {
   /** Check if event makes sense given extracted entities */
   validateContextConsistency(event: Event, context: any): ValidationResult;
 }
+
+// ============================================
+// All types are already exported inline above
+// ============================================

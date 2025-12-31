@@ -1248,3 +1248,7 @@ export const EXPANDED_DIAGNOSTIC_PATTERNS: Record<string, DiagnosticPattern> = {
     sop_reference: 'SOP-FLUE-002',
   },
 };
+
+// ============================================
+// All expanded catalogs are already exported inline above
+// ============================================

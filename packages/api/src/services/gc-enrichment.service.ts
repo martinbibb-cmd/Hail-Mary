@@ -45,7 +45,7 @@ export async function requestEnrichment(
       const [updated] = await db
         .update(boilerGcEnrichmentQueue)
         .set({
-          context: context as any,
+          context: context as unknown as typeof boilerGcEnrichmentQueue.$inferInsert.context,
           updatedAt: new Date(),
         })
         .where(eq(boilerGcEnrichmentQueue.id, existing.id))
@@ -63,7 +63,7 @@ export async function requestEnrichment(
       gcNumber: normalized,
       requestedByUserId: userId,
       requestedFromLeadId: leadId,
-      context: context as any,
+      context: context as unknown as typeof boilerGcEnrichmentQueue.$inferInsert.context,
       status: 'pending',
       searchAttempts: 0,
     })
@@ -107,13 +107,13 @@ export async function updateEnrichmentStatus(
   status: EnrichmentStatus,
   candidates?: EnrichmentCandidate[]
 ): Promise<void> {
-  const updates: any = {
+  const updates: Partial<typeof boilerGcEnrichmentQueue.$inferInsert> = {
     status,
     updatedAt: new Date(),
   };
 
   if (candidates) {
-    updates.candidates = candidates;
+    updates.candidates = candidates as unknown as typeof boilerGcEnrichmentQueue.$inferInsert.candidates;
   }
 
   if (status === 'searching') {
@@ -210,7 +210,7 @@ export async function approveEnrichment(
     .update(boilerGcEnrichmentQueue)
     .set({
       status: 'approved',
-      chosenCandidate: chosenCandidate as any,
+      chosenCandidate: chosenCandidate as unknown as typeof boilerGcEnrichmentQueue.$inferInsert.chosenCandidate,
       reviewerUserId,
       reviewerNotes,
       updatedAt: new Date(),

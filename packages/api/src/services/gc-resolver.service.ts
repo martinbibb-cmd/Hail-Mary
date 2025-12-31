@@ -5,7 +5,7 @@
  */
 
 import { lookupBoilerByGc } from './gc.service';
-import type {
+import {
   BoilerGcCatalog,
   FieldValue,
   FieldSource,
@@ -14,19 +14,6 @@ import type {
   ResolvedField,
   getConfidenceForSource,
 } from '@hail-mary/shared';
-
-// Re-export confidence function for use in this service
-function getConfidence(source: FieldSource): number {
-  const confidenceMap: Record<FieldSource, number> = {
-    'GC_CATALOG': 0.95,
-    'IMAGE_OCR_PLATE': 0.85,
-    'IMAGE_BRAND_FAMILY_RECO': 0.70,
-    'MANUAL_ENGINEER_ENTRY': 0.65,
-    'HEURISTIC_FROM_PIPES': 0.55,
-    'UNKNOWN': 0.00,
-  };
-  return confidenceMap[source] || 0.00;
-}
 
 /**
  * Resolve survey fields with confidence and provenance
@@ -304,7 +291,7 @@ function createFieldValue<T>(
 ): FieldValue<T> {
   return {
     value,
-    confidence: getConfidence(source),
+    confidence: getConfidenceForSource(source),
     source,
     notes,
   };

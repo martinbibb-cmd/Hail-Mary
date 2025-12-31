@@ -96,6 +96,15 @@ function validateFuelType(value?: string): GcFuelType | undefined {
   return 'unknown';
 }
 
+function validateOverrunHandledBy(value?: string): 'boiler' | 'external' | 'unknown' | undefined {
+  if (!value) return undefined;
+  const lower = value.toLowerCase();
+  if (['boiler', 'external', 'unknown'].includes(lower)) {
+    return lower as 'boiler' | 'external' | 'unknown';
+  }
+  return 'unknown';
+}
+
 async function importRow(row: CsvRow): Promise<void> {
   try {
     const gcNumber = normalizeGc(row.gc_number);
@@ -130,7 +139,7 @@ async function importRow(row: CsvRow): Promise<void> {
       dhwOutputKwNominal: parseNumber(row.dhw_output_kw),
       pumpOverrunRequired: parseBoolean(row.pump_overrun_required),
       permanentLiveRequired: parseBoolean(row.permanent_live_required),
-      overrunHandledBy: row.overrun_handled_by as any,
+      overrunHandledBy: validateOverrunHandledBy(row.overrun_handled_by),
       typicalFuseA: parseNumber(row.typical_fuse_a) ? Math.floor(parseNumber(row.typical_fuse_a)!) : undefined,
       internalPumpPresent: parseBoolean(row.internal_pump_present),
       internalDiverterPresent: parseBoolean(row.internal_diverter_present),

@@ -118,9 +118,16 @@ export async function updateEnrichmentStatus(
 
   if (status === 'searching') {
     updates.lastSearchAt = new Date();
-    updates.searchAttempts = db.$with('search_attempts').as(
-      db.select().from(boilerGcEnrichmentQueue)
-    );
+    // Increment search attempts
+    const [current] = await db
+      .select()
+      .from(boilerGcEnrichmentQueue)
+      .where(eq(boilerGcEnrichmentQueue.id, id))
+      .limit(1);
+    
+    if (current) {
+      updates.searchAttempts = current.searchAttempts + 1;
+    }
   }
 
   await db
@@ -133,19 +140,21 @@ export async function updateEnrichmentStatus(
  * Increment search attempts
  */
 export async function incrementSearchAttempts(id: string): Promise<void> {
-  await db.execute(
-    db.$with('increment').as(
-      db
-        .update(boilerGcEnrichmentQueue)
-        .set({
-          searchAttempts: db.$with('current').as(
-            db.select().from(boilerGcEnrichmentQueue)
-          ),
-          lastSearchAt: new Date(),
-        })
-        .where(eq(boilerGcEnrichmentQueue.id, id))
-    )
-  );
+  const [current] = await db
+    .select()
+    .from(boilerGcEnrichmentQueue)
+    .where(eq(boilerGcEnrichmentQueue.id, id))
+    .limit(1);
+
+  if (current) {
+    await db
+      .update(boilerGcEnrichmentQueue)
+      .set({
+        searchAttempts: current.searchAttempts + 1,
+        lastSearchAt: new Date(),
+      })
+      .where(eq(boilerGcEnrichmentQueue.id, id));
+  }
 }
 
 /**

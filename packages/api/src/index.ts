@@ -58,6 +58,7 @@ import presentationDraftsRouter from './routes/presentationDrafts';
 import userSettingsRouter from './routes/userSettings';
 import trajectoryRouter from './routes/trajectory';
 import atlasRouter from './routes/atlas';
+import gcRouter from './routes/gc';
 
 import path from 'path';
 
@@ -388,6 +389,7 @@ app.use('/api/presentation', presentationDraftsRouter); // PR12b: presentation d
 app.use('/api/user-settings', userSettingsRouter); // User preferences and settings persistence
 app.use('/api/trajectory', trajectoryRouter); // Trajectory Engine: carbon/cost projections for retrofit journeys
 app.use('/api/atlas', atlasRouter); // Atlas Heat Loss API: room-by-room heat loss calculations following MCS 3005-D
+app.use('/api/gc', gcRouter); // GC Boiler Catalog: truth layer for boiler facts, survey resolution, and enrichment
 
 // 404 handler
 app.use((_req, res) => {

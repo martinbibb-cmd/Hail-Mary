@@ -8,8 +8,8 @@
 // Enums and Constants
 // ============================================
 
-export type BoilerType = 'combi' | 'system' | 'regular' | 'unknown';
-export type FuelType = 'ng' | 'lpg' | 'oil' | 'unknown';
+export type GcBoilerType = 'combi' | 'system' | 'regular' | 'unknown';
+export type GcFuelType = 'ng' | 'lpg' | 'oil' | 'unknown';
 export type BoilerStatus = 'active' | 'deprecated' | 'draft';
 
 export type SourceType = 
@@ -55,8 +55,8 @@ export interface BoilerGcCatalog {
   variant?: string;
   
   // Classification
-  boilerType?: BoilerType;
-  fuel?: FuelType;
+  boilerType?: GcBoilerType;
+  fuel?: GcFuelType;
   
   // Performance
   chOutputKwNominal?: number;
@@ -145,8 +145,8 @@ export interface EnrichmentContext {
 export interface EnrichmentCandidate {
   manufacturer?: string;
   model?: string;
-  boilerType?: BoilerType;
-  fuel?: FuelType;
+  boilerType?: GcBoilerType;
+  fuel?: GcFuelType;
   chKw?: number;
   dhwKw?: number;
   dims?: {
@@ -207,7 +207,7 @@ export interface ResolveGcRequest {
   photoEvidence?: string[];
   manualBrand?: string;
   manualModel?: string;
-  manualType?: BoilerType;
+  manualType?: GcBoilerType;
   pipeSignature?: string;
   wiringCores?: number;
   cylinderPresent?: boolean;
@@ -272,11 +272,11 @@ export interface RejectEnrichmentResponse {
 // Utility Functions (type guards)
 // ============================================
 
-export function isValidBoilerType(type: string): type is BoilerType {
+export function isValidGcBoilerType(type: string): type is GcBoilerType {
   return ['combi', 'system', 'regular', 'unknown'].includes(type);
 }
 
-export function isValidFuelType(fuel: string): fuel is FuelType {
+export function isValidGcFuelType(fuel: string): fuel is GcFuelType {
   return ['ng', 'lpg', 'oil', 'unknown'].includes(fuel);
 }
 

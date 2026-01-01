@@ -65,6 +65,27 @@ export const MoreDrawer: React.FC<MoreDrawerProps> = ({ isOpen, onClose }) => {
       action: { kind: 'route', target: '/visit' },
     },
     {
+      id: 'engineer',
+      label: 'Engineer',
+      icon: '🔧',
+      description: 'Transcription analysis',
+      action: { kind: 'route', target: '/engineer' },
+    },
+    {
+      id: 'presentation',
+      label: 'Presentation',
+      icon: '📊',
+      description: 'Customer presentations',
+      action: { kind: 'route', target: '/presentation' },
+    },
+    {
+      id: 'gc-lookup',
+      label: 'GC Lookup',
+      icon: '🔍',
+      description: 'Boiler GC number lookup',
+      action: { kind: 'route', target: '/gc-lookup' },
+    },
+    {
       id: 'leads',
       label: 'Leads',
       icon: '🧲',

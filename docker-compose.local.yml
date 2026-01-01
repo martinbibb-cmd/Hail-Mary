@@ -131,6 +131,8 @@ services:
       - hailmary-assistant
     volumes:
       # Mount nginx configuration from host to persist changes across container recreates
+      # nginx.conf includes the conf.d directory, allowing default.conf to define the server block
+      - ./packages/pwa/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./packages/pwa/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - hailmary-network

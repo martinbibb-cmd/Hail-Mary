@@ -147,16 +147,13 @@ export default defineConfig({
         manualChunks(id) {
           // Split vendor code into separate chunks
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react';
-            }
             if (id.includes('@mui') || id.includes('@emotion')) {
               return 'mui';
             }
             if (id.includes('zustand') || id.includes('drizzle')) {
               return 'state';
             }
-            // Other node_modules go into vendor chunk
+            // React and other node_modules go into vendor chunk
             return 'vendor';
           }
         }

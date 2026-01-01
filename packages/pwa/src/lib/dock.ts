@@ -4,16 +4,15 @@
 
 // Default visible dock items
 export const DEFAULT_DOCK_ITEMS: string[] = [
-  'home', 'addresses', 'diary', 'camera', 'photo-library',
-  'transcripts', 'scans', 'engineer', 'sarah', 'presentation',
-  'knowledge', 'profile'
+  'home', 'addresses', 'visit', 'customers', 'leads', 'diary',
+  'camera', 'photo-library', 'engineer', 'sarah', 'profile'
 ];
 
 // All known dock item IDs for validation
 const KNOWN_DOCK_IDS = new Set([
-  'home', 'addresses', 'diary', 'camera', 'photo-library',
-  'transcripts', 'scans', 'engineer', 'sarah', 'presentation',
-  'knowledge', 'trajectory', 'profile'
+  'home', 'addresses', 'visit', 'customers', 'quotes', 'leads',
+  'diary', 'camera', 'photo-library', 'transcripts', 'scans',
+  'engineer', 'sarah', 'presentation', 'knowledge', 'trajectory', 'profile'
 ]);
 
 /**

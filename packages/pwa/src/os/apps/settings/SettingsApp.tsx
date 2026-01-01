@@ -20,6 +20,10 @@ import './SettingsApp.css';
 const ALL_DOCK_ITEMS = [
   { id: 'home', label: 'Home', icon: '🏠' },
   { id: 'addresses', label: 'Addresses', icon: '🏘️' },
+  { id: 'visit', label: 'Visit', icon: '🎙️' },
+  { id: 'customers', label: 'Customers', icon: '👥' },
+  { id: 'quotes', label: 'Quotes', icon: '💰' },
+  { id: 'leads', label: 'Leads', icon: '🎯' },
   { id: 'diary', label: 'Diary', icon: '📅' },
   { id: 'camera', label: 'Camera', icon: '📷' },
   { id: 'photo-library', label: 'Photos', icon: '🖼️' },

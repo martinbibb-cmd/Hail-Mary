@@ -14,6 +14,10 @@ import './BottomDock.css';
 const ALL_DOCK_ITEMS = [
   { id: 'home', label: 'Home', icon: '🏠', path: '/' },
   { id: 'addresses', label: 'Addresses', icon: '🏘️', path: '/addresses' },
+  { id: 'visit', label: 'Visit', icon: '🎙️', path: '/visit' },
+  { id: 'customers', label: 'Customers', icon: '👥', path: '/customers' },
+  { id: 'quotes', label: 'Quotes', icon: '💰', path: '/quotes' },
+  { id: 'leads', label: 'Leads', icon: '🎯', path: '/leads' },
   { id: 'diary', label: 'Diary', icon: '📅', path: '/diary' },
   { id: 'camera', label: 'Camera', icon: '📷', path: '/camera' },
   { id: 'photo-library', label: 'Photos', icon: '🖼️', path: '/photo-library' },

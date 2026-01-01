@@ -78,6 +78,10 @@ FROM nginx:alpine AS production
 # Copy custom nginx configuration
 COPY packages/pwa/nginx.conf /etc/nginx/nginx.conf
 
+# Copy default server configuration as fallback
+# This will be overridden by volume mount in docker-compose
+COPY packages/pwa/nginx/default.conf /etc/nginx/conf.d/default.conf
+
 # Copy built PWA files from builder stage
 COPY --from=builder /app/packages/pwa/dist /usr/share/nginx/html
 

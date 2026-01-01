@@ -41,6 +41,7 @@ import { SpineKnowledgePage } from './pages/SpineKnowledgePage'
 import { SpineKnowledgeDocPage } from './pages/SpineKnowledgeDocPage'
 import { CustomerSummaryPage } from './pages/CustomerSummaryPage'
 import { PresentationPage } from './pages/PresentationPage'
+import { GCLookupPage } from './pages/GCLookupPage'
 
 // Simple API client
 const api = {
@@ -711,6 +712,7 @@ function App() {
           <Route path="/engineer" element={<SpineEngineerPage />} />
           <Route path="/customer-summary" element={<CustomerSummaryPage />} />
           <Route path="/presentation" element={<PresentationPage />} />
+          <Route path="/gc-lookup" element={<GCLookupPage />} />
           <Route path="/sarah" element={<SpineSarahPage />} />
           <Route path="/knowledge" element={<SpineKnowledgePage />} />
           <Route path="/knowledge/doc/:docId/page/:pageNo" element={<SpineKnowledgeDocPage />} />

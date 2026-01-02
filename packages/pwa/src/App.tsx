@@ -17,7 +17,7 @@ import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useLayoutMode } from './hooks/useLayoutMode'
 import { apiFetch } from './services/apiClient'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
-import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage } from './pages/admin'
+import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage, AdminBugDashboardPage, AdminBugListPage, AdminBugDetailPage, AdminBugAnalyticsPage } from './pages/admin'
 import { ModuleLauncher } from './pages/ModuleLauncher'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
@@ -740,6 +740,10 @@ function App() {
           <Route path="/admin/lead-assignments" element={<AdminLeadAssignmentsPage />} />
           <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
           <Route path="/admin/system-recommendation" element={<AdminSystemRecommendationPage />} />
+          <Route path="/admin/bugs/dashboard" element={<AdminBugDashboardPage />} />
+          <Route path="/admin/bugs/analytics" element={<AdminBugAnalyticsPage />} />
+          <Route path="/admin/bugs/:id" element={<AdminBugDetailPage />} />
+          <Route path="/admin/bugs" element={<AdminBugListPage />} />
         </Routes>
       </main>
 

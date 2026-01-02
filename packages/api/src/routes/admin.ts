@@ -12,6 +12,7 @@ import { Router, Request, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { listAllUsers, adminResetUserPassword, adminGenerateResetToken, updateUserRole, AuthError } from '../services/auth.service';
 import adminSystemRouter from './admin.system';
+import adminBugReportsRouter from './admin.bugReports';
 import { db } from '../db/drizzle-client';
 import { leads } from '../db/drizzle-schema';
 import { eq } from 'drizzle-orm';
@@ -24,6 +25,9 @@ router.use(requireAdmin);
 
 // Mount system management routes
 router.use('/system', adminSystemRouter);
+
+// Mount bug reports management routes
+router.use('/bug-reports', adminBugReportsRouter);
 
 /**
  * GET /api/admin/users

@@ -1412,3 +1412,65 @@ export const bugReports = pgTable("bug_reports", {
   priorityIdx: index("bug_reports_priority_idx").on(t.priority),
   createdAtIdx: index("bug_reports_created_at_idx").on(t.createdAt),
 }));
+
+// Bug Notes - Admin notes/comments on bug reports
+export const bugNotes = pgTable("bug_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bugReportId: uuid("bug_report_id")
+    .references(() => bugReports.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  note: text("note").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  bugReportIdIdx: index("bug_notes_bug_report_id_idx").on(t.bugReportId),
+  createdAtIdx: index("bug_notes_created_at_idx").on(t.createdAt),
+}));
+
+// Bug Activity - Audit trail for bug report changes
+export const bugActivity = pgTable("bug_activity", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bugReportId: uuid("bug_report_id")
+    .references(() => bugReports.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id),
+  actionType: varchar("action_type", { length: 50 }).notNull(), // status_change|priority_change|assignment_change|note_added|created|resolved
+  fieldName: varchar("field_name", { length: 50 }), // Which field changed (status, priority, etc.)
+  oldValue: varchar("old_value", { length: 255 }), // Previous value
+  newValue: varchar("new_value", { length: 255 }), // New value
+  metadata: jsonb("metadata"), // Additional context for the action
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  bugReportIdIdx: index("bug_activity_bug_report_id_idx").on(t.bugReportId),
+  actionTypeIdx: index("bug_activity_action_type_idx").on(t.actionType),
+  createdAtIdx: index("bug_activity_created_at_idx").on(t.createdAt),
+}));
+
+// Bug Filter Presets - Saved filter configurations for users
+export const bugFilterPresets = pgTable("bug_filter_presets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  filterConfig: jsonb("filter_config").notNull(), // Stored filter configuration
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  userIdIdx: index("bug_filter_presets_user_id_idx").on(t.userId),
+}));

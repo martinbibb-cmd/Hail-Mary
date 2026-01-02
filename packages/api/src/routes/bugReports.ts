@@ -6,7 +6,7 @@
 
 import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
-import { bugReports } from "../db/drizzle-schema";
+import { bugReports, bugActivity } from "../db/drizzle-schema";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.middleware";
 import type { ApiResponse } from "@hail-mary/shared";
@@ -67,6 +67,15 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
         status: "new",
       })
       .returning();
+
+    // Log creation activity
+    await db.insert(bugActivity).values({
+      bugReportId: newReport.id,
+      userId,
+      actionType: "created",
+      fieldName: "status",
+      newValue: "new",
+    });
 
     const response: ApiResponse<{ bugReport: typeof newReport }> = {
       success: true,
@@ -198,6 +207,26 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
       })
       .where(eq(bugReports.id, id))
       .returning();
+
+    // Log activity for changed fields
+    const activityLogs = [];
+    for (const [field, newValue] of Object.entries(updates)) {
+      const oldValue = (existingReport as any)[field];
+      if (oldValue !== newValue) {
+        activityLogs.push({
+          bugReportId: id,
+          userId,
+          actionType: `${field}_change`,
+          fieldName: field,
+          oldValue: String(oldValue || ""),
+          newValue: String(newValue || ""),
+        });
+      }
+    }
+
+    if (activityLogs.length > 0) {
+      await db.insert(bugActivity).values(activityLogs);
+    }
 
     const response: ApiResponse<{ bugReport: typeof updatedReport }> = {
       success: true,

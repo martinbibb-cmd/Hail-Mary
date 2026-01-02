@@ -6,10 +6,11 @@
  * Contains: Leads, Quotes, Files, Profile, Settings (and admin tools for admins)
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { useWindowStore } from '../os/window-manager';
+import { BugReportModal } from './BugReportModal';
 import './MoreDrawer.css';
 
 interface MoreDrawerProps {
@@ -24,10 +25,12 @@ export const MoreDrawer: React.FC<MoreDrawerProps> = ({ isOpen, onClose }) => {
   const openWindow = useWindowStore((state) => state.openWindow);
   const restoreWindow = useWindowStore((state) => state.restoreWindow);
   const focusWindow = useWindowStore((state) => state.focusWindow);
+  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
 
   type MenuAction =
     | { kind: 'route'; target: string }
-    | { kind: 'window'; target: string };
+    | { kind: 'window'; target: string }
+    | { kind: 'bug-report' };
 
   const openAppWindow = (appId: string, title: string) => {
     const existing = windows.find((w) => w.appId === appId);
@@ -44,10 +47,14 @@ export const MoreDrawer: React.FC<MoreDrawerProps> = ({ isOpen, onClose }) => {
   const handleAction = (action: MenuAction, label: string) => {
     if (action.kind === 'route') {
       navigate(action.target);
-    } else {
+      onClose();
+    } else if (action.kind === 'window') {
       openAppWindow(action.target, label);
+      onClose();
+    } else if (action.kind === 'bug-report') {
+      setIsBugReportOpen(true);
+      onClose();
     }
-    onClose();
   };
 
   const menuItems: Array<{
@@ -119,6 +126,13 @@ export const MoreDrawer: React.FC<MoreDrawerProps> = ({ isOpen, onClose }) => {
       icon: '⚙️',
       description: 'App configuration',
       action: { kind: 'window', target: 'settings' },
+    },
+    {
+      id: 'bug-report',
+      label: 'Report Bug',
+      icon: '🐛',
+      description: 'Submit feedback or issues',
+      action: { kind: 'bug-report' },
     },
   ];
 
@@ -206,6 +220,11 @@ export const MoreDrawer: React.FC<MoreDrawerProps> = ({ isOpen, onClose }) => {
           </nav>
         </div>
       </div>
+
+      <BugReportModal
+        isOpen={isBugReportOpen}
+        onClose={() => setIsBugReportOpen(false)}
+      />
     </>
   );
 };

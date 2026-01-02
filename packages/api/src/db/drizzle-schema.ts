@@ -1372,3 +1372,43 @@ export const boilerGcAliases = pgTable("boiler_gc_aliases", {
   gcNumberCanonicalIdx: index("boiler_gc_aliases_canonical_idx").on(t.gcNumberCanonical),
   aliasIdx: index("boiler_gc_aliases_alias_idx").on(t.alias),
 }));
+
+// Bug Reports - User-submitted bug reports and feature requests
+export const bugReports = pgTable("bug_reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  bugType: varchar("bug_type", { length: 50 }).default("bug").notNull(), // bug|feature|improvement|question
+  priority: varchar("priority", { length: 50 }).default("medium").notNull(), // low|medium|high|critical
+  status: varchar("status", { length: 50 }).default("new").notNull(), // new|investigating|in_progress|resolved|closed|wont_fix
+  // Context capture - what was happening when bug occurred
+  url: text("url"), // Current page URL
+  userAgent: text("user_agent"), // Browser/device info
+  screenResolution: varchar("screen_resolution", { length: 50 }), // e.g., "1920x1080"
+  contextData: jsonb("context_data"), // Additional context (state, actions, etc.)
+  errorMessage: text("error_message"), // If there was an error
+  stackTrace: text("stack_trace"), // Error stack trace if available
+  // Metadata
+  screenshotUrl: text("screenshot_url"), // Optional screenshot
+  attachments: jsonb("attachments"), // Array of attachment URLs
+  tags: jsonb("tags"), // Array of tags for categorization
+  assignedToUserId: integer("assigned_to_user_id")
+    .references(() => users.id),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedByUserId: integer("resolved_by_user_id")
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  userIdIdx: index("bug_reports_user_id_idx").on(t.userId),
+  statusIdx: index("bug_reports_status_idx").on(t.status),
+  bugTypeIdx: index("bug_reports_bug_type_idx").on(t.bugType),
+  priorityIdx: index("bug_reports_priority_idx").on(t.priority),
+  createdAtIdx: index("bug_reports_created_at_idx").on(t.createdAt),
+}));

@@ -331,7 +331,7 @@ router.get("/:id/notes", async (req: Request, res: Response) => {
         updatedAt: bugNotes.updatedAt,
         user: {
           id: users.id,
-          username: users.username,
+          name: users.name,
           email: users.email,
         },
       })
@@ -471,7 +471,7 @@ router.get("/:id/activity", async (req: Request, res: Response) => {
         createdAt: bugActivity.createdAt,
         user: {
           id: users.id,
-          username: users.username,
+          name: users.name,
           email: users.email,
         },
       })

@@ -1,0 +1,241 @@
+/**
+ * Bug Report Modal Styles
+ */
+
+.bug-report-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.bug-report-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  z-index: 9999;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.bug-report-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.bug-report-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.bug-report-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: #6b7280;
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+.bug-report-modal-close:hover:not(:disabled) {
+  color: #111827;
+}
+
+.bug-report-modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bug-report-modal-body {
+  padding: 1.5rem;
+  max-height: calc(90vh - 120px);
+  overflow-y: auto;
+}
+
+.bug-report-form-group {
+  margin-bottom: 1.25rem;
+}
+
+.bug-report-form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.bug-report-form-group input,
+.bug-report-form-group select,
+.bug-report-form-group textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.bug-report-form-group input:focus,
+.bug-report-form-group select:focus,
+.bug-report-form-group textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.bug-report-form-group input:disabled,
+.bug-report-form-group select:disabled,
+.bug-report-form-group textarea:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.bug-report-form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.bug-report-context-info {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background-color: #f3f4f6;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.bug-report-context-info small {
+  display: block;
+  line-height: 1.5;
+}
+
+.bug-report-error {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+.bug-report-success {
+  text-align: center;
+  padding: 2rem;
+}
+
+.bug-report-success-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.bug-report-success h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: #111827;
+}
+
+.bug-report-success p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.bug-report-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.bug-report-btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.bug-report-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bug-report-btn-primary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.bug-report-btn-primary:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.bug-report-btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.bug-report-btn-secondary:hover:not(:disabled) {
+  background-color: #e5e7eb;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .bug-report-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .bug-report-modal-header {
+    padding: 1rem;
+  }
+
+  .bug-report-modal-body {
+    padding: 1rem;
+    max-height: calc(95vh - 100px);
+  }
+
+  .bug-report-modal-header h2 {
+    font-size: 1.125rem;
+  }
+}

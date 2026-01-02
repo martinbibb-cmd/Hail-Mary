@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { apiRequest } from '../api';
+import { apiFetch } from '../services/apiClient';
 import './BugReportModal.css';
 
 interface BugReportModalProps {
@@ -44,8 +44,9 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose 
         viewport: `${window.innerWidth}x${window.innerHeight}`,
       };
 
-      const response = await apiRequest('/bug-reports', {
+      const response = await apiFetch<{ success: boolean; error?: string }>('/bug-reports', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
           description,

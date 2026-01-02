@@ -622,9 +622,10 @@
     font-size: 13px;
   }
 
-  /* Hide description on mobile - iOS-style simplicity */
+  /* Keep descriptions visible on mobile */
   .home-shortcut__desc {
-    display: none;
+    display: block;
+    font-size: 12px;
   }
 
   .home-section__shortcuts--desktop {
@@ -695,9 +696,10 @@
     font-size: 14px;
   }
 
-  /* Hide description on tablet - iOS-style simplicity */
+  /* Keep descriptions visible on tablet */
   .home-shortcut__desc {
-    display: none;
+    display: block;
+    font-size: 13px;
   }
 
   .home-section__shortcuts--desktop {

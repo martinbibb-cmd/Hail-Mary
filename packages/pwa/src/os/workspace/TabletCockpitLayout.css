@@ -124,7 +124,13 @@
 
 /* Panel sizes */
 .cockpit-panel--min {
-  display: none;
+  /* Keep minimized panels visible - show as a small bar at bottom */
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  right: 20px;
+  height: 60px;
+  overflow: hidden;
 }
 
 .cockpit-panel--half {

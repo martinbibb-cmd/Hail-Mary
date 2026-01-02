@@ -88,7 +88,12 @@
   }
 
   .os-dock-minimized {
-    display: none; /* Hide minimized windows on mobile */
+    /* Keep minimized windows visible on mobile */
+    position: relative;
+    right: auto;
+    bottom: auto;
+    margin-top: 8px;
+    flex-wrap: wrap;
   }
 }
 

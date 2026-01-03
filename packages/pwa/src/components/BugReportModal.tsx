@@ -42,6 +42,13 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose 
         screenResolution: `${window.screen.width}x${window.screen.height}`,
         timestamp: new Date().toISOString(),
         viewport: `${window.innerWidth}x${window.innerHeight}`,
+        // Build metadata for debugging "changes not changing" issues
+        buildMetadata: {
+          gitSha: __GIT_SHA__,
+          buildTime: __BUILD_TIME__,
+          version: __APP_VERSION__,
+          env: __BUILD_ENV__,
+        },
       };
 
       const response = await apiFetch<{ success: boolean; error?: string }>('/bug-reports', {
@@ -184,6 +191,8 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose 
                   📍 Current page: {window.location.pathname}
                   <br />
                   📱 Screen: {window.screen.width}x{window.screen.height}
+                  <br />
+                  🔖 Build: {__GIT_SHA__} ({new Date(__BUILD_TIME__).toLocaleDateString()})
                 </small>
               </div>
 

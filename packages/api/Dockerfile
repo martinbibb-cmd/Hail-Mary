@@ -5,6 +5,11 @@
 # Uses Debian-based image (glibc) for better native module compatibility vs Alpine (musl)
 FROM node:20-bookworm-slim AS builder
 
+# Build arguments for fingerprinting
+ARG GIT_SHA=unknown
+ARG BUILD_TIME
+ARG NODE_ENV=production
+
 # Set working directory
 WORKDIR /app
 
@@ -117,6 +122,12 @@ EXPOSE 3001
 # Environment variables (set at runtime)
 ENV PORT=3001
 ENV NODE_ENV=production
+
+# Build metadata (passed from build args)
+ARG GIT_SHA=unknown
+ARG BUILD_TIME
+ENV GIT_SHA=${GIT_SHA}
+ENV BUILD_TIME=${BUILD_TIME}
 
 # Health check using Node.js built-in http module (no wget dependency)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

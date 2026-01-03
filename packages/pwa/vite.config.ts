@@ -1,6 +1,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+
+// Get Git SHA (short version) - fallback to 'unknown' if not in git repo
+const getGitSha = () => {
+  // First check environment variable (set by Docker build or CI)
+  if (process.env.VITE_GIT_SHA) {
+    return process.env.VITE_GIT_SHA
+  }
+  // Try to get from git command
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  } catch {
+    return 'unknown'
+  }
+}
+
+// Get build time - use environment variable if set, otherwise current time
+const getBuildTime = () => {
+  return process.env.VITE_BUILD_TIME || new Date().toISOString()
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -164,7 +184,9 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '0.0.0'),
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __BUILD_TIME__: JSON.stringify(getBuildTime()),
+    __GIT_SHA__: JSON.stringify(getGitSha()),
+    __BUILD_ENV__: JSON.stringify(process.env.NODE_ENV || 'development'),
   },
   server: {
     port: 3000,

@@ -8,7 +8,7 @@
 import { Router, Request, Response } from "express";
 import type { ApiResponse } from "@hail-mary/shared";
 import os from "os";
-import fs from "fs";
+import { readFileSync } from "fs";
 
 const router = Router();
 
@@ -47,7 +47,7 @@ router.get("/build", async (_req: Request, res: Response) => {
     try {
       // Docker container ID is typically the hostname in Docker environments
       // Or can be read from /proc/self/cgroup
-      const cgroupContent = fs.readFileSync("/proc/self/cgroup", "utf8");
+      const cgroupContent = readFileSync("/proc/self/cgroup", "utf8");
       const match = cgroupContent.match(/docker[/-]([a-f0-9]{12,64})/);
       if (match) {
         containerId = match[1].substring(0, CONTAINER_ID_SHORT_LENGTH); // Short container ID

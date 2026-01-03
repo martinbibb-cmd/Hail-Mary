@@ -16,6 +16,12 @@ export function BuildBadge() {
     const buildTime = new Date(isoString)
     const now = new Date()
     const diffMs = now.getTime() - buildTime.getTime()
+    
+    // Handle edge case where system clock is behind build time
+    if (diffMs < 0) {
+      return 'just now'
+    }
+    
     const diffMins = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMins / 60)
     const diffDays = Math.floor(diffHours / 24)

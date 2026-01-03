@@ -7,6 +7,11 @@
 # Build stage
 FROM node:20-bookworm-slim AS builder
 
+# Build arguments for fingerprinting
+ARG GIT_SHA=unknown
+ARG BUILD_TIME
+ARG NODE_ENV=production
+
 # Set working directory
 WORKDIR /app
 
@@ -70,6 +75,9 @@ RUN npm run build -w packages/shared
 RUN npm run build -w packages/surveyor-engine
 
 # Build PWA (using workspace command from root)
+# Pass build args to Vite via environment variables
+ENV VITE_GIT_SHA=${GIT_SHA}
+ENV VITE_BUILD_TIME=${BUILD_TIME}
 RUN npm run build -w packages/pwa
 
 # Production stage with nginx

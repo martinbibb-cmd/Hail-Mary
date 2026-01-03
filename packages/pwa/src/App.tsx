@@ -28,6 +28,7 @@ import { ScansApp } from './os/apps/scans/ScansApp'
 import { AddressesApp } from './os/apps/addresses/AddressesApp'
 import { TrajectoryApp } from './os/apps/trajectory/TrajectoryApp'
 import { BottomDock } from './components/BottomDock'
+import { BuildBadge } from './components/BuildBadge'
 import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
 import { useSpineStore } from './stores/spineStore'
@@ -751,6 +752,9 @@ function App() {
       {showBottomDock && (
         <BottomDock />
       )}
+      
+      {/* Build fingerprint badge (globally visible) */}
+      <BuildBadge />
     </>
   )
 

@@ -60,6 +60,7 @@ import trajectoryRouter from './routes/trajectory';
 import atlasRouter from './routes/atlas';
 import gcRouter from './routes/gc';
 import bugReportsRouter from './routes/bugReports';
+import metaRouter from './routes/meta';
 
 import path from 'path';
 
@@ -392,6 +393,7 @@ app.use('/api/trajectory', trajectoryRouter); // Trajectory Engine: carbon/cost 
 app.use('/api/atlas', atlasRouter); // Atlas Heat Loss API: room-by-room heat loss calculations following MCS 3005-D
 app.use('/api/gc', gcRouter); // GC Boiler Catalog: truth layer for boiler facts, survey resolution, and enrichment
 app.use('/api/bug-reports', bugReportsRouter); // Bug Reports: User-submitted bug reports and feature requests
+app.use('/api/meta', metaRouter); // Meta: Build fingerprinting and system metadata
 
 // 404 handler
 app.use((_req, res) => {

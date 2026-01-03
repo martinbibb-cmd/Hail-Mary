@@ -47,6 +47,11 @@ COPY package.json package-lock.json .npmrc ./
 # Copy all package.json files for workspace resolution
 COPY packages/assistant/package.json ./packages/assistant/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
+COPY packages/vision-engine/package.json ./packages/vision-engine/
+COPY packages/api/package.json ./packages/api/
+COPY packages/pwa/package.json ./packages/pwa/
+COPY packages/worker/package.json ./packages/worker/
 
 # Install dependencies
 # Note: Optional deps are required for Rollup 4.x native bindings
@@ -89,6 +94,11 @@ ENV CXXFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
 COPY package.json package-lock.json .npmrc ./
 COPY packages/assistant/package.json ./packages/assistant/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
+COPY packages/vision-engine/package.json ./packages/vision-engine/
+COPY packages/api/package.json ./packages/api/
+COPY packages/pwa/package.json ./packages/pwa/
+COPY packages/worker/package.json ./packages/worker/
 
 # Install production dependencies only
 RUN npm ci --omit=dev

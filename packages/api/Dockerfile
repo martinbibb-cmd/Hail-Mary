@@ -8,7 +8,6 @@ FROM node:20-bookworm-slim AS builder
 # Build arguments for fingerprinting
 ARG GIT_SHA=unknown
 ARG BUILD_TIME
-ARG NODE_ENV=production
 
 # Set working directory
 WORKDIR /app
@@ -52,6 +51,11 @@ COPY package.json package-lock.json .npmrc ./
 # Copy all package.json files for workspace resolution
 COPY packages/api/package.json ./packages/api/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
+COPY packages/vision-engine/package.json ./packages/vision-engine/
+COPY packages/assistant/package.json ./packages/assistant/
+COPY packages/pwa/package.json ./packages/pwa/
+COPY packages/worker/package.json ./packages/worker/
 
 # Install dependencies
 # Note: Optional deps are required for Rollup 4.x native bindings
@@ -94,6 +98,11 @@ ENV CXXFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
 COPY package.json package-lock.json .npmrc ./
 COPY packages/api/package.json ./packages/api/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
+COPY packages/vision-engine/package.json ./packages/vision-engine/
+COPY packages/assistant/package.json ./packages/assistant/
+COPY packages/pwa/package.json ./packages/pwa/
+COPY packages/worker/package.json ./packages/worker/
 
 # Install ALL dependencies including dev deps for drizzle-kit and ts-node
 # These are required at runtime to run database migrations and seed scripts

@@ -20,7 +20,9 @@ export function BuildBadge() {
     const diffHours = Math.floor(diffMins / 60)
     const diffDays = Math.floor(diffHours / 24)
 
-    if (diffMins < 60) {
+    if (diffMins < 1) {
+      return 'just now'
+    } else if (diffMins < 60) {
       return `${diffMins}m ago`
     } else if (diffHours < 24) {
       return `${diffHours}h ago`
@@ -36,6 +38,7 @@ export function BuildBadge() {
 
   return (
     <div
+      className="build-badge"
       style={{
         position: 'fixed',
         bottom: '16px',
@@ -52,6 +55,8 @@ export function BuildBadge() {
         userSelect: 'none',
         transition: 'all 0.2s ease',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+        // Ensure badge is above most UI but below modals/overlays
+        pointerEvents: 'auto',
       }}
       onClick={() => setExpanded(!expanded)}
       title="Click to expand build details"

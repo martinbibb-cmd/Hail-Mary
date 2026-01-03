@@ -8,8 +8,12 @@
 import { Router, Request, Response } from "express";
 import type { ApiResponse } from "@hail-mary/shared";
 import os from "os";
+import fs from "fs";
 
 const router = Router();
+
+// Container ID short length (first 12 characters of full container ID)
+const CONTAINER_ID_SHORT_LENGTH = 12;
 
 /**
  * GET /api/meta/build
@@ -43,10 +47,10 @@ router.get("/build", async (_req: Request, res: Response) => {
     try {
       // Docker container ID is typically the hostname in Docker environments
       // Or can be read from /proc/self/cgroup
-      const cgroupContent = require("fs").readFileSync("/proc/self/cgroup", "utf8");
+      const cgroupContent = fs.readFileSync("/proc/self/cgroup", "utf8");
       const match = cgroupContent.match(/docker[/-]([a-f0-9]{12,64})/);
       if (match) {
-        containerId = match[1].substring(0, 12); // Short container ID
+        containerId = match[1].substring(0, CONTAINER_ID_SHORT_LENGTH); // Short container ID
       }
     } catch {
       // Not in Docker or can't read cgroup file

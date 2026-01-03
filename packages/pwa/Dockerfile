@@ -10,7 +10,6 @@ FROM node:20-bookworm-slim AS builder
 # Build arguments for fingerprinting
 ARG GIT_SHA=unknown
 ARG BUILD_TIME
-ARG NODE_ENV=production
 
 # Set working directory
 WORKDIR /app
@@ -56,6 +55,10 @@ COPY package.json package-lock.json .npmrc ./
 COPY packages/pwa/package.json ./packages/pwa/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
+COPY packages/vision-engine/package.json ./packages/vision-engine/
+COPY packages/assistant/package.json ./packages/assistant/
+COPY packages/api/package.json ./packages/api/
+COPY packages/worker/package.json ./packages/worker/
 
 # Install dependencies 
 # Note: Optional deps are required for Rollup 4.x native bindings

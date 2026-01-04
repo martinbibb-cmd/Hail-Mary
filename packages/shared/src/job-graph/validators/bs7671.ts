@@ -130,7 +130,7 @@ export class BS7671Validator implements Validator {
    */
   private validateEarthingSystem(
     facts: Fact[],
-    conflicts: Conflict[],
+    _conflicts: Conflict[],
     warnings: string[]
   ): void {
     const earthingType = facts.find(
@@ -163,7 +163,7 @@ export class BS7671Validator implements Validator {
   private validateRCDProtection(
     facts: Fact[],
     conflicts: Conflict[],
-    warnings: string[]
+    _warnings: string[]
   ): void {
     const rcdProtection = facts.find(
       (f) => f.category === 'electrical' && f.key === 'rcd_protection'
@@ -206,7 +206,7 @@ export class BS7671Validator implements Validator {
    */
   private validateBonding(
     facts: Fact[],
-    conflicts: Conflict[],
+    _conflicts: Conflict[],
     warnings: string[]
   ): void {
     const gasBonding = facts.find(

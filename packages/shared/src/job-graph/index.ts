@@ -36,9 +36,10 @@ export * from './validators';
 // Main Orchestrator
 export {
   JobGraphOrchestrator,
-  JobGraphState,
   createJobGraph,
 } from './jobGraph';
+
+export type { JobGraphState } from './jobGraph';
 
 // Re-export commonly used types for convenience
 export type {
@@ -52,4 +53,5 @@ export type {
   CompletenessAssessment,
   JobGraphSummary,
   EvidenceTrail,
+  RuleSource,
 } from './types';

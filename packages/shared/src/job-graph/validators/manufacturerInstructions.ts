@@ -13,7 +13,6 @@ import {
   Fact,
   Decision,
   Conflict,
-  RuleReference,
 } from '../types';
 
 /**
@@ -90,7 +89,7 @@ export class ManufacturerInstructionsValidator implements Validator {
   private validateClearances(
     facts: Fact[],
     conflicts: Conflict[],
-    warnings: string[]
+    _warnings: string[]
   ): void {
     const miClearanceTop = facts.find(
       (f) => f.category === 'regulatory' && f.key === 'mi_clearance_top_mm'
@@ -194,7 +193,7 @@ export class ManufacturerInstructionsValidator implements Validator {
   private validateFlueRequirements(
     facts: Fact[],
     conflicts: Conflict[],
-    warnings: string[]
+    _warnings: string[]
   ): void {
     const miFlueLength = facts.find(
       (f) => f.category === 'regulatory' && f.key === 'mi_max_flue_length_m'
@@ -334,8 +333,8 @@ export class ManufacturerInstructionsValidator implements Validator {
    */
   private checkMIvsBuildingRegs(
     facts: Fact[],
-    decisions: Decision[],
-    conflicts: Conflict[],
+    _decisions: Decision[],
+    _conflicts: Conflict[],
     recommendations: string[]
   ): void {
     // This is informational - showing when MI overrides Building Regs
@@ -350,8 +349,8 @@ export class ManufacturerInstructionsValidator implements Validator {
     }
 
     // Check for decisions that cite MI taking precedence
-    const miPrecedenceDecisions = decisions.filter(
-      (d) =>
+    const miPrecedenceDecisions = _decisions.filter(
+      (d: Decision) =>
         d.ruleApplied?.source === 'manufacturer_instructions' &&
         d.ruleApplied.restrictiveness === 'more'
     );

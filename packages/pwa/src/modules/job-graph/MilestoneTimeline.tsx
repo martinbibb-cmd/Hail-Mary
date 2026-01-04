@@ -98,7 +98,8 @@ function MilestoneCard({ milestone }: MilestoneCardProps) {
     }
   };
 
-  const criticalityLevel = milestone.metadata?.criticalityLevel;
+  const criticalityLevel = milestone.metadata?.criticalityLevel as string | undefined;
+  const description = milestone.metadata?.description as string | undefined;
 
   return (
     <div className={`milestone-card status-${milestone.status}`}>
@@ -123,8 +124,8 @@ function MilestoneCard({ milestone }: MilestoneCardProps) {
         </div>
       </div>
 
-      {milestone.metadata?.description && (
-        <p className="milestone-description">{milestone.metadata.description}</p>
+      {description && (
+        <p className="milestone-description">{description}</p>
       )}
 
       {milestone.blockers.length > 0 && (

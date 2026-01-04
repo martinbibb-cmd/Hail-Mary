@@ -736,6 +736,117 @@ export const spineTimelineEvents = pgTable("spine_timeline_events", {
 }));
 
 // ============================================
+// Job Graph System - Orchestration Spine
+// ============================================
+
+// Job graphs - main orchestration state per visit
+export const spineJobGraphs = pgTable("spine_job_graphs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  visitId: uuid("visit_id")
+    .references(() => spineVisits.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  propertyId: uuid("property_id")
+    .references(() => spineProperties.id)
+    .notNull(),
+  status: text("status").notNull().default("in_progress"), // in_progress, ready_for_outputs, complete, blocked
+  overallConfidence: integer("overall_confidence").notNull().default(0), // 0-100
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  visitIdx: index("spine_job_graphs_visit_idx").on(t.visitId),
+  propertyIdx: index("spine_job_graphs_property_idx").on(t.propertyId),
+}));
+
+// Milestones - progress checkpoints with confidence tracking
+export const spineMilestones = pgTable("spine_milestones", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  jobGraphId: uuid("job_graph_id")
+    .references(() => spineJobGraphs.id, { onDelete: "cascade" })
+    .notNull(),
+  key: text("key").notNull(), // 'heating_system_spec', 'electrical_capacity_confirmed', etc.
+  label: text("label").notNull(),
+  status: text("status").notNull().default("pending"), // pending, in_progress, complete, blocked
+  confidence: integer("confidence").notNull().default(0), // 0-100
+  blockers: jsonb("blockers").notNull().default(sql`'[]'::jsonb`).$type<string[]>(),
+  metadata: jsonb("metadata"), // Additional context (description, criticalityLevel, requiredFactCategories)
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  jobGraphKeyIdx: index("spine_milestones_job_graph_key_idx").on(t.jobGraphId, t.key),
+  statusIdx: index("spine_milestones_status_idx").on(t.status),
+}));
+
+// Facts - extracted information from timeline events
+export const spineFacts = pgTable("spine_facts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  jobGraphId: uuid("job_graph_id")
+    .references(() => spineJobGraphs.id, { onDelete: "cascade" })
+    .notNull(),
+  sourceEventId: uuid("source_event_id")
+    .references(() => spineTimelineEvents.id, { onDelete: "set null" }), // Link to capture source
+  category: text("category").notNull(), // 'property', 'existing_system', 'electrical', 'gas', etc.
+  key: text("key").notNull(), // 'boiler_age', 'main_fuse_rating', etc.
+  value: jsonb("value").notNull(), // The actual data
+  unit: text("unit"), // For measurements: 'A', 'mm', 'kW', etc.
+  confidence: integer("confidence").notNull().default(50), // 0-100
+  extractedBy: text("extracted_by").notNull(), // 'ai', 'manual', 'measurement', 'calculation', 'lookup'
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  jobGraphCategoryIdx: index("spine_facts_job_graph_category_idx").on(t.jobGraphId, t.category),
+  categoryKeyIdx: index("spine_facts_category_key_idx").on(t.category, t.key),
+}));
+
+// Decisions - choices made with evidence and reasoning
+export const spineDecisions = pgTable("spine_decisions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  jobGraphId: uuid("job_graph_id")
+    .references(() => spineJobGraphs.id, { onDelete: "cascade" })
+    .notNull(),
+  milestoneId: uuid("milestone_id")
+    .references(() => spineMilestones.id, { onDelete: "set null" }), // Which milestone this supports
+  decisionType: text("decision_type").notNull(), // 'system_selection', 'compliance', 'upgrade_path', etc.
+  decision: text("decision").notNull(), // The actual decision made
+  reasoning: text("reasoning").notNull(), // Why this decision was made
+  ruleApplied: jsonb("rule_applied"), // RuleReference object (source, standard, section, description)
+  evidenceFactIds: uuid("evidence_fact_ids").array().notNull().default(sql`'{}'::uuid[]`), // Links to supporting facts
+  confidence: integer("confidence").notNull().default(50), // 0-100
+  risks: jsonb("risks").notNull().default(sql`'[]'::jsonb`).$type<string[]>(), // Known risks/assumptions
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdBy: text("created_by").notNull(), // 'ai', 'engineer', 'system'
+}, (t) => ({
+  jobGraphIdx: index("spine_decisions_job_graph_idx").on(t.jobGraphId),
+  milestoneIdx: index("spine_decisions_milestone_idx").on(t.milestoneId),
+  typeIdx: index("spine_decisions_type_idx").on(t.decisionType),
+}));
+
+// Conflicts - detected issues requiring resolution
+export const spineConflicts = pgTable("spine_conflicts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  jobGraphId: uuid("job_graph_id")
+    .references(() => spineJobGraphs.id, { onDelete: "cascade" })
+    .notNull(),
+  conflictType: text("conflict_type").notNull(), // 'mi_vs_regs', 'fact_contradiction', 'validation_failure', etc.
+  severity: text("severity").notNull(), // 'critical', 'warning', 'info'
+  description: text("description").notNull(), // Human-readable explanation
+  rule1: jsonb("rule_1"), // First conflicting rule (RuleReference object)
+  rule2: jsonb("rule_2"), // Second conflicting rule (RuleReference object)
+  resolution: text("resolution"), // How to resolve (populated when resolved)
+  affectedFactIds: uuid("affected_fact_ids").array().notNull().default(sql`'{}'::uuid[]`),
+  affectedDecisionIds: uuid("affected_decision_ids").array().notNull().default(sql`'{}'::uuid[]`),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  jobGraphSeverityIdx: index("spine_conflicts_job_graph_severity_idx").on(t.jobGraphId, t.severity),
+  typeIdx: index("spine_conflicts_type_idx").on(t.conflictType),
+  unresolvedIdx: index("spine_conflicts_unresolved_idx")
+    .on(t.jobGraphId)
+    .where(sql`${t.resolvedAt} is null`),
+}));
+
+// ============================================
 // Survey Helper System - SystemSpecDraft
 // ============================================
 

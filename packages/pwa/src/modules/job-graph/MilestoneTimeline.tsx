@@ -98,7 +98,9 @@ function MilestoneCard({ milestone }: MilestoneCardProps) {
     }
   };
 
-  const criticalityLevel = milestone.metadata?.criticalityLevel;
+  const criticalityLevel = typeof milestone.metadata?.criticalityLevel === 'string' 
+    ? milestone.metadata.criticalityLevel 
+    : undefined;
 
   return (
     <div className={`milestone-card status-${milestone.status}`}>
@@ -123,7 +125,7 @@ function MilestoneCard({ milestone }: MilestoneCardProps) {
         </div>
       </div>
 
-      {milestone.metadata?.description && (
+      {typeof milestone.metadata?.description === 'string' && (
         <p className="milestone-description">{milestone.metadata.description}</p>
       )}
 

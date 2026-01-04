@@ -114,7 +114,7 @@ function MilestoneCard({ milestone }: MilestoneCardProps) {
                 className="milestone-criticality"
                 style={{ color: getCriticalityColor(criticalityLevel) }}
               >
-                {String(criticalityLevel)}
+                {criticalityLevel}
               </span>
             )}
           </div>

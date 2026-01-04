@@ -53,3 +53,13 @@
   opacity: 0.8;
 }
 
+.active-property-bar__btn--primary {
+  background: var(--color-accent, #007bff);
+  color: white;
+  border-color: transparent;
+}
+
+.active-property-bar__btn--primary:hover {
+  background: var(--color-accent-hover, #0056b3);
+}
+

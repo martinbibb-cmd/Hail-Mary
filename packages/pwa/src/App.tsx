@@ -17,6 +17,7 @@ import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useLayoutMode } from './hooks/useLayoutMode'
 import { apiFetch } from './services/apiClient'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
+import { JobGraphView } from './modules/job-graph'
 import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage, AdminBugDashboardPage, AdminBugListPage, AdminBugDetailPage, AdminBugAnalyticsPage } from './pages/admin'
 import { ModuleLauncher } from './pages/ModuleLauncher'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
@@ -708,6 +709,7 @@ function App() {
           <Route path="/home" element={<ModuleLauncher />} />
           <Route path="/addresses" element={<AddressesApp />} />
           <Route path="/properties/:id" element={<SpinePropertyPage />} />
+          <Route path="/visits/:visitId/job-graph" element={<JobGraphView />} />
           <Route path="/camera" element={<SpineCameraPage />} />
           <Route path="/voice" element={<SpinePlaceholderPage title="Voice" subtitle="Placeholder in PR #1." />} />
           <Route path="/engineer" element={<SpineEngineerPage />} />

@@ -61,6 +61,7 @@ import atlasRouter from './routes/atlas';
 import gcRouter from './routes/gc';
 import bugReportsRouter from './routes/bugReports';
 import metaRouter from './routes/meta';
+import jobGraphRouter from './routes/job-graph';
 
 import path from 'path';
 
@@ -394,6 +395,7 @@ app.use('/api/atlas', atlasRouter); // Atlas Heat Loss API: room-by-room heat lo
 app.use('/api/gc', gcRouter); // GC Boiler Catalog: truth layer for boiler facts, survey resolution, and enrichment
 app.use('/api/bug-reports', bugReportsRouter); // Bug Reports: User-submitted bug reports and feature requests
 app.use('/api/meta', metaRouter); // Meta: Build fingerprinting and system metadata
+app.use('/api/job-graph', jobGraphRouter); // Job Graph: Orchestration spine for turning captured data into defensible outputs
 
 // 404 handler
 app.use((_req, res) => {

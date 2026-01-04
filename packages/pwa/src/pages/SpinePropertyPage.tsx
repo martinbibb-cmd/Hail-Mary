@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useSpineStore } from '../stores/spineStore'
 
 interface ApiResponse<T> {
@@ -18,6 +18,7 @@ interface SpineProperty {
 
 export function SpinePropertyPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [property, setProperty] = useState<SpineProperty | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +76,7 @@ export function SpinePropertyPage() {
     }
     if (json.data?.id) {
       setActiveVisitId(json.data.id)
-      alert(`Visit started: ${json.data.id}`)
+      navigate(`/visits/${json.data.id}/job-graph`)
     }
   }
 

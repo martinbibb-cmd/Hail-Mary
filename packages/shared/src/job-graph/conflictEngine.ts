@@ -17,7 +17,6 @@ import {
   Decision,
   Fact,
   RuleReference,
-  RuleSource,
 } from './types';
 
 /**
@@ -325,8 +324,8 @@ export class RuleComparator {
    * Returns: 'rule1' | 'rule2' | 'equal' | 'unknown'
    */
   static compareRestrictiveness(
-    rule1: RuleReference,
-    rule2: RuleReference,
+    _rule1: RuleReference,
+    _rule2: RuleReference,
     context: { metric: string; value1: unknown; value2: unknown }
   ): 'rule1' | 'rule2' | 'equal' | 'unknown' {
     // For numeric comparisons (e.g., clearances, ratings)

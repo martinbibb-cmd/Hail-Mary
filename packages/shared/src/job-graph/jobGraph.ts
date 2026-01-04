@@ -23,7 +23,7 @@ import {
 import { MilestoneTracker } from './milestoneTracker';
 import { ConflictEngine } from './conflictEngine';
 import { DecisionRecorder } from './decisionRecorder';
-import { MILESTONE_DEFINITIONS, StandardMilestone } from './milestones';
+import { StandardMilestone } from './milestones';
 import { getAllValidators } from './validators';
 
 /**
@@ -321,7 +321,7 @@ export class JobGraphOrchestrator {
       type: string;
       payload: Record<string, unknown>;
     },
-    extractionMethod: 'ai' | 'manual' = 'ai'
+    _extractionMethod: 'ai' | 'manual' = 'ai'
   ): Fact[] {
     // Placeholder - in real implementation this would call AI services
     // to extract facts from photos, voice transcripts, etc.

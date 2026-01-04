@@ -13,7 +13,6 @@ import {
   Fact,
   Decision,
   Conflict,
-  RuleReference,
 } from '../types';
 
 /**
@@ -23,7 +22,7 @@ export class BS5440Validator implements Validator {
   name = 'BS 5440 - Flues and Ventilation';
   standard = 'BS 5440-1:2008 & BS 5440-2:2009';
 
-  validate(facts: Fact[], decisions: Decision[]): ValidationResult {
+  validate(facts: Fact[], _decisions: Decision[]): ValidationResult {
     const conflicts: Conflict[] = [];
     const warnings: string[] = [];
     const recommendations: string[] = [];
@@ -55,9 +54,6 @@ export class BS5440Validator implements Validator {
   ): void {
     const flueType = facts.find((f) => f.category === 'existing_system' && f.key === 'flue_type');
     const flueRoute = facts.find((f) => f.category === 'existing_system' && f.key === 'flue_route');
-    const flueTerminationLocation = facts.find(
-      (f) => f.category === 'structure' && f.key === 'flue_termination_location'
-    );
 
     if (!flueType) {
       warnings.push('Flue type not documented');
@@ -89,7 +85,7 @@ export class BS5440Validator implements Validator {
   private validateHorizontalFlueClearances(
     facts: Fact[],
     conflicts: Conflict[],
-    warnings: string[]
+    _warnings: string[]
   ): void {
     const clearanceToWindow = facts.find(
       (f) => f.category === 'measurements' && f.key === 'flue_clearance_to_window'
@@ -151,7 +147,7 @@ export class BS5440Validator implements Validator {
   private validateVerticalFlueRequirements(
     facts: Fact[],
     conflicts: Conflict[],
-    warnings: string[]
+    _warnings: string[]
   ): void {
     const flueHeight = facts.find(
       (f) => f.category === 'measurements' && f.key === 'flue_height_above_roof'
@@ -187,13 +183,10 @@ export class BS5440Validator implements Validator {
   private validateVentilation(
     facts: Fact[],
     conflicts: Conflict[],
-    warnings: string[]
+    _warnings: string[]
   ): void {
     const boilerLocation = facts.find(
       (f) => f.category === 'existing_system' && f.key === 'boiler_location'
-    );
-    const boilerKW = facts.find(
-      (f) => f.category === 'existing_system' && f.key === 'boiler_kw_rating'
     );
     const ventilationProvided = facts.find(
       (f) => f.category === 'structure' && f.key === 'permanent_ventilation'
@@ -232,7 +225,7 @@ export class BS5440Validator implements Validator {
    */
   private validateClearances(
     facts: Fact[],
-    conflicts: Conflict[],
+    _conflicts: Conflict[],
     warnings: string[]
   ): void {
     const clearanceTop = facts.find(

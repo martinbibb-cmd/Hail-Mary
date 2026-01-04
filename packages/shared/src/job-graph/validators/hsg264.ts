@@ -22,7 +22,7 @@ export class HSG264Validator implements Validator {
   name = 'HSG264 - Gas Safety';
   standard = 'HSG264';
 
-  validate(facts: Fact[], decisions: Decision[]): ValidationResult {
+  validate(facts: Fact[], _decisions: Decision[]): ValidationResult {
     const conflicts: Conflict[] = [];
     const warnings: string[] = [];
     const recommendations: string[] = [];
@@ -204,9 +204,6 @@ export class HSG264Validator implements Validator {
     conflicts: Conflict[],
     warnings: string[]
   ): void {
-    const boilerLocation = facts.find(
-      (f) => f.category === 'existing_system' && f.key === 'boiler_location'
-    );
     const boilerType = facts.find(
       (f) => f.category === 'existing_system' && f.key === 'boiler_type'
     );

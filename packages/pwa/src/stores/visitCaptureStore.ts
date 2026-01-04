@@ -101,7 +101,7 @@ export const useVisitCaptureStore = create<VisitCaptureState>()(
         let nextChecklist = prevChecklist;
         if (rocky.checklistUpdates.length > 0) {
           nextChecklist = prevChecklist.map((item) => {
-            const update = rocky.checklistUpdates.find((u) => u.id === item.id);
+            const update = rocky.checklistUpdates.find((u: any) => u.id === item.id);
             return update
               ? { ...item, checked: update.checked, note: update.note, autoDetected: true }
               : item;
@@ -111,7 +111,7 @@ export const useVisitCaptureStore = create<VisitCaptureState>()(
         // Apply flags to exceptions list (dedupe)
         let nextExceptions = state.exceptions;
         if (rocky.flags.length > 0) {
-          const newOnes = rocky.flags.map((flag) => `${String(flag.type).toUpperCase()}: ${flag.message}`);
+          const newOnes = rocky.flags.map((flag: any) => `${String(flag.type).toUpperCase()}: ${flag.message}`);
           nextExceptions = Array.from(new Set([...nextExceptions, ...newOnes]));
         }
 

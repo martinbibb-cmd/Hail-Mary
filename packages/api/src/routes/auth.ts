@@ -49,17 +49,12 @@ const BASE_COOKIE_OPTIONS = {
  * already sets X-Forwarded-Proto correctly.
  */
 const getCookieOptions = (req: Request): typeof BASE_COOKIE_OPTIONS & { secure: boolean } => {
-  // Check if request is over HTTPS (via X-Forwarded-Proto header or direct)
   const forwardedProto = req.headers['x-forwarded-proto'];
-  const isSecure = Boolean(
-    req.secure || 
-    forwardedProto === 'https' ||
-    (process.env.BASE_URL && process.env.BASE_URL.startsWith('https://'))
-  );
-  
+  const isHttps = req.secure || forwardedProto === 'https';
+
   return {
     ...BASE_COOKIE_OPTIONS,
-    secure: isSecure,
+    secure: isHttps,
   };
 };
 

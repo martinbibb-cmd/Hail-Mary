@@ -1,0 +1,89 @@
+/**
+ * RoomCard Component Styles
+ */
+
+@import './shared-tokens.css';
+
+.room-card {
+  background: white;
+  border-radius: var(--radius-md, 12px);
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all var(--transition-normal, 0.2s);
+}
+
+.room-card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.room-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.room-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.confidence-chip {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.12s);
+}
+
+.confidence-chip:hover {
+  transform: scale(1.05);
+}
+
+.room-heat-loss {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.heat-loss-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.heat-loss-unit {
+  font-size: 1rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.room-adequacy {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.adequacy-temp {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.room-risk-flags {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.risk-flag {
+  font-size: 1.25rem;
+  cursor: help;
+}

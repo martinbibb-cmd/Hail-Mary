@@ -15,8 +15,9 @@ import { AuthProvider, AuthGuard, ResetPasswordPage, useAuth } from './auth'
 import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
 import { useLayoutMode } from './hooks/useLayoutMode'
+import { apiFetch } from './services/apiClient'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
-import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage } from './pages/admin'
+import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage, AdminBugDashboardPage, AdminBugListPage, AdminBugDetailPage, AdminBugAnalyticsPage } from './pages/admin'
 import { ModuleLauncher } from './pages/ModuleLauncher'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
@@ -25,6 +26,7 @@ import { TranscriptsApp } from './os/apps/transcripts/TranscriptsApp'
 import { PhotoLibraryApp } from './os/apps/photo-library/PhotoLibraryApp'
 import { ScansApp } from './os/apps/scans/ScansApp'
 import { AddressesApp } from './os/apps/addresses/AddressesApp'
+import { TrajectoryApp } from './os/apps/trajectory/TrajectoryApp'
 import { BottomDock } from './components/BottomDock'
 import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
 import { useLeadStore } from './stores/leadStore'
@@ -39,30 +41,26 @@ import { SpineKnowledgePage } from './pages/SpineKnowledgePage'
 import { SpineKnowledgeDocPage } from './pages/SpineKnowledgeDocPage'
 import { CustomerSummaryPage } from './pages/CustomerSummaryPage'
 import { PresentationPage } from './pages/PresentationPage'
+import { GCLookupPage } from './pages/GCLookupPage'
 
 // Simple API client
 const api = {
   async get<T>(url: string): Promise<T> {
-    const res = await fetch(url, { credentials: 'include' })
-    return res.json()
+    return apiFetch<T>(url)
   },
   async post<T>(url: string, data: unknown): Promise<T> {
-    const res = await fetch(url, {
+    return apiFetch<T>(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(data),
     })
-    return res.json()
   },
   async put<T>(url: string, data: unknown): Promise<T> {
-    const res = await fetch(url, {
+    return apiFetch<T>(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(data),
     })
-    return res.json()
   },
 }
 
@@ -714,6 +712,7 @@ function App() {
           <Route path="/engineer" element={<SpineEngineerPage />} />
           <Route path="/customer-summary" element={<CustomerSummaryPage />} />
           <Route path="/presentation" element={<PresentationPage />} />
+          <Route path="/gc-lookup" element={<GCLookupPage />} />
           <Route path="/sarah" element={<SpineSarahPage />} />
           <Route path="/knowledge" element={<SpineKnowledgePage />} />
           <Route path="/knowledge/doc/:docId/page/:pageNo" element={<SpineKnowledgeDocPage />} />
@@ -732,6 +731,7 @@ function App() {
           <Route path="/photos" element={<PhotosAppWithGuard />} />
           <Route path="/photo-library" element={<PhotoLibraryApp />} />
           <Route path="/scans" element={<ScansApp />} />
+          <Route path="/trajectory" element={<TrajectoryApp />} />
           <Route path="/profile" element={<ProfileApp />} />
           <Route path="/files" element={<FilesApp />} />
           <Route path="/transcripts" element={<TranscriptsApp />} />
@@ -740,6 +740,10 @@ function App() {
           <Route path="/admin/lead-assignments" element={<AdminLeadAssignmentsPage />} />
           <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
           <Route path="/admin/system-recommendation" element={<AdminSystemRecommendationPage />} />
+          <Route path="/admin/bugs/dashboard" element={<AdminBugDashboardPage />} />
+          <Route path="/admin/bugs/analytics" element={<AdminBugAnalyticsPage />} />
+          <Route path="/admin/bugs/:id" element={<AdminBugDetailPage />} />
+          <Route path="/admin/bugs" element={<AdminBugListPage />} />
         </Routes>
       </main>
 

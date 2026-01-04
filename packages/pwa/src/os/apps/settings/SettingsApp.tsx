@@ -11,16 +11,34 @@ import React, { useRef, useState } from 'react';
 import { useAuth } from '../../../auth';
 import { useWallpaper, builtInWallpapers, Wallpaper } from '../../wallpaper';
 import { cognitiveProfiles, useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext';
+import { loadDockItems, saveDockItems, DEFAULT_DOCK_ITEMS } from '../../../utils/dockItems';
 import { AdminSystem } from './AdminSystem';
 import { AdminAddressAssignment } from './AdminAddressAssignment';
 import './SettingsApp.css';
 
+// All available dock items
+const ALL_DOCK_ITEMS = [
+  { id: 'home', label: 'Home', icon: '🏠' },
+  { id: 'addresses', label: 'Addresses', icon: '🏘️' },
+  { id: 'diary', label: 'Diary', icon: '📅' },
+  { id: 'camera', label: 'Camera', icon: '📷' },
+  { id: 'photo-library', label: 'Photos', icon: '🖼️' },
+  { id: 'transcripts', label: 'Transcripts', icon: '📝' },
+  { id: 'scans', label: 'Scans', icon: '📊' },
+  { id: 'engineer', label: 'Engineer', icon: '🛠️' },
+  { id: 'sarah', label: 'Sarah', icon: '🧠' },
+  { id: 'presentation', label: 'Pack', icon: '📄' },
+  { id: 'knowledge', label: 'Knowledge', icon: '📚' },
+  { id: 'trajectory', label: 'Journey', icon: '🌱' },
+  { id: 'profile', label: 'Settings', icon: '⚙️' },
+];
+
 export const SettingsApp: React.FC = () => {
   const { user, logout } = useAuth();
   const {
-    currentWallpaper, 
-    customWallpapers, 
-    setWallpaper, 
+    currentWallpaper,
+    customWallpapers,
+    setWallpaper,
     addCustomWallpaper,
     removeCustomWallpaper
   } = useWallpaper();
@@ -28,6 +46,9 @@ export const SettingsApp: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [updateState, setUpdateState] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+
+  // Dock customization state
+  const [selectedDockItems, setSelectedDockItems] = useState<string[]>(() => loadDockItems());
 
   const handleLogout = async () => {
     await logout();
@@ -56,6 +77,20 @@ export const SettingsApp: React.FC = () => {
       URL.revokeObjectURL(wallpaper.imageUrl);
     }
     removeCustomWallpaper(wallpaper.id);
+  };
+
+  const handleDockItemToggle = (itemId: string) => {
+    const newSelection = selectedDockItems.includes(itemId)
+      ? selectedDockItems.filter(id => id !== itemId)
+      : [...selectedDockItems, itemId];
+
+    setSelectedDockItems(newSelection);
+    saveDockItems(newSelection);
+  };
+
+  const handleResetDock = () => {
+    setSelectedDockItems(DEFAULT_DOCK_ITEMS);
+    saveDockItems(DEFAULT_DOCK_ITEMS);
   };
 
   const handleUpdate = async () => {
@@ -273,6 +308,47 @@ export const SettingsApp: React.FC = () => {
           onChange={handleCustomUpload}
           style={{ display: 'none' }}
         />
+      </div>
+
+      <div className="settings-section">
+        <h3>Bottom Dock</h3>
+        <p className="settings-section-desc">
+          Customize which apps appear in your bottom navigation bar. Select the items you want visible.
+        </p>
+
+        <div className="dock-items-grid">
+          {ALL_DOCK_ITEMS.map((item) => {
+            const isSelected = selectedDockItems.includes(item.id);
+            const isProfileOrSettings = item.id === 'profile';
+
+            return (
+              <label
+                key={item.id}
+                className={`dock-item-card ${isSelected ? 'selected' : ''} ${isProfileOrSettings ? 'locked' : ''}`}
+                title={isProfileOrSettings ? 'Settings is always visible' : `Toggle ${item.label}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => !isProfileOrSettings && handleDockItemToggle(item.id)}
+                  disabled={isProfileOrSettings}
+                />
+                <span className="dock-item-icon">{item.icon}</span>
+                <span className="dock-item-label">{item.label}</span>
+                {isProfileOrSettings && <span className="dock-item-lock">🔒</span>}
+              </label>
+            );
+          })}
+        </div>
+
+        <div className="dock-actions">
+          <button className="settings-reset-btn" onClick={handleResetDock}>
+            ↺ Reset to Default
+          </button>
+          <p className="dock-items-count">
+            {selectedDockItems.length} {selectedDockItems.length === 1 ? 'item' : 'items'} selected
+          </p>
+        </div>
       </div>
 
       <div className="settings-section">

@@ -56,6 +56,10 @@ import engineerRouter from './routes/engineer';
 import customerSummaryRouter from './routes/customerSummary';
 import presentationDraftsRouter from './routes/presentationDrafts';
 import userSettingsRouter from './routes/userSettings';
+import trajectoryRouter from './routes/trajectory';
+import atlasRouter from './routes/atlas';
+import gcRouter from './routes/gc';
+import bugReportsRouter from './routes/bugReports';
 
 import path from 'path';
 
@@ -79,6 +83,12 @@ app.set('trust proxy', 1);
 
 // Initialize database (PostgreSQL via Drizzle ORM)
 initializeDatabase();
+
+// Seed trajectory assumptions (UK placeholder data)
+import { seedUKAssumptions } from './db/seeds/trajectory-assumptions';
+seedUKAssumptions().catch(err => {
+  console.error('Failed to seed trajectory assumptions:', err);
+});
 
 // Initialize knowledge storage (create directories for PDF storage)
 import { initializeStorage } from './services/knowledge.service';
@@ -378,6 +388,10 @@ app.use('/api/engineer', engineerRouter); // v2 Spine: manual Engineer runs -> t
 app.use('/api/customer', customerSummaryRouter); // v2 Spine: customer-friendly summary from latest engineer_output
 app.use('/api/presentation', presentationDraftsRouter); // PR12b: presentation drafts (customer packs)
 app.use('/api/user-settings', userSettingsRouter); // User preferences and settings persistence
+app.use('/api/trajectory', trajectoryRouter); // Trajectory Engine: carbon/cost projections for retrofit journeys
+app.use('/api/atlas', atlasRouter); // Atlas Heat Loss API: room-by-room heat loss calculations following MCS 3005-D
+app.use('/api/gc', gcRouter); // GC Boiler Catalog: truth layer for boiler facts, survey resolution, and enrichment
+app.use('/api/bug-reports', bugReportsRouter); // Bug Reports: User-submitted bug reports and feature requests
 
 // 404 handler
 app.use((_req, res) => {

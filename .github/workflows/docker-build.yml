@@ -4,19 +4,19 @@ name: Build and Push Docker Images
 # Images are automatically pulled by NAS deployments for auto-updates
 #
 # Triggers:
-# - Automatic: Push to main or staging branches (builds only changed services)
+# - Automatic: Push to main branch only (builds only changed services)
 # - Manual: workflow_dispatch with optional force rebuild (builds all services)
 #
 # Images are tagged with:
-# - latest (for main branch)
-# - <branch-name> (for any branch)
+# - latest (for main branch only)
 # - <commit-sha> (for every commit)
+#
+# Feature branches must be merged to main via PR to publish :latest images
 
 on:
   push:
     branches:
       - main
-      - staging
   workflow_dispatch:
     inputs:
       force_rebuild:
@@ -93,7 +93,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-api
           tags: |
-            type=ref,event=branch
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
@@ -126,6 +125,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint PWA
+        run: npm run lint -w packages/pwa
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -142,7 +153,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-pwa
           tags: |
-            type=ref,event=branch
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
@@ -191,7 +201,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-assistant
           tags: |
-            type=ref,event=branch
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 

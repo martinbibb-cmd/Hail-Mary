@@ -1072,3 +1072,405 @@ export const leadSystemRecommendations = pgTable("lead_system_recommendations", 
   createdByUserId: integer("created_by_user_id")
     .references(() => users.id), // nullable - may be from API or UI
 });
+
+// ============================================
+// Heat Loss Surveys - Physics-First Approach
+// ============================================
+
+// Heat loss surveys - comprehensive physics-based heat loss surveys
+export const heatLossSurveys = pgTable("heat_loss_surveys", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id, { onDelete: "cascade" })
+    .notNull(),
+  surveyorId: integer("surveyor_id")
+    .references(() => users.id),
+  surveyDate: timestamp("survey_date", { withTimezone: true }).notNull(),
+  // Main survey data stored as JSONB (full HeatLossSurvey schema)
+  surveyData: jsonb("survey_data").notNull(),
+  // Denormalized fields for quick queries
+  wholeHouseHeatLossW: integer("whole_house_heat_loss_w"),
+  wholeHouseHeatLossKw: numeric("whole_house_heat_loss_kw", { precision: 10, scale: 2 }),
+  recommendedBoilerSizeKw: numeric("recommended_boiler_size_kw", { precision: 10, scale: 2 }),
+  calculationMethod: varchar("calculation_method", { length: 50 }), // MCS, room_by_room, whole_house_estimate
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("heat_loss_surveys_lead_id_idx").on(t.leadId),
+  surveyorIdIdx: index("heat_loss_surveys_surveyor_id_idx").on(t.surveyorId),
+  surveyDateIdx: index("heat_loss_surveys_survey_date_idx").on(t.surveyDate),
+}));
+
+// ============================================
+// Trajectory Engine - Carbon/Cost Projections
+// ============================================
+
+// Assumptions snapshots - monthly energy prices, grid intensity, policy flags
+export const assumptionsSnapshots = pgTable("assumptions_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  regionCode: varchar("region_code", { length: 20 }).notNull(), // e.g. "UK-GB"
+  periodStart: timestamp("period_start", { withTimezone: true }).notNull(), // month bucket start
+  periodEnd: timestamp("period_end", { withTimezone: true }).notNull(), // month bucket end
+  electricityUnitPPerKwh: numeric("electricity_unit_p_per_kwh", { precision: 10, scale: 2 }).notNull(),
+  electricityOffpeakPPerKwh: numeric("electricity_offpeak_p_per_kwh", { precision: 10, scale: 2 }),
+  gasUnitPPerKwh: numeric("gas_unit_p_per_kwh", { precision: 10, scale: 2 }).notNull(),
+  elecStandingChargePPerDay: numeric("elec_standing_charge_p_per_day", { precision: 10, scale: 2 }),
+  gasStandingChargePPerDay: numeric("gas_standing_charge_p_per_day", { precision: 10, scale: 2 }),
+  gridIntensityGco2ePerKwh: numeric("grid_intensity_gco2e_per_kwh", { precision: 10, scale: 2 }).notNull(),
+  gasIntensityGco2ePerKwh: numeric("gas_intensity_gco2e_per_kwh", { precision: 10, scale: 2 }).notNull(),
+  policyFlags: jsonb("policy_flags"), // { "BUS_available": true, "BUS_grant_gbp": 7500, ... }
+  sourceMeta: jsonb("source_meta"), // provenance, urls, etc
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  regionPeriodIdx: index("assumptions_snapshots_region_period_idx").on(t.regionCode, t.periodStart),
+}));
+
+// Property models - heat loss & fabric characteristics
+export const propertyModels = pgTable("property_models", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable - can exist without lead
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable - can exist without property
+  modelVersion: integer("model_version").notNull().default(1),
+  floorAreaM2: numeric("floor_area_m2", { precision: 10, scale: 2 }),
+  ageBand: varchar("age_band", { length: 100 }), // pre-1919, 1919-1944, etc.
+  construction: jsonb("construction"), // wall/roof/floor/windows U-values or category
+  infiltrationAch: numeric("infiltration_ach", { precision: 5, scale: 2 }), // air changes per hour
+  zones: jsonb("zones"), // array of zone objects with heat_loss_w_per_k
+  defaultSetpoints: jsonb("default_setpoints"), // { living: 21, bedrooms: 18 }
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("property_models_lead_id_idx").on(t.leadId),
+}));
+
+// Occupancy profiles - who's home when, comfort priorities
+export const occupancyProfiles = pgTable("occupancy_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable
+  preset: varchar("preset", { length: 50 }).notNull(), // "WFH", "9to5_out", "shift", "always_home"
+  schedule: jsonb("schedule"), // hourly or blocks
+  internalGainsW: numeric("internal_gains_w", { precision: 10, scale: 2 }),
+  comfortPriority: varchar("comfort_priority", { length: 50 }).default("balanced"), // "comfort", "balanced", "saver"
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("occupancy_profiles_lead_id_idx").on(t.leadId),
+}));
+
+// DHW profiles - hot water usage patterns
+export const dhwProfiles = pgTable("dhw_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable
+  occupants: integer("occupants").notNull(),
+  showersPerDay: numeric("showers_per_day", { precision: 5, scale: 2 }).notNull(),
+  bathsPerWeek: numeric("baths_per_week", { precision: 5, scale: 2 }).notNull(),
+  targetTempC: numeric("target_temp_c", { precision: 5, scale: 2 }).default("50").notNull(),
+  coldInletTempC: numeric("cold_inlet_temp_c", { precision: 5, scale: 2 }),
+  mixergyEnabled: boolean("mixergy_enabled").default(false).notNull(),
+  mixergyStrategy: jsonb("mixergy_strategy"), // { "topup_temp":45, "offpeak_window":"00:30-04:30" }
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("dhw_profiles_lead_id_idx").on(t.leadId),
+}));
+
+// Scenarios - tech stack + control strategy combinations
+export const scenarios = pgTable("scenarios", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable
+  name: varchar("name", { length: 255 }).notNull(),
+  techStack: jsonb("tech_stack").notNull(), // { space_heat: [...], dhw: [...], cooling: {...} }
+  controlStrategy: jsonb("control_strategy").notNull(), // lockout temps, zoning, priority, etc
+  capex: jsonb("capex"), // { "low": 3500, "mid": 5200, "high": 7800 }
+  disruptionScore: integer("disruption_score"), // 1-5
+  assumptionsOverrides: jsonb("assumptions_overrides"), // optional per-scenario overrides
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("scenarios_lead_id_idx").on(t.leadId),
+}));
+
+// Journeys - staged retrofit paths over time
+export const journeys = pgTable("journeys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id), // nullable
+  propertyId: integer("property_id")
+    .references(() => properties.id), // nullable
+  name: varchar("name", { length: 255 }).notNull(),
+  steps: jsonb("steps").notNull(), // [ { step:1, scenario_id:"uuid-a", start_date:"2026-02-01" }, ... ]
+  reportPins: jsonb("report_pins"), // { "assumptions_snapshot_id": "...", "grid_decarb_path": "central" }
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("journeys_lead_id_idx").on(t.leadId),
+}));
+
+// ============================================
+// GC Boiler Catalog - Truth Layer for Boiler Facts
+// ============================================
+
+// Boiler GC catalog - canonical boiler facts keyed by GC number
+export const boilerGcCatalog = pgTable("boiler_gc_catalog", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gcNumber: text("gc_number").notNull().unique(), // normalized GC number
+  manufacturer: text("manufacturer"),
+  brand: text("brand"), // optional, normalized
+  model: text("model"),
+  variant: text("variant"), // optional, e.g., "30kW"
+  
+  // Boiler classification
+  boilerType: varchar("boiler_type", { length: 50 }), // combi|system|regular|unknown
+  fuel: varchar("fuel", { length: 50 }), // ng|lpg|oil|unknown
+  
+  // Performance specs
+  chOutputKwNominal: numeric("ch_output_kw_nominal", { precision: 10, scale: 2 }),
+  dhwOutputKwNominal: numeric("dhw_output_kw_nominal", { precision: 10, scale: 2 }),
+  modulationMinKw: numeric("modulation_min_kw", { precision: 10, scale: 2 }),
+  modulationMaxKw: numeric("modulation_max_kw", { precision: 10, scale: 2 }),
+  erpEfficiencyPercent: numeric("erp_efficiency_percent", { precision: 5, scale: 2 }),
+  erpClass: text("erp_class"),
+  
+  // Electrical / controls (install-critical)
+  pumpOverrunRequired: boolean("pump_overrun_required"),
+  permanentLiveRequired: boolean("permanent_live_required"),
+  overrunHandledBy: varchar("overrun_handled_by", { length: 50 }), // boiler|external|unknown
+  typicalFuseA: integer("typical_fuse_a"),
+  controlsSupported: jsonb("controls_supported"), // {on_off:true, opentherm:false, ebus:true}
+  
+  // Hydraulic
+  internalPumpPresent: boolean("internal_pump_present"),
+  internalDiverterPresent: boolean("internal_diverter_present"),
+  plateHexPresent: boolean("plate_hex_present"),
+  expansionVesselPresent: boolean("expansion_vessel_present"),
+  
+  // Physical / flue
+  heightMm: integer("height_mm"),
+  widthMm: integer("width_mm"),
+  depthMm: integer("depth_mm"),
+  weightKg: numeric("weight_kg", { precision: 10, scale: 2 }),
+  flueDiameterMm: integer("flue_diameter_mm"),
+  maxFlueLengthM: numeric("max_flue_length_m", { precision: 10, scale: 2 }),
+  plumeKitCompatible: boolean("plume_kit_compatible"),
+  
+  // Metadata
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  status: varchar("status", { length: 50 }).default("active").notNull(), // active|deprecated|draft
+  qualityScore: numeric("quality_score", { precision: 3, scale: 2 }), // 0..1
+  notes: text("notes"),
+}, (t) => ({
+  gcNumberIdx: index("boiler_gc_catalog_gc_number_idx").on(t.gcNumber),
+  manufacturerIdx: index("boiler_gc_catalog_manufacturer_idx").on(t.manufacturer),
+}));
+
+// Boiler GC sources - provenance tracking for catalog entries
+export const boilerGcSources = pgTable("boiler_gc_sources", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gcCatalogId: uuid("gc_catalog_id")
+    .references(() => boilerGcCatalog.id, { onDelete: "cascade" })
+    .notNull(),
+  sourceType: varchar("source_type", { length: 50 }).notNull(), // manufacturer_pdf|datasheet|crowd|manual_entry|web|unknown
+  sourceRef: text("source_ref"), // url OR file key OR "upload:xyz"
+  extractedBy: varchar("extracted_by", { length: 50 }).notNull(), // human|ai|import
+  extractedAt: timestamp("extracted_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  fieldsCovered: jsonb("fields_covered"), // list of fields supported by this source
+  confidence: numeric("confidence", { precision: 3, scale: 2 }), // 0..1
+  rawSnippet: text("raw_snippet"), // optional small excerpt / hash
+  checksum: text("checksum"), // optional: detect duplicates
+}, (t) => ({
+  gcCatalogIdIdx: index("boiler_gc_sources_gc_catalog_id_idx").on(t.gcCatalogId),
+}));
+
+// Boiler GC enrichment queue - missing GC workflow
+export const boilerGcEnrichmentQueue = pgTable("boiler_gc_enrichment_queue", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gcNumber: text("gc_number").notNull(), // normalized input
+  requestedByUserId: integer("requested_by_user_id")
+    .references(() => users.id),
+  requestedFromLeadId: integer("requested_from_lead_id")
+    .references(() => leads.id),
+  context: jsonb("context"), // {photos:[...], brand_guess:"", notes:"", location:"", ...}
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending|searching|candidates_found|needs_human|approved|rejected|merged
+  searchAttempts: integer("search_attempts").default(0).notNull(),
+  lastSearchAt: timestamp("last_search_at", { withTimezone: true }),
+  candidates: jsonb("candidates"), // array of candidate objects
+  chosenCandidate: jsonb("chosen_candidate"), // selected candidate for approval
+  reviewerUserId: integer("reviewer_user_id")
+    .references(() => users.id),
+  reviewerNotes: text("reviewer_notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  gcNumberIdx: index("boiler_gc_enrichment_queue_gc_number_idx").on(t.gcNumber),
+  statusIdx: index("boiler_gc_enrichment_queue_status_idx").on(t.status),
+  createdAtIdx: index("boiler_gc_enrichment_queue_created_at_idx").on(t.createdAt),
+}));
+
+// Boiler GC aliases - handle formatting variants + legacy patterns
+export const boilerGcAliases = pgTable("boiler_gc_aliases", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gcNumberCanonical: text("gc_number_canonical")
+    .notNull()
+    .references(() => boilerGcCatalog.gcNumber, { onDelete: "cascade" }),
+  alias: text("alias").notNull().unique(), // e.g., "47 311 19", "47-311-19"
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  gcNumberCanonicalIdx: index("boiler_gc_aliases_canonical_idx").on(t.gcNumberCanonical),
+  aliasIdx: index("boiler_gc_aliases_alias_idx").on(t.alias),
+}));
+
+// Bug Reports - User-submitted bug reports and feature requests
+export const bugReports = pgTable("bug_reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  bugType: varchar("bug_type", { length: 50 }).default("bug").notNull(), // bug|feature|improvement|question
+  priority: varchar("priority", { length: 50 }).default("medium").notNull(), // low|medium|high|critical
+  status: varchar("status", { length: 50 }).default("new").notNull(), // new|investigating|in_progress|resolved|closed|wont_fix
+  // Context capture - what was happening when bug occurred
+  url: text("url"), // Current page URL
+  userAgent: text("user_agent"), // Browser/device info
+  screenResolution: varchar("screen_resolution", { length: 50 }), // e.g., "1920x1080"
+  contextData: jsonb("context_data"), // Additional context (state, actions, etc.)
+  errorMessage: text("error_message"), // If there was an error
+  stackTrace: text("stack_trace"), // Error stack trace if available
+  // Metadata
+  screenshotUrl: text("screenshot_url"), // Optional screenshot
+  attachments: jsonb("attachments"), // Array of attachment URLs
+  tags: jsonb("tags"), // Array of tags for categorization
+  assignedToUserId: integer("assigned_to_user_id")
+    .references(() => users.id),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedByUserId: integer("resolved_by_user_id")
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  userIdIdx: index("bug_reports_user_id_idx").on(t.userId),
+  statusIdx: index("bug_reports_status_idx").on(t.status),
+  bugTypeIdx: index("bug_reports_bug_type_idx").on(t.bugType),
+  priorityIdx: index("bug_reports_priority_idx").on(t.priority),
+  createdAtIdx: index("bug_reports_created_at_idx").on(t.createdAt),
+}));
+
+// Bug Notes - Admin notes/comments on bug reports
+export const bugNotes = pgTable("bug_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bugReportId: uuid("bug_report_id")
+    .references(() => bugReports.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  note: text("note").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  bugReportIdIdx: index("bug_notes_bug_report_id_idx").on(t.bugReportId),
+  createdAtIdx: index("bug_notes_created_at_idx").on(t.createdAt),
+}));
+
+// Bug Activity - Audit trail for bug report changes
+export const bugActivity = pgTable("bug_activity", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bugReportId: uuid("bug_report_id")
+    .references(() => bugReports.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id),
+  actionType: varchar("action_type", { length: 50 }).notNull(), // status_change|priority_change|assignment_change|note_added|created|resolved
+  fieldName: varchar("field_name", { length: 50 }), // Which field changed (status, priority, etc.)
+  oldValue: varchar("old_value", { length: 255 }), // Previous value
+  newValue: varchar("new_value", { length: 255 }), // New value
+  metadata: jsonb("metadata"), // Additional context for the action
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  bugReportIdIdx: index("bug_activity_bug_report_id_idx").on(t.bugReportId),
+  actionTypeIdx: index("bug_activity_action_type_idx").on(t.actionType),
+  createdAtIdx: index("bug_activity_created_at_idx").on(t.createdAt),
+}));
+
+// Bug Filter Presets - Saved filter configurations for users
+export const bugFilterPresets = pgTable("bug_filter_presets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  filterConfig: jsonb("filter_config").notNull(), // Stored filter configuration
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  userIdIdx: index("bug_filter_presets_user_id_idx").on(t.userId),
+}));

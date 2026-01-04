@@ -71,7 +71,18 @@ export default defineConfig({
         categories: ['business', 'productivity']
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // Ensure immediate update behavior - skipWaiting + clientsClaim
+        skipWaiting: true,
+        clientsClaim: true,
+        // Limit precache to essential assets only (reduces build time)
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
+        globIgnores: [
+          '**/*.map',           // Skip source maps
+          '**/node_modules/**', // Skip any stray node_modules
+          '**/test/**',         // Skip test files
+        ],
+        // Limit max precache size to avoid timeout
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB max per file
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -123,6 +134,34 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    // Disable source maps in production (speeds up build significantly)
+    sourcemap: false,
+    // Skip compressed size reporting (saves build time)
+    reportCompressedSize: false,
+    // Use esbuild for faster minification
+    minify: 'esbuild',
+    // Optimize chunk splitting for faster builds and better caching
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Split vendor code into separate chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('@mui') || id.includes('@emotion')) {
+              return 'mui';
+            }
+            if (id.includes('zustand') || id.includes('drizzle')) {
+              return 'state';
+            }
+            // React and other node_modules go into vendor chunk
+            return 'vendor';
+          }
+        }
+      }
+    },
+    // Increase chunk size warning limit (we're chunking appropriately)
+    chunkSizeWarningLimit: 1000,
+  },
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '0.0.0'),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),

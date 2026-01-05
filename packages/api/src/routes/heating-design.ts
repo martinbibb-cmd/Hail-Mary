@@ -32,10 +32,10 @@ import {
 } from '@hail-mary/heating-engine';
 import {
   HeatLossInputs,
-  BuildingData,
-  ClimateData,
-  DesignConditions,
-  Room,
+  HeatingBuildingData,
+  HeatingClimateData,
+  HeatingDesignConditions,
+  HDRoom,
   FlowTemperature,
   defaultTargetTemperatures,
   ukClimateData,
@@ -361,7 +361,7 @@ router.post('/projects/:id/calculate-heat-loss', async (req: Request, res: Respo
     }
 
     // Prepare inputs for heat loss calculation
-    const building: BuildingData = {
+    const building: HeatingBuildingData = {
       id: buildingDataRow.id,
       projectId: buildingDataRow.projectId,
       address: buildingDataRow.address || '',
@@ -377,7 +377,7 @@ router.post('/projects/:id/calculate-heat-loss', async (req: Request, res: Respo
     };
 
     // Determine climate data based on postcode
-    const climate: ClimateData = {
+    const climate: HeatingClimateData = {
       postcode: building.postcode,
       outsideDesignTemp: Number(buildingDataRow.outsideDesignTemp) || -3,
       windSpeed: 4.5,
@@ -385,7 +385,7 @@ router.post('/projects/:id/calculate-heat-loss', async (req: Request, res: Respo
       region: 'UK',
     };
 
-    const designConditions: DesignConditions = {
+    const designConditions: HeatingDesignConditions = {
       targetTemperatures: defaultTargetTemperatures,
       infiltrationRate: building.airChangesPerHour,
       thermalBridging: Number(buildingDataRow.thermalBridging) || 0.15,
@@ -394,7 +394,7 @@ router.post('/projects/:id/calculate-heat-loss', async (req: Request, res: Respo
     };
 
     // Parse rooms from stored JSON geometry
-    const rooms: Room[] = roomsData.map(r => r.geometry as Room);
+    const rooms: HDRoom[] = roomsData.map(r => r.geometry as HDRoom);
 
     // Calculate heat loss for all rooms
     const results = calculateBuildingHeatLoss(
@@ -411,7 +411,7 @@ router.post('/projects/:id/calculate-heat-loss', async (req: Request, res: Respo
         .delete(heatingHeatLossResults)
         .where(eq(heatingHeatLossResults.roomId, result.roomId));
 
-      // Insert new result
+      // Insert new result with complete provenance audit trail
       await db
         .insert(heatingHeatLossResults)
         .values({
@@ -421,6 +421,7 @@ router.post('/projects/:id/calculate-heat-loss', async (req: Request, res: Respo
           totalLoss: result.totalLoss.toString(),
           requiredOutput: result.requiredOutput.toString(),
           breakdown: result.breakdown as any,
+          provenance: result.provenance as any, // Complete audit trail
           overridden: false,
         });
     }

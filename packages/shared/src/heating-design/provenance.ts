@@ -10,6 +10,8 @@
  * This is what transforms Atlas from "clever software" to "professional instrument"
  */
 
+import type { ConfidenceLevel } from '../core/systemRecommendation';
+
 // ============================================================================
 // Core Provenance Type
 // ============================================================================
@@ -150,8 +152,6 @@ export interface ConfidenceSummary {
   ventilation: ConfidenceLevel; // From ACH, infiltration
   emitters: ConfidenceLevel;    // From radiator placement
 }
-
-export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
 /**
  * Compute confidence from provenance

@@ -8,8 +8,8 @@ import {
   Radiator,
   RadiatorSelection,
   RadiatorPlacement,
-  Room,
-  Wall,
+  HDRoom,
+  HDWall,
   FlowTemperature,
   PipeworkConfig,
   Point3D,
@@ -19,14 +19,14 @@ import {
  * Find the best radiator for a room from a database of available radiators
  *
  * @param requiredOutput - Required heat output in Watts
- * @param room - Room data including geometry
+ * @param room - HDRoom data including geometry
  * @param flowTemp - Flow/return temperature (affects radiator output)
  * @param radiatorDatabase - Available radiators to choose from
  * @returns Best radiator selection with placement, or null if no suitable radiator found
  */
 export function selectRadiator(
   requiredOutput: number,
-  room: Room,
+  room: HDRoom,
   flowTemp: FlowTemperature,
   radiatorDatabase: Radiator[]
 ): RadiatorSelection | null {
@@ -50,7 +50,7 @@ export function selectRadiator(
   // 3. Try each radiator on each wall and score the combinations
   const candidates: Array<{
     radiator: Radiator;
-    wall: Wall;
+    wall: HDWall;
     placement: RadiatorPlacement;
     score: number;
   }> = [];
@@ -93,8 +93,8 @@ export function selectRadiator(
  */
 function tryPlaceRadiator(
   radiator: Radiator,
-  wall: Wall,
-  room: Room
+  wall: HDWall,
+  room: HDRoom
 ): RadiatorPlacement | null {
   // Convert radiator dimensions from mm to meters
   const radWidthM = radiator.width / 1000;
@@ -105,7 +105,7 @@ function tryPlaceRadiator(
   const requiredSpace = radWidthM + (2 * clearance);
 
   if (wall.length < requiredSpace) {
-    return null; // Wall too short
+    return null; // HDWall too short
   }
 
   // Check for obstructions (windows, doors)
@@ -189,7 +189,7 @@ function tryPlaceRadiator(
       z: position.z,
     },
     connectionType: radiator.connectionType,
-    valveType: 'TRV', // Default to TRV
+    valveType: 'trv', // Default to TRV
   };
 
   return {
@@ -213,7 +213,7 @@ interface ClearSpan {
 }
 
 function findClearSpans(
-  wall: Wall,
+  wall: HDWall,
   obstructions: Array<{ start: number; end: number; type: string; id: string }>
 ): ClearSpan[] {
   const spans: ClearSpan[] = [];
@@ -253,8 +253,8 @@ function findClearSpans(
  */
 function scoreRadiatorPlacement(
   radiator: Radiator,
-  wall: Wall,
-  room: Room,
+  wall: HDWall,
+  room: HDRoom,
   requiredOutput: number,
   flowTemp: FlowTemperature
 ): number {
@@ -275,7 +275,7 @@ function scoreRadiatorPlacement(
     score -= 50; // Undersized (should have been filtered out)
   }
 
-  // 2. Wall preference: external walls are better for heat distribution
+  // 2. HDWall preference: external walls are better for heat distribution
   if (wall.isExternal) {
     score += 20;
   }
@@ -325,7 +325,7 @@ function scoreRadiatorPlacement(
  */
 export function selectRadiatorsForBuilding(
   roomHeatLosses: Array<{ roomId: string; requiredOutput: number }>,
-  rooms: Room[],
+  rooms: HDRoom[],
   flowTemp: FlowTemperature,
   radiatorDatabase: Radiator[]
 ): Map<string, RadiatorSelection> {
@@ -357,8 +357,8 @@ export function selectRadiatorsForBuilding(
  */
 export function canRadiatorFitOnWall(
   radiator: Radiator,
-  wall: Wall,
-  room: Room
+  wall: HDWall,
+  room: HDRoom
 ): boolean {
   const placement = tryPlaceRadiator(radiator, wall, room);
   return placement !== null;
@@ -369,7 +369,7 @@ export function canRadiatorFitOnWall(
  */
 export function getAlternativeRadiators(
   requiredOutput: number,
-  room: Room,
+  room: HDRoom,
   flowTemp: FlowTemperature,
   radiatorDatabase: Radiator[],
   excludeIds: string[] = []

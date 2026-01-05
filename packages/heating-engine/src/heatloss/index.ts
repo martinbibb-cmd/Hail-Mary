@@ -4,3 +4,4 @@
  */
 
 export * from './calculator';
+export * from './provenance-builder';

@@ -1695,6 +1695,11 @@ export const heatingHeatLossResults = pgTable("heating_heat_loss_results", {
   totalLoss: numeric("total_loss", { precision: 10, scale: 2 }).notNull(), // W
   requiredOutput: numeric("required_output", { precision: 10, scale: 2 }).notNull(), // W (with safety margin)
   breakdown: jsonb("breakdown").notNull(), // HeatLossBreakdown JSON
+
+  // Provenance: complete audit trail (method, inputs, assumptions, warnings)
+  provenance: jsonb("provenance").notNull(), // CalculationProvenance JSON
+
+  // Legacy fields (kept for backwards compatibility)
   calculatedAt: timestamp("calculated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

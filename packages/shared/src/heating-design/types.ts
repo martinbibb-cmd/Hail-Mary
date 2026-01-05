@@ -238,6 +238,11 @@ export interface HeatLossResult {
   totalLoss: number; // W
   breakdown: HeatLossBreakdown;
   requiredOutput: number; // W (with safety margin)
+
+  // Provenance: audit trail for defensibility
+  provenance: import('./provenance').CalculationProvenance;
+
+  // Legacy fields (kept for backwards compatibility)
   calculatedAt: Date;
   overridden: boolean;
 }

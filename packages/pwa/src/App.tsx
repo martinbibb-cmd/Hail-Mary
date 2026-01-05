@@ -28,6 +28,7 @@ import { PhotoLibraryApp } from './os/apps/photo-library/PhotoLibraryApp'
 import { ScansApp } from './os/apps/scans/ScansApp'
 import { AddressesApp } from './os/apps/addresses/AddressesApp'
 import { TrajectoryApp } from './os/apps/trajectory/TrajectoryApp'
+import { HeatingDesignApp } from './modules/heating-design'
 import { BottomDock } from './components/BottomDock'
 import { BuildBadge } from './components/BuildBadge'
 import { RockyToolWithGuard, SarahToolWithGuard, PhotosAppWithGuard, VisitAppWithGuard } from './components/ProtectedRoutes'
@@ -735,6 +736,8 @@ function App() {
           <Route path="/photo-library" element={<PhotoLibraryApp />} />
           <Route path="/scans" element={<ScansApp />} />
           <Route path="/trajectory" element={<TrajectoryApp />} />
+          <Route path="/heating-design" element={<HeatingDesignApp />} />
+          <Route path="/heating-design/:projectId" element={<HeatingDesignApp />} />
           <Route path="/profile" element={<ProfileApp />} />
           <Route path="/files" element={<FilesApp />} />
           <Route path="/transcripts" element={<TranscriptsApp />} />

@@ -114,17 +114,10 @@ export const MoreDrawer: React.FC<MoreDrawerProps> = ({ isOpen, onClose }) => {
       action: { kind: 'route', target: '/files' },
     },
     {
-      id: 'profile',
-      label: 'Profile',
-      icon: '👤',
-      description: 'Account & preferences',
-      action: { kind: 'route', target: '/profile' },
-    },
-    {
       id: 'settings',
       label: 'Settings',
       icon: '⚙️',
-      description: 'App configuration',
+      description: 'Account & app configuration',
       action: { kind: 'window', target: 'settings' },
     },
     {

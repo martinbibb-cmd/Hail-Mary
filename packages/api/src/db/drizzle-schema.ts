@@ -1585,3 +1585,199 @@ export const bugFilterPresets = pgTable("bug_filter_presets", {
 }, (t) => ({
   userIdIdx: index("bug_filter_presets_user_id_idx").on(t.userId),
 }));
+
+// ============================================
+// Heating Design System
+// ============================================
+
+// Heating design projects - link to leads for heating system design
+export const heatingProjects = pgTable("heating_projects", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: integer("lead_id")
+    .references(() => leads.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  accountId: integer("account_id")
+    .references(() => accounts.id)
+    .notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  status: varchar("status", { length: 50 }).default("draft").notNull(), // draft|floor_plan_imported|heat_loss_calculated|radiators_selected|pipes_routed|complete
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  leadIdIdx: index("heating_projects_lead_id_idx").on(t.leadId),
+  userIdIdx: index("heating_projects_user_id_idx").on(t.userId),
+  accountIdIdx: index("heating_projects_account_id_idx").on(t.accountId),
+}));
+
+// Floor plans - imported from magicplan or manual entry
+export const heatingFloorPlans = pgTable("heating_floor_plans", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .references(() => heatingProjects.id, { onDelete: "cascade" })
+    .notNull(),
+  fileName: varchar("file_name", { length: 255 }),
+  fileType: varchar("file_type", { length: 50 }), // usdz|obj|pdf|json
+  fileUrl: text("file_url"), // Storage path or URL
+  data: jsonb("data").notNull(), // FloorPlan JSON structure
+  totalArea: numeric("total_area", { precision: 10, scale: 2 }), // m²
+  importedAt: timestamp("imported_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  projectIdIdx: index("heating_floor_plans_project_id_idx").on(t.projectId),
+}));
+
+// Building data - construction and design conditions
+export const heatingBuildingData = pgTable("heating_building_data", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .references(() => heatingProjects.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  address: text("address"),
+  postcode: varchar("postcode", { length: 20 }),
+  constructionYear: integer("construction_year"),
+  wallConstruction: varchar("wall_construction", { length: 100 }),
+  wallUValue: numeric("wall_u_value", { precision: 5, scale: 3 }),
+  roofConstruction: varchar("roof_construction", { length: 100 }),
+  roofUValue: numeric("roof_u_value", { precision: 5, scale: 3 }),
+  floorConstruction: varchar("floor_construction", { length: 100 }),
+  floorUValue: numeric("floor_u_value", { precision: 5, scale: 3 }),
+  airChangesPerHour: numeric("air_changes_per_hour", { precision: 5, scale: 2 }).default("1.0"),
+  outsideDesignTemp: numeric("outside_design_temp", { precision: 5, scale: 2 }).default("-3"),
+  thermalBridging: numeric("thermal_bridging", { precision: 5, scale: 3 }).default("0.15"),
+  safetyMargin: numeric("safety_margin", { precision: 5, scale: 2 }).default("15"), // percentage
+  flowTemperature: varchar("flow_temperature", { length: 20 }).default("70/50"), // 70/50|60/40|50/30
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  projectIdIdx: index("heating_building_data_project_id_idx").on(t.projectId),
+}));
+
+// Rooms - extracted from floor plan or manually entered
+export const heatingRooms = pgTable("heating_rooms", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  floorPlanId: uuid("floor_plan_id")
+    .references(() => heatingFloorPlans.id, { onDelete: "cascade" })
+    .notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // living_room|bedroom|kitchen|bathroom|etc
+  area: numeric("area", { precision: 10, scale: 2 }).notNull(), // m²
+  volume: numeric("volume", { precision: 10, scale: 2 }).notNull(), // m³
+  ceilingHeight: numeric("ceiling_height", { precision: 5, scale: 2 }).notNull(), // meters
+  targetTemperature: numeric("target_temperature", { precision: 5, scale: 2 }), // °C - override default
+  geometry: jsonb("geometry").notNull(), // Full Room JSON structure
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  floorPlanIdIdx: index("heating_rooms_floor_plan_id_idx").on(t.floorPlanId),
+}));
+
+// Heat loss results - calculated per room
+export const heatingHeatLossResults = pgTable("heating_heat_loss_results", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  roomId: uuid("room_id")
+    .references(() => heatingRooms.id, { onDelete: "cascade" })
+    .notNull(),
+  fabricLoss: numeric("fabric_loss", { precision: 10, scale: 2 }).notNull(), // W
+  ventilationLoss: numeric("ventilation_loss", { precision: 10, scale: 2 }).notNull(), // W
+  totalLoss: numeric("total_loss", { precision: 10, scale: 2 }).notNull(), // W
+  requiredOutput: numeric("required_output", { precision: 10, scale: 2 }).notNull(), // W (with safety margin)
+  breakdown: jsonb("breakdown").notNull(), // HeatLossBreakdown JSON
+
+  // Provenance: complete audit trail (method, inputs, assumptions, warnings)
+  provenance: jsonb("provenance").notNull(), // CalculationProvenance JSON
+
+  // Legacy fields (kept for backwards compatibility)
+  calculatedAt: timestamp("calculated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  overridden: boolean("overridden").default(false),
+  overriddenValue: numeric("overridden_value", { precision: 10, scale: 2 }), // W - if manually overridden
+}, (t) => ({
+  roomIdIdx: index("heating_heat_loss_results_room_id_idx").on(t.roomId),
+}));
+
+// Radiator catalog - database of available radiators
+export const heatingRadiatorCatalog = pgTable("heating_radiator_catalog", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  manufacturer: varchar("manufacturer", { length: 255 }).notNull(),
+  model: varchar("model", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // single|double|K1|K2|K3|vertical|column
+  height: integer("height").notNull(), // mm
+  width: integer("width").notNull(), // mm
+  depth: integer("depth").notNull(), // mm
+  output50_30: numeric("output_50_30", { precision: 10, scale: 2 }), // W at 50/30
+  output60_40: numeric("output_60_40", { precision: 10, scale: 2 }), // W at 60/40
+  output70_50: numeric("output_70_50", { precision: 10, scale: 2 }), // W at 70/50
+  weight: numeric("weight", { precision: 10, scale: 2 }), // kg
+  waterVolume: numeric("water_volume", { precision: 10, scale: 2 }), // litres
+  connectionType: varchar("connection_type", { length: 50 }), // TBOE|BBOE|TBCenter|BBCenter
+  connectionCenters: integer("connection_centers"), // mm
+  price: numeric("price", { precision: 10, scale: 2 }), // GBP
+  dataSheetUrl: text("data_sheet_url"),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  manufacturerIdx: index("heating_radiator_catalog_manufacturer_idx").on(t.manufacturer),
+  typeIdx: index("heating_radiator_catalog_type_idx").on(t.type),
+}));
+
+// Radiator selections - radiators selected for each room
+export const heatingRadiatorSelections = pgTable("heating_radiator_selections", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  roomId: uuid("room_id")
+    .references(() => heatingRooms.id, { onDelete: "cascade" })
+    .notNull(),
+  catalogRadiatorId: uuid("catalog_radiator_id")
+    .references(() => heatingRadiatorCatalog.id),
+  placement: jsonb("placement").notNull(), // RadiatorPlacement JSON
+  outputAtFlowTemp: numeric("output_at_flow_temp", { precision: 10, scale: 2 }).notNull(), // W
+  selectionScore: numeric("selection_score", { precision: 5, scale: 2 }), // Algorithm score
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  roomIdIdx: index("heating_radiator_selections_room_id_idx").on(t.roomId),
+}));
+
+// Pipe networks - complete pipe routing for project
+export const heatingPipeNetworks = pgTable("heating_pipe_networks", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .references(() => heatingProjects.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  boilerPosition: jsonb("boiler_position").notNull(), // Point3D JSON
+  network: jsonb("network").notNull(), // PipeNetwork JSON structure
+  totalLength: numeric("total_length", { precision: 10, scale: 2 }), // meters
+  materialSchedule: jsonb("material_schedule"), // MaterialSchedule JSON
+  totalCost: numeric("total_cost", { precision: 10, scale: 2 }), // GBP
+  generatedAt: timestamp("generated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  projectIdIdx: index("heating_pipe_networks_project_id_idx").on(t.projectId),
+}));

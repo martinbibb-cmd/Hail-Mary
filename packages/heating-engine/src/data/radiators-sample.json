@@ -1,0 +1,192 @@
+[
+  {
+    "id": "stelrad-compact-k2-600x1000",
+    "manufacturer": "Stelrad",
+    "model": "Compact K2",
+    "type": "K2",
+    "height": 600,
+    "width": 1000,
+    "depth": 102,
+    "output": {
+      "50/30": 1248,
+      "60/40": 1872,
+      "70/50": 2496
+    },
+    "weight": 32.5,
+    "waterVolume": 7.8,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 145.00
+  },
+  {
+    "id": "stelrad-compact-k2-600x1200",
+    "manufacturer": "Stelrad",
+    "model": "Compact K2",
+    "type": "K2",
+    "height": 600,
+    "width": 1200,
+    "depth": 102,
+    "output": {
+      "50/30": 1498,
+      "60/40": 2246,
+      "70/50": 2995
+    },
+    "weight": 39.0,
+    "waterVolume": 9.4,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 165.00
+  },
+  {
+    "id": "stelrad-compact-k2-600x1400",
+    "manufacturer": "Stelrad",
+    "model": "Compact K2",
+    "type": "K2",
+    "height": 600,
+    "width": 1400,
+    "depth": 102,
+    "output": {
+      "50/30": 1747,
+      "60/40": 2621,
+      "70/50": 3494
+    },
+    "weight": 45.5,
+    "waterVolume": 10.9,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 185.00
+  },
+  {
+    "id": "quinn-double-panel-700x1000",
+    "manufacturer": "Quinn",
+    "model": "Double Panel",
+    "type": "double",
+    "height": 700,
+    "width": 1000,
+    "depth": 63,
+    "output": {
+      "50/30": 1165,
+      "60/40": 1748,
+      "70/50": 2330
+    },
+    "weight": 28.0,
+    "waterVolume": 6.5,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 125.00
+  },
+  {
+    "id": "quinn-k2-600x800",
+    "manufacturer": "Quinn",
+    "model": "K2 Compact",
+    "type": "K2",
+    "height": 600,
+    "width": 800,
+    "depth": 102,
+    "output": {
+      "50/30": 998,
+      "60/40": 1497,
+      "70/50": 1997
+    },
+    "weight": 26.0,
+    "waterVolume": 6.2,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 115.00
+  },
+  {
+    "id": "kudox-k3-600x1000",
+    "manufacturer": "Kudox",
+    "model": "K3 Premium",
+    "type": "K3",
+    "height": 600,
+    "width": 1000,
+    "depth": 155,
+    "output": {
+      "50/30": 1560,
+      "60/40": 2340,
+      "70/50": 3120
+    },
+    "weight": 42.0,
+    "waterVolume": 10.2,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 195.00
+  },
+  {
+    "id": "stelrad-vertical-1800x600",
+    "manufacturer": "Stelrad",
+    "model": "Vertex Vertical",
+    "type": "vertical",
+    "height": 1800,
+    "width": 600,
+    "depth": 72,
+    "output": {
+      "50/30": 1404,
+      "60/40": 2106,
+      "70/50": 2808
+    },
+    "weight": 38.5,
+    "waterVolume": 9.1,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 285.00
+  },
+  {
+    "id": "quinn-single-panel-600x1000",
+    "manufacturer": "Quinn",
+    "model": "Single Panel",
+    "type": "single",
+    "height": 600,
+    "width": 1000,
+    "depth": 50,
+    "output": {
+      "50/30": 624,
+      "60/40": 936,
+      "70/50": 1248
+    },
+    "weight": 18.5,
+    "waterVolume": 4.2,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 75.00
+  },
+  {
+    "id": "stelrad-compact-k1-600x1200",
+    "manufacturer": "Stelrad",
+    "model": "Compact K1",
+    "type": "K1",
+    "height": 600,
+    "width": 1200,
+    "depth": 63,
+    "output": {
+      "50/30": 999,
+      "60/40": 1498,
+      "70/50": 1998
+    },
+    "weight": 24.0,
+    "waterVolume": 5.6,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 105.00
+  },
+  {
+    "id": "kudox-k2-500x1600",
+    "manufacturer": "Kudox",
+    "model": "K2 Compact",
+    "type": "K2",
+    "height": 500,
+    "width": 1600,
+    "depth": 102,
+    "output": {
+      "50/30": 1664,
+      "60/40": 2496,
+      "70/50": 3328
+    },
+    "weight": 44.0,
+    "waterVolume": 10.6,
+    "connectionType": "BBOE",
+    "connectionCenters": 50,
+    "price": 175.00
+  }
+]

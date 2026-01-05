@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
-    "build:base": "npm run build -w packages/shared -w packages/surveyor-engine -w packages/vision-engine",
+    "build:base": "npm run build -w packages/shared -w packages/surveyor-engine -w packages/vision-engine -w packages/heating-engine",
     "build:apps": "npm run build -w packages/api -w packages/assistant -w packages/pwa",
     "build": "node scripts/build.mjs",
     "test": "npm run test --workspaces --if-present",

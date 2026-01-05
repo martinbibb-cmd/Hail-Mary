@@ -190,7 +190,7 @@ export type FlowTemperature = '70/50' | '60/40' | '50/30'; // Flow/Return temps
 // ============================================================================
 
 export interface HeatLossInputs {
-  hdroom: HDRoom;
+  room: HDRoom;
   building: HeatingBuildingData;
   climate: HeatingClimateData;
   designConditions: HeatingDesignConditions;
@@ -284,7 +284,7 @@ export interface RadiatorPlacement {
   roomId: string;
   wallId: string;
   position: Point3D; // Center of radiator
-  heightAboveHDFloor: number; // mm, default 100mm
+  heightAboveFloor: number; // mm, default 100mm
   rotation: number; // degrees
   pipework: PipeworkConfig;
 }

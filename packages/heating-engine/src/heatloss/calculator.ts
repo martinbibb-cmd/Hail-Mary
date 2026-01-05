@@ -5,26 +5,27 @@
  * and MCS Heat Pump Calculator standards.
  */
 
-import {
+import type {
   HeatLossInputs,
   HeatLossResult,
   HeatLossBreakdown,
-  WallLoss,
-  WindowLoss,
-  DoorLoss,
-  Room,
-  BuildingData,
-  ClimateData,
-  DesignConditions,
+  HDWallLoss,
+  HDWindowLoss,
+  HDDoorLoss,
+  HDRoom,
+  HeatingBuildingData,
+  HeatingClimateData,
+  HeatingDesignConditions,
 } from '@hail-mary/shared';
 
 import {
   getWallUValue,
   getRoofUValue,
   getFloorUValue,
-  getGlazingUValue,
   getTargetTemperature,
 } from '@hail-mary/shared';
+
+import { buildHeatLossProvenance } from './provenance-builder';
 
 /**
  * Calculate heat loss for a single room
@@ -34,7 +35,7 @@ import {
  * Q_ventilation = 0.33 × n × V × ΔT
  *
  * @param inputs - Complete heat loss calculation inputs
- * @returns Heat loss result with breakdown
+ * @returns Heat loss result with breakdown and provenance
  */
 export function calculateRoomHeatLoss(inputs: HeatLossInputs): HeatLossResult {
   const { room, building, climate, designConditions } = inputs;
@@ -80,7 +81,7 @@ export function calculateRoomHeatLoss(inputs: HeatLossInputs): HeatLossResult {
     infiltration: infiltrationLoss,
   };
 
-  return {
+  const result: HeatLossResult = {
     roomId: room.id,
     fabricLoss: totalFabricLoss,
     ventilationLoss: infiltrationLoss,
@@ -89,7 +90,19 @@ export function calculateRoomHeatLoss(inputs: HeatLossInputs): HeatLossResult {
     requiredOutput,
     calculatedAt: new Date(),
     overridden: false,
+    provenance: null as any, // Will be populated below
   };
+
+  // Build complete provenance audit trail
+  result.provenance = buildHeatLossProvenance(
+    room,
+    building,
+    climate,
+    designConditions,
+    result
+  );
+
+  return result;
 }
 
 /**
@@ -97,12 +110,12 @@ export function calculateRoomHeatLoss(inputs: HeatLossInputs): HeatLossResult {
  * Only external walls contribute to heat loss
  */
 function calculateWallLosses(
-  room: Room,
-  building: BuildingData,
+  room: HDRoom,
+  building: HeatingBuildingData,
   deltaT: number,
-  designConditions: DesignConditions
-): WallLoss[] {
-  const losses: WallLoss[] = [];
+  designConditions: HeatingDesignConditions
+): HDWallLoss[] {
+  const losses: HDWallLoss[] = [];
 
   for (const wall of room.walls) {
     if (!wall.isExternal) {
@@ -147,12 +160,12 @@ function calculateWallLosses(
 /**
  * Calculate heat loss through windows
  */
-function calculateWindowLosses(room: Room, deltaT: number): WindowLoss[] {
-  const losses: WindowLoss[] = [];
+function calculateWindowLosses(room: HDRoom, deltaT: number): HDWindowLoss[] {
+  const losses: HDWindowLoss[] = [];
 
   for (const window of room.windows) {
     const area = window.width * window.height;
-    const uValue = window.uValue || getGlazingUValue(window.glazingType);
+    const uValue = window.uValue; // Required field
 
     // Q = U × A × ΔT
     const loss = uValue * area * deltaT;
@@ -172,8 +185,8 @@ function calculateWindowLosses(room: Room, deltaT: number): WindowLoss[] {
 /**
  * Calculate heat loss through doors
  */
-function calculateDoorLosses(room: Room, deltaT: number): DoorLoss[] {
-  const losses: DoorLoss[] = [];
+function calculateDoorLosses(room: HDRoom, deltaT: number): HDDoorLoss[] {
+  const losses: HDDoorLoss[] = [];
 
   for (const door of room.doors) {
     if (!door.isExternal) {
@@ -203,8 +216,8 @@ function calculateDoorLosses(room: Room, deltaT: number): DoorLoss[] {
  * Ground floors use P-factor method or simplified U-value approach
  */
 function calculateFloorLoss(
-  room: Room,
-  building: BuildingData,
+  room: HDRoom,
+  building: HeatingBuildingData,
   deltaT: number
 ): number {
   // Simplified approach: use floor U-value × area × ΔT
@@ -225,8 +238,8 @@ function calculateFloorLoss(
  * Only for top-floor rooms
  */
 function calculateCeilingLoss(
-  room: Room,
-  building: BuildingData,
+  room: HDRoom,
+  building: HeatingBuildingData,
   deltaT: number
 ): number {
   // For now, simplified approach
@@ -248,10 +261,10 @@ function calculateCeilingLoss(
  * Y-value approach: add to overall U-value
  */
 function calculateThermalBridging(
-  room: Room,
-  building: BuildingData,
+  room: HDRoom,
+  building: HeatingBuildingData,
   deltaT: number,
-  designConditions: DesignConditions
+  designConditions: HeatingDesignConditions
 ): number {
   // Thermal bridging is calculated as:
   // Q = Y × A × ΔT
@@ -271,10 +284,10 @@ function calculateThermalBridging(
  * Calculate heat loss for entire building (all rooms)
  */
 export function calculateBuildingHeatLoss(
-  rooms: Room[],
-  building: BuildingData,
-  climate: ClimateData,
-  designConditions: DesignConditions
+  rooms: HDRoom[],
+  building: HeatingBuildingData,
+  climate: HeatingClimateData,
+  designConditions: HeatingDesignConditions
 ): HeatLossResult[] {
   return rooms.map(room => calculateRoomHeatLoss({
     room,
@@ -341,7 +354,7 @@ export function validateHeatLossInputs(inputs: HeatLossInputs): string[] {
  * Analyze heat loss result for potential issues
  * Returns warnings for suspicious values
  */
-export function analyzeHeatLossResult(result: HeatLossResult, room: Room): string[] {
+export function analyzeHeatLossResult(result: HeatLossResult, room: HDRoom): string[] {
   const warnings: string[] = [];
 
   // Calculate heat loss per square meter

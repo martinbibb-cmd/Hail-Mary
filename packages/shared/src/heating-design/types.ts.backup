@@ -2,21 +2,17 @@
  * Shared types for Heating Design System
  * Used across heating-engine, API, and PWA
  *
- * Imports types from heat-loss-survey for internal use (not re-exported)
+ * Re-exports existing types from heat-loss-survey and adds heating-design specific types
  */
 
 import type {
   Orientation,
-  GlazingType as SurveyGlazingType,
-  ValveType as SurveyValveType,
+  GlazingType,
+  ValveType,
 } from '../types/heat-loss-survey.types';
 
-// Type aliases for internal use (prevents export conflicts)
-type GlazingType = SurveyGlazingType;
-type ValveType = SurveyValveType;
-
-// Re-export only Orientation (not conflicting)
-export type { Orientation };
+// Re-export types we use
+export type { Orientation, GlazingType, ValveType };
 
 // ============================================================================
 // Core Geometric Types
@@ -37,7 +33,7 @@ export interface Point2D {
 // HDRoom and Building Types (Heating Design specific)
 // ============================================================================
 
-export type RoomType =
+export type HDHDRoomType =
   | 'living_room'
   | 'dining_room'
   | 'kitchen'
@@ -50,19 +46,19 @@ export type RoomType =
   | 'garage'
   | 'other';
 
-export interface HDWall {
+export interface HDHDWall {
   id: string;
   start: Point3D;
   end: Point3D;
   length: number; // meters
   height: number; // meters
   isExternal: boolean;
-  construction: WallConstruction;
+  construction: HDWallConstruction;
   orientation?: Orientation;
   uValue?: number; // W/m²K - can override construction default
 }
 
-export interface HDWindow {
+export interface HDHDWindow {
   id: string;
   wallId: string;
   position: Point3D;
@@ -72,7 +68,7 @@ export interface HDWindow {
   uValue: number; // W/m²K
 }
 
-export interface HDDoor {
+export interface HDHDDoor {
   id: string;
   wallId: string;
   position: Point3D;
@@ -82,27 +78,27 @@ export interface HDDoor {
   uValue: number; // W/m²K
 }
 
-export interface HDRoom {
+export interface HDHDRoom {
   id: string;
   name: string;
-  type: RoomType;
+  type: HDHDRoomType;
   area: number; // m²
   perimeter: number; // meters
   ceilingHeight: number; // meters
   volume: number; // m³
   vertices: Point3D[];
-  walls: HDWall[];
-  windows: HDWindow[];
-  doors: HDDoor[];
+  walls: HDHDWall[];
+  windows: HDHDWindow[];
+  doors: HDHDDoor[];
   exposedHDWalls: string[]; // HDWall IDs facing exterior
   targetTemperature?: number; // °C - overrides default for room type
 }
 
-export interface HDFloor {
+export interface HDHDFloor {
   id: string;
   level: number; // 0 = ground, 1 = first, etc.
   height: number; // meters
-  rooms: HDRoom[];
+  rooms: HDHDRoom[];
 }
 
 export interface HDFloorPlan {
@@ -119,7 +115,7 @@ export interface HDFloorPlan {
 // Construction and Material Types
 // ============================================================================
 
-export type WallConstruction =
+export type HDWallConstruction =
   | 'solid_brick_uninsulated'
   | 'solid_brick_internal_insulation'
   | 'cavity_uninsulated'
@@ -135,13 +131,18 @@ export type RoofConstruction =
   | 'warm_roof'
   | 'flat_roof_insulated';
 
-export type FloorConstruction =
+export type HDFloorConstruction =
   | 'solid_uninsulated'
   | 'solid_insulated'
   | 'suspended_timber_uninsulated'
   | 'suspended_timber_insulated'
   | 'beam_block';
 
+export type GlazingType =
+  | 'single'
+  | 'double'
+  | 'double_low_e'
+  | 'triple';
 
 export interface UValueData {
   uValue: number; // W/m²K
@@ -158,11 +159,11 @@ export interface HeatingBuildingData {
   address: string;
   postcode: string;
   constructionYear?: number;
-  wallConstruction: WallConstruction;
+  wallConstruction: HDWallConstruction;
   wallUValue?: number; // Override default
   roofConstruction: RoofConstruction;
   roofUValue?: number;
-  floorConstruction: FloorConstruction;
+  floorConstruction: HDFloorConstruction;
   floorUValue?: number;
   airChangesPerHour: number; // Default 1.0
 }
@@ -176,7 +177,7 @@ export interface HeatingClimateData {
 }
 
 export interface HeatingDesignConditions {
-  targetTemperatures: Record<RoomType, number>; // °C
+  targetTemperatures: Record<HDRoomType, number>; // °C
   infiltrationRate: number; // Air changes per hour
   thermalBridging: number; // W/m²K - Y-value addition (typically 0.15)
   safetyMargin: number; // Percentage (typically 10-20%)
@@ -191,9 +192,9 @@ export type FlowTemperature = '70/50' | '60/40' | '50/30'; // Flow/Return temps
 
 export interface HeatLossInputs {
   hdroom: HDRoom;
-  building: HeatingBuildingData;
-  climate: HeatingClimateData;
-  designConditions: HeatingDesignConditions;
+  building: HeatingHeatingBuildingData;
+  climate: HeatingHeatingClimateData;
+  designConditions: HeatingHeatingDesignConditions;
 }
 
 export interface HDWallLoss {
@@ -252,7 +253,7 @@ export interface HeatLossResult {
 
 export type RadiatorType = 'single' | 'double' | 'K1' | 'K2' | 'K3' | 'vertical' | 'column';
 export type RadiatorConnection = 'TBOE' | 'BBOE' | 'TBCenter' | 'BBCenter';
-// ValveType imported from heat-loss-survey.types
+export type ValveType = 'TRV' | 'lockshield' | 'smart_TRV';
 
 export interface Radiator {
   id: string;
@@ -402,7 +403,7 @@ export interface HeatLossReport {
   projectName: string;
   buildingData: HeatingBuildingData;
   climateData: HeatingClimateData;
-  designConditions: HeatingDesignConditions;
+  designConditions: HeatingHeatingDesignConditions;
   rooms: Array<{
     hdroom: HDRoom;
     heatLoss: HeatLossResult;

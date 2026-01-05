@@ -3,7 +3,10 @@
  * Based on BR 443 (Conventions for U-value calculations) and typical UK construction
  */
 
-import { UValueData, WallConstruction, RoofConstruction, FloorConstruction, GlazingType } from './types';
+import { UValueData, WallConstruction, RoofConstruction, FloorConstruction } from './types';
+
+// Define our own GlazingType for heating design U-values
+type HeatingGlazingType = 'single' | 'double' | 'double_low_e' | 'triple';
 
 // ============================================================================
 // Wall Constructions
@@ -98,7 +101,7 @@ export const floorConstructions: Record<FloorConstruction, UValueData> = {
 // Glazing Types
 // ============================================================================
 
-export const glazingTypes: Record<GlazingType, UValueData> = {
+export const glazingTypes: Record<HeatingGlazingType, UValueData> = {
   single: {
     uValue: 4.8,
     description: 'Single glazed',
@@ -174,7 +177,7 @@ export function getFloorUValue(construction: FloorConstruction): number {
   return floorConstructions[construction].uValue;
 }
 
-export function getGlazingUValue(glazingType: GlazingType): number {
+export function getGlazingUValue(glazingType: HeatingGlazingType): number {
   return glazingTypes[glazingType].uValue;
 }
 

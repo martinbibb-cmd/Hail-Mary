@@ -62,6 +62,7 @@ import gcRouter from './routes/gc';
 import bugReportsRouter from './routes/bugReports';
 import metaRouter from './routes/meta';
 import jobGraphRouter from './routes/job-graph';
+import heatingDesignRouter from './routes/heating-design';
 
 import path from 'path';
 
@@ -396,6 +397,7 @@ app.use('/api/gc', gcRouter); // GC Boiler Catalog: truth layer for boiler facts
 app.use('/api/bug-reports', bugReportsRouter); // Bug Reports: User-submitted bug reports and feature requests
 app.use('/api/meta', metaRouter); // Meta: Build fingerprinting and system metadata
 app.use('/api/job-graph', jobGraphRouter); // Job Graph: Orchestration spine for turning captured data into defensible outputs
+app.use('/api/heating-design', heatingDesignRouter); // Heating Design: Floor plan import, heat loss calculations, radiator selection, pipe routing
 
 // 404 handler
 app.use((_req, res) => {

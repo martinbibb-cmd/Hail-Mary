@@ -1,0 +1,46 @@
+{
+  "name": "@hail-mary/heating-engine",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./heatloss": {
+      "types": "./dist/heatloss/index.d.ts",
+      "default": "./dist/heatloss/index.js"
+    },
+    "./radiators": {
+      "types": "./dist/radiators/index.d.ts",
+      "default": "./dist/radiators/index.js"
+    },
+    "./routing": {
+      "types": "./dist/routing/index.d.ts",
+      "default": "./dist/routing/index.js"
+    },
+    "./import": {
+      "types": "./dist/import/index.d.ts",
+      "default": "./dist/import/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc && npm run copy-data",
+    "copy-data": "mkdir -p dist/data && cp -r src/data/*.json dist/data/ 2>/dev/null || true",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@hail-mary/shared": "*"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.0"
+  }
+}

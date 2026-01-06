@@ -4,13 +4,15 @@
 
 // Default visible dock items
 export const DEFAULT_DOCK_ITEMS: string[] = [
-  'home', 'addresses', 'diary', 'camera', 'photo-library',
+  'modules', 'home', 'addresses', 'diary', 'camera', 'photo-library',
   'engineer', 'sarah', 'presentation', 'profile'
 ];
 
+export const REQUIRED_DOCK_ITEMS: string[] = ['modules', 'profile'];
+
 // All known dock item IDs for validation
 const KNOWN_DOCK_IDS = new Set([
-  'home', 'addresses', 'diary', 'camera', 'photo-library',
+  'modules', 'home', 'addresses', 'diary', 'camera', 'photo-library',
   'transcripts', 'scans', 'engineer', 'sarah', 'presentation',
   'knowledge', 'trajectory', 'profile'
 ]);
@@ -40,4 +42,10 @@ export function coerceDockItems(value: unknown): string[] | null {
   }
 
   return validItems;
+}
+
+export function ensureRequiredDockItems(items: string[]): string[] {
+  const uniqueItems = new Set(items);
+  REQUIRED_DOCK_ITEMS.forEach((item) => uniqueItems.add(item));
+  return Array.from(uniqueItems);
 }

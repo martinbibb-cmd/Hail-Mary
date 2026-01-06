@@ -3,7 +3,7 @@
  */
 
 import { safeGetJSON, safeSetJSON } from '../lib/storage';
-import { DEFAULT_DOCK_ITEMS, coerceDockItems } from '../lib/dock';
+import { DEFAULT_DOCK_ITEMS, coerceDockItems, ensureRequiredDockItems } from '../lib/dock';
 
 // Re-export DEFAULT_DOCK_ITEMS for backward compatibility
 export { DEFAULT_DOCK_ITEMS };
@@ -32,7 +32,7 @@ export function loadDockItems(): string[] {
     return [...DEFAULT_DOCK_ITEMS];
   }
 
-  return coerced;
+  return ensureRequiredDockItems(coerced);
 }
 
 /**
@@ -41,7 +41,8 @@ export function loadDockItems(): string[] {
  * @returns true if successful, false otherwise
  */
 export function saveDockItems(items: string[]): boolean {
-  const success = safeSetJSON('dockItems', items);
+  const normalizedItems = ensureRequiredDockItems(items);
+  const success = safeSetJSON('dockItems', normalizedItems);
   
   if (success) {
     // Use Event instead of CustomEvent for Safari compatibility

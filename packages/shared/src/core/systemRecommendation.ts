@@ -60,6 +60,16 @@ export interface SystemRecInput {
   propertyAge?: string;
   /** Insulation quality (1-5, 5 = excellent) */
   insulationQuality?: number;
+  /** Number of occupants */
+  occupants?: number;
+  /** Mains water flow rate (L/min) */
+  flowRate?: number;
+  /** Mains water pressure (bar) */
+  mainsPressure?: number;
+  /** Installation urgency (days needed) */
+  urgency?: 'emergency' | 'urgent' | 'normal';
+  /** Consider Mixergy smart cylinder */
+  considerMixergy?: boolean;
 }
 
 /**
@@ -107,6 +117,12 @@ export interface SystemRecommendation {
   confidenceLevel: ConfidenceLevel;
   /** Reasons for this recommendation */
   rationale: string[];
+  /** Is this option excluded (shown but not recommended) */
+  excluded?: boolean;
+  /** Reason for exclusion (shown to educate user) */
+  exclusionReason?: string;
+  /** Original score before exclusion penalty */
+  originalScore?: number;
 }
 
 /**
@@ -182,6 +198,110 @@ function estimatePropertySize(bedrooms: number): PropertySize {
 }
 
 /**
+ * Suitability evaluation result for a system option
+ */
+interface SuitabilityEvaluation {
+  excluded: boolean;
+  reason?: string;
+  penaltyScore: number;
+}
+
+/**
+ * Evaluate system suitability with educational exclusion reasons
+ * Returns exclusion status, reason, and penalty score
+ */
+function evaluateSystemSuitability(
+  systemId: string,
+  input: SystemRecInput,
+  propertySize: PropertySize
+): SuitabilityEvaluation {
+  const { bathrooms, occupants, flowRate, mainsPressure, urgency } = input;
+
+  // Default: suitable
+  let excluded = false;
+  let reason: string | undefined;
+  let penaltyScore = 0;
+
+  // Combi boiler exclusions
+  if (systemId === 'gas-combi-boiler') {
+    // 3+ bathrooms need simultaneous hot water
+    if (bathrooms >= 3) {
+      excluded = true;
+      const requiredFlow = bathrooms * 12; // ~12 L/min per shower
+      reason = `❌ Not suitable: ${bathrooms} bathrooms need ${requiredFlow} L/min for simultaneous showers, but combi boilers typically only supply 10-15 L/min. Physics makes this impossible - you'd get cold water when two showers run.`;
+      penaltyScore = -100;
+    }
+    // Low flow rate
+    else if (flowRate && flowRate < 14) {
+      excluded = true;
+      reason = `❌ Not suitable: Mains flow rate of ${flowRate} L/min is too low for a combi boiler (minimum 14 L/min recommended). You'd experience weak water pressure and cold showers.`;
+      penaltyScore = -100;
+    }
+    // Low mains pressure
+    else if (mainsPressure && mainsPressure < 1.5) {
+      excluded = true;
+      reason = `❌ Not suitable: Mains pressure of ${mainsPressure} bar is too low for a combi boiler (minimum 1.5 bar required). Hot water flow would be inadequate.`;
+      penaltyScore = -100;
+    }
+    // 5+ occupants means high simultaneous demand
+    else if (occupants && occupants >= 5) {
+      excluded = true;
+      reason = `❌ Not suitable: ${occupants} occupants creates high hot water demand. Combi boilers can't store hot water, so someone will always be waiting. A cylinder-based system provides a reserve for peak times.`;
+      penaltyScore = -100;
+    }
+  }
+
+  // Storage combi exclusions
+  if (systemId === 'gas-storage-combi') {
+    // 3+ bathrooms with limited storage
+    if (bathrooms >= 3) {
+      excluded = true;
+      const requiredStorage = bathrooms * 15; // Rough estimate: 15L per bathroom
+      reason = `❌ Not suitable: Storage combis typically have 40-60L tanks. ${bathrooms} bathrooms need ~${requiredStorage}L for simultaneous draws, which exhausts the tank in under 2 minutes.`;
+      penaltyScore = -90;
+    }
+    // Low flow rate still an issue
+    else if (flowRate && flowRate < 12) {
+      excluded = true;
+      reason = `❌ Not suitable: Low mains flow rate (${flowRate} L/min) limits combi performance even with storage tank. A system boiler with cylinder would be better.`;
+      penaltyScore = -90;
+    }
+  }
+
+  // Heat pump exclusions
+  if (systemId === 'air-source-heat-pump') {
+    // Emergency urgency
+    if (urgency === 'emergency') {
+      excluded = true;
+      reason = `❌ Not suitable: Heat pumps require 4-8 weeks for surveys, design, and installation. For emergency replacement (needed in 1-2 days), a gas boiler is the only viable option.`;
+      penaltyScore = -100;
+    }
+    // Very poor insulation
+    else if (input.insulationQuality && input.insulationQuality <= 1) {
+      excluded = true;
+      reason = `❌ Not suitable: Heat pumps operate at lower temperatures (45-50°C) and require excellent insulation. Your insulation quality is too poor - you'd need major insulation upgrades first (£8,000-15,000).`;
+      penaltyScore = -90;
+    }
+  }
+
+  // Electric heating exclusions
+  if (systemId === 'electric-heating') {
+    // Large properties
+    if (propertySize === 'very_large' || propertySize === 'large') {
+      excluded = true;
+      reason = `❌ Not suitable: Electric heating costs ~16p/kWh vs gas at ~6p/kWh. For a ${propertySize} property, annual costs would be £2,500-3,500 vs £900-1,200 for gas. A heat pump would be far more economical.`;
+      penaltyScore = -95;
+    }
+  }
+
+  return {
+    excluded,
+    reason,
+    penaltyScore,
+  };
+}
+
+/**
  * Generate system recommendations based on input
  */
 function generateRecommendations(
@@ -208,15 +328,32 @@ function generateRecommendations(
       low: Math.round(2500 * multiplier),
       high: Math.round(4500 * multiplier),
     };
-    
+
+    // Evaluate suitability
+    const suitability = evaluateSystemSuitability('gas-combi-boiler', input, propertySize);
+
+    const baseConfidence = 90;
+    const finalConfidence = suitability.excluded ? Math.max(10, baseConfidence + suitability.penaltyScore) : baseConfidence;
+
+    const considerations = [
+      'Requires gas connection',
+      'Not suitable if multiple simultaneous hot water demands',
+      'Fossil fuel - not future-proofed',
+    ];
+
+    // Add exclusion reason at the top of considerations if excluded
+    if (suitability.excluded && suitability.reason) {
+      considerations.unshift(suitability.reason);
+    }
+
     recommendations.push({
       id: 'gas-combi-boiler',
-      priority: 'primary',
+      priority: suitability.excluded ? 'alternative' : 'primary',
       title: 'Modern Gas Combi Boiler',
       systemType: 'gas',
       description: 'High-efficiency A-rated gas combi boiler with built-in controls',
       estimatedCost: gasBoilerCost,
-      annualSavings: needsReplacement && input.annualHeatingCost 
+      annualSavings: needsReplacement && input.annualHeatingCost
         ? Math.round(input.annualHeatingCost * 0.25)
         : undefined,
       annualRunningCost: Math.round(800 * multiplier),
@@ -227,19 +364,18 @@ function generateRecommendations(
         'Lower running costs than older models',
         'Reliable and proven technology',
       ],
-      considerations: [
-        'Requires gas connection',
-        'Not suitable if multiple simultaneous hot water demands',
-        'Fossil fuel - not future-proofed',
-      ],
+      considerations,
       grants: [],
-      confidence: 90,
-      confidenceLevel: 'high',
+      confidence: finalConfidence,
+      confidenceLevel: finalConfidence >= 75 ? 'high' : finalConfidence >= 60 ? 'medium' : 'low',
       rationale: [
         'Gas connection available',
         'Most cost-effective option for installation',
         'Proven reliability and performance',
       ],
+      excluded: suitability.excluded,
+      exclusionReason: suitability.reason,
+      originalScore: suitability.excluded ? baseConfidence : undefined,
     });
   }
   
@@ -248,18 +384,35 @@ function generateRecommendations(
     low: Math.round(8000 * multiplier),
     high: Math.round(14000 * multiplier),
   };
-  
+
   const heatPumpGrants = [`Boiler Upgrade Scheme (£${BOILER_UPGRADE_SCHEME_GRANT.toLocaleString()})`];
   const heatPumpNetCost = {
     low: Math.max(500, heatPumpCost.low - BOILER_UPGRADE_SCHEME_GRANT),
     high: Math.max(6500, heatPumpCost.high - BOILER_UPGRADE_SCHEME_GRANT),
   };
-  
-  const heatPumpPriority: RecommendationPriority = 
-    !input.hasGasConnection ? 'primary' : 'alternative';
-  
-  const heatPumpConfidence = calculateHeatPumpConfidence(input);
-  
+
+  // Evaluate heat pump suitability
+  const hpSuitability = evaluateSystemSuitability('air-source-heat-pump', input, propertySize);
+
+  const heatPumpBaseConfidence = calculateHeatPumpConfidence(input);
+  const heatPumpFinalConfidence = hpSuitability.excluded
+    ? Math.max(10, heatPumpBaseConfidence + hpSuitability.penaltyScore)
+    : heatPumpBaseConfidence;
+
+  const heatPumpPriority: RecommendationPriority =
+    hpSuitability.excluded ? 'future' : (!input.hasGasConnection ? 'primary' : 'alternative');
+
+  const hpConsiderations = [
+    'Higher upfront cost even with grant',
+    'May require radiator upgrades',
+    'Best with good insulation',
+    'External unit required',
+  ];
+
+  if (hpSuitability.excluded && hpSuitability.reason) {
+    hpConsiderations.unshift(hpSuitability.reason);
+  }
+
   recommendations.push({
     id: 'air-source-heat-pump',
     priority: heatPumpPriority,
@@ -267,7 +420,7 @@ function generateRecommendations(
     systemType: 'heat_pump',
     description: 'Low-carbon heating system with £7,500 government grant available',
     estimatedCost: heatPumpNetCost,
-    annualSavings: input.annualHeatingCost 
+    annualSavings: input.annualHeatingCost
       ? Math.round(input.annualHeatingCost * 0.3)
       : undefined,
     annualRunningCost: Math.round(600 * multiplier),
@@ -278,29 +431,44 @@ function generateRecommendations(
       'Lower running costs than gas',
       'Can provide cooling in summer',
     ],
-    considerations: [
-      'Higher upfront cost even with grant',
-      'May require radiator upgrades',
-      'Best with good insulation',
-      'External unit required',
-    ],
+    considerations: hpConsiderations,
     grants: heatPumpGrants,
-    confidence: heatPumpConfidence,
-    confidenceLevel: heatPumpConfidence >= 75 ? 'high' : heatPumpConfidence >= 60 ? 'medium' : 'low',
+    confidence: heatPumpFinalConfidence,
+    confidenceLevel: heatPumpFinalConfidence >= 75 ? 'high' : heatPumpFinalConfidence >= 60 ? 'medium' : 'low',
     rationale: [
       'Most efficient heating system available',
       'Government grant makes it affordable',
-      input.hasGasConnection 
+      input.hasGasConnection
         ? 'Future-proofs property against gas phase-out'
         : 'Best option without gas connection',
     ],
+    excluded: hpSuitability.excluded,
+    exclusionReason: hpSuitability.reason,
+    originalScore: hpSuitability.excluded ? heatPumpBaseConfidence : undefined,
   });
   
   // Electric heating (if no gas and heat pump not suitable)
   if (!input.hasGasConnection) {
+    const elecSuitability = evaluateSystemSuitability('electric-heating', input, propertySize);
+
+    const elecBaseConfidence = 60;
+    const elecFinalConfidence = elecSuitability.excluded
+      ? Math.max(10, elecBaseConfidence + elecSuitability.penaltyScore)
+      : elecBaseConfidence;
+
+    const elecConsiderations = [
+      'Higher running costs than heat pump',
+      'Requires good insulation',
+      'Better with solar panels',
+    ];
+
+    if (elecSuitability.excluded && elecSuitability.reason) {
+      elecConsiderations.unshift(elecSuitability.reason);
+    }
+
     recommendations.push({
       id: 'electric-heating',
-      priority: 'alternative',
+      priority: elecSuitability.excluded ? 'future' : 'alternative',
       title: 'Modern Electric Heating',
       systemType: 'electric',
       description: 'High-efficiency electric radiators or storage heaters',
@@ -315,42 +483,62 @@ function generateRecommendations(
         'Individual room control',
         'Quick to install',
       ],
-      considerations: [
-        'Higher running costs than heat pump',
-        'Requires good insulation',
-        'Better with solar panels',
-      ],
+      considerations: elecConsiderations,
       grants: [],
-      confidence: 60,
-      confidenceLevel: 'medium',
+      confidence: elecFinalConfidence,
+      confidenceLevel: elecFinalConfidence >= 75 ? 'high' : elecFinalConfidence >= 60 ? 'medium' : 'low',
       rationale: [
         'No gas connection available',
         'Lower upfront cost than heat pump',
         'Suitable for well-insulated properties',
       ],
+      excluded: elecSuitability.excluded,
+      exclusionReason: elecSuitability.reason,
+      originalScore: elecSuitability.excluded ? elecBaseConfidence : undefined,
     });
   }
   
-  // System boiler with cylinder (larger properties)
-  if (propertySize === 'large' || propertySize === 'very_large') {
+  // System boiler with cylinder (larger properties or high demand)
+  if (propertySize === 'large' || propertySize === 'very_large' || input.bathrooms >= 2) {
     if (input.hasGasConnection) {
+      // Calculate cylinder size based on occupants and bathrooms
+      const cylinderSize = Math.max(
+        200,
+        (input.occupants || input.bathrooms * 2) * 50
+      );
+
+      // Mixergy consideration
+      const useMixergy = input.considerMixergy === true;
+      const cylinderType = useMixergy ? 'Mixergy smart cylinder' : 'unvented cylinder';
+      const cylinderCostAddon = useMixergy ? 500 : 0;
+
+      const systemBoilerBenefits = [
+        'Supplies multiple outlets simultaneously',
+        'High water pressure',
+        'Suitable for larger properties',
+        useMixergy ? 'Mixergy smart heating: only heat water you need' : 'Can integrate with solar thermal',
+      ];
+
+      if (useMixergy) {
+        systemBoilerBenefits.push('App-controlled hot water on demand');
+        systemBoilerBenefits.push('30-40% energy savings vs traditional cylinder');
+      }
+
       recommendations.push({
         id: 'gas-system-boiler',
-        priority: 'alternative',
-        title: 'Gas System Boiler with Cylinder',
+        priority: 'primary',
+        title: `Gas System Boiler with ${useMixergy ? 'Mixergy Smart' : 'Unvented'} Cylinder`,
         systemType: 'gas',
-        description: 'System boiler with unvented cylinder for multiple bathrooms',
+        description: `System boiler with ${cylinderSize}L ${cylinderType} for multiple bathrooms`,
         estimatedCost: {
-          low: Math.round(4000 * multiplier),
-          high: Math.round(7000 * multiplier),
+          low: Math.round((4000 + cylinderCostAddon) * multiplier),
+          high: Math.round((7000 + cylinderCostAddon) * multiplier),
         },
-        annualRunningCost: Math.round(950 * multiplier),
-        benefits: [
-          'Supplies multiple outlets simultaneously',
-          'High water pressure',
-          'Suitable for larger properties',
-          'Can integrate with solar thermal',
-        ],
+        annualRunningCost: Math.round((useMixergy ? 750 : 950) * multiplier),
+        annualSavings: useMixergy && input.annualHeatingCost
+          ? Math.round(input.annualHeatingCost * 0.3)
+          : undefined,
+        benefits: systemBoilerBenefits,
         considerations: [
           'Requires cylinder space',
           'Higher installation cost',
@@ -360,11 +548,62 @@ function generateRecommendations(
         confidence: 80,
         confidenceLevel: 'high',
         rationale: [
-          'Large property with multiple bathrooms',
+          input.bathrooms >= 2 ? `${input.bathrooms} bathrooms need cylinder capacity` : 'Large property with multiple bathrooms',
           'Better for simultaneous hot water use',
+          useMixergy ? 'Mixergy reduces energy waste by 30-40%' : 'Proven reliability',
         ],
+        excluded: false,
       });
     }
+  }
+
+  // Storage combi (for moderate demand, low flow rate scenarios)
+  if (input.hasGasConnection && input.bathrooms === 2) {
+    const storageSuitability = evaluateSystemSuitability('gas-storage-combi', input, propertySize);
+
+    const storageBaseConfidence = 65;
+    const storageFinalConfidence = storageSuitability.excluded
+      ? Math.max(10, storageBaseConfidence + storageSuitability.penaltyScore)
+      : storageBaseConfidence;
+
+    const storageConsiderations = [
+      '40-60L storage tank provides buffer for short peaks',
+      'Still limited for long simultaneous use',
+      'More expensive than standard combi',
+    ];
+
+    if (storageSuitability.excluded && storageSuitability.reason) {
+      storageConsiderations.unshift(storageSuitability.reason);
+    }
+
+    recommendations.push({
+      id: 'gas-storage-combi',
+      priority: storageSuitability.excluded ? 'future' : 'alternative',
+      title: 'Gas Storage Combi Boiler',
+      systemType: 'gas',
+      description: 'Combi boiler with built-in 40-60L storage tank',
+      estimatedCost: {
+        low: Math.round(3200 * multiplier),
+        high: Math.round(5500 * multiplier),
+      },
+      annualRunningCost: Math.round(850 * multiplier),
+      benefits: [
+        'Built-in hot water storage for peak demand',
+        'More compact than system boiler + cylinder',
+        'Better than standard combi for 2 bathrooms',
+      ],
+      considerations: storageConsiderations,
+      grants: [],
+      confidence: storageFinalConfidence,
+      confidenceLevel: storageFinalConfidence >= 75 ? 'high' : storageFinalConfidence >= 60 ? 'medium' : 'low',
+      rationale: [
+        '2 bathrooms benefit from storage buffer',
+        'Compromise between combi and system boiler',
+      ],
+      excluded: storageSuitability.excluded,
+      exclusionReason: storageSuitability.reason,
+      originalScore: storageSuitability.excluded ? storageBaseConfidence : undefined,
+    });
   }
   
   return recommendations;

@@ -1,0 +1,304 @@
+/**
+ * System Recommendation Card Styles
+ *
+ * Provides clear visual distinction between:
+ * - Recommended options (normal styling)
+ * - Excluded options (dimmed, warning banners)
+ */
+
+.system-recommendation-card {
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.system-recommendation-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Excluded option styling - dimmed but visible */
+.system-recommendation-card.excluded {
+  opacity: 0.85;
+  border-color: #fbbf24;
+  background: #fefce8;
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.option-label {
+  display: inline-block;
+  background: #3b82f6;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.system-recommendation-card.excluded .option-label {
+  background: #9ca3af;
+}
+
+.system-title {
+  margin: 0.5rem 0 0 0;
+  font-size: 1.5rem;
+  color: #111827;
+}
+
+.system-recommendation-card.excluded .system-title {
+  color: #6b7280;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.badge-recommended {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.badge-excluded {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+/* Exclusion Banner */
+.exclusion-banner {
+  display: flex;
+  gap: 1rem;
+  background: #fef3c7;
+  border: 2px solid #fbbf24;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.exclusion-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.exclusion-content {
+  flex: 1;
+}
+
+.exclusion-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #92400e;
+}
+
+.exclusion-reason {
+  margin: 0 0 0.75rem 0;
+  color: #78350f;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.exclusion-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #a16207;
+  font-style: italic;
+}
+
+/* Description */
+.system-description {
+  color: #4b5563;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.system-recommendation-card.excluded .system-description {
+  color: #6b7280;
+}
+
+/* Specs Grid */
+.specs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.system-recommendation-card.excluded .specs-grid {
+  background: #fefce8;
+}
+
+.spec-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.spec-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.spec-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.spec-value.savings {
+  color: #059669;
+}
+
+.spec-value.confidence-high {
+  color: #059669;
+}
+
+.spec-value.confidence-medium {
+  color: #d97706;
+}
+
+.spec-value.confidence-low {
+  color: #dc2626;
+}
+
+/* Strikethrough for original score */
+.original-score {
+  text-decoration: line-through;
+  color: #9ca3af;
+  margin-right: 0.5rem;
+}
+
+.arrow {
+  color: #6b7280;
+  margin-right: 0.5rem;
+}
+
+.penalty-score {
+  color: #dc2626;
+}
+
+/* Grants Section */
+.grants-section {
+  display: flex;
+  gap: 1rem;
+  background: #dbeafe;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.grants-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.grants-content {
+  flex: 1;
+  color: #1e40af;
+}
+
+.grants-list {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.25rem;
+}
+
+.grants-list li {
+  margin-bottom: 0.25rem;
+}
+
+/* Pros and Cons Grid */
+.pros-cons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .pros-cons-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.section-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #374151;
+}
+
+.benefits-list,
+.considerations-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.benefits-list li,
+.considerations-list li {
+  margin-bottom: 0.5rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.system-recommendation-card.excluded .benefits-list li,
+.system-recommendation-card.excluded .considerations-list li {
+  color: #6b7280;
+}
+
+/* Exclusion item in considerations */
+.exclusion-item {
+  color: #b91c1c !important;
+  font-weight: 600;
+}
+
+/* Rationale Section */
+.rationale-section {
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.system-recommendation-card.excluded .rationale-section {
+  background: #fef3c7;
+}
+
+.rationale-list {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.25rem;
+}
+
+.rationale-list li {
+  margin-bottom: 0.5rem;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.system-recommendation-card.excluded .rationale-list li {
+  color: #6b7280;
+}

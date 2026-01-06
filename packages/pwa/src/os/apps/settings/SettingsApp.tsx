@@ -18,6 +18,7 @@ import './SettingsApp.css';
 
 // All available dock items
 const ALL_DOCK_ITEMS = [
+  { id: 'modules', label: 'Modules', icon: '🧭' },
   { id: 'home', label: 'Home', icon: '🏠' },
   { id: 'addresses', label: 'Addresses', icon: '🏘️' },
   { id: 'diary', label: 'Diary', icon: '📅' },
@@ -319,23 +320,23 @@ export const SettingsApp: React.FC = () => {
         <div className="dock-items-grid">
           {ALL_DOCK_ITEMS.map((item) => {
             const isSelected = selectedDockItems.includes(item.id);
-            const isProfileOrSettings = item.id === 'profile';
+            const isRequiredDockItem = item.id === 'profile' || item.id === 'modules';
 
             return (
               <label
                 key={item.id}
-                className={`dock-item-card ${isSelected ? 'selected' : ''} ${isProfileOrSettings ? 'locked' : ''}`}
-                title={isProfileOrSettings ? 'Settings is always visible' : `Toggle ${item.label}`}
+                className={`dock-item-card ${isSelected ? 'selected' : ''} ${isRequiredDockItem ? 'locked' : ''}`}
+                title={isRequiredDockItem ? `${item.label} is always visible` : `Toggle ${item.label}`}
               >
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  onChange={() => !isProfileOrSettings && handleDockItemToggle(item.id)}
-                  disabled={isProfileOrSettings}
+                  onChange={() => !isRequiredDockItem && handleDockItemToggle(item.id)}
+                  disabled={isRequiredDockItem}
                 />
                 <span className="dock-item-icon">{item.icon}</span>
                 <span className="dock-item-label">{item.label}</span>
-                {isProfileOrSettings && <span className="dock-item-lock">🔒</span>}
+                {isRequiredDockItem && <span className="dock-item-lock">🔒</span>}
               </label>
             );
           })}

@@ -12,6 +12,7 @@ import './BottomDock.css';
 
 // All available dock items
 const ALL_DOCK_ITEMS = [
+  { id: 'modules', label: 'Modules', icon: '🧭', path: '/modules' },
   { id: 'home', label: 'Home', icon: '🏠', path: '/' },
   { id: 'addresses', label: 'Addresses', icon: '🏘️', path: '/addresses' },
   { id: 'diary', label: 'Diary', icon: '📅', path: '/diary' },

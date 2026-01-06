@@ -708,6 +708,7 @@ function App() {
         <Routes>
           <Route path="/" element={<ModuleLauncher />} />
           <Route path="/home" element={<ModuleLauncher />} />
+          <Route path="/modules" element={<ModuleLauncher />} />
           <Route path="/addresses" element={<AddressesApp />} />
           <Route path="/properties/:id" element={<SpinePropertyPage />} />
           <Route path="/visits/:visitId/job-graph" element={<JobGraphView />} />

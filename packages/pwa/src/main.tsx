@@ -1,3 +1,28 @@
+// ATLAS EMERGENCY NEUTRALISATION: Stop Service Worker Interference
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  // 1. Unregister all active service workers
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      console.log('Atlas: Unregistering SW', registration);
+      registration.unregister();
+    }
+  }).catch((error) => {
+    console.error('Atlas: Failed to unregister service workers', error);
+  });
+
+  // 2. Clear all named caches to stop "Stale" data reverts
+  if ('caches' in window) {
+    caches.keys().then((keyList) => {
+      return Promise.all(keyList.map((key) => {
+        console.log('Atlas: Deleting Cache', key);
+        return caches.delete(key);
+      }));
+    }).catch((error) => {
+      console.error('Atlas: Failed to clear caches', error);
+    });
+  }
+}
+
 // --- EMERGENCY WHITE-SCREEN DEBUG (remove after fix) ---
 (function installFatalOverlay() {
   const show = (title: string, err?: unknown) => {

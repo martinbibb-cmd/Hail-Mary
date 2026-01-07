@@ -89,6 +89,12 @@ export const SurveyApp: React.FC = () => {
   }
 
   const handleSave = async () => {
+    // Validate that we have an active template before proceeding
+    if (!activeTemplate) {
+      console.error('Cannot save: no active template')
+      return
+    }
+
     setLoading(true)
     setSaved(false) // Reset saved state
     try {
@@ -98,7 +104,7 @@ export const SurveyApp: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ 
-          templateId: activeTemplate?.id, 
+          templateId: activeTemplate.id, 
           answers 
         }),
       })

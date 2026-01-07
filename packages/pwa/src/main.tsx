@@ -6,6 +6,8 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       console.log('Atlas: Unregistering SW', registration);
       registration.unregister();
     }
+  }).catch((error) => {
+    console.error('Atlas: Failed to unregister service workers', error);
   });
 
   // 2. Clear all named caches to stop "Stale" data reverts
@@ -15,6 +17,8 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
         console.log('Atlas: Deleting Cache', key);
         return caches.delete(key);
       }));
+    }).catch((error) => {
+      console.error('Atlas: Failed to clear caches', error);
     });
   }
 }

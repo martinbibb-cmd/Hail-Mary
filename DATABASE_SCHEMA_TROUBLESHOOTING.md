@@ -1,5 +1,22 @@
 # Database Schema Troubleshooting Guide
 
+## Root Cause / Trigger / Impact / Fix
+
+**Root Cause**: Database schema and application code are out of sync. The API expects tables/columns that don't exist in the database.
+
+**Trigger**: Schema drift commonly occurs when:
+- Reusing an existing Postgres volume across newer app images without running migrations
+- DB volume restored from an old backup
+- Migrations not run during deployment (migrator service failed)
+- Manual intervention bypassed the automated migration process
+
+**Impact**:
+- API throws errors: `relation "addresses" does not exist`, `column "assigned_user_id" does not exist`
+- UI shows symptoms: empty lists, buttons disappearing, actions failing silently (depending on toast/error handling)
+- Features that depend on missing tables/columns become unavailable or appear broken
+
+**Fix**: Run database migrations to bring the schema up to date with the application code (see "Fixing Schema Mismatch" section below).
+
 ## Overview
 
 This guide helps you diagnose and fix database schema mismatch issues in Hail-Mary. These issues typically manifest as:
@@ -31,18 +48,23 @@ These tell you exactly which tables or columns are missing.
 
 **Important**: Your database uses the `hailmary` user, not `postgres`.
 
-Your `DATABASE_URL` in `.env` shows the correct user:
+The API is already connecting correctly using `hailmary` (as configured in `DATABASE_URL`):
 ```
 DATABASE_URL=postgresql://hailmary:password@hailmary-postgres:5432/hailmary
                         ^^^^^^^^ (this is your DB user)
 ```
 
-If you see this error:
+**For manual diagnostics**, you must also use `hailmary`:
+```bash
+docker exec -it hailmary-postgres psql -U hailmary -d hailmary
+```
+
+If you see this error during manual diagnostics:
 ```
 FATAL: role "postgres" does not exist
 ```
 
-You're trying to connect with the wrong user. Use `hailmary` instead.
+That's because the `postgres` role is not created in this deployment. Manual inspection with `psql -U postgres` will fail. Always use `-U hailmary` for manual diagnostics.
 
 ## Checking Database State
 
@@ -181,35 +203,39 @@ cat packages/api/package.json | grep -A 10 '"scripts"'
 
 ### The CORRECT Health Endpoints
 
+**Public health checks** (exposed via nginx proxy on port 3000):
 ```bash
-# Check health via nginx proxy (recommended from host)
 curl http://localhost:3000/health/api       # Proxies to API /health
 curl http://localhost:3000/health/assistant # Proxies to Assistant /health
+```
 
-# Direct API health endpoint (detailed info)
+**Direct API health endpoints** (internal, port 3001):
+```bash
 docker exec -it hailmary-api curl http://localhost:3001/health
 docker exec -it hailmary-api curl http://localhost:3001/health/detailed
 docker exec -it hailmary-api curl http://localhost:3001/health/db
+```
 
-# Direct Assistant health endpoint
+**Direct Assistant health endpoint** (internal, port 3002):
+```bash
 docker exec -it hailmary-assistant curl http://localhost:3002/health
 ```
 
 ### What is `/health.json`?
 
-**This is NOT a health endpoint.**
+**❌ This is NOT a health endpoint.**
 
-If you see this error when accessing `https://your-domain.com/health.json`:
+If you try to access `http://localhost:3000/health.json` or `https://your-domain.com/health.json`, you'll see:
 
 ```json
 {"success":false,"error":"Invalid transcript ID"}
 ```
 
-That's because `/health.json` is being routed to a transcript handler or similar endpoint that interprets it as a resource ID. The SPA (Single Page Application) routing treats any unmatched path as a potential resource, and the API may have a catch-all route that processes it.
+That's because `/health.json` doesn't match any of the explicit nginx proxy rules (`/api/`, `/assistant/`, `/health/api`, `/health/assistant`). Instead, it falls through to the SPA catch-all routing (`try_files $uri $uri/ /index.html`). The SPA then treats it as a potential resource request, and the API may have a catch-all route (e.g., a transcript handler) that interprets `health.json` as a resource ID.
 
-**Do NOT use `health.json` for diagnostics.**
+**Do NOT use `/health.json` for diagnostics.**
 
-The actual health endpoints are:
+**✅ Use these instead:**
 - `/health/api` - Proxies to API service's `/health` endpoint
 - `/health/assistant` - Proxies to Assistant service's `/health` endpoint
 
@@ -226,6 +252,11 @@ relation "addresses" does not exist
 - Migration `0012_addresses_and_appointments.sql` hasn't been applied
 - Anything that needs addresses (new lead creation, address management) will fail
 
+**Why it happened:**
+- DB volume reused across image versions without running migrations
+- Migrator service failed during deployment
+- Manual database restore from old backup
+
 **Fix:**
 Run migrations as described in "Option 1" above.
 
@@ -240,6 +271,11 @@ column "assigned_user_id" does not exist
 - Migration `0011_add_lead_user_assignment.sql` hasn't been applied
 - Lead filtering and assignment features won't work
 
+**Why it happened:**
+- DB volume reused across image versions without running migrations
+- Compose stack brought up without init job completing
+- Migrator service failed silently
+
 **Fix:**
 Run migrations as described in "Option 1" above.
 
@@ -247,15 +283,29 @@ Run migrations as described in "Option 1" above.
 
 **Symptoms:**
 - Empty lists everywhere
-- Actions/buttons don't appear
-- Silent failures when trying to create data
+- Actions/buttons don't appear or disappear
+- Actions failing silently (depending on toast/error handling)
+- No error messages visible to user
 
 **What happened:**
-- The API is failing to load data due to schema mismatches
-- The UI reacts by hiding features that depend on that data
+- The API is failing to load data due to schema mismatches (missing tables/columns)
+- The UI reacts by:
+  - Rendering empty lists when API returns errors
+  - Hiding features that depend on missing data
+  - Silently failing actions when backend endpoints error out
 - Not all UI routes are missing - only those that need the missing tables/columns
 
+**Why it happened:**
+- Migrations not run on startup
+- DB volume drifted from expected schema
+
 **This is NOT a mobile/tablet layout issue** (though you may also have that separately).
+
+**How schema drift presents in UI:**
+- Empty lists (no customers, no leads, no addresses)
+- Buttons disappearing (create/edit actions missing)
+- Actions failing silently (save button does nothing, no error toast)
+- 404-like behavior for specific features while others work fine
 
 **Fix:**
 Run migrations, then refresh the browser.

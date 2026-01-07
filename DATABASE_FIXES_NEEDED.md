@@ -8,7 +8,7 @@
 
 The production database is missing several tables that exist in the schema but haven't been migrated yet. This causes the errors you're seeing in the mobile app.
 
-**Important**: Use the correct database user (`hailmary`, not `postgres`) when connecting to the database.
+**Important**: Use the correct database user (`hailmary`, not `postgres`) when manually inspecting the database. The API is already connecting correctly using `hailmary` as configured in `DATABASE_URL`.
 
 ## Errors Found
 
@@ -106,7 +106,7 @@ docker exec -it hailmary-api sh -c "cd /app && npm run db:migrate"
 
 ### Using psql (if direct database access):
 ```bash
-# ⚠️ Note: Use 'hailmary' user, not 'postgres'
+# ⚠️ Note: Use 'hailmary' user, not 'postgres' (postgres role doesn't exist in this deployment)
 # Connect to your production database
 docker exec -it hailmary-postgres psql -U hailmary -d hailmary
 

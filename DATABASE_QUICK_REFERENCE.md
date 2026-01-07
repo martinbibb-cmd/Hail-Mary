@@ -49,16 +49,17 @@ docker compose logs -f hailmary-migrator
 ## 🏥 Health Check Commands
 
 ```bash
-# ✅ Correct health endpoints (via nginx proxy)
+# ✅ Correct health endpoints (via nginx proxy on port 3000)
 curl http://localhost:3000/health/api
 curl http://localhost:3000/health/assistant
 
-# Direct container health checks
+# Direct container health checks (internal ports)
 docker exec -it hailmary-api curl http://localhost:3001/health
 docker exec -it hailmary-assistant curl http://localhost:3002/health
 
 # ❌ NOT health endpoints
-# /health.json - This routes to transcript handler!
+# /health.json - This falls through to SPA catch-all and gets routed to a transcript handler!
+#                You'll see: {"success":false,"error":"Invalid transcript ID"}
 ```
 
 ## 📋 Check Available Scripts
@@ -74,15 +75,19 @@ cat packages/api/package.json | grep -A 10 '"scripts"'
 ## 🐛 Common Error Messages
 
 ### Error: `role "postgres" does not exist`
+**Cause**: Using `-U postgres` for manual diagnostics when the cluster only has the `hailmary` role
 **Fix**: Use `-U hailmary` instead of `-U postgres`
 
 ### Error: `relation "addresses" does not exist`
+**Cause**: Migrations not applied / DB volume out of date
 **Fix**: Run migrations (Method 1 above)
 
 ### Error: `column "assigned_user_id" does not exist`
+**Cause**: Migrations not applied / DB volume out of date
 **Fix**: Run migrations (Method 1 above)
 
 ### Error: `{"success":false,"error":"Invalid transcript ID"}` on `/health.json`
+**Cause**: `/health.json` is not a real health endpoint; it falls through to SPA routing
 **Fix**: Use `/health/api` or `/health/assistant` instead
 
 ## 📊 Verify After Fix

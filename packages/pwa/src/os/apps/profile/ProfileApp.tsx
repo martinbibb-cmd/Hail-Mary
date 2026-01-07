@@ -195,6 +195,13 @@ export const ProfileApp: React.FC = () => {
               >
                 📚 Knowledge Management
               </a>
+              <a
+                href="/diagnostics"
+                className="btn-primary admin-action-link"
+                onClick={navigateToAdmin('/diagnostics')}
+              >
+                🔍 System Diagnostics
+              </a>
             </>
           )}
           <button className="btn-secondary btn-logout" onClick={handleLogout}>

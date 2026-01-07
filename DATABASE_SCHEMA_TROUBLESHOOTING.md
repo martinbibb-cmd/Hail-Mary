@@ -195,7 +195,7 @@ curl http://hailmary-api:3001/health
 
 **This is NOT a health endpoint.**
 
-If you see this error when accessing `https://atlas.cloudbibb.uk/health.json`:
+If you see this error when accessing `https://your-domain.com/health.json`:
 
 ```json
 {"success":false,"error":"Invalid transcript ID"}

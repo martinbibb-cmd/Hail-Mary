@@ -102,6 +102,8 @@ docker exec -it hailmary-postgres psql -U hailmary -d hailmary -c "SELECT COUNT(
 
 ## 🎯 One-Liner Diagnostic
 
+**Note**: Requires `jq` for JSON formatting. If `jq` is not installed, remove `| jq .` from the curl commands.
+
 ```bash
 # Copy/paste this to get a complete diagnostic report
 echo "=== Tables ===" && \
@@ -113,8 +115,14 @@ docker exec -it hailmary-postgres psql -U hailmary -d hailmary -c "\d addresses"
 echo -e "\n=== Migration History ===" && \
 docker exec -it hailmary-postgres psql -U hailmary -d hailmary -c "SELECT * FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 5;" && \
 echo -e "\n=== API Health ===" && \
-curl -s http://localhost:3000/health/api | jq . && \
+curl -s http://localhost:3000/health/api && \
 echo -e "\n=== Assistant Health ===" && \
+curl -s http://localhost:3000/health/assistant
+```
+
+**With jq (for formatted JSON output):**
+```bash
+curl -s http://localhost:3000/health/api | jq .
 curl -s http://localhost:3000/health/assistant | jq .
 ```
 

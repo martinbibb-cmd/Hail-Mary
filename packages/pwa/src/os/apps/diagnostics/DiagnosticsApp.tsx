@@ -112,7 +112,9 @@ export const DiagnosticsApp: React.FC = () => {
       setTimeout(() => setCopySuccess(false), 3000);
     }).catch((err) => {
       console.error('Failed to copy:', err);
-      alert('Failed to copy diagnostic bundle');
+      // Show inline error instead of alert
+      setError('Failed to copy diagnostic bundle to clipboard');
+      setTimeout(() => setError(null), 3000);
     });
   };
 
@@ -160,14 +162,14 @@ export const DiagnosticsApp: React.FC = () => {
 
       {/* Status Tiles */}
       <div className="status-tiles">
-        <div className={`status-tile status-${getStatusColor(health?.apiOk || false)}`}>
-          <div className="status-icon">{getStatusEmoji(health?.apiOk || false)}</div>
+        <div className={`status-tile status-${getStatusColor(health?.apiOk)}`}>
+          <div className="status-icon">{getStatusEmoji(health?.apiOk)}</div>
           <div className="status-label">API</div>
           <div className="status-value">{health?.apiOk ? 'Online' : 'Offline'}</div>
         </div>
 
-        <div className={`status-tile status-${getStatusColor(health?.dbOk || false)}`}>
-          <div className="status-icon">{getStatusEmoji(health?.dbOk || false)}</div>
+        <div className={`status-tile status-${getStatusColor(health?.dbOk)}`}>
+          <div className="status-icon">{getStatusEmoji(health?.dbOk)}</div>
           <div className="status-label">Database</div>
           <div className="status-value">{health?.dbOk ? 'Connected' : 'Disconnected'}</div>
         </div>
@@ -186,7 +188,7 @@ export const DiagnosticsApp: React.FC = () => {
 
         <div className={`status-tile status-${getStatusColor(schema?.missingTables?.length === 0)}`}>
           <div className="status-icon">
-            {getStatusEmoji(schema?.missingTables?.length === 0 || false)}
+            {getStatusEmoji(schema?.missingTables?.length === 0)}
           </div>
           <div className="status-label">Schema</div>
           <div className="status-value">

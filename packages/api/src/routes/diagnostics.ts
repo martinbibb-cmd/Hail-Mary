@@ -221,7 +221,7 @@ router.get('/stats', async (_req: Request, res: Response) => {
     const recentLeads = await db
       .select({
         id: leads.id,
-        name: sql<string>`concat(${leads.firstName}, ' ', ${leads.lastName})`,
+        name: sql<string>`COALESCE(${leads.firstName}, '') || ' ' || COALESCE(${leads.lastName}, '')`,
         createdAt: leads.createdAt,
       })
       .from(leads)

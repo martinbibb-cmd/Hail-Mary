@@ -284,6 +284,27 @@
   font-style: italic;
 }
 
+/* Warnings */
+.warnings-section {
+  background: #fff3cd;
+  border-color: #ffc107;
+}
+
+.warnings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.warning-item {
+  padding: 0.75rem;
+  background: #ffffff;
+  border-radius: 6px;
+  border-left: 4px solid #ffc107;
+  color: var(--text-primary, #1a1a1a);
+  font-size: 0.875rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .diagnostics-app {

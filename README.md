@@ -319,6 +319,9 @@ If you see errors like:
 - `relation "addresses" does not exist`
 - `column "assigned_user_id" does not exist`
 - Features appearing broken or missing in the UI
+- Empty lists or silent failures
+
+**These indicate schema drift** (migrations not applied / DB volume out of date), not database connectivity failure.
 
 **📖 See comprehensive guides:**
 - **[DATABASE_SCHEMA_TROUBLESHOOTING.md](./DATABASE_SCHEMA_TROUBLESHOOTING.md)** - Complete diagnostic and fix guide
@@ -335,20 +338,22 @@ npm run db:migrate
 
 ### Health Check Endpoints
 
+**✅ Use these endpoints:**
 ```bash
-# ✅ Correct health endpoints
 curl http://localhost:3000/health/api
 curl http://localhost:3000/health/assistant
-
-# ❌ NOT health endpoints
-# /health.json - This is interpreted as a resource request by the SPA routing
-#                and may be handled by a catch-all API route (e.g., transcript handler)
 ```
+
+**❌ Do NOT use:**
+- `/health.json` - This is not a health endpoint. It falls through to SPA routing and gets handled by a catch-all API route (e.g., transcript handler), returning `{"success":false,"error":"Invalid transcript ID"}`
 
 ### Checking Database Connection
 
+**⚠️ Important: Use 'hailmary' user, not 'postgres'**
+
+The `postgres` role does not exist in this deployment. Manual diagnostics must use the `hailmary` role:
+
 ```bash
-# ⚠️ Use 'hailmary' user, not 'postgres'
 # List all tables
 docker exec -it hailmary-postgres psql -U hailmary -d hailmary -c "\dt"
 

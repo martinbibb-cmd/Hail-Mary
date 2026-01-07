@@ -21,13 +21,7 @@ Added a new runtime caching rule that specifically targets survey-related API ro
 
 ```typescript
 {
-  urlPattern: ({ url }) => {
-    return url.pathname.includes('/api/trpc/survey') || 
-           url.pathname.includes('/survey/') ||
-           url.pathname.includes('/api/atlas') ||
-           url.pathname.includes('/heat-loss') ||
-           url.pathname.includes('/heating-design');
-  },
+  urlPattern: /\/(api\/trpc\/survey|survey|api\/atlas|heat-loss|heating-design)(\/|$)/i,
   handler: 'NetworkFirst',
   options: {
     cacheName: 'atlas-survey-data-v1',

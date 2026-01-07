@@ -136,13 +136,7 @@ export default defineConfig({
           // This ensures manual edits (radiator sizes, heat pump models, etc.) are immediately sent to server
           // and the UI always reflects the latest local/server state, not stale cached data
           {
-            urlPattern: ({ url }) => {
-              return url.pathname.includes('/api/trpc/survey') || 
-                     url.pathname.includes('/survey/') ||
-                     url.pathname.includes('/api/atlas') ||
-                     url.pathname.includes('/heat-loss') ||
-                     url.pathname.includes('/heating-design');
-            },
+            urlPattern: /\/(api\/trpc\/survey|survey|api\/atlas|heat-loss|heating-design)(\/|$)/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'atlas-survey-data-v1',

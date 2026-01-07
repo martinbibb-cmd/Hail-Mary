@@ -132,6 +132,30 @@ export default defineConfig({
               }
             }
           },
+          // Survey data routes - NetworkFirst to prevent stale cache from overwriting manual changes
+          // This ensures manual edits (radiator sizes, heat pump models, etc.) are immediately sent to server
+          // and the UI always reflects the latest local/server state, not stale cached data
+          {
+            urlPattern: ({ url }) => {
+              return url.pathname.includes('/api/trpc/survey') || 
+                     url.pathname.includes('/survey/') ||
+                     url.pathname.includes('/api/atlas') ||
+                     url.pathname.includes('/heat-loss') ||
+                     url.pathname.includes('/heating-design');
+            },
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'atlas-survey-data-v1',
+              networkTimeoutSeconds: 5, // Shorter timeout for survey data
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 2 // 2 minutes - short cache to prioritize fresh data
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           {
             urlPattern: /\/api\/.*/i,
             handler: 'NetworkFirst',

@@ -162,20 +162,20 @@ export const DiagnosticsApp: React.FC = () => {
 
       {/* Status Tiles */}
       <div className="status-tiles">
-        <div className={`status-tile status-${getStatusColor(health?.apiOk)}`}>
-          <div className="status-icon">{getStatusEmoji(health?.apiOk)}</div>
+        <div className={`status-tile status-${getStatusColor(health?.apiOk ?? null)}`}>
+          <div className="status-icon">{getStatusEmoji(health?.apiOk ?? null)}</div>
           <div className="status-label">API</div>
           <div className="status-value">{health?.apiOk ? 'Online' : 'Offline'}</div>
         </div>
 
-        <div className={`status-tile status-${getStatusColor(health?.dbOk)}`}>
-          <div className="status-icon">{getStatusEmoji(health?.dbOk)}</div>
+        <div className={`status-tile status-${getStatusColor(health?.dbOk ?? null)}`}>
+          <div className="status-icon">{getStatusEmoji(health?.dbOk ?? null)}</div>
           <div className="status-label">Database</div>
           <div className="status-value">{health?.dbOk ? 'Connected' : 'Disconnected'}</div>
         </div>
 
-        <div className={`status-tile status-${getStatusColor(health?.assistantReachable)}`}>
-          <div className="status-icon">{getStatusEmoji(health?.assistantReachable)}</div>
+        <div className={`status-tile status-${getStatusColor(health?.assistantReachable ?? null)}`}>
+          <div className="status-icon">{getStatusEmoji(health?.assistantReachable ?? null)}</div>
           <div className="status-label">Assistant</div>
           <div className="status-value">
             {health?.assistantReachable === null

@@ -1,8 +1,14 @@
 # Database Migration Issues & Fixes
 
+> **📖 For comprehensive troubleshooting, see:**
+> - **[DATABASE_SCHEMA_TROUBLESHOOTING.md](./DATABASE_SCHEMA_TROUBLESHOOTING.md)** - Complete diagnostic and fix guide
+> - **[DATABASE_QUICK_REFERENCE.md](./DATABASE_QUICK_REFERENCE.md)** - Quick reference with copy/paste commands
+
 ## Problem Summary
 
 The production database is missing several tables that exist in the schema but haven't been migrated yet. This causes the errors you're seeing in the mobile app.
+
+**Important**: Use the correct database user (`hailmary`, not `postgres`) when connecting to the database.
 
 ## Errors Found
 
@@ -92,10 +98,20 @@ CREATE INDEX IF NOT EXISTS "addresses_assigned_user_idx" ON "addresses" ("assign
 
 ## How to Apply
 
-### Using psql:
+### Using Docker (Recommended):
 ```bash
+# Run migrations from the API container
+docker exec -it hailmary-api sh -c "cd /app && npm run db:migrate"
+```
+
+### Using psql (if direct database access):
+```bash
+# ⚠️ Note: Use 'hailmary' user, not 'postgres'
 # Connect to your production database
-psql -h your-db-host -U postgres -d hailmary
+docker exec -it hailmary-postgres psql -U hailmary -d hailmary
+
+# Or from host (if you have direct access)
+psql -h your-db-host -U hailmary -d hailmary
 
 # Run each migration file
 \i /path/to/0012_addresses_and_appointments.sql

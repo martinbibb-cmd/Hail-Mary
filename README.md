@@ -311,6 +311,51 @@ npm run test -w packages/api
 npm run lint -w packages/api
 ```
 
+## 🩺 Troubleshooting
+
+### Database Schema Issues
+
+If you see errors like:
+- `relation "addresses" does not exist`
+- `column "assigned_user_id" does not exist`
+- Features appearing broken or missing in the UI
+
+**📖 See comprehensive guides:**
+- **[DATABASE_SCHEMA_TROUBLESHOOTING.md](./DATABASE_SCHEMA_TROUBLESHOOTING.md)** - Complete diagnostic and fix guide
+- **[DATABASE_QUICK_REFERENCE.md](./DATABASE_QUICK_REFERENCE.md)** - Quick reference with copy/paste commands
+
+**Quick fix:**
+```bash
+# Run migrations to sync database schema
+docker exec -it hailmary-api sh -c "cd /app && npm run db:migrate"
+
+# Or from repository root (if developing locally)
+npm run db:migrate
+```
+
+### Health Check Endpoints
+
+```bash
+# ✅ Correct health endpoints
+curl http://localhost:3000/health/api
+curl http://localhost:3000/health/assistant
+
+# ❌ NOT health endpoints
+# /health.json - This is interpreted as a resource request by the SPA routing
+#                and may be handled by a catch-all API route (e.g., transcript handler)
+```
+
+### Checking Database Connection
+
+```bash
+# ⚠️ Use 'hailmary' user, not 'postgres'
+# List all tables
+docker exec -it hailmary-postgres psql -U hailmary -d hailmary -c "\dt"
+
+# Check specific table structure
+docker exec -it hailmary-postgres psql -U hailmary -d hailmary -c "\d addresses"
+```
+
 ## 🎯 Design Principles
 
 1. **"Surveyors sell, engineers fit"** - Win the job on-site with professional presentation

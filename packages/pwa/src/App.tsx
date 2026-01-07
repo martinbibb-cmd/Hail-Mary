@@ -28,6 +28,7 @@ import { PhotoLibraryApp } from './os/apps/photo-library/PhotoLibraryApp'
 import { ScansApp } from './os/apps/scans/ScansApp'
 import { AddressesApp } from './os/apps/addresses/AddressesApp'
 import { TrajectoryApp } from './os/apps/trajectory/TrajectoryApp'
+import { DiagnosticsApp } from './os/apps/diagnostics/DiagnosticsApp'
 import { HeatingDesignApp } from './modules/heating-design'
 import { BottomDock } from './components/BottomDock'
 import { BuildBadge } from './components/BuildBadge'
@@ -751,6 +752,7 @@ function App() {
           <Route path="/admin/bugs/analytics" element={<AdminBugAnalyticsPage />} />
           <Route path="/admin/bugs/:id" element={<AdminBugDetailPage />} />
           <Route path="/admin/bugs" element={<AdminBugListPage />} />
+          <Route path="/diagnostics" element={<DiagnosticsApp />} />
         </Routes>
       </main>
 

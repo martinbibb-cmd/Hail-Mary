@@ -90,11 +90,33 @@ export const SurveyApp: React.FC = () => {
 
   const handleSave = async () => {
     setLoading(true)
+    setSaved(false) // Reset saved state
     try {
-      // In production, save to API
-      // await api.post('/api/survey-answers', { templateId: activeTemplate?.id, answers })
-      await new Promise(resolve => setTimeout(resolve, 500)) // Simulate API call
+      // Wait for successful server response before proceeding
+      const response = await fetch('/api/survey-answers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          templateId: activeTemplate?.id, 
+          answers 
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (!result.success) {
+        throw new Error(result.error || 'Save failed')
+      }
+
+      // Only mark as saved after successful server response
       setSaved(true)
+    } catch (error) {
+      console.error('Failed to save survey:', error)
+      alert('Failed to save survey. Please try again.')
     } finally {
       setLoading(false)
     }

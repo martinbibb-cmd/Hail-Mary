@@ -18,7 +18,11 @@ interface HealthData {
   apiOk: boolean;
   dbOk: boolean;
   assistantReachable: boolean | null;
-  schemaVersion: string;
+  schemaVersion: string | null;
+  schemaAligned: boolean;
+  missingTables: string[];
+  missingColumns: Record<string, string[]>;
+  pendingMigrations: string[];
   buildSha: string;
   buildTime: string;
   serverTime: string;
@@ -70,6 +74,7 @@ export const DiagnosticsApp: React.FC = () => {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
@@ -79,18 +84,32 @@ export const DiagnosticsApp: React.FC = () => {
   const loadDiagnostics = async () => {
     setLoading(true);
     setError(null);
+    setWarnings([]);
 
     try {
       // Fetch all diagnostic data in parallel
       const [healthRes, schemaRes, statsRes] = await Promise.all([
-        apiFetch<{ success: boolean; data: HealthData }>('/api/diagnostics/health'),
-        apiFetch<{ success: boolean; data: SchemaData }>('/api/diagnostics/schema'),
-        apiFetch<{ success: boolean; data: StatsData }>('/api/diagnostics/stats'),
+        apiFetch<{ success: boolean; data: HealthData; errors?: Array<{ component: string; message: string }> }>('/api/diagnostics/health'),
+        apiFetch<{ success: boolean; data: SchemaData; warnings?: string[] }>('/api/diagnostics/schema'),
+        apiFetch<{ success: boolean; data: StatsData; warnings?: string[] }>('/api/diagnostics/stats'),
       ]);
 
       setHealth(healthRes.data);
       setSchema(schemaRes.data);
       setStats(statsRes.data);
+
+      // Collect warnings from all endpoints
+      const allWarnings: string[] = [];
+      if (healthRes.errors && healthRes.errors.length > 0) {
+        healthRes.errors.forEach(err => allWarnings.push(`${err.component}: ${err.message}`));
+      }
+      if (schemaRes.warnings && schemaRes.warnings.length > 0) {
+        allWarnings.push(...schemaRes.warnings);
+      }
+      if (statsRes.warnings && statsRes.warnings.length > 0) {
+        allWarnings.push(...statsRes.warnings);
+      }
+      setWarnings(allWarnings);
     } catch (err) {
       console.error('Failed to load diagnostics:', err);
       setError(err instanceof Error ? err.message : 'Failed to load diagnostics');
@@ -186,18 +205,32 @@ export const DiagnosticsApp: React.FC = () => {
           </div>
         </div>
 
-        <div className={`status-tile status-${getStatusColor(schema?.missingTables?.length === 0)}`}>
+        <div className={`status-tile status-${getStatusColor(health?.schemaAligned ?? false)}`}>
           <div className="status-icon">
-            {getStatusEmoji(schema?.missingTables?.length === 0)}
+            {getStatusEmoji(health?.schemaAligned ?? false)}
           </div>
           <div className="status-label">Schema</div>
           <div className="status-value">
-            {schema?.missingTables?.length === 0
-              ? 'Complete'
-              : `${schema?.missingTables?.length || 0} missing`}
+            {health?.schemaAligned
+              ? 'Aligned'
+              : `${(health?.missingTables?.length || 0) + Object.keys(health?.missingColumns || {}).length} issues`}
           </div>
         </div>
       </div>
+
+      {/* Warnings Banner */}
+      {warnings.length > 0 && (
+        <div className="diagnostics-section warnings-section">
+          <h2>⚠️ Warnings</h2>
+          <div className="warnings-list">
+            {warnings.map((warning, idx) => (
+              <div key={idx} className="warning-item">
+                {warning}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* System Info */}
       <div className="diagnostics-section">
@@ -243,10 +276,26 @@ export const DiagnosticsApp: React.FC = () => {
               <span className="info-label">Expected Tables:</span>
               <span className="info-value">{schema.expectedTables.length}</span>
             </div>
+            <div className="info-item">
+              <span className="info-label">Schema Status:</span>
+              <span className="info-value">{health?.schemaAligned ? '✅ Aligned' : '⚠️ Misaligned'}</span>
+            </div>
             {schema.missingTables.length > 0 && (
               <div className="info-item warning">
                 <span className="info-label">Missing Tables:</span>
                 <span className="info-value">{schema.missingTables.join(', ')}</span>
+              </div>
+            )}
+            {health?.missingColumns && Object.keys(health.missingColumns).length > 0 && (
+              <div className="info-item warning">
+                <span className="info-label">Missing Columns:</span>
+                <span className="info-value">
+                  {Object.entries(health.missingColumns).map(([table, cols]) => (
+                    <div key={table}>
+                      {table}: {cols.join(', ')}
+                    </div>
+                  ))}
+                </span>
               </div>
             )}
           </div>

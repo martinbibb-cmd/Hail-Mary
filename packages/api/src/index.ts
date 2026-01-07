@@ -241,6 +241,14 @@ const aiLimiter = rateLimit({
   message: { success: false, code: 'rate_limited', error: 'Too many requests, please try again later.' },
 });
 
+const diagnosticsLimiter = rateLimit({
+  windowMs: 10 * 1000, // 10 seconds
+  max: 10, // 10 requests per 10 seconds
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, code: 'rate_limited', error: 'Too many diagnostic requests, please wait a moment.' },
+});
+
 // CORS Configuration
 // Allow requests from the PWA domain with credentials (cookies)
 // If CORS_ORIGIN is not set, allow the default domains
@@ -399,7 +407,7 @@ app.use('/api/bug-reports', bugReportsRouter); // Bug Reports: User-submitted bu
 app.use('/api/meta', metaRouter); // Meta: Build fingerprinting and system metadata
 app.use('/api/job-graph', jobGraphRouter); // Job Graph: Orchestration spine for turning captured data into defensible outputs
 app.use('/api/heating-design', heatingDesignRouter); // Heating Design: Floor plan import, heat loss calculations, radiator selection, pipe routing
-app.use('/api/diagnostics', diagnosticsRouter); // Diagnostics: Backend health, schema, and data presence monitoring (admin-only)
+app.use('/api/diagnostics', wrapLimiter('diagnostics', diagnosticsLimiter), diagnosticsRouter); // Diagnostics: Backend health, schema, and data presence monitoring (admin-only)
 
 // 404 handler
 app.use((_req, res) => {

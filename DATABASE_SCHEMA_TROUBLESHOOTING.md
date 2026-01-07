@@ -161,7 +161,7 @@ hailmary-migrator:
 
 ```bash
 # From inside the API container
-docker exec -it hailmary-api sh -lc "cd /app && cat package.json | sed -n '/\"scripts\"/,/}/p'"
+docker exec -it hailmary-api sh -c "cd /app && cat package.json | sed -n '/\"scripts\"/,/}/p'"
 
 # Or from the repository root
 cat packages/api/package.json | grep -A 10 '"scripts"'
@@ -179,16 +179,17 @@ cat packages/api/package.json | grep -A 10 '"scripts"'
 ### The CORRECT Health Endpoints
 
 ```bash
-# Check API health
-curl http://localhost:3000/health/api
-curl http://localhost:3000/api/health
+# Check health via nginx proxy (recommended from host)
+curl http://localhost:3000/health/api       # Proxies to API /health
+curl http://localhost:3000/health/assistant # Proxies to Assistant /health
 
-# Check Assistant health
-curl http://localhost:3000/health/assistant
-curl http://localhost:3000/assistant/health
+# Direct API health endpoint (detailed info)
+docker exec -it hailmary-api curl http://localhost:3001/health
+docker exec -it hailmary-api curl http://localhost:3001/health/detailed
+docker exec -it hailmary-api curl http://localhost:3001/health/db
 
-# Direct to API container (if needed)
-curl http://hailmary-api:3001/health
+# Direct Assistant health endpoint
+docker exec -it hailmary-assistant curl http://localhost:3002/health
 ```
 
 ### What is `/health.json`?

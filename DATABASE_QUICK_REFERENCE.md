@@ -49,9 +49,13 @@ docker compose logs -f hailmary-migrator
 ## 🏥 Health Check Commands
 
 ```bash
-# ✅ Correct health endpoints
+# ✅ Correct health endpoints (via nginx proxy)
 curl http://localhost:3000/health/api
 curl http://localhost:3000/health/assistant
+
+# Direct container health checks
+docker exec -it hailmary-api curl http://localhost:3001/health
+docker exec -it hailmary-assistant curl http://localhost:3002/health
 
 # ❌ NOT health endpoints
 # /health.json - This routes to transcript handler!
@@ -61,7 +65,7 @@ curl http://localhost:3000/health/assistant
 
 ```bash
 # List database management scripts
-docker exec -it hailmary-api sh -c "cat package.json | grep -A 10 '\"scripts\"'"
+docker exec -it hailmary-api sh -c "cd /app && cat package.json | grep -A 10 '\"scripts\"'"
 
 # Or from repository root
 cat packages/api/package.json | grep -A 10 '"scripts"'

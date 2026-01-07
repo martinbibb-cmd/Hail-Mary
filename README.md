@@ -341,7 +341,8 @@ curl http://localhost:3000/health/api
 curl http://localhost:3000/health/assistant
 
 # ❌ NOT health endpoints
-# /health.json - This routes to transcript handler, not a health check!
+# /health.json - This is interpreted as a resource request by the SPA routing
+#                and may be handled by a catch-all API route (e.g., transcript handler)
 ```
 
 ### Checking Database Connection

@@ -160,8 +160,11 @@ hailmary-migrator:
 ### List Available Scripts in API Package
 
 ```bash
-# From inside the API container
+# From inside the API container (requires standard package.json formatting)
 docker exec -it hailmary-api sh -c "cd /app && cat package.json | sed -n '/\"scripts\"/,/}/p'"
+
+# Alternative: use grep for more robust output
+docker exec -it hailmary-api sh -c "cd /app && cat package.json | grep -A 15 '\"scripts\"'"
 
 # Or from the repository root
 cat packages/api/package.json | grep -A 10 '"scripts"'
@@ -202,9 +205,13 @@ If you see this error when accessing `https://your-domain.com/health.json`:
 {"success":false,"error":"Invalid transcript ID"}
 ```
 
-That's because `/health.json` is being routed to a transcript handler or similar endpoint that interprets it as a resource ID.
+That's because `/health.json` is being routed to a transcript handler or similar endpoint that interprets it as a resource ID. The SPA (Single Page Application) routing treats any unmatched path as a potential resource, and the API may have a catch-all route that processes it.
 
 **Do NOT use `health.json` for diagnostics.**
+
+The actual health endpoints are:
+- `/health/api` - Proxies to API service's `/health` endpoint
+- `/health/assistant` - Proxies to Assistant service's `/health` endpoint
 
 ## Common Scenarios
 

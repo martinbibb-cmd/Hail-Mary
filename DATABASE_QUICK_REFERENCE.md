@@ -106,7 +106,18 @@ docker exec -it hailmary-postgres psql -U hailmary -d hailmary -c "SELECT COUNT(
 
 ## 🎯 One-Liner Diagnostic
 
-**Note**: Requires `jq` for JSON formatting. If `jq` is not installed, remove `| jq .` from the curl commands.
+**Note**: The full diagnostic below requires `jq` for JSON formatting. 
+
+**Install jq** (if needed):
+```bash
+# Ubuntu/Debian
+sudo apt-get install jq
+
+# macOS
+brew install jq
+
+# Or run without jq (see alternative commands below)
+```
 
 ```bash
 # Copy/paste this to get a complete diagnostic report
@@ -128,6 +139,12 @@ curl -s http://localhost:3000/health/assistant
 ```bash
 curl -s http://localhost:3000/health/api | jq .
 curl -s http://localhost:3000/health/assistant | jq .
+```
+
+**Without jq (raw JSON output):**
+```bash
+curl -s http://localhost:3000/health/api
+curl -s http://localhost:3000/health/assistant
 ```
 
 ## 📚 Full Guide

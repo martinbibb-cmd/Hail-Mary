@@ -15,6 +15,26 @@ interface ConfigLoadResult<T> {
 }
 
 /**
+ * Config source types for provenance tracking
+ */
+export type ConfigSource = 'db' | 'file' | 'env' | 'builtin' | 'unknown';
+
+/**
+ * Config usage type
+ */
+export type ConfigUsage = 'custom' | 'default' | 'unknown';
+
+/**
+ * Config provenance information
+ */
+export interface ConfigProvenance {
+  used: ConfigUsage;
+  source: ConfigSource;
+  expected: string[];
+  reason: string;
+}
+
+/**
  * Load a JSON configuration file with resilient fallback behavior.
  * 
  * Tries paths in this order:
@@ -126,4 +146,94 @@ export function loadJsonConfigCached<T>(fileName: string, fallback: T): ConfigLo
  */
 export function clearConfigCache(): void {
   configCache.clear();
+}
+
+/**
+ * Resolve config provenance for a given config load result
+ */
+function resolveConfigProvenance(
+  loadResult: ConfigLoadResult<unknown>,
+  configName: string,
+  fileName: string
+): ConfigProvenance {
+  const expected: string[] = [
+    `env:HAILMARY_CORE_PATH/${fileName}`,
+    `file:/data/atlas/${fileName}`,
+    `file:packages/shared/dist/core/${fileName}`,
+    `file:packages/shared/src/core/${fileName}`,
+  ];
+
+  if (loadResult.usedFallback) {
+    return {
+      used: 'default',
+      source: 'builtin',
+      expected,
+      reason: `No custom ${configName} found`,
+    };
+  }
+
+  // Determine source based on loaded path
+  const loadedFrom = loadResult.loadedFrom || '';
+  let source: ConfigSource = 'file';
+  
+  if (loadedFrom.includes('HAILMARY_CORE_PATH') || process.env.HAILMARY_CORE_PATH) {
+    source = 'env';
+  } else if (loadedFrom.includes('/dist/core/') || loadedFrom.includes('/src/core/')) {
+    source = 'file';
+  }
+
+  return {
+    used: 'custom',
+    source,
+    expected,
+    reason: `Loaded from ${loadedFrom}`,
+  };
+}
+
+/**
+ * Resolve schema config provenance
+ */
+export function resolveSchemaConfig(): ConfigProvenance {
+  const schemaResult = configCache.get('atlas-schema.json') || configCache.get('depot-schema.json');
+  
+  if (!schemaResult) {
+    // Not yet loaded, return default state
+    return {
+      used: 'default',
+      source: 'builtin',
+      expected: [
+        'env:HAILMARY_CORE_PATH/atlas-schema.json',
+        'file:/data/atlas/atlas-schema.json',
+        'file:packages/shared/dist/core/atlas-schema.json',
+        'file:packages/shared/src/core/atlas-schema.json',
+      ],
+      reason: 'No custom schema config found',
+    };
+  }
+
+  return resolveConfigProvenance(schemaResult, 'schema config', 'atlas-schema.json');
+}
+
+/**
+ * Resolve checklist config provenance
+ */
+export function resolveChecklistConfig(): ConfigProvenance {
+  const checklistResult = configCache.get('checklist-config.json');
+  
+  if (!checklistResult) {
+    // Not yet loaded, return default state
+    return {
+      used: 'default',
+      source: 'builtin',
+      expected: [
+        'env:HAILMARY_CORE_PATH/checklist-config.json',
+        'file:/data/atlas/checklist-config.json',
+        'file:packages/shared/dist/core/checklist-config.json',
+        'file:packages/shared/src/core/checklist-config.json',
+      ],
+      reason: 'No custom checklist config found',
+    };
+  }
+
+  return resolveConfigProvenance(checklistResult, 'checklist config', 'checklist-config.json');
 }

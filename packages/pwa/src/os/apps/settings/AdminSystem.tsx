@@ -134,12 +134,12 @@ export const AdminSystem: React.FC = () => {
 
   // Helper to check if configuration is fully healthy
   const configStatus = status.config || {
-    depotSchemaLoadedFrom: 'unknown',
-    depotSchemaUsedFallback: false,
+    schemaLoadedFrom: 'unknown',
+    schemaUsedFallback: false,
     checklistConfigLoadedFrom: 'unknown',
     checklistConfigUsedFallback: false,
   };
-  const isConfigHealthy = !configStatus.depotSchemaUsedFallback && !configStatus.checklistConfigUsedFallback;
+  const isConfigHealthy = !configStatus.schemaUsedFallback && !configStatus.checklistConfigUsedFallback;
   const warnings = status.warnings || [];
   const apiInfo = status.api || { version: 'Unknown', nodeVersion: 'n/a', uptimeSeconds: 0 };
   const dbInfo = status.db || { ok: false, urlMasked: 'not configured' };
@@ -283,17 +283,17 @@ export const AdminSystem: React.FC = () => {
           </h4>
           <div className="admin-card-content">
             <div className="admin-stat">
-              <span className="admin-stat-label">Depot Schema:</span>
+              <span className="admin-stat-label">Atlas Schema:</span>
               <span className="admin-stat-value">
-                {configStatus.depotSchemaLoadedFrom}
-                {configStatus.depotSchemaUsedFallback && ' (fallback)'}
+                {configStatus.schemaLoadedFrom}
+                {configStatus.schemaUsedFallback && ' (default)'}
               </span>
             </div>
             <div className="admin-stat">
               <span className="admin-stat-label">Checklist Config:</span>
               <span className="admin-stat-value">
                 {configStatus.checklistConfigLoadedFrom}
-                {configStatus.checklistConfigUsedFallback && ' (fallback)'}
+                {configStatus.checklistConfigUsedFallback && ' (default)'}
               </span>
             </div>
           </div>

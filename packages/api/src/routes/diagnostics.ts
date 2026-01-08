@@ -31,6 +31,7 @@ import {
   bugReports
 } from '../db/drizzle-schema';
 import { sql } from 'drizzle-orm';
+import { resolveSchemaConfig, resolveChecklistConfig } from '../utils/configLoader';
 
 const router = Router();
 
@@ -59,6 +60,10 @@ router.get('/health', async (_req: Request, res: Response) => {
     uptime: process.uptime(),
     nodeVersion: process.version,
     environment: process.env.NODE_ENV || 'development',
+    config: {
+      schema: resolveSchemaConfig(),
+      checklist: resolveChecklistConfig(),
+    },
   };
 
   const errors: Array<{ component: string; message: string }> = [];
@@ -230,6 +235,15 @@ router.get('/schema', async (_req: Request, res: Response) => {
   const warnings: string[] = [];
   let tables: string[] = [];
   let migrations: any[] = [];
+  let schemaAligned = false;
+  let missingTables: string[] = [];
+  let missingColumns: Record<string, string[]> = {};
+
+  // Get config provenance
+  const config = {
+    schema: resolveSchemaConfig(),
+    checklist: resolveChecklistConfig(),
+  };
 
   // Get list of tables from information_schema
   try {
@@ -262,11 +276,37 @@ router.get('/schema', async (_req: Request, res: Response) => {
     'bug_reports',
   ];
 
-  const missingTables = expectedTables.filter(t => !tables.includes(t));
+  missingTables = expectedTables.filter(t => !tables.includes(t));
 
   if (missingTables.length > 0) {
     warnings.push(`Missing ${missingTables.length} expected tables: ${missingTables.join(', ')}`);
   }
+
+  // Check for missing columns in existing tables
+  const criticalTableColumns: Record<string, string[]> = {
+    'users': ['id', 'email', 'name', 'role', 'created_at'],
+    'leads': ['id', 'account_id', 'first_name', 'last_name', 'created_at'],
+    'addresses': ['id', 'lead_id', 'postcode', 'created_at'],
+  };
+
+  for (const [tableName, expectedCols] of Object.entries(criticalTableColumns)) {
+    if (tables.includes(tableName)) {
+      try {
+        const columnsResult = await db.execute(
+          sql`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${tableName}`
+        );
+        const existingCols = columnsResult.rows.map(row => row.column_name as string);
+        const missing = expectedCols.filter(col => !existingCols.includes(col));
+        if (missing.length > 0) {
+          missingColumns[tableName] = missing;
+        }
+      } catch (err) {
+        // Silently skip column check if it fails
+      }
+    }
+  }
+
+  schemaAligned = missingTables.length === 0 && Object.keys(missingColumns).length === 0;
 
   // Get migration information
   try {
@@ -292,6 +332,9 @@ router.get('/schema', async (_req: Request, res: Response) => {
       missingTables,
       tableCount: tables.length,
       migrations: migrations.length > 0 ? migrations : null,
+      schemaAligned,
+      missingColumns,
+      config,
     },
     warnings: warnings.length > 0 ? warnings : undefined,
   });

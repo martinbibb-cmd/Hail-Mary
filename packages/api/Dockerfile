@@ -53,6 +53,7 @@ COPY packages/api/package.json ./packages/api/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
 COPY packages/vision-engine/package.json ./packages/vision-engine/
+COPY packages/heating-engine/package.json ./packages/heating-engine/
 COPY packages/assistant/package.json ./packages/assistant/
 COPY packages/pwa/package.json ./packages/pwa/
 COPY packages/worker/package.json ./packages/worker/
@@ -64,11 +65,13 @@ RUN npm ci
 
 # Copy source files
 COPY packages/shared ./packages/shared
+COPY packages/heating-engine ./packages/heating-engine
 COPY packages/api ./packages/api
 
-# Build shared package first, then api (using workspace commands from root)
+# Build shared package first, then heating-engine, then api (using workspace commands from root)
 WORKDIR /app
 RUN npm run build -w packages/shared
+RUN npm run build -w packages/heating-engine
 RUN npm run build -w packages/api
 
 # Production stage
@@ -98,6 +101,7 @@ ENV CXXFLAGS="-O2 -pipe -march=x86-64 -mno-avx -mno-avx2"
 COPY package.json package-lock.json .npmrc ./
 COPY packages/api/package.json ./packages/api/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/heating-engine/package.json ./packages/heating-engine/
 COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
 COPY packages/vision-engine/package.json ./packages/vision-engine/
 COPY packages/assistant/package.json ./packages/assistant/
@@ -111,6 +115,7 @@ RUN npm ci
 
 # Copy built files from builder
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/heating-engine/dist ./packages/heating-engine/dist
 COPY --from=builder /app/packages/api/dist ./packages/api/dist
 
 # Copy source files needed for migrations and seeding

@@ -67,6 +67,8 @@ COPY packages/pwa/package.json ./packages/pwa/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/surveyor-engine/package.json ./packages/surveyor-engine/
 COPY packages/vision-engine/package.json ./packages/vision-engine/
+COPY packages/heating-engine/package.json ./packages/heating-engine/
+COPY packages/worker/package.json ./packages/worker/
 
 # Install ALL dependencies (including devDependencies needed for build)
 RUN npm ci
@@ -78,6 +80,7 @@ COPY . .
 RUN npm run build -w packages/shared && \
     npm run build -w packages/surveyor-engine && \
     npm run build -w packages/vision-engine && \
+    npm run build -w packages/heating-engine && \
     npm run build -w packages/pwa && \
     npm run build -w packages/assistant && \
     npm run build -w packages/api

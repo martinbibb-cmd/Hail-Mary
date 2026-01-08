@@ -49,6 +49,13 @@ interface AdminStatusResponse {
   warnings: string[];
 }
 
+// Union type for API errors that can come from fetch or axios
+type ApiError = Error | {
+  status?: number;
+  statusCode?: number;
+  message?: string;
+};
+
 interface HealthData {
   apiOk: boolean;
   dbOk: boolean;
@@ -131,25 +138,29 @@ export const DiagnosticsApp: React.FC = () => {
   /**
    * Helper to determine if an error is a 404 Not Found error
    */
-  const isNotFoundError = (error: any): boolean => {
-    return error?.status === 404 || 
-           error?.statusCode === 404 ||
-           error?.message?.toLowerCase().includes('404') || 
-           error?.message?.toLowerCase().includes('not found');
+  const isNotFoundError = (error: unknown): boolean => {
+    if (!error) return false;
+    const err = error as ApiError;
+    return err?.status === 404 || 
+           err?.statusCode === 404 ||
+           err?.message?.toLowerCase().includes('404') || 
+           err?.message?.toLowerCase().includes('not found');
   };
 
   /**
    * Helper to determine if an error is an authentication/authorization error
    */
-  const isAuthError = (error: any): boolean => {
-    return error?.status === 401 || 
-           error?.status === 403 ||
-           error?.statusCode === 401 || 
-           error?.statusCode === 403 ||
-           error?.message?.toLowerCase().includes('401') || 
-           error?.message?.toLowerCase().includes('403') ||
-           error?.message?.toLowerCase().includes('unauthorized') ||
-           error?.message?.toLowerCase().includes('forbidden');
+  const isAuthError = (error: unknown): boolean => {
+    if (!error) return false;
+    const err = error as ApiError;
+    return err?.status === 401 || 
+           err?.status === 403 ||
+           err?.statusCode === 401 || 
+           err?.statusCode === 403 ||
+           err?.message?.toLowerCase().includes('401') || 
+           err?.message?.toLowerCase().includes('403') ||
+           err?.message?.toLowerCase().includes('unauthorized') ||
+           err?.message?.toLowerCase().includes('forbidden');
   };
 
   /**
@@ -224,7 +235,7 @@ export const DiagnosticsApp: React.FC = () => {
         }
         setWarnings(allWarnings);
         return; // Success - don't try fallback
-      } catch (diagnosticsError: any) {
+      } catch (diagnosticsError: unknown) {
         // If diagnostics endpoints return 404, try fallback to admin status
         if (isNotFoundError(diagnosticsError)) {
           console.warn('Diagnostics endpoints not available, falling back to admin status endpoint');
@@ -259,7 +270,7 @@ export const DiagnosticsApp: React.FC = () => {
         // If not a 404 or fallback failed, re-throw
         throw diagnosticsError;
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to load diagnostics:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load diagnostics';
       

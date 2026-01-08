@@ -151,9 +151,9 @@ export const DiagnosticsApp: React.FC = () => {
   };
 
   /**
-   * Helper to check if error message contains specific text
+   * Helper to check if error message contains specific terms (case-insensitive)
    */
-  const errorMessageIncludes = (err: ApiError, ...terms: string[]): boolean => {
+  const errorMessageContains = (err: ApiError, ...terms: string[]): boolean => {
     if (!err) return false;
     const message = err.message?.toLowerCase();
     if (!message) return false;
@@ -169,9 +169,9 @@ export const DiagnosticsApp: React.FC = () => {
     if (hasHttpErrorProps(err)) {
       return err.status === 404 || 
              err.statusCode === 404 ||
-             errorMessageIncludes(err, '404', 'not found');
+             errorMessageContains(err, '404', 'not found');
     }
-    return errorMessageIncludes(err, '404', 'not found');
+    return errorMessageContains(err, '404', 'not found');
   };
 
   /**
@@ -185,9 +185,9 @@ export const DiagnosticsApp: React.FC = () => {
              err.status === 403 ||
              err.statusCode === 401 || 
              err.statusCode === 403 ||
-             errorMessageIncludes(err, '401', '403', 'unauthorized', 'forbidden');
+             errorMessageContains(err, '401', '403', 'unauthorized', 'forbidden');
     }
-    return errorMessageIncludes(err, '401', '403', 'unauthorized', 'forbidden');
+    return errorMessageContains(err, '401', '403', 'unauthorized', 'forbidden');
   };
 
   /**

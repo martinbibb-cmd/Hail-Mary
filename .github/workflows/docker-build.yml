@@ -51,6 +51,7 @@ jobs:
             api:
               - 'packages/api/**'
               - 'packages/shared/**'
+              - 'packages/heating-engine/**'
               - 'package.json'
               - 'package-lock.json'
             pwa:

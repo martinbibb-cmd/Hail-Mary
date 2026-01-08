@@ -38,9 +38,10 @@ services:
       # Guest user credentials (minimum 8 characters for password)
       GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
       GUEST_PASSWORD: ${GUEST_PASSWORD:-guestpass}
-    # Run migrations using the migrate.ts script, then seed the database
+    # Run migrations using the migrate.ts script
     # This ensures SQL migrations from drizzle/ folder are applied correctly
-    command: sh -c "npm run db:migrate -w packages/api && npm run db:seed -w packages/api"
+    # Seeding is optional and can be run manually: npm run db:seed -w packages/api
+    command: sh -c "npm run db:migrate -w packages/api"
     deploy:
       restart_policy:
         condition: on-failure
@@ -65,6 +66,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-development-secret-change-in-production}
       BASE_URL: ${BASE_URL:-https://hail_mary.cloudbibb.uk}
       NODE_ENV: production
+      # Assistant service URL for diagnostics health checks
+      ASSISTANT_URL: http://hailmary-assistant:3002
       # Sarah (LLM Explanation Layer) Configuration
       SARAH_BASE_URL: ${SARAH_BASE_URL:-https://hail-mary.martinbibb.workers.dev}
       SARAH_VOICE_NOTES_PATH: ${SARAH_VOICE_NOTES_PATH:-/v1/voice-notes}

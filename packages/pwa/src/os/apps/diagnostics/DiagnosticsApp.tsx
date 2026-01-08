@@ -94,43 +94,131 @@ export const DiagnosticsApp: React.FC = () => {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [copySuccess, setCopySuccess] = useState(false);
   const [showConfigDetails, setShowConfigDetails] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
     loadDiagnostics();
   }, []);
 
+  /**
+   * Map admin system status response to diagnostics health data structure
+   */
+  const mapAdminStatusToHealth = (adminStatus: any): HealthData => {
+    // Determine source based on whether custom config was used
+    const schemaSource: ConfigProvenance['source'] = adminStatus.config?.schemaUsedFallback ? 'builtin' : 'custom';
+    const checklistSource: ConfigProvenance['source'] = adminStatus.config?.checklistConfigUsedFallback ? 'builtin' : 'custom';
+    
+    return {
+      apiOk: true,
+      dbOk: adminStatus.db?.ok || false,
+      assistantReachable: null, // Admin status doesn't include assistant info
+      schemaVersion: null, // Admin status doesn't include schema version
+      schemaAligned: false, // Admin status doesn't include schema alignment
+      missingTables: [],
+      missingColumns: {},
+      pendingMigrations: [],
+      buildSha: 'unknown',
+      buildTime: 'unknown',
+      serverTime: new Date().toISOString(),
+      uptime: adminStatus.api?.uptimeSeconds || 0,
+      nodeVersion: adminStatus.api?.nodeVersion || 'unknown',
+      environment: 'unknown',
+      config: {
+        schema: {
+          used: adminStatus.config?.schemaUsedFallback ? 'default' : 'custom',
+          source: schemaSource,
+          expected: [],
+          reason: adminStatus.config?.schemaLoadedFrom || 'unknown',
+        },
+        checklist: {
+          used: adminStatus.config?.checklistConfigUsedFallback ? 'default' : 'custom',
+          source: checklistSource,
+          expected: [],
+          reason: adminStatus.config?.checklistConfigLoadedFrom || 'unknown',
+        },
+      },
+    };
+  };
+
   const loadDiagnostics = async () => {
     setLoading(true);
     setError(null);
     setWarnings([]);
+    setUsingFallback(false);
 
     try {
-      // Fetch all diagnostic data in parallel
-      const [healthRes, schemaRes, statsRes] = await Promise.all([
-        apiFetch<{ success: boolean; data: HealthData; errors?: Array<{ component: string; message: string }> }>('/api/diagnostics/health'),
-        apiFetch<{ success: boolean; data: SchemaData; warnings?: string[] }>('/api/diagnostics/schema'),
-        apiFetch<{ success: boolean; data: StatsData; warnings?: string[] }>('/api/diagnostics/stats'),
-      ]);
+      // Try diagnostics endpoints first
+      try {
+        const [healthRes, schemaRes, statsRes] = await Promise.all([
+          apiFetch<{ success: boolean; data: HealthData; errors?: Array<{ component: string; message: string }> }>('/api/diagnostics/health'),
+          apiFetch<{ success: boolean; data: SchemaData; warnings?: string[] }>('/api/diagnostics/schema'),
+          apiFetch<{ success: boolean; data: StatsData; warnings?: string[] }>('/api/diagnostics/stats'),
+        ]);
 
-      setHealth(healthRes.data);
-      setSchema(schemaRes.data);
-      setStats(statsRes.data);
+        setHealth(healthRes.data);
+        setSchema(schemaRes.data);
+        setStats(statsRes.data);
 
-      // Collect warnings from all endpoints
-      const allWarnings: string[] = [];
-      if (healthRes.errors && healthRes.errors.length > 0) {
-        healthRes.errors.forEach(err => allWarnings.push(`${err.component}: ${err.message}`));
+        // Collect warnings from all endpoints
+        const allWarnings: string[] = [];
+        if (healthRes.errors && healthRes.errors.length > 0) {
+          healthRes.errors.forEach(err => allWarnings.push(`${err.component}: ${err.message}`));
+        }
+        if (schemaRes.warnings && schemaRes.warnings.length > 0) {
+          allWarnings.push(...schemaRes.warnings);
+        }
+        if (statsRes.warnings && statsRes.warnings.length > 0) {
+          allWarnings.push(...statsRes.warnings);
+        }
+        setWarnings(allWarnings);
+        return; // Success - don't try fallback
+      } catch (diagnosticsError: any) {
+        // If diagnostics endpoints return 404, try fallback to admin status
+        if (diagnosticsError?.message?.includes('404') || diagnosticsError?.message?.includes('Not found')) {
+          console.warn('Diagnostics endpoints not available, falling back to admin status endpoint');
+          setUsingFallback(true);
+          
+          // Fall back to admin system status endpoint
+          const adminStatusRes = await apiFetch<{ success: boolean; data: any }>('/api/admin/system/status');
+          
+          if (adminStatusRes.success && adminStatusRes.data) {
+            // Map admin status to health data structure
+            const mappedHealth = mapAdminStatusToHealth(adminStatusRes.data);
+            setHealth(mappedHealth);
+            
+            // Set warnings from admin status
+            if (adminStatusRes.data.warnings && adminStatusRes.data.warnings.length > 0) {
+              setWarnings([
+                'ℹ️ Using fallback endpoint: /api/admin/system/status (diagnostics endpoints not deployed)',
+                ...adminStatusRes.data.warnings
+              ]);
+            } else {
+              setWarnings(['ℹ️ Using fallback endpoint: /api/admin/system/status (diagnostics endpoints not deployed)']);
+            }
+            
+            // Note: Schema and stats are not available from admin status
+            // Set minimal data to avoid null errors
+            setSchema(null);
+            setStats(null);
+            return;
+          }
+        }
+        
+        // If not a 404 or fallback failed, re-throw
+        throw diagnosticsError;
       }
-      if (schemaRes.warnings && schemaRes.warnings.length > 0) {
-        allWarnings.push(...schemaRes.warnings);
-      }
-      if (statsRes.warnings && statsRes.warnings.length > 0) {
-        allWarnings.push(...statsRes.warnings);
-      }
-      setWarnings(allWarnings);
     } catch (err) {
       console.error('Failed to load diagnostics:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load diagnostics');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load diagnostics';
+      
+      // Provide more specific error message
+      if (errorMessage.includes('404') || errorMessage.includes('Not found')) {
+        setError('Diagnostics endpoints are not available. The API container may need to be rebuilt and redeployed.');
+      } else if (errorMessage.includes('401') || errorMessage.includes('403')) {
+        setError('Access denied. Admin authentication is required to view diagnostics.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -196,6 +284,11 @@ export const DiagnosticsApp: React.FC = () => {
       <div className="diagnostics-header">
         <h1>🔍 System Diagnostics</h1>
         <p className="diagnostics-subtitle">Backend health and data presence monitor</p>
+        {usingFallback && (
+          <div className="fallback-notice">
+            ℹ️ Using fallback endpoint - some diagnostic data unavailable
+          </div>
+        )}
       </div>
 
       {/* Status Tiles */}
@@ -398,6 +491,17 @@ export const DiagnosticsApp: React.FC = () => {
         </div>
       )}
 
+      {/* Show message when schema data is not available */}
+      {!schema && usingFallback && (
+        <div className="diagnostics-section">
+          <h2>📋 Database Schema</h2>
+          <p className="empty-state">
+            Schema information is not available when using the fallback endpoint.
+            Redeploy the API container with the latest code to access full diagnostics.
+          </p>
+        </div>
+      )}
+
       {/* Entity Counts */}
       {stats && (
         <div className="diagnostics-section">
@@ -463,6 +567,17 @@ export const DiagnosticsApp: React.FC = () => {
         </div>
       )}
 
+      {/* Show message when stats data is not available */}
+      {!stats && usingFallback && (
+        <div className="diagnostics-section">
+          <h2>📈 Entity Counts</h2>
+          <p className="empty-state">
+            Entity counts are not available when using the fallback endpoint.
+            Redeploy the API container with the latest code to access full diagnostics.
+          </p>
+        </div>
+      )}
+
       {/* Recent Activity */}
       {stats && (
         <div className="diagnostics-section">
@@ -521,6 +636,17 @@ export const DiagnosticsApp: React.FC = () => {
            stats.recentActivity.recentVisits.length === 0 && (
             <p className="empty-state">No recent activity recorded.</p>
           )}
+        </div>
+      )}
+
+      {/* Show message when activity data is not available */}
+      {!stats && usingFallback && (
+        <div className="diagnostics-section">
+          <h2>🕒 Recent Activity</h2>
+          <p className="empty-state">
+            Recent activity is not available when using the fallback endpoint.
+            Redeploy the API container with the latest code to access full diagnostics.
+          </p>
         </div>
       )}
 

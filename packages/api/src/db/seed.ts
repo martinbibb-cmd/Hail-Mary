@@ -32,6 +32,18 @@ import { hashPassword } from "../services/auth.service";
 async function main() {
   console.log("Starting database seed...");
 
+  // Verify schema is ready by checking for required tables
+  try {
+    // Quick check that migrations have run
+    await db.select().from(users).limit(1);
+    await db.select().from(accounts).limit(1);
+  } catch (err) {
+    console.error("❌ Database schema not ready. Please run migrations first: npm run db:migrate");
+    console.error("   Error:", err instanceof Error ? err.message : String(err));
+    await pool.end();
+    process.exit(1);
+  }
+
   // 1. Ensure there is at least one account
   const [existingAccount] = await db.select().from(accounts).limit(1);
 
@@ -380,7 +392,13 @@ async function main() {
 }
 
 main().catch(async (err) => {
+  console.error("❌ Seed failed:");
   console.error(err);
+  console.error("");
+  console.error("💡 This is usually caused by:");
+  console.error("   1. Database migrations not yet applied (run: npm run db:migrate)");
+  console.error("   2. Database connection issues (check DATABASE_URL)");
+  console.error("   3. Schema mismatch between migrations and seed expectations");
   await pool.end();
   process.exit(1);
 });

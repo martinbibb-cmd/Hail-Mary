@@ -255,10 +255,11 @@ export function getConfigLoadStatus() {
 }
 
 /**
- * Default instructions for the AI model when structuring depot notes
+ * Default instructions for the AI model when structuring Atlas notes
  * These have been refined over months for the heating survey domain
+ * @internal
  */
-const DEFAULT_DEPOT_NOTES_INSTRUCTIONS = `You are an expert heating engineer assistant. Your job is to structure voice notes from a heating survey into organized depot notes.
+const DEFAULT_DEPOT_NOTES_INSTRUCTIONS = `You are an expert heating engineer assistant. Your job is to structure voice notes from a heating survey into organized Atlas notes.
 
 Extract and organize information into the following sections:
 1. Customer Summary - Brief overview of what the customer needs

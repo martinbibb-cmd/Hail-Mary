@@ -14,7 +14,7 @@
 
 import type {
   AIProviderConfig,
-  DepotNotes,
+  AtlasNotes,
   StructuredTranscriptResult,
 } from '@hail-mary/shared';
 import {
@@ -85,13 +85,13 @@ interface GeminiResponse {
 // ============================================
 
 /**
- * Call Google Gemini to structure transcript into depot notes
+ * Call Google Gemini to structure transcript into Atlas notes
  */
 export async function callGeminiForStructuring(
   transcript: string,
   config: AIProviderConfig,
   referenceMaterials?: string
-): Promise<DepotNotes> {
+): Promise<AtlasNotes> {
   const systemPrompt = depotTranscriptionService.DEFAULT_ATLAS_NOTES_INSTRUCTIONS;
   
   let userPrompt = `Here is the transcript from a heating survey:\n\n${transcript}\n\n`;
@@ -100,7 +100,7 @@ export async function callGeminiForStructuring(
     userPrompt += `\nReference materials database:\n${referenceMaterials}\n\n`;
   }
   
-  userPrompt += `Please structure this into depot notes following the sections described above. Return ONLY valid JSON in this format:
+  userPrompt += `Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
 {
   "customer_summary": "...",
   "existing_system": "...",
@@ -235,13 +235,13 @@ export async function transcribeAudioWithWhisper(
 }
 
 /**
- * Call OpenAI GPT-4 to structure transcript into depot notes
+ * Call OpenAI GPT-4 to structure transcript into Atlas notes
  */
 export async function callOpenAIForStructuring(
   transcript: string,
   config: AIProviderConfig,
   referenceMaterials?: string
-): Promise<DepotNotes> {
+): Promise<AtlasNotes> {
   const systemPrompt = depotTranscriptionService.DEFAULT_ATLAS_NOTES_INSTRUCTIONS;
   
   let userPrompt = `Here is the transcript from a heating survey:\n\n${transcript}\n\n`;
@@ -250,7 +250,7 @@ export async function callOpenAIForStructuring(
     userPrompt += `\nReference materials database:\n${referenceMaterials}\n\n`;
   }
   
-  userPrompt += `Please structure this into depot notes following the sections described above. Return ONLY valid JSON in this format:
+  userPrompt += `Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
 {
   "customer_summary": "...",
   "existing_system": "...",
@@ -311,13 +311,13 @@ Only include sections that have information. Use "Not discussed" if a required s
 }
 
 /**
- * Call Anthropic Claude to structure transcript into depot notes
+ * Call Anthropic Claude to structure transcript into Atlas notes
  */
 export async function callAnthropicForStructuring(
   transcript: string,
   config: AIProviderConfig,
   referenceMaterials?: string
-): Promise<DepotNotes> {
+): Promise<AtlasNotes> {
   const systemPrompt = depotTranscriptionService.DEFAULT_ATLAS_NOTES_INSTRUCTIONS;
   
   let userPrompt = `Here is the transcript from a heating survey:\n\n${transcript}\n\n`;
@@ -326,7 +326,7 @@ export async function callAnthropicForStructuring(
     userPrompt += `\nReference materials database:\n${referenceMaterials}\n\n`;
   }
   
-  userPrompt += `Please structure this into depot notes following the sections described above. Return ONLY valid JSON in this format:
+  userPrompt += `Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
 {
   "customer_summary": "...",
   "existing_system": "...",
@@ -403,7 +403,7 @@ export async function callNotesModel(
   primaryProvider: AIProviderConfig,
   fallbackProvider?: AIProviderConfig,
   referenceMaterials?: string
-): Promise<DepotNotes> {
+): Promise<AtlasNotes> {
   try {
     // Try primary provider
     if (primaryProvider.provider === 'gemini') {
@@ -443,7 +443,7 @@ export async function callNotesModel(
 }
 
 /**
- * Process a complete transcript into structured depot notes
+ * Process a complete transcript into structured Atlas notes
  */
 export async function processTranscriptToStructuredNotes(
   transcript: string,

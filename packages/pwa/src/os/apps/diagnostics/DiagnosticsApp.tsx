@@ -21,8 +21,8 @@ interface ConfigProvenance {
   reason: string;
 }
 
-// Type guard to check if error has status code properties
-const hasStatusCode = (err: unknown): err is { status?: number; statusCode?: number; message?: string } => {
+// Type guard to check if error has HTTP error properties (status codes or message)
+const hasHttpErrorProps = (err: unknown): err is { status?: number; statusCode?: number; message?: string } => {
   return typeof err === 'object' && err !== null && ('status' in err || 'statusCode' in err || 'message' in err);
 };
 
@@ -151,19 +151,25 @@ export const DiagnosticsApp: React.FC = () => {
   };
 
   /**
+   * Helper to check if error message contains specific text
+   */
+  const errorMessageIncludes = (err: ApiError, ...terms: string[]): boolean => {
+    const message = err.message?.toLowerCase() || '';
+    return terms.some(term => message.includes(term));
+  };
+
+  /**
    * Helper to determine if an error is a 404 Not Found error
    */
   const isNotFoundError = (error: unknown): boolean => {
     if (!error) return false;
     const err = toApiError(error);
-    if (hasStatusCode(err)) {
+    if (hasHttpErrorProps(err)) {
       return err.status === 404 || 
              err.statusCode === 404 ||
-             !!err.message?.toLowerCase().includes('404') || 
-             !!err.message?.toLowerCase().includes('not found');
+             errorMessageIncludes(err, '404', 'not found');
     }
-    return !!err.message?.toLowerCase().includes('404') || 
-           !!err.message?.toLowerCase().includes('not found');
+    return errorMessageIncludes(err, '404', 'not found');
   };
 
   /**
@@ -172,20 +178,14 @@ export const DiagnosticsApp: React.FC = () => {
   const isAuthError = (error: unknown): boolean => {
     if (!error) return false;
     const err = toApiError(error);
-    if (hasStatusCode(err)) {
+    if (hasHttpErrorProps(err)) {
       return err.status === 401 || 
              err.status === 403 ||
              err.statusCode === 401 || 
              err.statusCode === 403 ||
-             !!err.message?.toLowerCase().includes('401') || 
-             !!err.message?.toLowerCase().includes('403') ||
-             !!err.message?.toLowerCase().includes('unauthorized') ||
-             !!err.message?.toLowerCase().includes('forbidden');
+             errorMessageIncludes(err, '401', '403', 'unauthorized', 'forbidden');
     }
-    return !!err.message?.toLowerCase().includes('401') || 
-           !!err.message?.toLowerCase().includes('403') ||
-           !!err.message?.toLowerCase().includes('unauthorized') ||
-           !!err.message?.toLowerCase().includes('forbidden');
+    return errorMessageIncludes(err, '401', '403', 'unauthorized', 'forbidden');
   };
 
   /**

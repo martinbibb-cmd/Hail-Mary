@@ -21,6 +21,11 @@ interface ConfigProvenance {
   reason: string;
 }
 
+// Type guard to check if error has HTTP error properties (status codes or message)
+const hasHttpErrorProps = (err: unknown): err is { status?: number; statusCode?: number; message?: string } => {
+  return typeof err === 'object' && err !== null && ('status' in err || 'statusCode' in err || 'message' in err);
+};
+
 interface AdminStatusResponse {
   api: {
     version: string;
@@ -146,15 +151,27 @@ export const DiagnosticsApp: React.FC = () => {
   };
 
   /**
+   * Helper to check if error message contains specific terms (case-insensitive)
+   */
+  const errorMessageContains = (err: ApiError, ...terms: string[]): boolean => {
+    if (!err) return false;
+    const message = err.message?.toLowerCase();
+    if (!message) return false;
+    return terms.some(term => message.includes(term));
+  };
+
+  /**
    * Helper to determine if an error is a 404 Not Found error
    */
   const isNotFoundError = (error: unknown): boolean => {
     if (!error) return false;
     const err = toApiError(error);
-    return err?.status === 404 || 
-           err?.statusCode === 404 ||
-           err?.message?.toLowerCase().includes('404') || 
-           err?.message?.toLowerCase().includes('not found');
+    if (hasHttpErrorProps(err)) {
+      return err.status === 404 || 
+             err.statusCode === 404 ||
+             errorMessageContains(err, '404', 'not found');
+    }
+    return errorMessageContains(err, '404', 'not found');
   };
 
   /**
@@ -163,14 +180,14 @@ export const DiagnosticsApp: React.FC = () => {
   const isAuthError = (error: unknown): boolean => {
     if (!error) return false;
     const err = toApiError(error);
-    return err?.status === 401 || 
-           err?.status === 403 ||
-           err?.statusCode === 401 || 
-           err?.statusCode === 403 ||
-           err?.message?.toLowerCase().includes('401') || 
-           err?.message?.toLowerCase().includes('403') ||
-           err?.message?.toLowerCase().includes('unauthorized') ||
-           err?.message?.toLowerCase().includes('forbidden');
+    if (hasHttpErrorProps(err)) {
+      return err.status === 401 || 
+             err.status === 403 ||
+             err.statusCode === 401 || 
+             err.statusCode === 403 ||
+             errorMessageContains(err, '401', '403', 'unauthorized', 'forbidden');
+    }
+    return errorMessageContains(err, '401', '403', 'unauthorized', 'forbidden');
   };
 
   /**
@@ -178,8 +195,8 @@ export const DiagnosticsApp: React.FC = () => {
    */
   const mapAdminStatusToHealth = (adminStatus: AdminStatusResponse): HealthData => {
     // Determine source based on whether custom config was used
-    const schemaSource: ConfigProvenance['source'] = adminStatus.config?.schemaUsedFallback ? 'builtin' : 'custom';
-    const checklistSource: ConfigProvenance['source'] = adminStatus.config?.checklistConfigUsedFallback ? 'builtin' : 'custom';
+    const schemaSource: ConfigProvenance['source'] = adminStatus.config?.schemaUsedFallback ? 'builtin' : 'file';
+    const checklistSource: ConfigProvenance['source'] = adminStatus.config?.checklistConfigUsedFallback ? 'builtin' : 'file';
     
     return {
       apiOk: true,

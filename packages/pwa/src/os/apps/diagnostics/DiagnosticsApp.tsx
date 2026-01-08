@@ -21,6 +21,34 @@ interface ConfigProvenance {
   reason: string;
 }
 
+interface AdminStatusResponse {
+  api: {
+    version: string;
+    nodeVersion: string;
+    uptimeSeconds: number;
+  };
+  db: {
+    ok: boolean;
+    urlMasked?: string;
+    latencyMs?: number;
+  };
+  migrations: {
+    ok: boolean;
+    lastRunAt: string | null;
+    notes: string | null;
+  };
+  config: {
+    schemaLoadedFrom: string;
+    schemaUsedFallback: boolean;
+    checklistConfigLoadedFrom: string;
+    checklistConfigUsedFallback: boolean;
+  };
+  degraded: boolean;
+  degradedSubsystems: string[];
+  degradedNotes: string[];
+  warnings: string[];
+}
+
 interface HealthData {
   apiOk: boolean;
   dbOk: boolean;
@@ -101,9 +129,33 @@ export const DiagnosticsApp: React.FC = () => {
   }, []);
 
   /**
+   * Helper to determine if an error is a 404 Not Found error
+   */
+  const isNotFoundError = (error: any): boolean => {
+    return error?.status === 404 || 
+           error?.statusCode === 404 ||
+           error?.message?.toLowerCase().includes('404') || 
+           error?.message?.toLowerCase().includes('not found');
+  };
+
+  /**
+   * Helper to determine if an error is an authentication/authorization error
+   */
+  const isAuthError = (error: any): boolean => {
+    return error?.status === 401 || 
+           error?.status === 403 ||
+           error?.statusCode === 401 || 
+           error?.statusCode === 403 ||
+           error?.message?.toLowerCase().includes('401') || 
+           error?.message?.toLowerCase().includes('403') ||
+           error?.message?.toLowerCase().includes('unauthorized') ||
+           error?.message?.toLowerCase().includes('forbidden');
+  };
+
+  /**
    * Map admin system status response to diagnostics health data structure
    */
-  const mapAdminStatusToHealth = (adminStatus: any): HealthData => {
+  const mapAdminStatusToHealth = (adminStatus: AdminStatusResponse): HealthData => {
     // Determine source based on whether custom config was used
     const schemaSource: ConfigProvenance['source'] = adminStatus.config?.schemaUsedFallback ? 'builtin' : 'custom';
     const checklistSource: ConfigProvenance['source'] = adminStatus.config?.checklistConfigUsedFallback ? 'builtin' : 'custom';
@@ -174,12 +226,12 @@ export const DiagnosticsApp: React.FC = () => {
         return; // Success - don't try fallback
       } catch (diagnosticsError: any) {
         // If diagnostics endpoints return 404, try fallback to admin status
-        if (diagnosticsError?.message?.includes('404') || diagnosticsError?.message?.includes('Not found')) {
+        if (isNotFoundError(diagnosticsError)) {
           console.warn('Diagnostics endpoints not available, falling back to admin status endpoint');
           setUsingFallback(true);
           
           // Fall back to admin system status endpoint
-          const adminStatusRes = await apiFetch<{ success: boolean; data: any }>('/api/admin/system/status');
+          const adminStatusRes = await apiFetch<{ success: boolean; data: AdminStatusResponse }>('/api/admin/system/status');
           
           if (adminStatusRes.success && adminStatusRes.data) {
             // Map admin status to health data structure
@@ -211,10 +263,10 @@ export const DiagnosticsApp: React.FC = () => {
       console.error('Failed to load diagnostics:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load diagnostics';
       
-      // Provide more specific error message
-      if (errorMessage.includes('404') || errorMessage.includes('Not found')) {
+      // Provide more specific error message based on error type
+      if (isNotFoundError(err)) {
         setError('Diagnostics endpoints are not available. The API container may need to be rebuilt and redeployed.');
-      } else if (errorMessage.includes('401') || errorMessage.includes('403')) {
+      } else if (isAuthError(err)) {
         setError('Access denied. Admin authentication is required to view diagnostics.');
       } else {
         setError(errorMessage);

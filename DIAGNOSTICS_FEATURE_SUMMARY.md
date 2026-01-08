@@ -3,6 +3,8 @@
 ## Overview
 This feature implements a comprehensive diagnostics UI to help administrators quickly identify backend health issues, schema problems, and data presence. It provides instant visibility to distinguish between "UI hiding features" and "backend has no data/tables" scenarios.
 
+**Note**: If the diagnostics endpoints are not deployed (return 404), the UI automatically falls back to the `/api/admin/system/status` endpoint with a clear notification banner. This ensures the diagnostics UI remains functional even if the API container hasn't been rebuilt with the latest code.
+
 ## Features Implemented
 
 ### Backend API Endpoints (Admin-Only)
@@ -90,6 +92,28 @@ Three sections showing:
 - Read-only operations only
 - Safe error handling with fallbacks
 
+### Fallback Behavior
+
+If the diagnostics endpoints (`/api/diagnostics/*`) return 404 (not deployed):
+- **Automatic fallback** to `/api/admin/system/status` endpoint
+- **Clear notification banner** displayed: "Using fallback endpoint - some diagnostic data unavailable"
+- **Limited data** available in fallback mode:
+  - ✅ Health status (API, DB connectivity)
+  - ✅ System information
+  - ✅ Config provenance
+  - ❌ Schema details (not available)
+  - ❌ Entity counts (not available)
+  - ❌ Recent activity (not available)
+- **Clear messaging** when data is unavailable with instructions to redeploy
+
+### Error Handling
+
+- **404 Not Found**: Falls back to admin status endpoint, shows fallback banner
+- **401 Unauthorized**: Shows "Admin authentication is required to view diagnostics"
+- **403 Forbidden**: Shows "Access denied" message
+- **Network errors**: Shows generic error with retry button
+- **Silent fallbacks removed**: No more hiding real problems with timestamp responses
+
 ### Access Control
 
 - **Frontend**: Diagnostics link visible only to admin users in Profile page
@@ -146,6 +170,37 @@ When reporting issues:
 3. **Data Presence**: See if empty screens are due to no data vs. UI bugs
 4. **Support Tool**: Diagnostic bundle provides complete system snapshot
 5. **Proactive Monitoring**: Admins can check health before users report issues
+6. **Graceful Degradation**: Fallback to admin status if diagnostics endpoints not deployed
+7. **Clear Communication**: Always shows the real problem, never masks issues with silent fallbacks
+
+## Troubleshooting
+
+### "Diagnostics endpoints are not available" Error
+
+This means the API container is running old code that doesn't include the diagnostics routes. To fix:
+
+1. **Option A (Temporary)**: The UI will automatically fall back to `/api/admin/system/status` - limited data will be available
+2. **Option B (Proper Fix)**: Rebuild and redeploy the API container:
+   ```bash
+   cd packages/api
+   npm run build
+   # Then redeploy the API container
+   ```
+
+### Fallback Mode Active
+
+If you see "Using fallback endpoint - some diagnostic data unavailable":
+- The diagnostics routes exist in code but aren't deployed
+- Schema details and entity counts won't be available
+- Rebuild and redeploy the API container to access full diagnostics
+- The fallback ensures basic health monitoring continues to work
+
+### Authentication Issues
+
+If you see "Admin authentication is required":
+- Ensure you're logged in with an admin account
+- Check that your auth token hasn't expired
+- Navigate to Profile and verify your role shows as "Admin"
 
 ## Technical Notes
 

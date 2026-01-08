@@ -154,7 +154,9 @@ export const DiagnosticsApp: React.FC = () => {
    * Helper to check if error message contains specific text
    */
   const errorMessageIncludes = (err: ApiError, ...terms: string[]): boolean => {
-    const message = err.message?.toLowerCase() || '';
+    if (!err) return false;
+    const message = err.message?.toLowerCase();
+    if (!message) return false;
     return terms.some(term => message.includes(term));
   };
 

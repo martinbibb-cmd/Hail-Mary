@@ -1,5 +1,5 @@
 /**
- * Depot Transcription Service
+ * Atlas Transcription Service
  * 
  * Handles AI-powered transcription processing including:
  * - Audio transcription via OpenAI Whisper
@@ -8,14 +8,12 @@
  * - Sanity checking logic
  * - Material extraction
  * - Missing information detection
- * 
- * Based on Depot Voice Notes worker logic
  */
 
 import type {
-  DepotNotes,
-  DepotSection,
-  DepotSectionSchema,
+  AtlasNotes,
+  AtlasSection,
+  AtlasSectionSchema,
   MaterialItem,
   MissingInfoItem,
   StructuredTranscriptResult,
@@ -29,10 +27,10 @@ import { loadJsonConfigCached } from '../utils/configLoader';
 // ============================================
 
 /**
- * Default depot schema fallback
- * Used if depot-schema.json cannot be loaded from any path
+ * Default Atlas schema fallback
+ * Used if atlas-schema.json cannot be loaded from any path
  */
-const DEFAULT_DEPOT_SCHEMA: DepotSectionSchema = {
+const DEFAULT_ATLAS_SCHEMA: AtlasSectionSchema = {
   sections: [
     {
       key: "customer_summary",
@@ -229,10 +227,10 @@ const DEFAULT_CHECKLIST_CONFIG: ChecklistConfig = {
 };
 
 // Load configurations with resilient fallback behavior
-const depotSchemaResult = loadJsonConfigCached('depot-schema.json', DEFAULT_DEPOT_SCHEMA);
+const atlasSchemaResult = loadJsonConfigCached('atlas-schema.json', DEFAULT_ATLAS_SCHEMA);
 const checklistConfigResult = loadJsonConfigCached('checklist-config.json', DEFAULT_CHECKLIST_CONFIG);
 
-const DEPOT_SCHEMA: DepotSectionSchema = depotSchemaResult.config;
+const ATLAS_SCHEMA: AtlasSectionSchema = atlasSchemaResult.config;
 const CHECKLIST_CONFIG: ChecklistConfig = checklistConfigResult.config;
 
 /**
@@ -240,9 +238,14 @@ const CHECKLIST_CONFIG: ChecklistConfig = checklistConfigResult.config;
  */
 export function getConfigLoadStatus() {
   return {
+    atlasSchema: {
+      loadedFrom: atlasSchemaResult.loadedFrom,
+      usedFallback: atlasSchemaResult.usedFallback,
+    },
+    // Legacy field for backwards compatibility
     depotSchema: {
-      loadedFrom: depotSchemaResult.loadedFrom,
-      usedFallback: depotSchemaResult.usedFallback,
+      loadedFrom: atlasSchemaResult.loadedFrom,
+      usedFallback: atlasSchemaResult.usedFallback,
     },
     checklistConfig: {
       loadedFrom: checklistConfigResult.loadedFrom,
@@ -252,10 +255,11 @@ export function getConfigLoadStatus() {
 }
 
 /**
- * Default instructions for the AI model when structuring depot notes
+ * Default instructions for the AI model when structuring Atlas notes
  * These have been refined over months for the heating survey domain
+ * @internal
  */
-const DEFAULT_DEPOT_NOTES_INSTRUCTIONS = `You are an expert heating engineer assistant. Your job is to structure voice notes from a heating survey into organized depot notes.
+const DEFAULT_DEPOT_NOTES_INSTRUCTIONS = `You are an expert heating engineer assistant. Your job is to structure voice notes from a heating survey into organized Atlas notes.
 
 Extract and organize information into the following sections:
 1. Customer Summary - Brief overview of what the customer needs
@@ -287,10 +291,17 @@ CRITICAL RULES:
 - Extract materials/parts into a separate list with quantities where mentioned`;
 
 /**
- * Get depot schema with ordering information
+ * Get Atlas schema with ordering information
  */
-export function getDepotSchema(): DepotSectionSchema {
-  return DEPOT_SCHEMA;
+export function getAtlasSchema(): AtlasSectionSchema {
+  return ATLAS_SCHEMA;
+}
+
+/**
+ * @deprecated Use getAtlasSchema() instead
+ */
+export function getDepotSchema(): AtlasSectionSchema {
+  return ATLAS_SCHEMA;
 }
 
 /**
@@ -318,7 +329,7 @@ export function resolveCanonicalSectionName(input: string): string | null {
   const normalized = normalizeSectionKey(input);
   
   // Direct match
-  const directMatch = DEPOT_SCHEMA.sections.find(s => s.key === normalized);
+  const directMatch = ATLAS_SCHEMA.sections.find(s => s.key === normalized);
   if (directMatch) return directMatch.key;
   
   // Fuzzy matching for common variations
@@ -370,8 +381,8 @@ export function resolveCanonicalSectionName(input: string): string | null {
  * Normalize sections from AI model output
  * Ensures sections follow correct order and format
  */
-export function normalizeSectionsFromModel(rawSections: Record<string, string>): DepotNotes {
-  const normalized: DepotNotes = {};
+export function normalizeSectionsFromModel(rawSections: Record<string, string>): AtlasNotes {
+  const normalized: AtlasNotes = {};
   
   // Map raw sections to canonical keys
   for (const [rawKey, value] of Object.entries(rawSections)) {
@@ -390,7 +401,7 @@ export function normalizeSectionsFromModel(rawSections: Record<string, string>):
  * Build schema information for AI prompt
  */
 export function buildSchemaInfo(): string {
-  const sections = DEPOT_SCHEMA.sections
+  const sections = ATLAS_SCHEMA.sections
     .sort((a, b) => a.order - b.order)
     .map(s => `${s.order}. ${s.name} (${s.key}): ${s.description}`)
     .join('\n');
@@ -440,13 +451,13 @@ export function applyTranscriptionSanityChecks(text: string): string {
 /**
  * Extract materials from transcript
  */
-export function extractMaterials(transcript: string, depotNotes: DepotNotes): MaterialItem[] {
+export function extractMaterials(transcript: string, atlasNotes: AtlasNotes): MaterialItem[] {
   const materials: MaterialItem[] = [];
   const text = transcript.toLowerCase();
   
   // Check materials_parts section first
-  if (depotNotes.materials_parts) {
-    const lines = depotNotes.materials_parts.split('\n');
+  if (atlasNotes.materials_parts) {
+    const lines = atlasNotes.materials_parts.split('\n');
     for (const line of lines) {
       if (line.trim() && line.includes('-')) {
         const parts = line.split('-');
@@ -489,14 +500,14 @@ export function extractMaterials(transcript: string, depotNotes: DepotNotes): Ma
 /**
  * Detect missing information
  */
-export function detectMissingInfo(depotNotes: DepotNotes): MissingInfoItem[] {
+export function detectMissingInfo(atlasNotes: AtlasNotes): MissingInfoItem[] {
   const missing: MissingInfoItem[] = [];
   
   // Check required sections
-  const requiredSections = DEPOT_SCHEMA.sections.filter(s => s.required);
+  const requiredSections = ATLAS_SCHEMA.sections.filter(s => s.required);
   
   for (const section of requiredSections) {
-    const content = depotNotes[section.key];
+    const content = atlasNotes[section.key];
     if (!content || content.trim() === '' || content.toLowerCase().includes('not discussed')) {
       missing.push({
         section: section.name,
@@ -507,7 +518,7 @@ export function detectMissingInfo(depotNotes: DepotNotes): MissingInfoItem[] {
   }
   
   // Specific checks based on content
-  if (depotNotes.existing_system && !depotNotes.existing_system.includes('age')) {
+  if (atlasNotes.existing_system && !atlasNotes.existing_system.includes('age')) {
     missing.push({
       section: 'Existing System',
       question: 'What is the age of the current boiler?',
@@ -515,7 +526,7 @@ export function detectMissingInfo(depotNotes: DepotNotes): MissingInfoItem[] {
     });
   }
   
-  if (depotNotes.pipework && !depotNotes.pipework.match(/\d+mm/)) {
+  if (atlasNotes.pipework && !atlasNotes.pipework.match(/\d+mm/)) {
     missing.push({
       section: 'Pipework',
       question: 'What are the pipe sizes?',
@@ -523,7 +534,7 @@ export function detectMissingInfo(depotNotes: DepotNotes): MissingInfoItem[] {
     });
   }
   
-  if (depotNotes.electrical && !depotNotes.electrical.toLowerCase().includes('bonding')) {
+  if (atlasNotes.electrical && !atlasNotes.electrical.toLowerCase().includes('bonding')) {
     missing.push({
       section: 'Electrical',
       question: 'Is earth bonding present and correct?',
@@ -596,8 +607,9 @@ export function matchChecklistItems(transcript: string, materials: MaterialItem[
 // Main Export
 // ============================================
 
-export const depotTranscriptionService = {
-  getDepotSchema,
+export const atlasTranscriptionService = {
+  getAtlasSchema,
+  getDepotSchema, // Deprecated alias
   getChecklistConfig,
   getConfigLoadStatus,
   normalizeSectionKey,
@@ -609,5 +621,9 @@ export const depotTranscriptionService = {
   detectMissingInfo,
   sanitizeChecklistConfig,
   matchChecklistItems,
-  DEFAULT_DEPOT_NOTES_INSTRUCTIONS,
+  DEFAULT_ATLAS_NOTES_INSTRUCTIONS: DEFAULT_DEPOT_NOTES_INSTRUCTIONS,
 };
+
+// Legacy export for backwards compatibility
+/** @deprecated Use atlasTranscriptionService instead */
+export const depotTranscriptionService = atlasTranscriptionService;

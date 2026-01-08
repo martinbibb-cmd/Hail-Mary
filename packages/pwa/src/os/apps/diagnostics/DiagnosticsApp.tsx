@@ -14,6 +14,13 @@ import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../../services/apiClient';
 import './DiagnosticsApp.css';
 
+interface ConfigProvenance {
+  used: 'custom' | 'default' | 'unknown';
+  source: 'db' | 'file' | 'env' | 'builtin' | 'unknown';
+  expected: string[];
+  reason: string;
+}
+
 interface HealthData {
   apiOk: boolean;
   dbOk: boolean;
@@ -29,6 +36,10 @@ interface HealthData {
   uptime: number;
   nodeVersion: string;
   environment: string;
+  config?: {
+    schema: ConfigProvenance;
+    checklist: ConfigProvenance;
+  };
 }
 
 interface SchemaData {
@@ -41,6 +52,12 @@ interface SchemaData {
     hash: string;
     createdAt: string;
   }> | null;
+  schemaAligned?: boolean;
+  missingColumns?: Record<string, string[]>;
+  config?: {
+    schema: ConfigProvenance;
+    checklist: ConfigProvenance;
+  };
 }
 
 interface StatsData {
@@ -76,6 +93,7 @@ export const DiagnosticsApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [showConfigDetails, setShowConfigDetails] = useState(false);
 
   useEffect(() => {
     loadDiagnostics();
@@ -124,6 +142,7 @@ export const DiagnosticsApp: React.FC = () => {
       health,
       schema,
       stats,
+      configProvenance: health?.config || null,
     };
 
     navigator.clipboard.writeText(JSON.stringify(bundle, null, 2)).then(() => {
@@ -228,6 +247,83 @@ export const DiagnosticsApp: React.FC = () => {
                 {warning}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Config Provenance */}
+      {health?.config && (
+        <div className="diagnostics-section">
+          <h2>⚙️ Config Provenance</h2>
+          <div className="config-provenance-grid">
+            <div className="config-item">
+              <div className="config-header">
+                <span className="config-label">Schema Configuration</span>
+                <span className={`config-badge ${health.config.schema.used === 'default' ? 'badge-amber' : 'badge-green'}`}>
+                  {health.config.schema.used === 'default' ? '📋 Default' : '✅ Custom'}
+                </span>
+              </div>
+              <div className="config-details">
+                <div className="config-detail-item">
+                  <span className="detail-label">Source:</span>
+                  <span className="detail-value">{health.config.schema.source}</span>
+                </div>
+                <div className="config-detail-item">
+                  <span className="detail-label">Reason:</span>
+                  <span className="detail-value">{health.config.schema.reason}</span>
+                </div>
+                {showConfigDetails && (
+                  <div className="config-detail-item">
+                    <span className="detail-label">Expected locations:</span>
+                    <ul className="expected-list">
+                      {health.config.schema.expected.map((loc, idx) => (
+                        <li key={idx}>{loc}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="config-item">
+              <div className="config-header">
+                <span className="config-label">Checklist Configuration</span>
+                <span className={`config-badge ${health.config.checklist.used === 'default' ? 'badge-amber' : 'badge-green'}`}>
+                  {health.config.checklist.used === 'default' ? '📋 Default' : '✅ Custom'}
+                </span>
+              </div>
+              <div className="config-details">
+                <div className="config-detail-item">
+                  <span className="detail-label">Source:</span>
+                  <span className="detail-value">{health.config.checklist.source}</span>
+                </div>
+                <div className="config-detail-item">
+                  <span className="detail-label">Reason:</span>
+                  <span className="detail-value">{health.config.checklist.reason}</span>
+                </div>
+                {showConfigDetails && (
+                  <div className="config-detail-item">
+                    <span className="detail-label">Expected locations:</span>
+                    <ul className="expected-list">
+                      {health.config.checklist.expected.map((loc, idx) => (
+                        <li key={idx}>{loc}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <button 
+            className="btn-link" 
+            onClick={() => setShowConfigDetails(!showConfigDetails)}
+          >
+            {showConfigDetails ? '▲ Hide expected locations' : '▼ Show expected locations'}
+          </button>
+
+          <div className="config-info-note">
+            <p>ℹ️ <strong>Note:</strong> Default configuration is normal on fresh installs. Custom configuration is loaded from external files when available.</p>
           </div>
         </div>
       )}

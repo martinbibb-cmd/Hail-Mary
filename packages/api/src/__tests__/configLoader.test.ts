@@ -30,10 +30,10 @@ describe('Config Loader', () => {
     });
 
     it('should load from src path when available (dev mode)', () => {
-      const srcPath = path.join(process.cwd(), 'packages', 'shared', 'src', 'core', 'depot-schema.json');
+      const srcPath = path.join(process.cwd(), 'packages', 'shared', 'src', 'core', 'atlas-schema.json');
       
       if (fs.existsSync(srcPath)) {
-        const result = loadJsonConfig('depot-schema.json', testFallback);
+        const result = loadJsonConfig('atlas-schema.json', testFallback);
         
         expect(result.usedFallback).toBe(false);
         expect(result.loadedFrom).toBeTruthy();

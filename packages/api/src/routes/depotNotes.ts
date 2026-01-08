@@ -14,7 +14,7 @@ import type {
   AIProviderConfig,
 } from '@hail-mary/shared';
 import { aiProviderService } from '../services/aiProvider.service';
-import { depotTranscriptionService } from '../services/depotTranscription.service';
+import { depotTranscriptionService } from '../services/atlasTranscription.service';
 import { getApiKeys } from '../services/workerKeys.service';
 
 const router = Router();

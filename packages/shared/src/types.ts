@@ -791,10 +791,10 @@ export interface UpdateSystemSpecDraftDto {
 }
 
 // ============================================
-// Depot Notes / Structured Transcription Types
+// Atlas Notes / Structured Transcription Types
 // ============================================
 
-export interface DepotSection {
+export interface AtlasSection {
   key: string;
   name: string;
   description: string;
@@ -802,11 +802,11 @@ export interface DepotSection {
   required: boolean;
 }
 
-export interface DepotSectionSchema {
-  sections: DepotSection[];
+export interface AtlasSectionSchema {
+  sections: AtlasSection[];
 }
 
-export interface DepotNotes {
+export interface AtlasNotes {
   customer_summary?: string;
   existing_system?: string;
   property_details?: string;
@@ -825,6 +825,14 @@ export interface DepotNotes {
   follow_up_actions?: string;
   [key: string]: string | undefined;
 }
+
+// Legacy type aliases for backwards compatibility (deprecated)
+/** @deprecated Use AtlasSection instead */
+export type DepotSection = AtlasSection;
+/** @deprecated Use AtlasSectionSchema instead */
+export type DepotSectionSchema = AtlasSectionSchema;
+/** @deprecated Use AtlasNotes instead */
+export type DepotNotes = AtlasNotes;
 
 export interface MaterialItem {
   name: string;
@@ -851,11 +859,14 @@ export interface MissingInfoItem {
 }
 
 export interface StructuredTranscriptResult {
-  depotNotes: DepotNotes;
+  atlasNotes: AtlasNotes;
   materials: MaterialItem[];
   missingInfo: MissingInfoItem[];
   checklist: string[];
   confidence: number;
+  // Legacy field for backwards compatibility
+  /** @deprecated Use atlasNotes instead */
+  depotNotes?: AtlasNotes;
 }
 
 export interface TranscriptionSanityChecks {

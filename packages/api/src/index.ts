@@ -305,7 +305,7 @@ app.get('/health', (_req, res) => {
 // Detailed health check endpoint with configuration status
 app.get('/health/detailed', async (_req, res) => {
   // Import config status and app status dynamically to avoid circular dependencies
-  const { depotTranscriptionService } = await import('./services/depotTranscription.service');
+  const { depotTranscriptionService } = await import('./services/atlasTranscription.service');
   const { appStatus } = await import('./core/appStatus');
   const configStatus = depotTranscriptionService.getConfigLoadStatus();
   
@@ -426,7 +426,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 // Print startup summary
 const printStartupSummary = async () => {
   const { appStatus } = await import('./core/appStatus');
-  const { depotTranscriptionService } = await import('./services/depotTranscription.service');
+  const { depotTranscriptionService } = await import('./services/atlasTranscription.service');
   
   console.log('');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

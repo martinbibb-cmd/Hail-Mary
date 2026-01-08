@@ -88,22 +88,24 @@ router.get('/status', async (_req: Request, res: Response) => {
       migrationNotes = 'Migrations table not found - run migrations to initialize';
     }
 
-    // Get config status from depot transcription service
+    // Get config status using new provenance system
     let configStatus = {
-      depotSchemaLoadedFrom: 'unknown',
-      depotSchemaUsedFallback: false,
+      schemaLoadedFrom: 'unknown',
+      schemaUsedFallback: false,
       checklistConfigLoadedFrom: 'unknown',
       checklistConfigUsedFallback: false,
     };
 
     try {
-      const { depotTranscriptionService } = await import('../services/depotTranscription.service');
-      const status = depotTranscriptionService.getConfigLoadStatus();
+      const { resolveSchemaConfig, resolveChecklistConfig } = await import('../utils/configLoader');
+      const schemaProvenance = resolveSchemaConfig();
+      const checklistProvenance = resolveChecklistConfig();
+      
       configStatus = {
-        depotSchemaLoadedFrom: status.depotSchema.loadedFrom || 'fallback',
-        depotSchemaUsedFallback: status.depotSchema.usedFallback,
-        checklistConfigLoadedFrom: status.checklistConfig.loadedFrom || 'fallback',
-        checklistConfigUsedFallback: status.checklistConfig.usedFallback,
+        schemaLoadedFrom: schemaProvenance.source === 'builtin' ? 'default (built-in)' : (schemaProvenance.reason || 'custom'),
+        schemaUsedFallback: schemaProvenance.used === 'default',
+        checklistConfigLoadedFrom: checklistProvenance.source === 'builtin' ? 'default (built-in)' : (checklistProvenance.reason || 'custom'),
+        checklistConfigUsedFallback: checklistProvenance.used === 'default',
       };
     } catch (error) {
       console.error('Failed to get config status:', error);
@@ -125,11 +127,11 @@ router.get('/status', async (_req: Request, res: Response) => {
     if (!migrationsOk) {
       warnings.push('Database migrations not initialized');
     }
-    if (configStatus.depotSchemaUsedFallback) {
-      warnings.push('Using fallback depot schema configuration');
+    if (configStatus.schemaUsedFallback) {
+      warnings.push('Using default Atlas schema configuration');
     }
     if (configStatus.checklistConfigUsedFallback) {
-      warnings.push('Using fallback checklist configuration');
+      warnings.push('Using default checklist configuration');
     }
 
     return res.json({

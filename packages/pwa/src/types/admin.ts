@@ -18,8 +18,8 @@ export interface AdminSystemStatus {
     notes?: string | null;
   };
   config?: {
-    depotSchemaLoadedFrom?: string;
-    depotSchemaUsedFallback?: boolean;
+    schemaLoadedFrom?: string;
+    schemaUsedFallback?: boolean;
     checklistConfigLoadedFrom?: string;
     checklistConfigUsedFallback?: boolean;
   };

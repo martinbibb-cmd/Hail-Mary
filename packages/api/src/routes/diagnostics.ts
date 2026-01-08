@@ -4,10 +4,16 @@
  * Provides read-only health and diagnostic endpoints for admins.
  * Helps distinguish "UI hiding features" vs "backend has no data/tables".
  * 
+ * **IMPORTANT**: These routes require authentication and admin role.
+ * If these endpoints return 404, the frontend will automatically fall back
+ * to /api/admin/system/status for basic health monitoring.
+ * 
  * Endpoints:
  * - GET /api/diagnostics/health - Aggregate health status
  * - GET /api/diagnostics/schema - Database schema information
  * - GET /api/diagnostics/stats - Entity counts
+ * 
+ * Mounted at: /api/diagnostics (see index.ts line 410)
  */
 
 import { Router, Request, Response } from 'express';

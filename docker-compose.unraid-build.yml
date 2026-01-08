@@ -68,7 +68,9 @@ services:
       # Guest user credentials
       GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
       GUEST_PASSWORD: ${GUEST_PASSWORD:-guestpass}
-    command: npm run db:init -w packages/api
+    # Run migrations using the migrate.ts script, then seed the database
+    # This ensures SQL migrations from drizzle/ folder are applied correctly
+    command: sh -c "npm run db:migrate -w packages/api && npm run db:seed -w packages/api"
     restart: no
     depends_on:
       hailmary-postgres:

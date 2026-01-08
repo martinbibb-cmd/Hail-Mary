@@ -136,11 +136,21 @@ export const DiagnosticsApp: React.FC = () => {
   }, []);
 
   /**
+   * Helper to safely cast error to ApiError type
+   */
+  const toApiError = (error: unknown): ApiError => {
+    if (!error || typeof error !== 'object') {
+      return { message: String(error) };
+    }
+    return error as ApiError;
+  };
+
+  /**
    * Helper to determine if an error is a 404 Not Found error
    */
   const isNotFoundError = (error: unknown): boolean => {
     if (!error) return false;
-    const err = error as ApiError;
+    const err = toApiError(error);
     return err?.status === 404 || 
            err?.statusCode === 404 ||
            err?.message?.toLowerCase().includes('404') || 
@@ -152,7 +162,7 @@ export const DiagnosticsApp: React.FC = () => {
    */
   const isAuthError = (error: unknown): boolean => {
     if (!error) return false;
-    const err = error as ApiError;
+    const err = toApiError(error);
     return err?.status === 401 || 
            err?.status === 403 ||
            err?.statusCode === 401 || 

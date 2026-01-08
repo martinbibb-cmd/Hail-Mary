@@ -23,7 +23,7 @@ interface ConfigProvenance {
 
 // Type guard to check if error has status code properties
 const hasStatusCode = (err: unknown): err is { status?: number; statusCode?: number; message?: string } => {
-  return typeof err === 'object' && err !== null;
+  return typeof err === 'object' && err !== null && ('status' in err || 'statusCode' in err || 'message' in err);
 };
 
 interface AdminStatusResponse {
@@ -159,11 +159,11 @@ export const DiagnosticsApp: React.FC = () => {
     if (hasStatusCode(err)) {
       return err.status === 404 || 
              err.statusCode === 404 ||
-             err.message?.toLowerCase().includes('404') || 
-             err.message?.toLowerCase().includes('not found') || false;
+             !!err.message?.toLowerCase().includes('404') || 
+             !!err.message?.toLowerCase().includes('not found');
     }
-    return err.message?.toLowerCase().includes('404') || 
-           err.message?.toLowerCase().includes('not found') || false;
+    return !!err.message?.toLowerCase().includes('404') || 
+           !!err.message?.toLowerCase().includes('not found');
   };
 
   /**
@@ -177,15 +177,15 @@ export const DiagnosticsApp: React.FC = () => {
              err.status === 403 ||
              err.statusCode === 401 || 
              err.statusCode === 403 ||
-             err.message?.toLowerCase().includes('401') || 
-             err.message?.toLowerCase().includes('403') ||
-             err.message?.toLowerCase().includes('unauthorized') ||
-             err.message?.toLowerCase().includes('forbidden') || false;
+             !!err.message?.toLowerCase().includes('401') || 
+             !!err.message?.toLowerCase().includes('403') ||
+             !!err.message?.toLowerCase().includes('unauthorized') ||
+             !!err.message?.toLowerCase().includes('forbidden');
     }
-    return err.message?.toLowerCase().includes('401') || 
-           err.message?.toLowerCase().includes('403') ||
-           err.message?.toLowerCase().includes('unauthorized') ||
-           err.message?.toLowerCase().includes('forbidden') || false;
+    return !!err.message?.toLowerCase().includes('401') || 
+           !!err.message?.toLowerCase().includes('403') ||
+           !!err.message?.toLowerCase().includes('unauthorized') ||
+           !!err.message?.toLowerCase().includes('forbidden');
   };
 
   /**

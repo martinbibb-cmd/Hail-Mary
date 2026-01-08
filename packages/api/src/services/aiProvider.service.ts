@@ -19,7 +19,7 @@ import type {
 } from '@hail-mary/shared';
 import {
   depotTranscriptionService,
-} from './depotTranscription.service';
+} from './atlasTranscription.service';
 
 // ============================================
 // AI API Response Types
@@ -92,7 +92,7 @@ export async function callGeminiForStructuring(
   config: AIProviderConfig,
   referenceMaterials?: string
 ): Promise<DepotNotes> {
-  const systemPrompt = depotTranscriptionService.DEFAULT_DEPOT_NOTES_INSTRUCTIONS;
+  const systemPrompt = depotTranscriptionService.DEFAULT_ATLAS_NOTES_INSTRUCTIONS;
   
   let userPrompt = `Here is the transcript from a heating survey:\n\n${transcript}\n\n`;
   
@@ -242,7 +242,7 @@ export async function callOpenAIForStructuring(
   config: AIProviderConfig,
   referenceMaterials?: string
 ): Promise<DepotNotes> {
-  const systemPrompt = depotTranscriptionService.DEFAULT_DEPOT_NOTES_INSTRUCTIONS;
+  const systemPrompt = depotTranscriptionService.DEFAULT_ATLAS_NOTES_INSTRUCTIONS;
   
   let userPrompt = `Here is the transcript from a heating survey:\n\n${transcript}\n\n`;
   
@@ -318,7 +318,7 @@ export async function callAnthropicForStructuring(
   config: AIProviderConfig,
   referenceMaterials?: string
 ): Promise<DepotNotes> {
-  const systemPrompt = depotTranscriptionService.DEFAULT_DEPOT_NOTES_INSTRUCTIONS;
+  const systemPrompt = depotTranscriptionService.DEFAULT_ATLAS_NOTES_INSTRUCTIONS;
   
   let userPrompt = `Here is the transcript from a heating survey:\n\n${transcript}\n\n`;
   
@@ -472,7 +472,7 @@ export async function processTranscriptToStructuredNotes(
   const checklist = depotTranscriptionService.matchChecklistItems(cleanedTranscript, materials);
   
   // Calculate confidence (simple heuristic based on completeness)
-  const totalSections = depotTranscriptionService.getDepotSchema().sections.length;
+  const totalSections = depotTranscriptionService.getAtlasSchema().sections.length;
   const filledSections = Object.keys(depotNotes).filter(key => {
     const value = depotNotes[key];
     return value && value.trim() !== '' && !value.toLowerCase().includes('not discussed');
@@ -480,7 +480,8 @@ export async function processTranscriptToStructuredNotes(
   const confidence = Math.round((filledSections / totalSections) * 100) / 100;
   
   return {
-    depotNotes,
+    atlasNotes: depotNotes,
+    depotNotes, // Legacy field for backwards compatibility
     materials,
     missingInfo,
     checklist,

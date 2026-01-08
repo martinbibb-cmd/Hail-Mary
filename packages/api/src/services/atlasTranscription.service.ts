@@ -46,21 +46,6 @@ const DEFAULT_ATLAS_SCHEMA: AtlasSectionSchema = {
       order: 2,
       required: true
     },
-  sections: [
-    {
-      key: "customer_summary",
-      name: "Customer Summary",
-      description: "Brief overview of customer needs and key points from the conversation",
-      order: 1,
-      required: true
-    },
-    {
-      key: "existing_system",
-      name: "Existing System",
-      description: "Current heating system details including boiler type, age, and condition",
-      order: 2,
-      required: true
-    },
     {
       key: "property_details",
       name: "Property Details",

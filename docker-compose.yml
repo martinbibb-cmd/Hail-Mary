@@ -40,7 +40,8 @@ services:
       GUEST_PASSWORD: ${GUEST_PASSWORD:-guestpass}
     # Run migrations using the migrate.ts script
     # This ensures SQL migrations from drizzle/ folder are applied correctly
-    # Seeding is optional and can be run manually: npm run db:seed -w packages/api
+    # Seeding is optional and can be run manually if needed:
+    #   docker exec hailmary-api npm run db:seed -w packages/api
     command: sh -c "npm run db:migrate -w packages/api"
     deploy:
       restart_policy:

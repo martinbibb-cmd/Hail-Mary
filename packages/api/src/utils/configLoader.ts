@@ -43,7 +43,7 @@ export interface ConfigProvenance {
  * 3. @hail-mary/shared/src/core/<filename> (dev fallback)
  * 4. Uses embedded fallback if all paths fail
  * 
- * @param fileName - Name of the JSON file (e.g., "depot-schema.json")
+ * @param fileName - Name of the JSON file (e.g., "atlas-schema.json")
  * @param fallback - Default value to return if file cannot be loaded
  * @returns Object containing the loaded config, source path, and whether fallback was used
  */

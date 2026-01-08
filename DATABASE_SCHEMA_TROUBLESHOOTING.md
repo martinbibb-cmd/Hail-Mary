@@ -158,7 +158,7 @@ The `docker-compose.yml` includes a special `hailmary-migrator` service that run
 ```yaml
 hailmary-migrator:
   image: ghcr.io/martinbibb-cmd/hail-mary-api:latest
-  command: npm run db:init -w packages/api
+  command: sh -c "npm run db:migrate -w packages/api && npm run db:seed -w packages/api"
   depends_on:
     hailmary-postgres:
       condition: service_healthy
@@ -166,11 +166,16 @@ hailmary-migrator:
 
 **What it does:**
 1. Waits for Postgres to be healthy
-2. Runs `npm run db:init` which:
-   - Pushes the schema to the database (`db:push`)
-   - Seeds initial data including admin user (`db:seed`)
-3. Exits (it's a one-time init container)
-4. Then the API service starts
+2. Runs `npm run db:migrate` which applies pre-generated SQL migrations from `drizzle/` folder
+3. Runs `npm run db:seed` which seeds initial data including admin user
+4. Exits (it's a one-time init container)
+5. Then the API service starts
+
+**Why this approach:**
+- Uses pre-generated SQL migrations (more reliable than runtime schema parsing)
+- Deterministic and tested migration files
+- Better error messages and debugging
+- Separates migration from seeding for better control
 
 **If migrations fail:**
 - Check the migrator logs: `docker compose logs hailmary-migrator`
@@ -193,11 +198,11 @@ cat packages/api/package.json | grep -A 10 '"scripts"'
 ```
 
 **Available database scripts:**
-- `db:generate` - Generate new migration files from schema changes
-- `db:migrate` - Apply pending migrations to the database
-- `db:push` - Push schema directly to database (used by db:init)
+- `db:generate` - Generate new migration files from schema changes (development)
+- `db:migrate` - Apply pre-generated migrations from drizzle/ folder (production)
+- `db:push` - Push schema directly to database (development only, not recommended for production)
 - `db:seed` - Seed the database with initial data
-- `db:init` - Complete setup (push + seed) - used by migrator service
+- `db:init` - Deprecated: Previously used db:push + db:seed (now uses db:migrate + db:seed)
 
 ## Health Check Endpoints
 

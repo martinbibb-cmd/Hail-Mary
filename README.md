@@ -283,10 +283,13 @@ Hail-Mary supports Google OAuth for seamless authentication. Users can sign in w
 ### Database Commands
 
 ```bash
-npm run db:migrate  # Run database migrations
+npm run db:migrate  # Run database migrations (applies SQL files from drizzle/ folder)
 npm run db:seed     # Seed database with test data
-npm run db:init     # Run both migrations and seed (used by init container)
+npm run db:push     # Push schema changes directly (development only, not recommended for production)
+npm run db:generate # Generate new migration files from schema changes
 ```
+
+**Note**: The migrator service now uses `db:migrate` + `db:seed` instead of `db:init` for more reliable production deployments.
 
 ### Build Commands
 

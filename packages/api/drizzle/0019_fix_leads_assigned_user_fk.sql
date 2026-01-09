@@ -1,6 +1,6 @@
 -- Fix foreign key constraint for leads.assigned_user_id
 -- Add ON DELETE SET NULL to prevent orphaned references when users are deleted
--- This makes the constraint consistent with addresses.assigned_user_id and other similar patterns
+-- This ensures assigned_user_id is automatically cleared when the referenced user is deleted
 
 -- Drop the existing foreign key constraint
 -- PostgreSQL auto-generates constraint names, so we need to find it dynamically

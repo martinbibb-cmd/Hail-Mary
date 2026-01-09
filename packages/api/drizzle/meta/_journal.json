@@ -71,6 +71,83 @@
       "when": 1766538000000,
       "tag": "0009_presentation_assets_and_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1766541600000,
+      "tag": "0010_presentation_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1766545200000,
+      "tag": "0011_add_lead_user_assignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1766548800000,
+      "tag": "0012_addresses_and_appointments",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1766552400000,
+      "tag": "0013_link_data_to_addresses",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1766556000000,
+      "tag": "0014_add_heat_loss_surveys",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1766559600000,
+      "tag": "0015_add_gc_boiler_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1766563200000,
+      "tag": "0016_add_photos_and_scans_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1766566800000,
+      "tag": "0017_add_job_graph_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1766570400000,
+      "tag": "0017_enable_rls_addresses",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1766574000000,
+      "tag": "0018_fix_rls_policies_with_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1736404505826,
+      "tag": "0019_fix_leads_assigned_user_fk",
+      "breakpoints": true
     }
   ]
 }

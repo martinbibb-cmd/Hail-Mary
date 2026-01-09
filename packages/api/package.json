@@ -13,6 +13,7 @@
     "migrate": "ts-node src/db/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "ts-node src/db/migrate.ts",
+    "db:migrate:only": "ts-node src/db/migrate.ts",
     "db:push": "drizzle-kit push --force",
     "db:seed": "ts-node src/db/seed.ts",
     "db:init": "npm run db:push && npm run db:seed",

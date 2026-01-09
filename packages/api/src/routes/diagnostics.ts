@@ -37,6 +37,8 @@ import {
   presentationDrafts,
   mediaAttachments,
   transcriptSessions,
+  transcriptAudioChunks,
+  transcriptSegments,
   leadPhotos
 } from '../db/drizzle-schema';
 import { sql } from 'drizzle-orm';

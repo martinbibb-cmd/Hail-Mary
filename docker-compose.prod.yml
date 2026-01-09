@@ -44,9 +44,9 @@ services:
       # Guest user credentials
       GUEST_EMAIL: ${GUEST_EMAIL:-guest@hailmary.local}
       GUEST_PASSWORD: ${GUEST_PASSWORD:-guestpass}
-    # Run migrations using the migrate.ts script, then seed the database
-    # This ensures SQL migrations from drizzle/ folder are applied correctly
-    command: sh -c "npm run db:migrate -w packages/api && npm run db:seed -w packages/api"
+    # Run migrations only (no seed) to prevent crash-loop on missing schema
+    # Seed should be run manually or separately after migrations complete
+    command: npm run db:migrate:only -w packages/api
     deploy:
       restart_policy:
         condition: on-failure

@@ -33,8 +33,13 @@ import {
   spineProperties,
   spineVisits,
   spineTimelineEvents,
+  presentationAssets,
   presentationDrafts,
-  bugReports
+  mediaAttachments,
+  transcriptSessions,
+  transcriptAudioChunks,
+  transcriptSegments,
+  leadPhotos
 } from '../db/drizzle-schema';
 import { sql } from 'drizzle-orm';
 import { resolveSchemaConfig, resolveChecklistConfig } from '../utils/configLoader';
@@ -113,13 +118,18 @@ router.get('/health', async (_req: Request, res: Response) => {
       );
       const existingTables = tablesResult.rows.map(row => row.table_name as string);
 
-      // Expected core tables
+      // Expected core tables (aligned with actual schema migrations)
       const expectedTables = [
         'accounts',
         'users',
         'leads',
+        'lead_photos',
         'addresses',
         'address_appointments',
+        'media_attachments',
+        'transcript_sessions',
+        'transcript_audio_chunks',
+        'transcript_segments',
         'assets',
         'visit_events',
         'photos',
@@ -128,8 +138,8 @@ router.get('/health', async (_req: Request, res: Response) => {
         'spine_properties',
         'spine_visits',
         'spine_timeline_events',
+        'presentation_assets',
         'presentation_drafts',
-        'bug_reports',
       ];
 
       health.missingTables = expectedTables.filter(t => !existingTables.includes(t));
@@ -263,13 +273,18 @@ router.get('/schema', async (_req: Request, res: Response) => {
     tables = [];
   }
 
-  // Expected core tables
+  // Expected core tables (aligned with actual schema migrations)
   const expectedTables = [
     'accounts',
     'users',
     'leads',
+    'lead_photos',
     'addresses',
     'address_appointments',
+    'media_attachments',
+    'transcript_sessions',
+    'transcript_audio_chunks',
+    'transcript_segments',
     'assets',
     'visit_events',
     'photos',
@@ -278,8 +293,8 @@ router.get('/schema', async (_req: Request, res: Response) => {
     'spine_properties',
     'spine_visits',
     'spine_timeline_events',
+    'presentation_assets',
     'presentation_drafts',
-    'bug_reports',
   ];
 
   missingTables = expectedTables.filter(t => !tables.includes(t));
@@ -377,8 +392,11 @@ router.get('/stats', async (_req: Request, res: Response) => {
       safeCount('users', users),
       safeCount('accounts', accounts),
       safeCount('leads', leads),
+      safeCount('leadPhotos', leadPhotos),
       safeCount('addresses', addresses),
       safeCount('addressAppointments', addressAppointments),
+      safeCount('mediaAttachments', mediaAttachments),
+      safeCount('transcriptSessions', transcriptSessions),
       safeCount('assets', assets),
       safeCount('visitEvents', visitEvents),
       safeCount('photos', photos),
@@ -387,25 +405,28 @@ router.get('/stats', async (_req: Request, res: Response) => {
       safeCount('spineProperties', spineProperties),
       safeCount('spineVisits', spineVisits),
       safeCount('spineTimelineEvents', spineTimelineEvents),
+      safeCount('presentationAssets', presentationAssets),
       safeCount('presentationDrafts', presentationDrafts),
-      safeCount('bugReports', bugReports),
     ]);
 
     counts.users = countResults[0].status === 'fulfilled' ? countResults[0].value : 0;
     counts.accounts = countResults[1].status === 'fulfilled' ? countResults[1].value : 0;
     counts.leads = countResults[2].status === 'fulfilled' ? countResults[2].value : 0;
-    counts.addresses = countResults[3].status === 'fulfilled' ? countResults[3].value : 0;
-    counts.addressAppointments = countResults[4].status === 'fulfilled' ? countResults[4].value : 0;
-    counts.assets = countResults[5].status === 'fulfilled' ? countResults[5].value : 0;
-    counts.visitEvents = countResults[6].status === 'fulfilled' ? countResults[6].value : 0;
-    counts.photos = countResults[7].status === 'fulfilled' ? countResults[7].value : 0;
-    counts.scans = countResults[8].status === 'fulfilled' ? countResults[8].value : 0;
-    counts.files = countResults[9].status === 'fulfilled' ? countResults[9].value : 0;
-    counts.spineProperties = countResults[10].status === 'fulfilled' ? countResults[10].value : 0;
-    counts.spineVisits = countResults[11].status === 'fulfilled' ? countResults[11].value : 0;
-    counts.spineTimelineEvents = countResults[12].status === 'fulfilled' ? countResults[12].value : 0;
-    counts.presentationDrafts = countResults[13].status === 'fulfilled' ? countResults[13].value : 0;
-    counts.bugReports = countResults[14].status === 'fulfilled' ? countResults[14].value : 0;
+    counts.leadPhotos = countResults[3].status === 'fulfilled' ? countResults[3].value : 0;
+    counts.addresses = countResults[4].status === 'fulfilled' ? countResults[4].value : 0;
+    counts.addressAppointments = countResults[5].status === 'fulfilled' ? countResults[5].value : 0;
+    counts.mediaAttachments = countResults[6].status === 'fulfilled' ? countResults[6].value : 0;
+    counts.transcriptSessions = countResults[7].status === 'fulfilled' ? countResults[7].value : 0;
+    counts.assets = countResults[8].status === 'fulfilled' ? countResults[8].value : 0;
+    counts.visitEvents = countResults[9].status === 'fulfilled' ? countResults[9].value : 0;
+    counts.photos = countResults[10].status === 'fulfilled' ? countResults[10].value : 0;
+    counts.scans = countResults[11].status === 'fulfilled' ? countResults[11].value : 0;
+    counts.files = countResults[12].status === 'fulfilled' ? countResults[12].value : 0;
+    counts.spineProperties = countResults[13].status === 'fulfilled' ? countResults[13].value : 0;
+    counts.spineVisits = countResults[14].status === 'fulfilled' ? countResults[14].value : 0;
+    counts.spineTimelineEvents = countResults[15].status === 'fulfilled' ? countResults[15].value : 0;
+    counts.presentationAssets = countResults[16].status === 'fulfilled' ? countResults[16].value : 0;
+    counts.presentationDrafts = countResults[17].status === 'fulfilled' ? countResults[17].value : 0;
   } catch (error) {
     console.error('Error counting entities:', error);
     warnings.push('Unexpected error while counting entities');

@@ -1,8 +1,9 @@
 /**
  * Rocky Logic Engine Routes
- * 
+ *
  * Standalone API endpoints for Rocky deterministic processing.
  * These endpoints allow direct access to Rocky's fact extraction capabilities.
+ * Also includes Rocky Health Checker for system diagnostics.
  */
 
 import { Router, Request, Response } from 'express';
@@ -15,6 +16,7 @@ import type {
   RockyProcessResult,
 } from '@hail-mary/shared';
 import { rockyService } from '../services/rocky.service';
+import { runHealthCheck } from '../utils/rocky-health';
 
 const router = Router();
 
@@ -155,6 +157,45 @@ router.post('/run', async (req: Request, res: Response) => {
       error: error instanceof Error ? error.message : 'Rocky processing failed',
     };
     res.status(500).json(response);
+  }
+});
+
+/**
+ * GET /api/rocky/health - Rocky Health Checker
+ *
+ * Runs comprehensive system health check:
+ * - Database connectivity and schema validation
+ * - Migration status
+ * - Container health (if running in Docker)
+ * - Service endpoints (API, Assistant, PWA)
+ *
+ * Returns actionable diagnostics with exact commands to fix issues.
+ * Never hallucinates - only reports what can be verified.
+ */
+router.get('/health', async (req: Request, res: Response) => {
+  try {
+    const result = await runHealthCheck();
+
+    // Set appropriate HTTP status code based on health
+    const statusCode =
+      result.status === 'unhealthy' ? 503 :
+      result.status === 'degraded' ? 200 :
+      200;
+
+    res.status(statusCode).json(result);
+  } catch (error) {
+    console.error('Rocky health check error:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Health check failed',
+      diagnostics: [{
+        severity: 'critical',
+        component: 'health-check',
+        issue: 'Health check failed to run',
+        fix: 'Check server logs for details',
+      }],
+    });
   }
 });
 

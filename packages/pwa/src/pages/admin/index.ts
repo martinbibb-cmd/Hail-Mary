@@ -11,3 +11,4 @@ export { AdminBugDashboardPage } from './AdminBugDashboardPage';
 export { AdminBugListPage } from './AdminBugListPage';
 export { AdminBugDetailPage } from './AdminBugDetailPage';
 export { AdminBugAnalyticsPage } from './AdminBugAnalyticsPage';
+export { ControlDeckPage } from './ControlDeckPage';

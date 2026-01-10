@@ -19,7 +19,8 @@
     "db:init": "npm run db:push && npm run db:seed",
     "admin:reset-password": "ts-node src/scripts/reset-password.ts",
     "admin:list-users": "ts-node src/scripts/list-users.ts",
-    "admin:create": "ts-node src/scripts/create-admin.ts"
+    "admin:create": "ts-node src/scripts/create-admin.ts",
+    "rocky": "ts-node src/cli/rocky.ts"
   },
   "dependencies": {
     "@hail-mary/shared": "*",

@@ -18,7 +18,7 @@ import { useLayoutMode } from './hooks/useLayoutMode'
 import { apiFetch } from './services/apiClient'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { JobGraphView } from './modules/job-graph'
-import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage, AdminBugDashboardPage, AdminBugListPage, AdminBugDetailPage, AdminBugAnalyticsPage } from './pages/admin'
+import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage, AdminBugDashboardPage, AdminBugListPage, AdminBugDetailPage, AdminBugAnalyticsPage, ControlDeckPage } from './pages/admin'
 import { ModuleLauncher } from './pages/ModuleLauncher'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
@@ -748,6 +748,7 @@ function App() {
           <Route path="/admin/lead-assignments" element={<AdminLeadAssignmentsPage />} />
           <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
           <Route path="/admin/system-recommendation" element={<AdminSystemRecommendationPage />} />
+          <Route path="/admin/control-deck" element={<ControlDeckPage />} />
           <Route path="/admin/bugs/dashboard" element={<AdminBugDashboardPage />} />
           <Route path="/admin/bugs/analytics" element={<AdminBugAnalyticsPage />} />
           <Route path="/admin/bugs/:id" element={<AdminBugDetailPage />} />

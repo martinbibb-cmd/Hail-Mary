@@ -41,6 +41,7 @@ interface HealthCheckResult {
       api: ServiceStatus;
       assistant: ServiceStatus;
       pwa: ServiceStatus;
+      worker: ServiceStatus;
     };
   };
   diagnostics: Array<{
@@ -312,6 +313,26 @@ export const ControlDeckPage: React.FC = () => {
                 </button>
                 <button className="btn-small" onClick={() => restartService('pwa')}>
                   Restart
+                </button>
+              </div>
+            </div>
+
+            <div className={`service-card ${getStatusColor(health.checks.services.worker.reachable)}`}>
+              <div className="service-header">
+                <div className="service-name">
+                  <span className="status-icon">{getStatusIcon(health.checks.services.worker.reachable)}</span>
+                  Worker (Cloudflare)
+                </div>
+                {health.checks.services.worker.reachable && (
+                  <span className="response-time">{health.checks.services.worker.responseTime}ms</span>
+                )}
+              </div>
+              <div className="service-actions">
+                <button className="btn-small" onClick={() => window.open('https://dash.cloudflare.com/', '_blank')}>
+                  Dashboard
+                </button>
+                <button className="btn-small" onClick={() => window.open('https://hail-mary.martinbibb.workers.dev/health', '_blank')}>
+                  Health
                 </button>
               </div>
             </div>

@@ -78,6 +78,7 @@ interface ServicesCheck {
   api: ServiceStatus;
   assistant: ServiceStatus;
   pwa: ServiceStatus;
+  worker: ServiceStatus;
 }
 
 interface ServiceStatus {
@@ -255,6 +256,18 @@ export async function runHealthCheck(): Promise<HealthCheckResult> {
       component: 'pwa',
       issue: 'PWA is not reachable',
       fix: `Check if PWA is running:\n  docker logs hailmary-pwa\n  curl http://localhost:3000/`,
+    });
+  }
+
+  if (!services.worker.reachable) {
+    const workerUrl = process.env.WORKER_URL ||
+                      process.env.SARAH_BASE_URL ||
+                      'https://hail-mary.martinbibb.workers.dev';
+    diagnostics.push({
+      severity: 'warning',
+      component: 'worker',
+      issue: 'Cloudflare Worker is not reachable',
+      fix: `Check Worker status:\n  curl ${workerUrl}/health\n\nIf deployed, check:\n  - Cloudflare dashboard\n  - Worker logs\n  - WORKER_URL in .env`,
     });
   }
 
@@ -555,13 +568,19 @@ async function checkServices(): Promise<ServicesCheck> {
     }
   };
 
-  const [api, assistant, pwa] = await Promise.all([
+  // Get worker URL from environment, fallback to known URL
+  const workerUrl = process.env.WORKER_URL ||
+                    process.env.SARAH_BASE_URL ||
+                    'https://hail-mary.martinbibb.workers.dev';
+
+  const [api, assistant, pwa, worker] = await Promise.all([
     checkEndpoint('http://localhost:3001/health'),
     checkEndpoint('http://localhost:3002/health'),
     checkEndpoint('http://localhost:3000/'),
+    checkEndpoint(`${workerUrl}/health`),
   ]);
 
-  return { api, assistant, pwa };
+  return { api, assistant, pwa, worker };
 }
 
 /**
@@ -667,6 +686,11 @@ export function formatHealthCheckForCLI(result: HealthCheckResult): string {
   output += result.checks.services.pwa.reachable
     ? `reachable (${result.checks.services.pwa.responseTime}ms)\n`
     : `unreachable (${result.checks.services.pwa.error})\n`;
+
+  output += `  ${result.checks.services.worker.reachable ? statusIcon.healthy : statusIcon.unhealthy} Worker: `;
+  output += result.checks.services.worker.reachable
+    ? `reachable (${result.checks.services.worker.responseTime}ms)\n`
+    : `unreachable (${result.checks.services.worker.error})\n`;
   output += '\n';
 
   // Diagnostics

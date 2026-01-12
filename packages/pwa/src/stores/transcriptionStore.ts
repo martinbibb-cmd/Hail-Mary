@@ -13,6 +13,7 @@ export interface TranscriptSegment {
   timestamp: Date;
   speaker: string;
   text: string;
+  role?: 'expert' | 'customer';
   corrected?: string;
   processed?: boolean;
 }
@@ -35,6 +36,9 @@ interface TranscriptionState {
   // Live interim transcript (for UI display while recording)
   interimTranscript: string;
 
+  // Current role for new segments
+  currentRole: 'expert' | 'customer';
+
   // Processing state
   isProcessing: boolean;
   lastProcessedAt: Date | null;
@@ -45,6 +49,8 @@ interface TranscriptionState {
   addSegment: (segment: TranscriptSegment) => void;
   addSegments: (segments: TranscriptSegment[]) => void;
   setInterimTranscript: (text: string) => void;
+  setCurrentRole: (role: 'expert' | 'customer') => void;
+  updateSegmentRole: (segmentId: string, role: 'expert' | 'customer') => void;
   markSegmentProcessed: (segmentId: string) => void;
   updateAccumulatedTranscript: (transcript: string) => void;
   setLastSeq: (seq: number) => void;
@@ -53,6 +59,7 @@ interface TranscriptionState {
   // Getters
   getActiveSession: () => TranscriptionSession | null;
   getUnprocessedSegments: () => TranscriptSegment[];
+  getCurrentRole: () => 'expert' | 'customer';
 }
 
 export const useTranscriptionStore = create<TranscriptionState>()(
@@ -60,6 +67,7 @@ export const useTranscriptionStore = create<TranscriptionState>()(
     (set, get) => ({
       activeSession: null,
       interimTranscript: '',
+      currentRole: 'expert',
       isProcessing: false,
       lastProcessedAt: null,
 
@@ -89,6 +97,27 @@ export const useTranscriptionStore = create<TranscriptionState>()(
 
       setInterimTranscript: (text: string) => {
         set({ interimTranscript: text });
+      },
+
+      setCurrentRole: (role: 'expert' | 'customer') => {
+        console.log('[TranscriptionStore] Setting current role:', role);
+        set({ currentRole: role });
+      },
+
+      updateSegmentRole: (segmentId: string, role: 'expert' | 'customer') => {
+        console.log('[TranscriptionStore] Updating segment role:', segmentId, role);
+        set((state) => {
+          if (!state.activeSession) return state;
+
+          return {
+            activeSession: {
+              ...state.activeSession,
+              segments: state.activeSession.segments.map((seg) =>
+                seg.id === segmentId ? { ...seg, role } : seg
+              ),
+            },
+          };
+        });
       },
 
       addSegment: (segment: TranscriptSegment) => {
@@ -190,12 +219,17 @@ export const useTranscriptionStore = create<TranscriptionState>()(
         if (!session) return [];
         return session.segments.filter((seg) => !seg.processed);
       },
+
+      getCurrentRole: () => {
+        return get().currentRole;
+      },
     }),
     {
       name: 'transcription-storage',
       partialize: (state) => ({
         activeSession: state.activeSession,
         interimTranscript: state.interimTranscript,
+        currentRole: state.currentRole,
         lastProcessedAt: state.lastProcessedAt,
       }),
     }

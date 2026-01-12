@@ -321,6 +321,7 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
       .limit(1);
     
     let transcriptText = '';
+    let segmentsWithRole: Array<{ text: string; role?: 'expert' | 'customer' }> = [];
     if (transcriptRows.length > 0) {
       const segments = await db
         .select()
@@ -329,6 +330,9 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
         .orderBy(transcriptSegments.startSeconds);
       
       transcriptText = segments.map(s => s.text).join(' ');
+      // Note: Role information is not yet stored in the database
+      // When it is, map it here: segments.map(s => ({ text: s.text, role: s.role }))
+      segmentsWithRole = segments.map(s => ({ text: s.text }));
     }
     
     // Generate summary from observations and transcript
@@ -336,7 +340,7 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
     
     if (transcriptText) {
       // If we have transcript, create a more detailed summary
-      summary = generateDetailedSummary(transcriptText, observations);
+      summary = generateDetailedSummary(transcriptText, observations, segmentsWithRole);
     } else if (observations.length > 0) {
       // If we only have observations, create a summary from those
       summary = generateObservationsSummary(observations);
@@ -380,8 +384,13 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
 
 /**
  * Generate a detailed summary from transcript and observations
+ * Role-aware: prioritizes customer segments for customer-safe notes and expert segments for technical notes
  */
-function generateDetailedSummary(transcript: string, observations: Array<{ text: string }>): string {
+function generateDetailedSummary(
+  transcript: string, 
+  observations: Array<{ text: string }>,
+  transcriptSegments?: Array<{ text: string; role?: 'expert' | 'customer' }>
+): string {
   const lines: string[] = [];
   
   // Extract key information from transcript
@@ -393,6 +402,20 @@ function generateDetailedSummary(transcript: string, observations: Array<{ text:
   const words = trimmedTranscript.toLowerCase().split(/\s+/).filter(w => w.length > 0);
   if (words.length === 0) {
     return 'No transcript data available.';
+  }
+  
+  // Role-aware transcript analysis
+  let customerSegments: string[] = [];
+  let expertSegments: string[] = [];
+  
+  if (transcriptSegments && transcriptSegments.length > 0) {
+    // Separate segments by role
+    customerSegments = transcriptSegments
+      .filter(s => s.role === 'customer')
+      .map(s => s.text);
+    expertSegments = transcriptSegments
+      .filter(s => s.role === 'expert' || !s.role)
+      .map(s => s.text);
   }
   
   // Check for common keywords
@@ -427,6 +450,22 @@ function generateDetailedSummary(transcript: string, observations: Array<{ text:
     lines.push(`Survey covered: ${preview}${trimmedTranscript.length > 150 ? '...' : ''}`);
   }
   
+  // Customer-safe notes section (from customer role segments)
+  if (customerSegments.length > 0) {
+    lines.push('');
+    lines.push('Customer Discussion:');
+    const customerText = customerSegments.join(' ').substring(0, 300);
+    lines.push(`${customerText}${customerSegments.join(' ').length > 300 ? '...' : ''}`);
+  }
+  
+  // Technical notes section (from expert role segments)
+  if (expertSegments.length > 0) {
+    lines.push('');
+    lines.push('Technical Assessment:');
+    const expertText = expertSegments.join(' ').substring(0, 300);
+    lines.push(`${expertText}${expertSegments.join(' ').length > 300 ? '...' : ''}`);
+  }
+  
   if (observations.length > 0) {
     lines.push('');
     lines.push('Key Observations:');
@@ -439,6 +478,11 @@ function generateDetailedSummary(transcript: string, observations: Array<{ text:
   const wordCount = words.length;
   lines.push('');
   lines.push(`Based on ${wordCount} words of transcript data`);
+  if (transcriptSegments && transcriptSegments.length > 0) {
+    const customerCount = customerSegments.length;
+    const expertCount = expertSegments.length;
+    lines.push(`(${customerCount} customer segments, ${expertCount} expert segments)`);
+  }
   
   return lines.join('\n');
 }

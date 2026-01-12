@@ -1,14 +1,7 @@
 import React from 'react';
 import { useTranscriptionStore } from '../../../stores/transcriptionStore';
+import type { TranscriptSegment } from '../../../stores/transcriptionStore';
 import './TranscriptFeed.css';
-
-export interface TranscriptSegment {
-  id: string;
-  timestamp: Date;
-  speaker?: 'user' | 'system';
-  role?: 'expert' | 'customer';
-  text: string;
-}
 
 interface TranscriptFeedProps {
   segments: TranscriptSegment[];

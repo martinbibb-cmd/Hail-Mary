@@ -330,8 +330,9 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
         .orderBy(transcriptSegments.startSeconds);
       
       transcriptText = segments.map(s => s.text).join(' ');
-      // Note: Role information is not yet stored in the database
-      // When it is, map it here: segments.map(s => ({ text: s.text, role: s.role }))
+      // TODO: Add role column to transcript_segments table to persist role information
+      // When implemented, map it here: segments.map(s => ({ text: s.text, role: s.role as 'expert' | 'customer' }))
+      // For now, role information is only maintained client-side in transcriptionStore
       segmentsWithRole = segments.map(s => ({ text: s.text }));
     }
     

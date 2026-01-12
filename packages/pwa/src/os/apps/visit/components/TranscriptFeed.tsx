@@ -1,6 +1,6 @@
 import React from 'react';
-import { useTranscriptionStore } from '../../../stores/transcriptionStore';
-import type { TranscriptSegment } from '../../../stores/transcriptionStore';
+import { useTranscriptionStore } from '../../../../stores/transcriptionStore';
+import type { TranscriptSegment } from '../../../../stores/transcriptionStore';
 import './TranscriptFeed.css';
 
 interface TranscriptFeedProps {

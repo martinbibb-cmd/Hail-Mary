@@ -100,7 +100,13 @@ export async function callGeminiForStructuring(
     userPrompt += `\nReference materials database:\n${referenceMaterials}\n\n`;
   }
   
-  userPrompt += `Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
+  userPrompt += `The transcript may contain dialogue between two roles:
+- Expert (surveyor/engineer): Technical observations and professional assessments
+- Customer: Questions, concerns, and preferences expressed by the homeowner
+
+When generating the summary, analyze the dialogue between both roles. Prioritize customer role segments for the 'customer_summary' section (using customer-friendly language) and expert role segments for technical sections like 'existing_system', 'materials_parts', and 'hazards_risks'.
+
+Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
 {
   "customer_summary": "...",
   "existing_system": "...",
@@ -250,7 +256,13 @@ export async function callOpenAIForStructuring(
     userPrompt += `\nReference materials database:\n${referenceMaterials}\n\n`;
   }
   
-  userPrompt += `Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
+  userPrompt += `The transcript may contain dialogue between two roles:
+- Expert (surveyor/engineer): Technical observations and professional assessments
+- Customer: Questions, concerns, and preferences expressed by the homeowner
+
+When generating the summary, analyze the dialogue between both roles. Prioritize customer role segments for the 'customer_summary' section (using customer-friendly language) and expert role segments for technical sections like 'existing_system', 'materials_parts', and 'hazards_risks'.
+
+Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
 {
   "customer_summary": "...",
   "existing_system": "...",
@@ -326,7 +338,13 @@ export async function callAnthropicForStructuring(
     userPrompt += `\nReference materials database:\n${referenceMaterials}\n\n`;
   }
   
-  userPrompt += `Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
+  userPrompt += `The transcript may contain dialogue between two roles:
+- Expert (surveyor/engineer): Technical observations and professional assessments
+- Customer: Questions, concerns, and preferences expressed by the homeowner
+
+When generating the summary, analyze the dialogue between both roles. Prioritize customer role segments for the 'customer_summary' section (using customer-friendly language) and expert role segments for technical sections like 'existing_system', 'materials_parts', and 'hazards_risks'.
+
+Please structure this into Atlas notes following the sections described above. Return ONLY valid JSON in this format:
 {
   "customer_summary": "...",
   "existing_system": "...",

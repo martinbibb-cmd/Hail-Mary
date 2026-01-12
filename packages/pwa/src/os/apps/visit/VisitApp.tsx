@@ -660,6 +660,9 @@ export const VisitApp: React.FC = () => {
             )}
             <TranscriptFeed 
               segments={transcriptSegments}
+              onRoleSwitch={(segmentId, newRole) => {
+                useTranscriptionStore.getState().updateSegmentRole(segmentId, newRole);
+              }}
             />
           </div>
 

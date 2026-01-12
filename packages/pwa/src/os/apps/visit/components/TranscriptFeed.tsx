@@ -1,30 +1,56 @@
 import React from 'react';
+import { useTranscriptionStore } from '../../../stores/transcriptionStore';
+import type { TranscriptSegment } from '../../../stores/transcriptionStore';
 import './TranscriptFeed.css';
-
-export interface TranscriptSegment {
-  id: string;
-  timestamp: Date;
-  speaker?: 'user' | 'system';
-  text: string;
-}
 
 interface TranscriptFeedProps {
   segments: TranscriptSegment[];
+  onRoleSwitch?: (segmentId: string, newRole: 'expert' | 'customer') => void;
 }
 
 /**
- * TranscriptFeed - Live transcription stream display (left panel)
+ * TranscriptFeed - Live transcription stream display with role-based chat
  * 
- * Shows timestamped transcript segments as they're captured, NOT as chat bubbles.
- * Similar to Depot-voice-notes style.
+ * Shows timestamped transcript segments with role indicators (Expert/Customer).
+ * Supports role-switching for accessibility and deaf customer support.
  */
 export const TranscriptFeed: React.FC<TranscriptFeedProps> = ({
   segments,
+  onRoleSwitch,
 }) => {
+  const currentRole = useTranscriptionStore((state) => state.currentRole);
+  const setCurrentRole = useTranscriptionStore((state) => state.setCurrentRole);
+
+  const handleRoleChange = (role: 'expert' | 'customer') => {
+    setCurrentRole(role);
+  };
+
+  const handleSwitchRole = (segmentId: string, currentSegmentRole: 'expert' | 'customer' | undefined) => {
+    if (!onRoleSwitch) return;
+    const newRole = currentSegmentRole === 'expert' ? 'customer' : 'expert';
+    onRoleSwitch(segmentId, newRole);
+  };
+
   return (
     <div className="transcript-feed">
       <div className="transcript-feed-header">
         <h3>📝 Live transcript</h3>
+        <div className="role-selector">
+          <button
+            className={`role-button ${currentRole === 'expert' ? 'active' : ''}`}
+            onClick={() => handleRoleChange('expert')}
+            title="Expert (Surveyor) mode"
+          >
+            👨‍🔧 Expert
+          </button>
+          <button
+            className={`role-button ${currentRole === 'customer' ? 'active' : ''}`}
+            onClick={() => handleRoleChange('customer')}
+            title="Customer mode"
+          >
+            👤 Customer
+          </button>
+        </div>
       </div>
 
       <div className="transcript-feed-content">
@@ -34,18 +60,37 @@ export const TranscriptFeed: React.FC<TranscriptFeedProps> = ({
           </p>
         )}
 
-        {segments.map((segment) => (
-          <div key={segment.id} className="transcript-segment">
-            <div className="transcript-segment-time">
-              {segment.timestamp.toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })}
+        {segments.map((segment) => {
+          const segmentRole = segment.role || 'expert';
+          const roleClass = segmentRole === 'customer' ? 'chat-customer' : 'chat-expert';
+          
+          return (
+            <div key={segment.id} className={`transcript-segment ${roleClass}`}>
+              <div className="transcript-segment-header">
+                <div className="transcript-segment-role">
+                  {segmentRole === 'customer' ? '👤 Customer' : '👨‍🔧 Expert'}
+                </div>
+                <div className="transcript-segment-time">
+                  {segment.timestamp.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </div>
+              </div>
+              <div className="transcript-segment-text">{segment.text}</div>
+              {onRoleSwitch && (
+                <button
+                  className="switch-role-button"
+                  onClick={() => handleSwitchRole(segment.id, segmentRole)}
+                  title={`Switch to ${segmentRole === 'expert' ? 'Customer' : 'Expert'}`}
+                >
+                  ⇄ Switch Role
+                </button>
+              )}
             </div>
-            <div className="transcript-segment-text">{segment.text}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

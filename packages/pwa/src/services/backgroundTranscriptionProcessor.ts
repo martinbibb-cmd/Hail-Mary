@@ -94,11 +94,13 @@ class BackgroundTranscriptionProcessor {
     const correctedText = correction.corrected;
 
     // Create segment
+    const currentRole = transcriptionStore.getCurrentRole();
     const segment: TranscriptSegment = {
       id: `segment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date(),
       speaker: 'user',
       text,
+      role: currentRole,
       corrected: correctedText,
       processed: false,
     };

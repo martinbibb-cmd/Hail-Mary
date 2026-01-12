@@ -66,6 +66,7 @@ export function useLiveTranscriptPolling(opts: {
 
         // Map to local segments (stable ids so re-polls are idempotent)
         const baseStartedAt = active.startedAt instanceof Date ? active.startedAt : new Date(active.startedAt as any);
+        const currentRole = store.getCurrentRole();
         const mapped = incoming.map((s) => ({
           id: `seq-${s.seq}`,
           timestamp: typeof s.startMs === 'number'
@@ -73,6 +74,7 @@ export function useLiveTranscriptPolling(opts: {
             : new Date(),
           speaker: 'user',
           text: s.text,
+          role: currentRole,
           corrected: s.text,
           processed: false,
         }));

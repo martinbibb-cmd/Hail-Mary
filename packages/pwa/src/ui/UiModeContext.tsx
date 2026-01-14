@@ -79,25 +79,33 @@ export const UiModeProvider: React.FC<UiModeProviderProps> = ({ children }) => {
 }
 
 /**
+ * Interface for UI mode option metadata
+ */
+export interface UiModeOption {
+  id: UiMode
+  label: string
+  description: string
+  badge?: string
+}
+
+/**
  * Metadata for UI mode options (for display in settings)
  */
-export const uiModeOptions = [
+export const uiModeOptions: readonly UiModeOption[] = [
   {
-    id: 'auto' as UiMode,
+    id: 'auto',
     label: 'Auto',
     description: 'Automatically detect based on pointer type (recommended)',
-    badge: 'Recommended' as string | undefined,
+    badge: 'Recommended',
   },
   {
-    id: 'touch' as UiMode,
+    id: 'touch',
     label: 'Touch',
     description: 'Touch-optimized interface with larger hit targets',
-    badge: undefined as string | undefined,
   },
   {
-    id: 'wimp' as UiMode,
+    id: 'wimp',
     label: 'Desktop',
     description: 'Mouse/keyboard interface with compact layout',
-    badge: undefined as string | undefined,
   },
-] as const
+]

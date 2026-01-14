@@ -14,7 +14,7 @@ import { Desktop, DesktopWorkspace, StackWorkspace } from './os'
 import { AuthProvider, AuthGuard, ResetPasswordPage, useAuth } from './auth'
 import { useCognitiveProfile } from './cognitive/CognitiveProfileContext'
 import { CognitiveOverlays } from './cognitive/CognitiveOverlays'
-import { useLayoutMode } from './hooks/useLayoutMode'
+import { useUiMode } from './ui/UiModeContext'
 import { apiFetch } from './services/apiClient'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { JobGraphView } from './modules/job-graph'
@@ -660,10 +660,10 @@ function VisitPage() {
 function App() {
   const { profile } = useCognitiveProfile()
   const isFocusProfile = profile === 'focus'
-  const layout = useLayoutMode()
+  const { effectiveLayout } = useUiMode()
   const { hydrate } = useLeadStore()
   const hydrateSpine = useSpineStore((s) => s.hydrate)
-  
+
   // Hydrate lead store from localStorage on mount
   useEffect(() => {
     hydrate()
@@ -671,7 +671,7 @@ function App() {
   }, [hydrate, hydrateSpine])
 
   // Determine if using desktop or touch workspace
-  const isDesktop = layout === 'desktop'
+  const isDesktop = effectiveLayout === 'desktop'
   const showBottomDock = !isDesktop
 
   // Main content component (shared between both workspaces)
@@ -785,7 +785,7 @@ function App() {
                   {mainContent}
                 </DesktopWorkspace>
               ) : (
-                <StackWorkspace layout={layout}>
+                <StackWorkspace layout={effectiveLayout}>
                   {mainContent}
                 </StackWorkspace>
               )}

@@ -11,6 +11,7 @@ import React, { useRef, useState } from 'react';
 import { useAuth } from '../../../auth';
 import { useWallpaper, builtInWallpapers, Wallpaper } from '../../wallpaper';
 import { cognitiveProfiles, useCognitiveProfile } from '../../../cognitive/CognitiveProfileContext';
+import { useUiMode, uiModeOptions } from '../../../ui/UiModeContext';
 import { loadDockItems, saveDockItems, DEFAULT_DOCK_ITEMS } from '../../../utils/dockItems';
 import { AdminSystem } from './AdminSystem';
 import { AdminAddressAssignment } from './AdminAddressAssignment';
@@ -44,6 +45,7 @@ export const SettingsApp: React.FC = () => {
     removeCustomWallpaper
   } = useWallpaper();
   const { profile, settings, setProfile, updateSettings } = useCognitiveProfile();
+  const { uiMode, autoDetectedLayout, setUiMode } = useUiMode();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [updateState, setUpdateState] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -206,6 +208,37 @@ export const SettingsApp: React.FC = () => {
               <p className="toggle-copy">Softens alerts and adds gentle affordances for anxious workflows.</p>
             </div>
           </label>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>UI Mode</h3>
+        <p className="settings-section-desc">
+          Choose how Atlas adapts to your device. Auto mode detects mouse/trackpad and switches automatically.
+          {uiMode === 'auto' && (
+            <span className="settings-auto-detect"> Currently detected: <strong>{autoDetectedLayout === 'desktop' ? 'Desktop' : 'Touch'}</strong></span>
+          )}
+        </p>
+
+        <div className="cognitive-toggle-grid">
+          {uiModeOptions.map((option) => (
+            <label key={option.id} className="toggle-row">
+              <input
+                type="radio"
+                name="ui-mode"
+                value={option.id}
+                checked={uiMode === option.id}
+                onChange={() => setUiMode(option.id)}
+              />
+              <div>
+                <p className="toggle-title">
+                  {option.label}
+                  {option.badge && <span className="option-badge">{option.badge}</span>}
+                </p>
+                <p className="toggle-copy">{option.description}</p>
+              </div>
+            </label>
+          ))}
         </div>
       </div>
 

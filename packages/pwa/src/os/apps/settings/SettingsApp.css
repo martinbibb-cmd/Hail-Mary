@@ -512,3 +512,28 @@
     width: 100%;
   }
 }
+
+/* UI Mode section */
+.option-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--accent-soft, rgba(107, 142, 35, 0.15));
+  color: var(--accent, #6b8e23);
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-auto-detect {
+  display: inline-block;
+  margin-left: 4px;
+  color: var(--text-secondary, rgba(60, 50, 40, 0.75));
+}
+
+.settings-auto-detect strong {
+  color: var(--accent, #6b8e23);
+  font-weight: 600;
+}

@@ -86,16 +86,18 @@ export const uiModeOptions = [
     id: 'auto' as UiMode,
     label: 'Auto',
     description: 'Automatically detect based on pointer type (recommended)',
-    badge: 'Recommended',
+    badge: 'Recommended' as string | undefined,
   },
   {
     id: 'touch' as UiMode,
     label: 'Touch',
     description: 'Touch-optimized interface with larger hit targets',
+    badge: undefined as string | undefined,
   },
   {
     id: 'wimp' as UiMode,
     label: 'Desktop',
     description: 'Mouse/keyboard interface with compact layout',
+    badge: undefined as string | undefined,
   },
 ] as const

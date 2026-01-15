@@ -19,6 +19,10 @@ import type {
 } from '../../types/admin';
 import './AdminNasPage.css';
 
+// Constants
+const HEALTH_CHECK_DELAY_MS = 2000;
+const REFRESH_DELAY_MS = 1000;
+
 export const AdminNasPage: React.FC = () => {
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,11 +140,12 @@ export const AdminNasPage: React.FC = () => {
           } else if (data.type === 'complete') {
             setUpdateComplete(true);
             setUpdateSuccess(data.success);
+            setUpdating(false);
             eventSource.close();
 
             // Check health after update
             if (data.success) {
-              setTimeout(checkHealth, 2000);
+              setTimeout(checkHealth, HEALTH_CHECK_DELAY_MS);
             }
           }
         } catch (err) {
@@ -153,6 +158,7 @@ export const AdminNasPage: React.FC = () => {
         setUpdateLogs(prev => [...prev, '❌ Connection error\n']);
         setUpdateComplete(true);
         setUpdateSuccess(false);
+        setUpdating(false);
         eventSource.close();
       };
     } catch (err) {
@@ -160,7 +166,6 @@ export const AdminNasPage: React.FC = () => {
       setUpdateLogs(prev => [...prev, `❌ Failed to start update: ${err}\n`]);
       setUpdateComplete(true);
       setUpdateSuccess(false);
-    } finally {
       setUpdating(false);
     }
   };
@@ -188,7 +193,32 @@ export const AdminNasPage: React.FC = () => {
     setTimeout(() => {
       loadSystemStatus();
       checkVersion();
-    }, 1000);
+    }, REFRESH_DELAY_MS);
+  };
+
+  // Helper function to display service status
+  const getServiceStatusDisplay = (svc: AdminVersionResponse['services'][0]) => {
+    if (svc.updateAvailable && svc.currentDigest && svc.latestDigest) {
+      return (
+        <span className="admin-version-service-status update">
+          {svc.currentDigest} → {svc.latestDigest}
+        </span>
+      );
+    } else if (svc.error) {
+      return (
+        <span className="admin-version-service-status error">
+          {svc.error}
+        </span>
+      );
+    } else if (svc.currentDigest) {
+      return <span>{svc.currentDigest}</span>;
+    } else {
+      return (
+        <span className="admin-version-service-status unknown">
+          Unknown
+        </span>
+      );
+    }
   };
 
   const handleRunMigrations = async () => {
@@ -379,24 +409,7 @@ export const AdminNasPage: React.FC = () => {
                   <div className="admin-version-details">
                     {versionInfo.services.map((svc, idx) => (
                       <div key={idx} className="admin-version-service">
-                        <strong>{svc.service}:</strong>{' '}
-                        {svc.updateAvailable && svc.currentDigest && svc.latestDigest ? (
-                          <span className="admin-version-service-status update">
-                            {svc.currentDigest} → {svc.latestDigest}
-                          </span>
-                        ) : svc.error ? (
-                          <span className="admin-version-service-status error">
-                            {svc.error}
-                          </span>
-                        ) : svc.currentDigest ? (
-                          <span>
-                            {svc.currentDigest}
-                          </span>
-                        ) : (
-                          <span className="admin-version-service-status unknown">
-                            Unknown
-                          </span>
-                        )}
+                        <strong>{svc.service}:</strong> {getServiceStatusDisplay(svc)}
                       </div>
                     ))}
                   </div>

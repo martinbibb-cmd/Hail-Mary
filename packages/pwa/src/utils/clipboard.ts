@@ -29,9 +29,7 @@ function fallbackCopyExecCommand(text: string): boolean {
     return false;
   } finally {
     // Always clean up the DOM element
-    if (textarea.parentNode) {
-      document.body.removeChild(textarea);
-    }
+    textarea.remove();
   }
 }
 

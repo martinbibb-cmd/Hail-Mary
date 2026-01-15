@@ -151,6 +151,8 @@ export const DiagnosticsApp: React.FC = () => {
   });
 
   // Memoize the bundle size check (timestamp doesn't affect size significantly)
+  // Note: Recalculates when health/schema/stats change, which is intentional
+  // as the actual bundle size changes when diagnostic data changes
   const bundleSize = React.useMemo(() => {
     const sampleBundle = {
       timestamp: "2024-01-01T00:00:00.000Z", // Static timestamp for size calculation
@@ -394,7 +396,7 @@ export const DiagnosticsApp: React.FC = () => {
       if (bundleSize > CLIPBOARD_MAX_BYTES) {
         // Too big → guide to download instead
         setError(
-          `Bundle is ${formatBytes(bundleSize)}. Too large to copy reliably on mobile. Use Download instead.`
+          `Bundle is ${formatBytes(bundleSize)}. Too large to copy reliably. Use Download instead.`
         );
         setTimeout(() => setError(null), 5000);
         return;

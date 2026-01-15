@@ -275,7 +275,7 @@ docker exec hailmary-api npm run db:push
 ### Direct Database Access
 
 ```bash
-docker exec -it hailmary-postgres psql -U postgres -d hailmary
+docker exec -it hailmary-postgres psql -U hailmary -d hailmary
 ```
 
 ## 🆘 Getting Help

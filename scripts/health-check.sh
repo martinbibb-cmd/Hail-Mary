@@ -76,7 +76,7 @@ echo ""
 # Check 2: Container status
 echo "📦 Checking containers..."
 EXPECTED_CONTAINERS=(
-    "hailmary-postgres"
+    "hailmary-hailmary"
     "hailmary-api"
     "hailmary-assistant"
     "hailmary-pwa"
@@ -108,12 +108,12 @@ echo ""
 
 # Check 3: Database connectivity
 echo "🗄️  Checking database..."
-if docker ps | grep -q "hailmary-postgres"; then
-    if docker exec hailmary-postgres pg_isready -U postgres -d hailmary &> /dev/null; then
+if docker ps | grep -q "hailmary-hailmary"; then
+    if docker exec hailmary-hailmary pg_isready -U hailmary -d hailmary &> /dev/null; then
         check_pass "Database is accepting connections"
 
         # Count tables
-        TABLE_COUNT=$(docker exec hailmary-postgres psql -U postgres -d hailmary -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs)
+        TABLE_COUNT=$(docker exec hailmary-hailmary psql -U hailmary -d hailmary -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs)
         if [[ "$TABLE_COUNT" -gt 0 ]]; then
             check_pass "Database schema initialized ($TABLE_COUNT tables)"
         else
@@ -121,7 +121,7 @@ if docker ps | grep -q "hailmary-postgres"; then
         fi
 
         # Check for admin user
-        USER_COUNT=$(docker exec hailmary-postgres psql -U postgres -d hailmary -t -c "SELECT COUNT(*) FROM users WHERE role = 'admin';" 2>/dev/null | xargs || echo "0")
+        USER_COUNT=$(docker exec hailmary-hailmary psql -U hailmary -d hailmary -t -c "SELECT COUNT(*) FROM users WHERE role = 'admin';" 2>/dev/null | xargs || echo "0")
         if [[ "$USER_COUNT" -gt 0 ]]; then
             check_pass "Admin user exists"
         else
@@ -129,7 +129,7 @@ if docker ps | grep -q "hailmary-postgres"; then
         fi
 
         # Check for products
-        PRODUCT_COUNT=$(docker exec hailmary-postgres psql -U postgres -d hailmary -t -c "SELECT COUNT(*) FROM products;" 2>/dev/null | xargs || echo "0")
+        PRODUCT_COUNT=$(docker exec hailmary-hailmary psql -U hailmary -d hailmary -t -c "SELECT COUNT(*) FROM products;" 2>/dev/null | xargs || echo "0")
         if [[ "$PRODUCT_COUNT" -gt 0 ]]; then
             check_pass "Product database seeded ($PRODUCT_COUNT products)"
         else
@@ -218,19 +218,19 @@ echo "💾 Checking data persistence..."
 if [[ -d "/mnt/user/appdata/hailmary" ]]; then
     # unRAID
     APPDATA_PATH="/mnt/user/appdata/hailmary"
-elif [[ -d "./postgres-data" ]]; then
+elif [[ -d "./hailmary-data" ]]; then
     # Local development
-    APPDATA_PATH="./postgres-data"
+    APPDATA_PATH="./hailmary-data"
 else
     APPDATA_PATH="./appdata"
 fi
 
-if [[ -d "$APPDATA_PATH/postgres" ]]; then
+if [[ -d "$APPDATA_PATH/hailmary" ]]; then
     check_pass "PostgreSQL data directory exists"
-    POSTGRES_SIZE=$(du -sh "$APPDATA_PATH/postgres" 2>/dev/null | cut -f1)
+    POSTGRES_SIZE=$(du -sh "$APPDATA_PATH/hailmary" 2>/dev/null | cut -f1)
     check_info "  Size: $POSTGRES_SIZE"
 else
-    check_warn "PostgreSQL data directory not found at $APPDATA_PATH/postgres"
+    check_warn "PostgreSQL data directory not found at $APPDATA_PATH/hailmary"
 fi
 echo ""
 

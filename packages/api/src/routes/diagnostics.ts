@@ -147,12 +147,12 @@ router.get('/health', async (_req: Request, res: Response) => {
 
       // Check for missing columns in existing tables
       const missingColumns: Record<string, string[]> = {};
-      
+
       // Check key columns for critical tables
       const criticalTableColumns: Record<string, string[]> = {
         'users': ['id', 'email', 'name', 'role', 'created_at'],
         'leads': ['id', 'account_id', 'first_name', 'last_name', 'created_at'],
-        'addresses': ['id', 'lead_id', 'postcode', 'created_at'],
+        'addresses': ['id', 'created_by_user_id', 'postcode', 'created_at'],
       };
 
       for (const [tableName, expectedCols] of Object.entries(criticalTableColumns)) {
@@ -307,7 +307,7 @@ router.get('/schema', async (_req: Request, res: Response) => {
   const criticalTableColumns: Record<string, string[]> = {
     'users': ['id', 'email', 'name', 'role', 'created_at'],
     'leads': ['id', 'account_id', 'first_name', 'last_name', 'created_at'],
-    'addresses': ['id', 'lead_id', 'postcode', 'created_at'],
+    'addresses': ['id', 'created_by_user_id', 'postcode', 'created_at'],
   };
 
   for (const [tableName, expectedCols] of Object.entries(criticalTableColumns)) {

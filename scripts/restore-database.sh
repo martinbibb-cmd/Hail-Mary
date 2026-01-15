@@ -26,7 +26,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-CONTAINER_NAME="hailmary-postgres"
+CONTAINER_NAME="hailmary-hailmary"
 DATABASE_NAME="hailmary"
 FORCE=false
 
@@ -94,7 +94,7 @@ fi
 echo -e "${BLUE}ℹ${NC} Creating safety backup before restore..."
 SAFETY_BACKUP="./backups/safety_backup_before_restore_$(date +%Y%m%d_%H%M%S).sql.gz"
 mkdir -p ./backups
-docker exec "$CONTAINER_NAME" pg_dump -U postgres -d "$DATABASE_NAME" 2>/dev/null | gzip > "$SAFETY_BACKUP" || true
+docker exec "$CONTAINER_NAME" pg_dump -U hailmary -d "$DATABASE_NAME" 2>/dev/null | gzip > "$SAFETY_BACKUP" || true
 echo -e "${GREEN}✓${NC} Safety backup created: $SAFETY_BACKUP"
 echo ""
 
@@ -102,11 +102,11 @@ echo ""
 echo -e "${BLUE}ℹ${NC} Restoring database from backup..."
 
 # Drop and recreate database
-docker exec "$CONTAINER_NAME" psql -U postgres -c "DROP DATABASE IF EXISTS ${DATABASE_NAME};"
-docker exec "$CONTAINER_NAME" psql -U postgres -c "CREATE DATABASE ${DATABASE_NAME};"
+docker exec "$CONTAINER_NAME" psql -U hailmary -c "DROP DATABASE IF EXISTS ${DATABASE_NAME};"
+docker exec "$CONTAINER_NAME" psql -U hailmary -c "CREATE DATABASE ${DATABASE_NAME};"
 
 # Restore backup
-zcat "$BACKUP_FILE" | docker exec -i "$CONTAINER_NAME" psql -U postgres -d "$DATABASE_NAME"
+zcat "$BACKUP_FILE" | docker exec -i "$CONTAINER_NAME" psql -U hailmary -d "$DATABASE_NAME"
 
 echo ""
 echo -e "${GREEN}✓ Database restored successfully!${NC}"

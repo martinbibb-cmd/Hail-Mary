@@ -60,11 +60,16 @@ export function loadJsonConfig<T>(fileName: string, fallback: T): ConfigLoadResu
   }
   
   // 2. Published dist path (preferred for production)
-  // In a workspace, node_modules/@hail-mary/shared points to packages/shared
-  // So we need to resolve from the workspace root
-  const distPath = path.join(process.cwd(), 'packages', 'shared', 'dist', 'core', fileName);
+  // Resolve relative to this module's location, not process.cwd()
+  // This avoids path duplication when API runs from /app/packages/api
+  const moduleDir = __dirname; // e.g., /app/packages/api/src/utils or /app/packages/api/dist/utils
+
+  // Go up to packages/api root, then to packages/shared
+  const apiRoot = path.join(moduleDir, '..', '..'); // Go up from src/utils or dist/utils to api root
+  const workspaceRoot = path.join(apiRoot, '..'); // Go up to workspace root
+  const distPath = path.join(workspaceRoot, 'packages', 'shared', 'dist', 'core', fileName);
   pathsToTry.push(distPath);
-  
+
   // Also try from node_modules (for when shared is installed as a dependency)
   try {
     const nodeModulesPath = require.resolve(`@hail-mary/shared/dist/core/${fileName}`);
@@ -72,11 +77,11 @@ export function loadJsonConfig<T>(fileName: string, fallback: T): ConfigLoadResu
   } catch {
     // If require.resolve fails, that's fine - we'll try other paths
   }
-  
+
   // 3. Source path (dev fallback)
-  const srcPath = path.join(process.cwd(), 'packages', 'shared', 'src', 'core', fileName);
+  const srcPath = path.join(workspaceRoot, 'packages', 'shared', 'src', 'core', fileName);
   pathsToTry.push(srcPath);
-  
+
   // Also try from node_modules source (for when shared is installed as a dependency)
   try {
     const nodeModulesSrcPath = require.resolve(`@hail-mary/shared/src/core/${fileName}`);

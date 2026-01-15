@@ -222,8 +222,8 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
     // This is acceptable as it only affects fresh installs during initial setup,
     // which is typically single-threaded. Production systems should use BOOTSTRAP_ADMIN_EMAIL
     // for deterministic admin assignment.
-    const userCount = await db.select({ count: sql<number>`count(*)::int` }).from(users);
-    const isFirstUser = userCount[0]?.count === 0;
+    const [{ count: userCount }] = await db.select({ count: sql<number>`count(*)` }).from(users);
+    const isFirstUser = userCount === 0;
     
     // 2. Check if this email matches BOOTSTRAP_ADMIN_EMAIL (cached at module load)
     const isBootstrapAdmin = BOOTSTRAP_ADMIN_EMAIL && normalizedEmail === BOOTSTRAP_ADMIN_EMAIL;

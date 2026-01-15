@@ -25,7 +25,7 @@ async function tableExists(): Promise<boolean> {
         AND table_name = 'assumptions_snapshots'
       );
     `);
-    return result.rows?.[0]?.exists === true;
+    return result.rows?.[0]?.exists ?? false;
   } catch (error) {
     console.error("Error checking if assumptions_snapshots table exists:", error);
     return false;

@@ -1,0 +1,11 @@
+{
+  "name": "hailmary-admin-agent",
+  "version": "1.0.0",
+  "description": "Admin agent for system updates with Docker socket access",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "MIT"
+}

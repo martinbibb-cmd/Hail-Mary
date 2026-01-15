@@ -74,6 +74,9 @@ services:
       SARAH_VOICE_NOTES_PATH: ${SARAH_VOICE_NOTES_PATH:-/v1/voice-notes}
       SARAH_CHAT_PATH: ${SARAH_CHAT_PATH:-/v1/chat}
       SARAH_TRANSCRIBE_PATH: ${SARAH_TRANSCRIBE_PATH:-/v1/transcribe}
+      # Admin Agent Configuration for system updates
+      ADMIN_AGENT_URL: ${ADMIN_AGENT_URL:-http://hailmary-admin-agent:4010}
+      ADMIN_AGENT_TOKEN: ${ADMIN_AGENT_TOKEN:-}
       # Optional: Override core config path for custom Atlas schema and checklist config
       # Uncomment to use custom configs from a mounted volume:
       # HAILMARY_CORE_PATH: /app/config/core

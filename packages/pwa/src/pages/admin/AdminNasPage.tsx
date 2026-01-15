@@ -11,30 +11,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { APP_VERSION } from '../../constants';
 import { AdminApiStatus } from '../../components/AdminApiStatus';
-import type { AdminSystemStatus, AdminSystemStatusResponse } from '../../types/admin';
+import type { 
+  AdminSystemStatus, 
+  AdminSystemStatusResponse,
+  AdminVersionResponse,
+  AdminHealthResponse 
+} from '../../types/admin';
 import './AdminNasPage.css';
-
-interface VersionResponse {
-  hasUpdates: boolean;
-  services: Array<{
-    service: string;
-    updateAvailable?: boolean;
-    currentDigest?: string;
-    latestDigest?: string;
-    error?: string;
-  }>;
-  checkedAt: string;
-}
-
-interface HealthResponse {
-  healthy: boolean;
-  services: Array<{
-    name: string;
-    state: string;
-    healthy: boolean;
-  }>;
-  checkedAt: string;
-}
 
 export const AdminNasPage: React.FC = () => {
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
@@ -47,14 +30,14 @@ export const AdminNasPage: React.FC = () => {
   const [agentAvailable, setAgentAvailable] = useState<boolean | null>(null);
   
   // System update state
-  const [versionInfo, setVersionInfo] = useState<VersionResponse | null>(null);
+  const [versionInfo, setVersionInfo] = useState<AdminVersionResponse | null>(null);
   const [checkingVersion, setCheckingVersion] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateLogs, setUpdateLogs] = useState<string[]>([]);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateComplete, setUpdateComplete] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
-  const [healthInfo, setHealthInfo] = useState<HealthResponse | null>(null);
+  const [healthInfo, setHealthInfo] = useState<AdminHealthResponse | null>(null);
 
   useEffect(() => {
     loadSystemStatus();
@@ -94,7 +77,7 @@ export const AdminNasPage: React.FC = () => {
       // If we get a 200 response, admin-agent is available
       if (res.ok) {
         setAgentAvailable(true);
-        const data: VersionResponse = await res.json();
+        const data: AdminVersionResponse = await res.json();
         setVersionInfo(data);
       } else if (res.status === 503 || res.status === 502 || res.status === 404) {
         // Admin agent not configured or not reachable
@@ -115,8 +98,13 @@ export const AdminNasPage: React.FC = () => {
       const res = await fetch('/api/admin/system/version', {
         credentials: 'include',
       });
-      const data: VersionResponse = await res.json();
-      setVersionInfo(data);
+      
+      if (res.ok) {
+        const data: AdminVersionResponse = await res.json();
+        setVersionInfo(data);
+      } else {
+        console.error('Failed to check version: HTTP', res.status);
+      }
     } catch (err) {
       console.error('Failed to check version:', err);
     } finally {
@@ -182,8 +170,13 @@ export const AdminNasPage: React.FC = () => {
       const res = await fetch('/api/admin/system/health', {
         credentials: 'include',
       });
-      const data: HealthResponse = await res.json();
-      setHealthInfo(data);
+      
+      if (res.ok) {
+        const data: AdminHealthResponse = await res.json();
+        setHealthInfo(data);
+      } else {
+        console.error('Failed to check health: HTTP', res.status);
+      }
     } catch (err) {
       console.error('Failed to check health:', err);
     }
@@ -373,60 +366,51 @@ export const AdminNasPage: React.FC = () => {
               </p>
 
               {versionInfo && (
-                <div className="admin-version-info" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+                <div className="admin-version-info">
                   {versionInfo.hasUpdates ? (
-                    <div style={{ 
-                      padding: '0.5rem 1rem', 
-                      background: 'var(--success-bg, #d4edda)', 
-                      border: '1px solid var(--success-border, #c3e6cb)',
-                      borderRadius: '4px',
-                      marginBottom: '0.5rem'
-                    }}>
+                    <div className="admin-update-badge available">
                       ✨ Update available
                     </div>
                   ) : (
-                    <div style={{ 
-                      padding: '0.5rem 1rem', 
-                      background: 'var(--info-bg, #d1ecf1)', 
-                      border: '1px solid var(--info-border, #bee5eb)',
-                      borderRadius: '4px',
-                      marginBottom: '0.5rem'
-                    }}>
+                    <div className="admin-update-badge current">
                       ✅ Up to date
                     </div>
                   )}
-                  <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                  <div className="admin-version-details">
                     {versionInfo.services.map((svc, idx) => (
-                      <div key={idx} style={{ padding: '0.25rem 0' }}>
+                      <div key={idx} className="admin-version-service">
                         <strong>{svc.service}:</strong>{' '}
-                        {svc.updateAvailable ? (
-                          <span style={{ color: 'var(--success)' }}>
+                        {svc.updateAvailable && svc.currentDigest && svc.latestDigest ? (
+                          <span className="admin-version-service-status update">
                             {svc.currentDigest} → {svc.latestDigest}
                           </span>
                         ) : svc.error ? (
-                          <span style={{ color: 'var(--error)' }}>
+                          <span className="admin-version-service-status error">
                             {svc.error}
                           </span>
-                        ) : (
+                        ) : svc.currentDigest ? (
                           <span>
                             {svc.currentDigest}
+                          </span>
+                        ) : (
+                          <span className="admin-version-service-status unknown">
+                            Unknown
                           </span>
                         )}
                       </div>
                     ))}
                   </div>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                  <p className="admin-version-checked">
                     Checked: {new Date(versionInfo.checkedAt).toLocaleString()}
                   </p>
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <div className="admin-update-actions">
                 <button
                   className="btn-secondary"
                   onClick={checkVersion}
                   disabled={checkingVersion}
-                  style={{ flex: '1' }}
                 >
                   {checkingVersion ? '⏳ Checking...' : '🔍 Check for Updates'}
                 </button>
@@ -434,7 +418,6 @@ export const AdminNasPage: React.FC = () => {
                   className="btn-primary"
                   onClick={handleUpdate}
                   disabled={updating || !versionInfo}
-                  style={{ flex: '1' }}
                 >
                   {updating ? '⏳ Updating...' : '⬇️ Update System'}
                 </button>
@@ -507,49 +490,14 @@ export const AdminNasPage: React.FC = () => {
         <div 
           className="admin-modal-overlay" 
           onClick={updateComplete ? closeUpdateModal : undefined}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
         >
           <div 
-            className="admin-modal admin-update-modal" 
+            className="admin-modal" 
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--surface)',
-              padding: '2rem',
-              borderRadius: '8px',
-              maxWidth: '600px',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              width: '90%'
-            }}
           >
             <h4>🚀 System Update</h4>
 
-            <div 
-              className="admin-update-log"
-              style={{
-                background: 'var(--background)',
-                padding: '1rem',
-                borderRadius: '4px',
-                marginTop: '1rem',
-                marginBottom: '1rem',
-                maxHeight: '300px',
-                overflow: 'auto',
-                fontFamily: 'monospace',
-                fontSize: '0.85rem',
-                whiteSpace: 'pre-wrap'
-              }}
-            >
+            <div className="admin-update-log">
               {updateLogs.map((log, idx) => (
                 <div key={idx} className="admin-update-log-line">
                   {log}
@@ -560,15 +508,8 @@ export const AdminNasPage: React.FC = () => {
             {updateComplete && (
               <div 
                 className={`admin-update-status ${updateSuccess ? 'success' : 'error'}`}
-                style={{
-                  padding: '1rem',
-                  borderRadius: '4px',
-                  marginBottom: '1rem',
-                  background: updateSuccess ? 'var(--success-bg, #d4edda)' : 'var(--error-bg, #f8d7da)',
-                  border: `1px solid ${updateSuccess ? 'var(--success-border, #c3e6cb)' : 'var(--error-border, #f5c6cb)'}`
-                }}
               >
-                <p style={{ margin: 0, fontWeight: 'bold' }}>
+                <p>
                   {updateSuccess ? '✅' : '❌'}
                   {' '}
                   {updateSuccess
@@ -579,39 +520,30 @@ export const AdminNasPage: React.FC = () => {
             )}
 
             {healthInfo && (
-              <div className="admin-health-info" style={{ marginBottom: '1rem' }}>
-                <h5 style={{ marginBottom: '0.5rem' }}>Service Health</h5>
+              <div className="admin-health-info">
+                <h5>Service Health</h5>
                 <div className="admin-health-services">
                   {healthInfo.services.map((svc, idx) => (
                     <div 
                       key={idx} 
                       className={`admin-health-service ${svc.healthy ? 'healthy' : 'unhealthy'}`}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.5rem',
-                        borderRadius: '4px',
-                        background: svc.healthy ? 'var(--success-bg, #d4edda)' : 'var(--error-bg, #f8d7da)',
-                        marginBottom: '0.25rem'
-                      }}
                     >
                       <span>{svc.healthy ? '✅' : '❌'}</span>
-                      <span style={{ fontWeight: 'bold' }}>{svc.name}</span>
-                      <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      <span className="admin-health-service-name">{svc.name}</span>
+                      <span className="admin-health-service-state">
                         {svc.state}
                       </span>
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                <p className="admin-health-checked">
                   Checked: {new Date(healthInfo.checkedAt).toLocaleString()}
                 </p>
               </div>
             )}
 
             {updateComplete && (
-              <div className="admin-modal-actions" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div className="admin-modal-actions">
                 <button 
                   className="btn-primary" 
                   onClick={closeUpdateModal}

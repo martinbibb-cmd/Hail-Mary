@@ -21,6 +21,28 @@ interface MigrateResponse {
   details?: string;
 }
 
+interface VersionResponse {
+  hasUpdates: boolean;
+  services: Array<{
+    service: string;
+    updateAvailable?: boolean;
+    currentDigest?: string;
+    latestDigest?: string;
+    error?: string;
+  }>;
+  checkedAt: string;
+}
+
+interface HealthResponse {
+  healthy: boolean;
+  services: Array<{
+    name: string;
+    state: string;
+    healthy: boolean;
+  }>;
+  checkedAt: string;
+}
+
 // Constants
 const REFRESH_DELAY_MS = 1000;
 
@@ -31,6 +53,16 @@ export const AdminSystem: React.FC = () => {
   const [migrating, setMigrating] = useState(false);
   const [migrateResult, setMigrateResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // System update state
+  const [versionInfo, setVersionInfo] = useState<VersionResponse | null>(null);
+  const [checkingVersion, setCheckingVersion] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateLogs, setUpdateLogs] = useState<string[]>([]);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateComplete, setUpdateComplete] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [healthInfo, setHealthInfo] = useState<HealthResponse | null>(null);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -98,11 +130,104 @@ export const AdminSystem: React.FC = () => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    
+
     if (days > 0) return `${days}d ${hours}h ${minutes}m`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
   };
+
+  const checkVersion = async () => {
+    setCheckingVersion(true);
+    try {
+      const res = await fetch('/api/admin/system/version', {
+        credentials: 'include',
+      });
+      const data: VersionResponse = await res.json();
+      setVersionInfo(data);
+    } catch (err) {
+      console.error('Failed to check version:', err);
+    } finally {
+      setCheckingVersion(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    setUpdating(true);
+    setUpdateLogs([]);
+    setUpdateComplete(false);
+    setUpdateSuccess(false);
+    setHealthInfo(null);
+    setShowUpdateModal(true);
+
+    try {
+      const eventSource = new EventSource('/api/admin/system/update/stream', {
+        withCredentials: true,
+      });
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'log') {
+            setUpdateLogs(prev => [...prev, data.text]);
+          } else if (data.type === 'error') {
+            setUpdateLogs(prev => [...prev, `❌ ERROR: ${data.message}\n`]);
+          } else if (data.type === 'complete') {
+            setUpdateComplete(true);
+            setUpdateSuccess(data.success);
+            eventSource.close();
+
+            // Check health after update
+            if (data.success) {
+              setTimeout(checkHealth, 2000);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to parse SSE data:', err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error('SSE error:', err);
+        setUpdateLogs(prev => [...prev, '❌ Connection error\n']);
+        setUpdateComplete(true);
+        setUpdateSuccess(false);
+        eventSource.close();
+      };
+    } catch (err) {
+      console.error('Update error:', err);
+      setUpdateLogs(prev => [...prev, `❌ Failed to start update: ${err}\n`]);
+      setUpdateComplete(true);
+      setUpdateSuccess(false);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const checkHealth = async () => {
+    try {
+      const res = await fetch('/api/admin/system/health', {
+        credentials: 'include',
+      });
+      const data: HealthResponse = await res.json();
+      setHealthInfo(data);
+    } catch (err) {
+      console.error('Failed to check health:', err);
+    }
+  };
+
+  const closeUpdateModal = () => {
+    setShowUpdateModal(false);
+    // Refresh status and version after closing modal
+    setTimeout(() => {
+      fetchStatus();
+      checkVersion();
+    }, REFRESH_DELAY_MS);
+  };
+
+  useEffect(() => {
+    checkVersion();
+  }, []);
 
   if (loading) {
     return (
@@ -300,13 +425,75 @@ export const AdminSystem: React.FC = () => {
         </div>
       </div>
 
+      {/* System Update Actions */}
+      <div className="admin-actions">
+        <h4>🚀 System Updates</h4>
+        <p className="admin-actions-desc">
+          Pull latest Docker images and update all services. Updates are pulled from GHCR.
+        </p>
+
+        {versionInfo && (
+          <div className="admin-version-info">
+            {versionInfo.hasUpdates ? (
+              <div className="admin-update-badge available">
+                ✨ Update available
+              </div>
+            ) : (
+              <div className="admin-update-badge current">
+                ✅ Up to date
+              </div>
+            )}
+            <div className="admin-version-details">
+              {versionInfo.services.map((svc, idx) => (
+                <div key={idx} className="admin-version-service">
+                  <span className="admin-version-service-name">{svc.service}:</span>
+                  {svc.updateAvailable ? (
+                    <span className="admin-version-service-status update">
+                      {svc.currentDigest} → {svc.latestDigest}
+                    </span>
+                  ) : svc.error ? (
+                    <span className="admin-version-service-status error">
+                      {svc.error}
+                    </span>
+                  ) : (
+                    <span className="admin-version-service-status current">
+                      {svc.currentDigest}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="admin-version-checked">
+              Checked: {new Date(versionInfo.checkedAt).toLocaleString()}
+            </p>
+          </div>
+        )}
+
+        <div className="admin-update-actions">
+          <button
+            className="admin-check-btn"
+            onClick={checkVersion}
+            disabled={checkingVersion}
+          >
+            {checkingVersion ? '⏳ Checking...' : '🔍 Check for Updates'}
+          </button>
+          <button
+            className="admin-update-btn"
+            onClick={handleUpdate}
+            disabled={updating || !versionInfo}
+          >
+            {updating ? '⏳ Updating...' : '⬇️ Update System'}
+          </button>
+        </div>
+      </div>
+
       {/* Migration Actions */}
       <div className="admin-actions">
         <h4>🔧 Database Actions</h4>
         <p className="admin-actions-desc">
           Run database migrations to update the schema. This is safe to run multiple times.
         </p>
-        
+
         {migrateResult && (
           <div className={`admin-migrate-result ${migrateResult.success ? 'success' : 'error'}`}>
             <p className="admin-migrate-icon">
@@ -316,7 +503,7 @@ export const AdminSystem: React.FC = () => {
           </div>
         )}
 
-        <button 
+        <button
           className="admin-migrate-btn"
           onClick={() => setShowConfirm(true)}
           disabled={migrating}
@@ -324,6 +511,64 @@ export const AdminSystem: React.FC = () => {
           {migrating ? '⏳ Running migrations...' : '▶️ Run Migrations'}
         </button>
       </div>
+
+      {/* Update Modal */}
+      {showUpdateModal && (
+        <div className="admin-modal-overlay" onClick={updateComplete ? closeUpdateModal : undefined}>
+          <div className="admin-modal admin-update-modal" onClick={(e) => e.stopPropagation()}>
+            <h4>🚀 System Update</h4>
+
+            <div className="admin-update-log">
+              {updateLogs.map((log, idx) => (
+                <div key={idx} className="admin-update-log-line">
+                  {log}
+                </div>
+              ))}
+            </div>
+
+            {updateComplete && (
+              <div className={`admin-update-status ${updateSuccess ? 'success' : 'error'}`}>
+                <p className="admin-update-status-icon">
+                  {updateSuccess ? '✅' : '❌'}
+                </p>
+                <p>
+                  {updateSuccess
+                    ? 'Update completed successfully'
+                    : 'Update failed - check logs above'}
+                </p>
+              </div>
+            )}
+
+            {healthInfo && (
+              <div className="admin-health-info">
+                <h5>Service Health</h5>
+                <div className="admin-health-services">
+                  {healthInfo.services.map((svc, idx) => (
+                    <div key={idx} className={`admin-health-service ${svc.healthy ? 'healthy' : 'unhealthy'}`}>
+                      <span className="admin-health-service-icon">
+                        {svc.healthy ? '✅' : '❌'}
+                      </span>
+                      <span className="admin-health-service-name">{svc.name}</span>
+                      <span className="admin-health-service-state">{svc.state}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="admin-health-checked">
+                  Checked: {new Date(healthInfo.checkedAt).toLocaleString()}
+                </p>
+              </div>
+            )}
+
+            {updateComplete && (
+              <div className="admin-modal-actions">
+                <button className="admin-modal-confirm" onClick={closeUpdateModal}>
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {showConfirm && (

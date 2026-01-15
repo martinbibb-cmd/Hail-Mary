@@ -1,15 +1,19 @@
 /**
  * Admin System Routes for Hail-Mary
- * 
+ *
  * Handles system/NAS management endpoints (requires admin role):
  * - GET /api/admin/system/status - Get system status (DB, migrations, config)
  * - POST /api/admin/system/migrate - Run database migrations
+ * - GET /api/admin/system/update/stream - Stream system update logs via SSE
+ * - GET /api/admin/system/version - Check for available updates
+ * - GET /api/admin/system/health - Check service health after update
  */
 
 import { Router, Request, Response } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
+import http from 'http';
 import { db } from '../db/drizzle-client';
 import { API_VERSION } from '../index';
 
@@ -17,6 +21,8 @@ const execAsync = promisify(exec);
 
 // System configuration
 const API_DIR = process.env.API_DIR || '/app';
+const ADMIN_AGENT_URL = process.env.ADMIN_AGENT_URL || 'http://hailmary-admin-agent:4010';
+const ADMIN_AGENT_TOKEN = process.env.ADMIN_AGENT_TOKEN || '';
 
 const router = Router();
 
@@ -190,7 +196,7 @@ router.post('/migrate', async (_req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error running migrations:', error);
-    
+
     // Return error but don't crash the server
     return res.status(500).json({
       success: false,
@@ -198,6 +204,127 @@ router.post('/migrate', async (_req: Request, res: Response) => {
       details: error.message,
       output: error.stdout || error.stderr,
     });
+  }
+});
+
+/**
+ * Helper function to proxy request to admin agent
+ */
+async function proxyToAdminAgent(
+  path: string,
+  res: Response,
+  isSSE: boolean = false
+): Promise<void> {
+  if (!ADMIN_AGENT_TOKEN) {
+    res.status(503).json({
+      success: false,
+      error: 'Admin agent not configured',
+    });
+    return;
+  }
+
+  const url = new URL(path, ADMIN_AGENT_URL);
+
+  return new Promise((resolve, reject) => {
+    const request = http.get(
+      url.toString(),
+      {
+        headers: {
+          'X-Admin-Token': ADMIN_AGENT_TOKEN,
+        },
+      },
+      (proxyRes) => {
+        if (isSSE) {
+          // For SSE, proxy all headers and stream the response
+          res.writeHead(proxyRes.statusCode || 200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no', // Disable nginx buffering
+          });
+
+          proxyRes.pipe(res);
+
+          proxyRes.on('end', () => {
+            resolve();
+          });
+
+          proxyRes.on('error', (error) => {
+            console.error('Admin agent SSE error:', error);
+            reject(error);
+          });
+        } else {
+          // For JSON, buffer the response
+          let data = '';
+          proxyRes.on('data', (chunk) => {
+            data += chunk;
+          });
+
+          proxyRes.on('end', () => {
+            res.writeHead(proxyRes.statusCode || 200, {
+              'Content-Type': 'application/json',
+            });
+            res.end(data);
+            resolve();
+          });
+
+          proxyRes.on('error', (error) => {
+            console.error('Admin agent error:', error);
+            reject(error);
+          });
+        }
+      }
+    );
+
+    request.on('error', (error) => {
+      console.error('Admin agent connection error:', error);
+      res.status(503).json({
+        success: false,
+        error: 'Failed to connect to admin agent',
+      });
+      reject(error);
+    });
+
+    request.end();
+  });
+}
+
+/**
+ * GET /api/admin/system/update/stream
+ * Proxy SSE stream from admin agent for system updates
+ */
+router.get('/update/stream', async (_req: Request, res: Response) => {
+  try {
+    await proxyToAdminAgent('/update/stream', res, true);
+  } catch (error) {
+    console.error('Error proxying update stream:', error);
+    // Error already sent by proxy function
+  }
+});
+
+/**
+ * GET /api/admin/system/version
+ * Check for available system updates
+ */
+router.get('/version', async (_req: Request, res: Response) => {
+  try {
+    await proxyToAdminAgent('/version', res, false);
+  } catch (error) {
+    console.error('Error checking version:', error);
+    // Error already sent by proxy function
+  }
+});
+
+/**
+ * GET /api/admin/system/health
+ * Check service health after update
+ */
+router.get('/health', async (_req: Request, res: Response) => {
+  try {
+    await proxyToAdminAgent('/health', res, false);
+  } catch (error) {
+    console.error('Error checking health:', error);
+    // Error already sent by proxy function
   }
 });
 

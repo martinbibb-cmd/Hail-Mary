@@ -15,7 +15,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { db } from '../db/drizzle-client';
 import { users, passwordResetTokens, accounts } from '../db/drizzle-schema';
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, sql } from 'drizzle-orm';
 import { sendPasswordResetEmail } from './email.service';
 
 // Types
@@ -82,6 +82,10 @@ if (!JWT_SECRET_ENV || JWT_SECRET_ENV === 'development-secret-change-in-producti
 
 // After validation, JWT_SECRET is guaranteed to be a non-empty string
 const JWT_SECRET: string = JWT_SECRET_ENV;
+
+// Bootstrap admin configuration - cached at module load for performance
+// If BOOTSTRAP_ADMIN_EMAIL is set, that email will always get admin role on registration
+const BOOTSTRAP_ADMIN_EMAIL = process.env.BOOTSTRAP_ADMIN_EMAIL?.toLowerCase().trim();
 
 // Password reset token expiry (1 hour)
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
@@ -212,6 +216,28 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
       accountId = newAccount.id;
     }
 
+    // Determine user role: first user or bootstrap admin gets admin role
+    // 1. Check if this is the first user (users table is empty)
+    // Note: In the rare case of simultaneous first registrations, both could become admin.
+    // This is acceptable as it only affects fresh installs during initial setup,
+    // which is typically single-threaded. Production systems should use BOOTSTRAP_ADMIN_EMAIL
+    // for deterministic admin assignment.
+    const [{ count: userCount }] = await db.select({ count: sql<number>`count(*)` }).from(users);
+    const isFirstUser = userCount === 0;
+    
+    // 2. Check if this email matches BOOTSTRAP_ADMIN_EMAIL (cached at module load)
+    const isBootstrapAdmin = BOOTSTRAP_ADMIN_EMAIL && normalizedEmail === BOOTSTRAP_ADMIN_EMAIL;
+    
+    // Assign admin role if first user or bootstrap admin
+    const role = isFirstUser || isBootstrapAdmin ? 'admin' : 'user';
+
+    if (isFirstUser) {
+      console.log(`✅ First user registration: ${normalizedEmail} assigned admin role`);
+    }
+    if (isBootstrapAdmin) {
+      console.log(`✅ Bootstrap admin registration: ${normalizedEmail} assigned admin role via BOOTSTRAP_ADMIN_EMAIL`);
+    }
+
     // Create user
     const [newUser] = await db
       .insert(users)
@@ -221,7 +247,7 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
         passwordHash,
         authProvider: 'local',
         accountId,
-        role: 'user',
+        role,
       })
       .returning();
 

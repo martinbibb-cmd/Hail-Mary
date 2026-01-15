@@ -7,12 +7,40 @@
 
 import { db } from "../drizzle-client";
 import { assumptionsSnapshots } from "../drizzle-schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+
+/**
+ * Check if assumptions_snapshots table exists in the database
+ * @returns true if table exists, false otherwise
+ */
+async function tableExists(): Promise<boolean> {
+  try {
+    const result = await db.execute(sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'assumptions_snapshots'
+      );
+    `);
+    return result.rows?.[0]?.exists === true;
+  } catch (error) {
+    console.error("Error checking if assumptions_snapshots table exists:", error);
+    return false;
+  }
+}
 
 export async function seedUKAssumptions() {
   console.log("🌱 Seeding UK trajectory assumptions...");
 
   try {
+    // Check if the table exists before trying to seed
+    const exists = await tableExists();
+    if (!exists) {
+      console.log("⚠️  assumptions_snapshots table does not exist - skipping seed");
+      console.log("   Run migrations first to create the table");
+      return;
+    }
+
     // Check if we already have UK assumptions for 2026
     const existing = await db
       .select()

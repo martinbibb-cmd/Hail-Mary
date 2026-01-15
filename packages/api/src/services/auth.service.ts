@@ -15,7 +15,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { db } from '../db/drizzle-client';
 import { users, passwordResetTokens, accounts } from '../db/drizzle-schema';
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, sql } from 'drizzle-orm';
 import { sendPasswordResetEmail } from './email.service';
 
 // Types
@@ -212,6 +212,25 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
       accountId = newAccount.id;
     }
 
+    // Determine user role: first user or bootstrap admin gets admin role
+    // 1. Check if this is the first user (users table is empty)
+    const userCount = await db.select({ count: sql<number>`count(*)::int` }).from(users);
+    const isFirstUser = userCount[0]?.count === 0;
+    
+    // 2. Check if this email matches BOOTSTRAP_ADMIN_EMAIL
+    const bootstrapAdminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL?.toLowerCase().trim();
+    const isBootstrapAdmin = bootstrapAdminEmail && normalizedEmail === bootstrapAdminEmail;
+    
+    // Assign admin role if first user or bootstrap admin
+    const role = isFirstUser || isBootstrapAdmin ? 'admin' : 'user';
+
+    if (isFirstUser) {
+      console.log(`✅ First user registration: ${normalizedEmail} assigned admin role`);
+    }
+    if (isBootstrapAdmin) {
+      console.log(`✅ Bootstrap admin registration: ${normalizedEmail} assigned admin role via BOOTSTRAP_ADMIN_EMAIL`);
+    }
+
     // Create user
     const [newUser] = await db
       .insert(users)
@@ -221,7 +240,7 @@ export async function registerUser(dto: RegisterUserDto): Promise<{ user: UserPa
         passwordHash,
         authProvider: 'local',
         accountId,
-        role: 'user',
+        role,
       })
       .returning();
 

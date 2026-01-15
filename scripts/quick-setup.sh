@@ -406,7 +406,7 @@ wait_for_database() {
     local attempt=1
 
     while [[ $attempt -le $max_attempts ]]; do
-        if docker exec hailmary-postgres pg_isready -U postgres -d hailmary &> /dev/null; then
+        if docker exec hailmary-postgres pg_isready -U hailmary -d hailmary &> /dev/null; then
             log_success "Database is ready"
             echo ""
             return 0

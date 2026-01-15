@@ -28,7 +28,7 @@ NC='\033[0m' # No Color
 BACKUP_DIR="${1:-./backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="hailmary_backup_${TIMESTAMP}.sql.gz"
-CONTAINER_NAME="hailmary-postgres"
+CONTAINER_NAME="hailmary-hailmary"
 
 # Auto-detect if running on unRAID
 if [[ -d "/mnt/user/appdata/hailmary" ]]; then
@@ -58,7 +58,7 @@ echo "  Destination: $BACKUP_DIR"
 echo ""
 
 # Create backup
-docker exec "$CONTAINER_NAME" pg_dump -U postgres -d hailmary | gzip > "$BACKUP_DIR/$BACKUP_FILE"
+docker exec "$CONTAINER_NAME" pg_dump -U hailmary -d hailmary | gzip > "$BACKUP_DIR/$BACKUP_FILE"
 
 # Get backup file size
 BACKUP_SIZE=$(du -h "$BACKUP_DIR/$BACKUP_FILE" | cut -f1)

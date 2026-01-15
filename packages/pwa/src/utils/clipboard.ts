@@ -21,6 +21,8 @@ function fallbackCopyExecCommand(text: string): boolean {
     textarea.focus();
     textarea.select();
 
+    // Note: execCommand is deprecated but kept as fallback for iOS Safari
+    // and older browsers that don't support the Clipboard API
     const ok = document.execCommand("copy");
     document.body.removeChild(textarea);
     return ok;

@@ -137,7 +137,7 @@ export const DiagnosticsApp: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [operationSuccess, setOperationSuccess] = useState<'copy-summary' | 'download' | 'copy-full' | null>(null);
   const [showConfigDetails, setShowConfigDetails] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
 
@@ -353,8 +353,8 @@ export const DiagnosticsApp: React.FC = () => {
       const res = await safeCopyToClipboard(text);
 
       if (res.ok) {
-        setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 3000);
+        setOperationSuccess('copy-summary');
+        setTimeout(() => setOperationSuccess(null), 3000);
       } else {
         setError(`Failed to copy summary: ${res.error}`);
         setTimeout(() => setError(null), 3000);
@@ -372,8 +372,8 @@ export const DiagnosticsApp: React.FC = () => {
       const ts = new Date().toISOString().replace(/[:.]/g, "-");
       downloadTextFile(`atlas-diagnostics-${ts}.json`, text, "application/json");
       
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 3000);
+      setOperationSuccess('download');
+      setTimeout(() => setOperationSuccess(null), 3000);
     } catch (e: any) {
       console.error('Failed to download diagnostics:', e);
       setError(e?.message ?? "Failed to download diagnostics.");
@@ -395,8 +395,8 @@ export const DiagnosticsApp: React.FC = () => {
       const text = JSON.stringify(diagnosticBundle, null, 2);
       const res = await safeCopyToClipboard(text);
       if (res.ok) {
-        setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 3000);
+        setOperationSuccess('copy-full');
+        setTimeout(() => setOperationSuccess(null), 3000);
       } else {
         setError(`Failed to copy bundle: ${res.error}`);
         setTimeout(() => setError(null), 3000);
@@ -822,23 +822,23 @@ export const DiagnosticsApp: React.FC = () => {
         <button
           className="btn-secondary"
           onClick={onCopySummary}
-          disabled={copySuccess}
+          disabled={operationSuccess === 'copy-summary'}
         >
-          {copySuccess ? '✅ Success!' : '📋 Copy Summary'}
+          {operationSuccess === 'copy-summary' ? '✅ Copied!' : '📋 Copy Summary'}
         </button>
         <button
           className="btn-secondary"
           onClick={onDownloadDiagnostics}
-          disabled={copySuccess}
+          disabled={operationSuccess === 'download'}
         >
-          {copySuccess ? '✅ Downloaded!' : '💾 Download Full Bundle'}
+          {operationSuccess === 'download' ? '✅ Downloaded!' : '💾 Download Full Bundle'}
         </button>
         <button
           className="btn-secondary"
           onClick={onCopyFullBundle}
-          disabled={copySuccess || bundleSize > CLIPBOARD_MAX_BYTES}
+          disabled={operationSuccess === 'copy-full' || bundleSize > CLIPBOARD_MAX_BYTES}
         >
-          {copySuccess ? '✅ Copied!' : '📋 Copy Full Bundle'}
+          {operationSuccess === 'copy-full' ? '✅ Copied!' : '📋 Copy Full Bundle'}
         </button>
       </div>
     </div>

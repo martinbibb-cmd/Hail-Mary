@@ -202,3 +202,176 @@
 .alert-warning li {
   margin: 4px 0;
 }
+
+/* Update Section */
+.admin-version-info {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-update-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.admin-update-badge.available {
+  background: var(--success-bg, #d4edda);
+  border: 1px solid var(--success-border, #c3e6cb);
+}
+
+.admin-update-badge.current {
+  background: var(--info-bg, #d1ecf1);
+  border: 1px solid var(--info-border, #bee5eb);
+}
+
+.admin-version-details {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.admin-version-service {
+  padding: 0.25rem 0;
+}
+
+.admin-version-service-status.update {
+  color: var(--success);
+}
+
+.admin-version-service-status.error {
+  color: var(--error);
+}
+
+.admin-version-service-status.unknown {
+  color: var(--text-muted);
+}
+
+.admin-version-checked {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.admin-update-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.admin-update-actions button {
+  flex: 1;
+}
+
+/* Update Modal */
+.admin-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.admin-modal {
+  background: var(--surface);
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: auto;
+  width: 90%;
+}
+
+.admin-update-log {
+  background: var(--background);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  max-height: 300px;
+  overflow: auto;
+  font-family: monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+
+.admin-update-status {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.admin-update-status.success {
+  background: var(--success-bg, #d4edda);
+  border: 1px solid var(--success-border, #c3e6cb);
+}
+
+.admin-update-status.error {
+  background: var(--error-bg, #f8d7da);
+  border: 1px solid var(--error-border, #f5c6cb);
+}
+
+.admin-update-status p {
+  margin: 0;
+  font-weight: bold;
+}
+
+.admin-health-info {
+  margin-bottom: 1rem;
+}
+
+.admin-health-info h5 {
+  margin-bottom: 0.5rem;
+}
+
+.admin-health-service {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.25rem;
+}
+
+.admin-health-service.healthy {
+  background: var(--success-bg, #d4edda);
+}
+
+.admin-health-service.unhealthy {
+  background: var(--error-bg, #f8d7da);
+}
+
+.admin-health-service-name {
+  font-weight: bold;
+}
+
+.admin-health-service-state {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.admin-health-checked {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.admin-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.alert-info {
+  background: var(--info-bg, #d1ecf1);
+  border: 1px solid var(--info-border, #bee5eb);
+  color: var(--info-text, #0c5460);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}

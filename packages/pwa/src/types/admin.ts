@@ -39,3 +39,29 @@ export interface AdminSystemStatusResponse {
   data?: AdminSystemStatus;
   error?: string;
 }
+
+export interface AdminVersionService {
+  service: string;
+  updateAvailable?: boolean;
+  currentDigest?: string;
+  latestDigest?: string;
+  error?: string;
+}
+
+export interface AdminVersionResponse {
+  hasUpdates: boolean;
+  services: AdminVersionService[];
+  checkedAt: string;
+}
+
+export interface AdminHealthService {
+  name: string;
+  state: string;
+  healthy: boolean;
+}
+
+export interface AdminHealthResponse {
+  healthy: boolean;
+  services: AdminHealthService[];
+  checkedAt: string;
+}

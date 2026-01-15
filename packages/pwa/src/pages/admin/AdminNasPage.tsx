@@ -11,8 +11,17 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { APP_VERSION } from '../../constants';
 import { AdminApiStatus } from '../../components/AdminApiStatus';
-import type { AdminSystemStatus, AdminSystemStatusResponse } from '../../types/admin';
+import type { 
+  AdminSystemStatus, 
+  AdminSystemStatusResponse,
+  AdminVersionResponse,
+  AdminHealthResponse 
+} from '../../types/admin';
 import './AdminNasPage.css';
+
+// Constants
+const HEALTH_CHECK_DELAY_MS = 2000;
+const REFRESH_DELAY_MS = 1000;
 
 export const AdminNasPage: React.FC = () => {
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
@@ -20,9 +29,23 @@ export const AdminNasPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [migrationResult, setMigrationResult] = useState<{ success: boolean; message: string; output?: string } | null>(null);
   const [runningMigration, setRunningMigration] = useState(false);
+  
+  // Admin agent capability detection
+  const [agentAvailable, setAgentAvailable] = useState<boolean | null>(null);
+  
+  // System update state
+  const [versionInfo, setVersionInfo] = useState<AdminVersionResponse | null>(null);
+  const [checkingVersion, setCheckingVersion] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateLogs, setUpdateLogs] = useState<string[]>([]);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateComplete, setUpdateComplete] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [healthInfo, setHealthInfo] = useState<AdminHealthResponse | null>(null);
 
   useEffect(() => {
     loadSystemStatus();
+    checkAdminAgentAvailability();
   }, []);
 
   const loadSystemStatus = async () => {
@@ -46,6 +69,155 @@ export const AdminNasPage: React.FC = () => {
       console.error('Error getting system status:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkAdminAgentAvailability = async () => {
+    try {
+      const res = await fetch('/api/admin/system/version', {
+        credentials: 'include',
+      });
+      
+      // If we get a 200 response, admin-agent is available
+      if (res.ok) {
+        setAgentAvailable(true);
+        const data: AdminVersionResponse = await res.json();
+        setVersionInfo(data);
+      } else if (res.status === 503 || res.status === 502 || res.status === 404) {
+        // Admin agent not configured or not reachable
+        setAgentAvailable(false);
+      } else {
+        // Other errors (401, 403, etc.) - agent might be available but auth failed
+        setAgentAvailable(false);
+      }
+    } catch (err) {
+      console.error('Failed to check admin agent availability:', err);
+      setAgentAvailable(false);
+    }
+  };
+
+  const checkVersion = async () => {
+    setCheckingVersion(true);
+    try {
+      const res = await fetch('/api/admin/system/version', {
+        credentials: 'include',
+      });
+      
+      if (res.ok) {
+        const data: AdminVersionResponse = await res.json();
+        setVersionInfo(data);
+      } else {
+        console.error('Failed to check version: HTTP', res.status);
+      }
+    } catch (err) {
+      console.error('Failed to check version:', err);
+    } finally {
+      setCheckingVersion(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    setUpdating(true);
+    setUpdateLogs([]);
+    setUpdateComplete(false);
+    setUpdateSuccess(false);
+    setHealthInfo(null);
+    setShowUpdateModal(true);
+
+    try {
+      const eventSource = new EventSource('/api/admin/system/update/stream', {
+        withCredentials: true,
+      });
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'log') {
+            setUpdateLogs(prev => [...prev, data.text]);
+          } else if (data.type === 'error') {
+            setUpdateLogs(prev => [...prev, `❌ ERROR: ${data.message}\n`]);
+          } else if (data.type === 'complete') {
+            setUpdateComplete(true);
+            setUpdateSuccess(data.success);
+            setUpdating(false);
+            eventSource.close();
+
+            // Check health after update
+            if (data.success) {
+              setTimeout(checkHealth, HEALTH_CHECK_DELAY_MS);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to parse SSE data:', err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error('SSE error:', err);
+        setUpdateLogs(prev => [...prev, '❌ Connection error\n']);
+        setUpdateComplete(true);
+        setUpdateSuccess(false);
+        setUpdating(false);
+        eventSource.close();
+      };
+    } catch (err) {
+      console.error('Update error:', err);
+      setUpdateLogs(prev => [...prev, `❌ Failed to start update: ${err}\n`]);
+      setUpdateComplete(true);
+      setUpdateSuccess(false);
+      setUpdating(false);
+    }
+  };
+
+  const checkHealth = async () => {
+    try {
+      const res = await fetch('/api/admin/system/health', {
+        credentials: 'include',
+      });
+      
+      if (res.ok) {
+        const data: AdminHealthResponse = await res.json();
+        setHealthInfo(data);
+      } else {
+        console.error('Failed to check health: HTTP', res.status);
+      }
+    } catch (err) {
+      console.error('Failed to check health:', err);
+    }
+  };
+
+  const closeUpdateModal = () => {
+    setShowUpdateModal(false);
+    // Refresh status and version after closing modal
+    setTimeout(() => {
+      loadSystemStatus();
+      checkVersion();
+    }, REFRESH_DELAY_MS);
+  };
+
+  // Helper function to display service status
+  const getServiceStatusDisplay = (svc: AdminVersionResponse['services'][0]) => {
+    if (svc.updateAvailable && svc.currentDigest && svc.latestDigest) {
+      return (
+        <span className="admin-version-service-status update">
+          {svc.currentDigest} → {svc.latestDigest}
+        </span>
+      );
+    } else if (svc.error) {
+      return (
+        <span className="admin-version-service-status error">
+          {svc.error}
+        </span>
+      );
+    } else if (svc.currentDigest) {
+      return <span>{svc.currentDigest}</span>;
+    } else {
+      return (
+        <span className="admin-version-service-status unknown">
+          Unknown
+        </span>
+      );
     }
   };
 
@@ -210,34 +382,93 @@ export const AdminNasPage: React.FC = () => {
         )}
 
         <div className="actions-section">
-          <div className="alert alert-warning">
-            <strong>Host-first deployment</strong>
-            <div>Updates now run on the NAS itself using the safe update/auto-update scripts. The web UI stays read-only to avoid docker-in-docker failures.</div>
-          </div>
-
-          <h2>Deployment Playbooks</h2>
-          <div className="playbooks-grid">
-            <div className="playbook-card">
-              <h3>⭐ Safe update (Unraid)</h3>
-              <p className="playbook-copy">Run the end-to-end updater that pulls images, runs migrations, restarts services, and performs health checks.</p>
-              <ol className="playbook-steps">
-                <li>Open an Unraid terminal or SSH into your NAS</li>
-                <li>cd /mnt/user/appdata/hailmary</li>
-                <li>bash ./scripts/unraid-safe-update.sh</li>
-              </ol>
-              <p className="playbook-note">Use after pushing new images or when you need a manual refresh.</p>
+          {agentAvailable === null ? (
+            // Still checking agent availability
+            <div className="alert alert-info">
+              <strong>Checking system capabilities...</strong>
             </div>
+          ) : agentAvailable ? (
+            // Admin agent is available - show update UI
+            <>
+              <h2>🚀 System Updates</h2>
+              <p className="playbook-copy">
+                Pull latest Docker images and update all services. Updates are pulled from GHCR.
+              </p>
 
-            <div className="playbook-card">
-              <h3>♻️ Enable scheduled auto-updates</h3>
-              <p className="playbook-copy">Keep the NAS aligned with the roadmap by checking for fresh images on a schedule.</p>
-              <ol className="playbook-steps">
-                <li>cd /mnt/user/appdata/hailmary</li>
-                <li>bash ./scripts/setup-unraid-autoupdate.sh --interval "0 * * * *"</li>
-              </ol>
-              <p className="playbook-note">Installs the cron-backed updater that applies images and migrations hourly.</p>
-            </div>
-          </div>
+              {versionInfo && (
+                <div className="admin-version-info">
+                  {versionInfo.hasUpdates ? (
+                    <div className="admin-update-badge available">
+                      ✨ Update available
+                    </div>
+                  ) : (
+                    <div className="admin-update-badge current">
+                      ✅ Up to date
+                    </div>
+                  )}
+                  <div className="admin-version-details">
+                    {versionInfo.services.map((svc, idx) => (
+                      <div key={idx} className="admin-version-service">
+                        <strong>{svc.service}:</strong> {getServiceStatusDisplay(svc)}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="admin-version-checked">
+                    Checked: {new Date(versionInfo.checkedAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              <div className="admin-update-actions">
+                <button
+                  className="btn-secondary"
+                  onClick={checkVersion}
+                  disabled={checkingVersion}
+                >
+                  {checkingVersion ? '⏳ Checking...' : '🔍 Check for Updates'}
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={handleUpdate}
+                  disabled={updating || !versionInfo}
+                >
+                  {updating ? '⏳ Updating...' : '⬇️ Update System'}
+                </button>
+              </div>
+            </>
+          ) : (
+            // Admin agent not available - show host-first deployment message
+            <>
+              <div className="alert alert-warning">
+                <strong>Host-first deployment</strong>
+                <div>Updates now run on the NAS itself using the safe update/auto-update scripts. The web UI stays read-only to avoid docker-in-docker failures.</div>
+              </div>
+
+              <h2>Deployment Playbooks</h2>
+              <div className="playbooks-grid">
+                <div className="playbook-card">
+                  <h3>⭐ Safe update (Unraid)</h3>
+                  <p className="playbook-copy">Run the end-to-end updater that pulls images, runs migrations, restarts services, and performs health checks.</p>
+                  <ol className="playbook-steps">
+                    <li>Open an Unraid terminal or SSH into your NAS</li>
+                    <li>cd /mnt/user/appdata/hailmary</li>
+                    <li>bash ./scripts/unraid-safe-update.sh</li>
+                  </ol>
+                  <p className="playbook-note">Use after pushing new images or when you need a manual refresh.</p>
+                </div>
+
+                <div className="playbook-card">
+                  <h3>♻️ Enable scheduled auto-updates</h3>
+                  <p className="playbook-copy">Keep the NAS aligned with the roadmap by checking for fresh images on a schedule.</p>
+                  <ol className="playbook-steps">
+                    <li>cd /mnt/user/appdata/hailmary</li>
+                    <li>bash ./scripts/setup-unraid-autoupdate.sh --interval "0 * * * *"</li>
+                  </ol>
+                  <p className="playbook-note">Installs the cron-backed updater that applies images and migrations hourly.</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="actions-section">
@@ -266,6 +497,77 @@ export const AdminNasPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Update Modal */}
+      {showUpdateModal && (
+        <div 
+          className="admin-modal-overlay" 
+          onClick={updateComplete ? closeUpdateModal : undefined}
+        >
+          <div 
+            className="admin-modal" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4>🚀 System Update</h4>
+
+            <div className="admin-update-log">
+              {updateLogs.map((log, idx) => (
+                <div key={idx} className="admin-update-log-line">
+                  {log}
+                </div>
+              ))}
+            </div>
+
+            {updateComplete && (
+              <div 
+                className={`admin-update-status ${updateSuccess ? 'success' : 'error'}`}
+              >
+                <p>
+                  {updateSuccess ? '✅' : '❌'}
+                  {' '}
+                  {updateSuccess
+                    ? 'Update completed successfully'
+                    : 'Update failed - check logs above'}
+                </p>
+              </div>
+            )}
+
+            {healthInfo && (
+              <div className="admin-health-info">
+                <h5>Service Health</h5>
+                <div className="admin-health-services">
+                  {healthInfo.services.map((svc, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`admin-health-service ${svc.healthy ? 'healthy' : 'unhealthy'}`}
+                    >
+                      <span>{svc.healthy ? '✅' : '❌'}</span>
+                      <span className="admin-health-service-name">{svc.name}</span>
+                      <span className="admin-health-service-state">
+                        {svc.state}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="admin-health-checked">
+                  Checked: {new Date(healthInfo.checkedAt).toLocaleString()}
+                </p>
+              </div>
+            )}
+
+            {updateComplete && (
+              <div className="admin-modal-actions">
+                <button 
+                  className="btn-primary" 
+                  onClick={closeUpdateModal}
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

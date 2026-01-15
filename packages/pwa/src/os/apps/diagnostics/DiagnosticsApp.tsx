@@ -141,6 +141,20 @@ export const DiagnosticsApp: React.FC = () => {
   const [showConfigDetails, setShowConfigDetails] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
 
+  // Memoize the diagnostic bundle to avoid duplicate computation
+  const diagnosticBundle = React.useMemo(() => ({
+    timestamp: new Date().toISOString(),
+    health,
+    schema,
+    stats,
+    configProvenance: health?.config || null,
+  }), [health, schema, stats]);
+
+  // Memoize the bundle size check
+  const bundleSize = React.useMemo(() => {
+    return bytesOf(JSON.stringify(diagnosticBundle, null, 2));
+  }, [diagnosticBundle]);
+
   useEffect(() => {
     loadDiagnostics();
   }, []);
@@ -354,15 +368,7 @@ export const DiagnosticsApp: React.FC = () => {
 
   const onDownloadDiagnostics = () => {
     try {
-      const bundle = {
-        timestamp: new Date().toISOString(),
-        health,
-        schema,
-        stats,
-        configProvenance: health?.config || null,
-      };
-
-      const text = JSON.stringify(bundle, null, 2);
+      const text = JSON.stringify(diagnosticBundle, null, 2);
       const ts = new Date().toISOString().replace(/[:.]/g, "-");
       downloadTextFile(`atlas-diagnostics-${ts}.json`, text, "application/json");
       
@@ -377,26 +383,16 @@ export const DiagnosticsApp: React.FC = () => {
 
   const onCopyFullBundle = async () => {
     try {
-      const bundle = {
-        timestamp: new Date().toISOString(),
-        health,
-        schema,
-        stats,
-        configProvenance: health?.config || null,
-      };
-
-      const text = JSON.stringify(bundle, null, 2);
-      const size = bytesOf(text);
-
-      if (size > CLIPBOARD_MAX_BYTES) {
+      if (bundleSize > CLIPBOARD_MAX_BYTES) {
         // Too big → guide to download instead
         setError(
-          `Bundle is ${formatBytes(size)}. Too large to copy reliably on mobile. Use Download instead.`
+          `Bundle is ${formatBytes(bundleSize)}. Too large to copy reliably on mobile. Use Download instead.`
         );
         setTimeout(() => setError(null), 5000);
         return;
       }
 
+      const text = JSON.stringify(diagnosticBundle, null, 2);
       const res = await safeCopyToClipboard(text);
       if (res.ok) {
         setCopySuccess(true);
@@ -840,22 +836,7 @@ export const DiagnosticsApp: React.FC = () => {
         <button
           className="btn-secondary"
           onClick={onCopyFullBundle}
-          disabled={
-            copySuccess ||
-            bytesOf(
-              JSON.stringify(
-                {
-                  timestamp: new Date().toISOString(),
-                  health,
-                  schema,
-                  stats,
-                  configProvenance: health?.config || null,
-                },
-                null,
-                2
-              )
-            ) > CLIPBOARD_MAX_BYTES
-          }
+          disabled={copySuccess || bundleSize > CLIPBOARD_MAX_BYTES}
         >
           {copySuccess ? '✅ Copied!' : '📋 Copy Full Bundle'}
         </button>

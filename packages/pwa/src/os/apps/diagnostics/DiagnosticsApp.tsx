@@ -12,6 +12,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../../services/apiClient';
+import { safeCopyToClipboard } from '../../../utils/clipboard';
+import { downloadTextFile, bytesOf, formatBytes } from '../../../utils/download';
 import './DiagnosticsApp.css';
 
 interface ConfigProvenance {
@@ -124,6 +126,9 @@ interface StatsData {
     recentVisits: Array<{ id: number; propertyId: number; createdAt: string }>;
   };
 }
+
+// Choose a conservative clipboard threshold; iOS can choke on big strings
+const CLIPBOARD_MAX_BYTES = 120_000;
 
 export const DiagnosticsApp: React.FC = () => {
   const [health, setHealth] = useState<HealthData | null>(null);
@@ -314,24 +319,97 @@ export const DiagnosticsApp: React.FC = () => {
     }
   };
 
-  const copyDiagnosticBundle = () => {
-    const bundle = {
-      timestamp: new Date().toISOString(),
-      health,
-      schema,
-      stats,
-      configProvenance: health?.config || null,
-    };
+  const onCopySummary = async () => {
+    try {
+      // Keep it small + human-readable
+      const summary = {
+        app: "Atlas",
+        time: new Date().toISOString(),
+        apiOk: health?.apiOk,
+        dbOk: health?.dbOk,
+        buildSha: health?.buildSha ?? "unknown",
+        nodeVersion: health?.nodeVersion,
+        environment: health?.environment,
+        schemaAligned: health?.schemaAligned,
+        assistantReachable: health?.assistantReachable,
+        warnings: warnings.length > 0 ? warnings : [],
+      };
 
-    navigator.clipboard.writeText(JSON.stringify(bundle, null, 2)).then(() => {
+      const text = JSON.stringify(summary, null, 2);
+      const res = await safeCopyToClipboard(text);
+
+      if (res.ok) {
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 3000);
+      } else {
+        setError(`Failed to copy summary: ${res.error}`);
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (e: any) {
+      console.error('Failed to copy summary:', e);
+      setError(e?.message ?? "Failed to copy summary.");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const onDownloadDiagnostics = () => {
+    try {
+      const bundle = {
+        timestamp: new Date().toISOString(),
+        health,
+        schema,
+        stats,
+        configProvenance: health?.config || null,
+      };
+
+      const text = JSON.stringify(bundle, null, 2);
+      const ts = new Date().toISOString().replace(/[:.]/g, "-");
+      downloadTextFile(`atlas-diagnostics-${ts}.json`, text, "application/json");
+      
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 3000);
-    }).catch((err) => {
-      console.error('Failed to copy:', err);
-      // Show inline error instead of alert
-      setError('Failed to copy diagnostic bundle to clipboard');
+    } catch (e: any) {
+      console.error('Failed to download diagnostics:', e);
+      setError(e?.message ?? "Failed to download diagnostics.");
       setTimeout(() => setError(null), 3000);
-    });
+    }
+  };
+
+  const onCopyFullBundle = async () => {
+    try {
+      const bundle = {
+        timestamp: new Date().toISOString(),
+        health,
+        schema,
+        stats,
+        configProvenance: health?.config || null,
+      };
+
+      const text = JSON.stringify(bundle, null, 2);
+      const size = bytesOf(text);
+
+      if (size > CLIPBOARD_MAX_BYTES) {
+        // Too big → guide to download instead
+        setError(
+          `Bundle is ${formatBytes(size)}. Too large to copy reliably on mobile. Use Download instead.`
+        );
+        setTimeout(() => setError(null), 5000);
+        return;
+      }
+
+      const res = await safeCopyToClipboard(text);
+      if (res.ok) {
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 3000);
+      } else {
+        setError(`Failed to copy bundle: ${res.error}`);
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (e: any) {
+      console.error('Failed to copy diagnostics:', e);
+      setError(e?.message ?? "Failed to copy diagnostics.");
+      setTimeout(() => setError(null), 3000);
+    }
   };
 
   if (loading) {
@@ -747,10 +825,39 @@ export const DiagnosticsApp: React.FC = () => {
         </button>
         <button
           className="btn-secondary"
-          onClick={copyDiagnosticBundle}
+          onClick={onCopySummary}
           disabled={copySuccess}
         >
-          {copySuccess ? '✅ Copied!' : '📋 Copy Diagnostic Bundle'}
+          {copySuccess ? '✅ Success!' : '📋 Copy Summary'}
+        </button>
+        <button
+          className="btn-secondary"
+          onClick={onDownloadDiagnostics}
+          disabled={copySuccess}
+        >
+          {copySuccess ? '✅ Downloaded!' : '💾 Download Full Bundle'}
+        </button>
+        <button
+          className="btn-secondary"
+          onClick={onCopyFullBundle}
+          disabled={
+            copySuccess ||
+            bytesOf(
+              JSON.stringify(
+                {
+                  timestamp: new Date().toISOString(),
+                  health,
+                  schema,
+                  stats,
+                  configProvenance: health?.config || null,
+                },
+                null,
+                2
+              )
+            ) > CLIPBOARD_MAX_BYTES
+          }
+        >
+          {copySuccess ? '✅ Copied!' : '📋 Copy Full Bundle'}
         </button>
       </div>
     </div>

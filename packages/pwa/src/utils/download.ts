@@ -6,15 +6,17 @@ export function downloadTextFile(
 ) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  URL.revokeObjectURL(url);
+  
+  try {
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+  } finally {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function bytesOf(text: string): number {
@@ -25,4 +27,8 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatTimestampForFilename(date: Date = new Date()): string {
+  return date.toISOString().replace(/[:.]/g, "-");
 }

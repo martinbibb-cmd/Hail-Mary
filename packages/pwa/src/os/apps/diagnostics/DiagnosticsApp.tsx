@@ -13,7 +13,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../../services/apiClient';
 import { safeCopyToClipboard } from '../../../utils/clipboard';
-import { downloadTextFile, bytesOf, formatBytes } from '../../../utils/download';
+import { downloadTextFile, bytesOf, formatBytes, formatTimestampForFilename } from '../../../utils/download';
 import './DiagnosticsApp.css';
 
 interface ConfigProvenance {
@@ -141,19 +141,26 @@ export const DiagnosticsApp: React.FC = () => {
   const [showConfigDetails, setShowConfigDetails] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Memoize the diagnostic bundle to avoid duplicate computation
-  const diagnosticBundle = React.useMemo(() => ({
+  // Helper to create diagnostic bundle with fresh timestamp
+  const createDiagnosticBundle = () => ({
     timestamp: new Date().toISOString(),
     health,
     schema,
     stats,
     configProvenance: health?.config || null,
-  }), [health, schema, stats]);
+  });
 
-  // Memoize the bundle size check
+  // Memoize the bundle size check (using a static timestamp for size calculation)
   const bundleSize = React.useMemo(() => {
-    return bytesOf(JSON.stringify(diagnosticBundle, null, 2));
-  }, [diagnosticBundle]);
+    const sampleBundle = {
+      timestamp: new Date().toISOString(),
+      health,
+      schema,
+      stats,
+      configProvenance: health?.config || null,
+    };
+    return bytesOf(JSON.stringify(sampleBundle, null, 2));
+  }, [health, schema, stats]);
 
   useEffect(() => {
     loadDiagnostics();
@@ -368,9 +375,10 @@ export const DiagnosticsApp: React.FC = () => {
 
   const onDownloadDiagnostics = () => {
     try {
-      const text = JSON.stringify(diagnosticBundle, null, 2);
-      const ts = new Date().toISOString().replace(/[:.]/g, "-");
-      downloadTextFile(`atlas-diagnostics-${ts}.json`, text, "application/json");
+      const bundle = createDiagnosticBundle();
+      const text = JSON.stringify(bundle, null, 2);
+      const filename = `atlas-diagnostics-${formatTimestampForFilename()}.json`;
+      downloadTextFile(filename, text, "application/json");
       
       setOperationSuccess('download');
       setTimeout(() => setOperationSuccess(null), 3000);
@@ -392,7 +400,8 @@ export const DiagnosticsApp: React.FC = () => {
         return;
       }
 
-      const text = JSON.stringify(diagnosticBundle, null, 2);
+      const bundle = createDiagnosticBundle();
+      const text = JSON.stringify(bundle, null, 2);
       const res = await safeCopyToClipboard(text);
       if (res.ok) {
         setOperationSuccess('copy-full');

@@ -12,6 +12,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../../services/apiClient';
+import { safeCopyToClipboard } from '../../../utils/clipboard';
+import { downloadTextFile, bytesOf, formatBytes, formatTimestampForFilename } from '../../../utils/download';
 import './DiagnosticsApp.css';
 
 interface ConfigProvenance {
@@ -125,6 +127,12 @@ interface StatsData {
   };
 }
 
+// Choose a conservative clipboard threshold; iOS can choke on big strings
+const CLIPBOARD_MAX_BYTES = 120_000;
+
+// Operation types for success state tracking
+type DiagnosticOperation = 'copy-summary' | 'download' | 'copy-full';
+
 export const DiagnosticsApp: React.FC = () => {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [schema, setSchema] = useState<SchemaData | null>(null);
@@ -132,9 +140,32 @@ export const DiagnosticsApp: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [operationSuccess, setOperationSuccess] = useState<DiagnosticOperation | null>(null);
   const [showConfigDetails, setShowConfigDetails] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
+
+  // Helper to create diagnostic bundle with fresh timestamp
+  const createDiagnosticBundle = () => ({
+    timestamp: new Date().toISOString(),
+    health,
+    schema,
+    stats,
+    configProvenance: health?.config || null,
+  });
+
+  // Memoize the bundle size check (timestamp doesn't affect size significantly)
+  // Note: Recalculates when health/schema/stats change, which is intentional
+  // as the actual bundle size changes when diagnostic data changes
+  const bundleSize = React.useMemo(() => {
+    const sampleBundle = {
+      timestamp: "2024-01-01T00:00:00.000Z", // Static timestamp for size calculation
+      health,
+      schema,
+      stats,
+      configProvenance: health?.config || null,
+    };
+    return bytesOf(JSON.stringify(sampleBundle, null, 2));
+  }, [health, schema, stats]);
 
   useEffect(() => {
     loadDiagnostics();
@@ -314,24 +345,81 @@ export const DiagnosticsApp: React.FC = () => {
     }
   };
 
-  const copyDiagnosticBundle = () => {
-    const bundle = {
-      timestamp: new Date().toISOString(),
-      health,
-      schema,
-      stats,
-      configProvenance: health?.config || null,
-    };
+  const onCopySummary = async () => {
+    try {
+      // Keep it small + human-readable
+      const summary = {
+        app: "Atlas",
+        time: new Date().toISOString(),
+        apiOk: health?.apiOk,
+        dbOk: health?.dbOk,
+        buildSha: health?.buildSha ?? "unknown",
+        nodeVersion: health?.nodeVersion,
+        environment: health?.environment,
+        schemaAligned: health?.schemaAligned,
+        assistantReachable: health?.assistantReachable,
+        warnings: warnings.length > 0 ? warnings : [],
+      };
 
-    navigator.clipboard.writeText(JSON.stringify(bundle, null, 2)).then(() => {
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 3000);
-    }).catch((err) => {
-      console.error('Failed to copy:', err);
-      // Show inline error instead of alert
-      setError('Failed to copy diagnostic bundle to clipboard');
+      const text = JSON.stringify(summary, null, 2);
+      const res = await safeCopyToClipboard(text);
+
+      if (res.ok) {
+        setOperationSuccess('copy-summary');
+        setTimeout(() => setOperationSuccess(null), 3000);
+      } else {
+        setError(`Failed to copy summary: ${res.error}`);
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (e: any) {
+      console.error('Failed to copy summary:', e);
+      setError(e?.message ?? "Failed to copy summary.");
       setTimeout(() => setError(null), 3000);
-    });
+    }
+  };
+
+  const onDownloadDiagnostics = () => {
+    try {
+      const bundle = createDiagnosticBundle();
+      const text = JSON.stringify(bundle, null, 2);
+      const filename = `atlas-diagnostics-${formatTimestampForFilename()}.json`;
+      downloadTextFile(filename, text, "application/json");
+      
+      setOperationSuccess('download');
+      setTimeout(() => setOperationSuccess(null), 3000);
+    } catch (e: any) {
+      console.error('Failed to download diagnostics:', e);
+      setError(e?.message ?? "Failed to download diagnostics.");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const onCopyFullBundle = async () => {
+    try {
+      if (bundleSize > CLIPBOARD_MAX_BYTES) {
+        // Too big → guide to download instead
+        setError(
+          `Bundle is ${formatBytes(bundleSize)}. Too large to copy reliably. Use Download instead.`
+        );
+        setTimeout(() => setError(null), 5000);
+        return;
+      }
+
+      const bundle = createDiagnosticBundle();
+      const text = JSON.stringify(bundle, null, 2);
+      const res = await safeCopyToClipboard(text);
+      if (res.ok) {
+        setOperationSuccess('copy-full');
+        setTimeout(() => setOperationSuccess(null), 3000);
+      } else {
+        setError(`Failed to copy bundle: ${res.error}`);
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (e: any) {
+      console.error('Failed to copy diagnostics:', e);
+      setError(e?.message ?? "Failed to copy diagnostics.");
+      setTimeout(() => setError(null), 3000);
+    }
   };
 
   if (loading) {
@@ -747,10 +835,24 @@ export const DiagnosticsApp: React.FC = () => {
         </button>
         <button
           className="btn-secondary"
-          onClick={copyDiagnosticBundle}
-          disabled={copySuccess}
+          onClick={onCopySummary}
+          disabled={operationSuccess === 'copy-summary'}
         >
-          {copySuccess ? '✅ Copied!' : '📋 Copy Diagnostic Bundle'}
+          {operationSuccess === 'copy-summary' ? '✅ Copied!' : '📋 Copy Summary'}
+        </button>
+        <button
+          className="btn-secondary"
+          onClick={onDownloadDiagnostics}
+          disabled={operationSuccess === 'download'}
+        >
+          {operationSuccess === 'download' ? '✅ Downloaded!' : '💾 Download Full Bundle'}
+        </button>
+        <button
+          className="btn-secondary"
+          onClick={onCopyFullBundle}
+          disabled={operationSuccess === 'copy-full' || bundleSize > CLIPBOARD_MAX_BYTES}
+        >
+          {operationSuccess === 'copy-full' ? '✅ Copied!' : '📋 Copy Full Bundle'}
         </button>
       </div>
     </div>

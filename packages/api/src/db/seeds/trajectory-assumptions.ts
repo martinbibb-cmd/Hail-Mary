@@ -15,6 +15,9 @@ import { eq, sql } from "drizzle-orm";
  */
 async function tableExists(): Promise<boolean> {
   try {
+    // Query information_schema to check table existence
+    // Using 'public' schema as it's the default PostgreSQL schema
+    // and matches the standard deployment configuration
     const result = await db.execute(sql`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 

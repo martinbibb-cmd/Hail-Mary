@@ -130,6 +130,9 @@ interface StatsData {
 // Choose a conservative clipboard threshold; iOS can choke on big strings
 const CLIPBOARD_MAX_BYTES = 120_000;
 
+// Operation types for success state tracking
+type DiagnosticOperation = 'copy-summary' | 'download' | 'copy-full';
+
 export const DiagnosticsApp: React.FC = () => {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [schema, setSchema] = useState<SchemaData | null>(null);
@@ -137,7 +140,7 @@ export const DiagnosticsApp: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [operationSuccess, setOperationSuccess] = useState<'copy-summary' | 'download' | 'copy-full' | null>(null);
+  const [operationSuccess, setOperationSuccess] = useState<DiagnosticOperation | null>(null);
   const [showConfigDetails, setShowConfigDetails] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
 

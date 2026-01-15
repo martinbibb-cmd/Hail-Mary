@@ -41,7 +41,7 @@ function isClipboardApiAvailable(): boolean {
     !!navigator.clipboard &&
     typeof navigator.clipboard.writeText === "function" &&
     typeof window !== "undefined" &&
-    (window.isSecureContext ?? false)
+    window.isSecureContext
   );
 }
 

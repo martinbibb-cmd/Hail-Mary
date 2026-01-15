@@ -150,10 +150,10 @@ export const DiagnosticsApp: React.FC = () => {
     configProvenance: health?.config || null,
   });
 
-  // Memoize the bundle size check (using a static timestamp for size calculation)
+  // Memoize the bundle size check (timestamp doesn't affect size significantly)
   const bundleSize = React.useMemo(() => {
     const sampleBundle = {
-      timestamp: new Date().toISOString(),
+      timestamp: "2024-01-01T00:00:00.000Z", // Static timestamp for size calculation
       health,
       schema,
       stats,

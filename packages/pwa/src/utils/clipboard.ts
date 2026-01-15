@@ -4,8 +4,9 @@ export type CopyResult =
   | { ok: false; error: string };
 
 function fallbackCopyExecCommand(text: string): boolean {
+  const textarea = document.createElement("textarea");
+  
   try {
-    const textarea = document.createElement("textarea");
     textarea.value = text;
 
     // Prevent iOS zoom + keep it off-screen
@@ -23,11 +24,14 @@ function fallbackCopyExecCommand(text: string): boolean {
 
     // Note: execCommand is deprecated but kept as fallback for iOS Safari
     // and older browsers that don't support the Clipboard API
-    const ok = document.execCommand("copy");
-    document.body.removeChild(textarea);
-    return ok;
+    return document.execCommand("copy");
   } catch {
     return false;
+  } finally {
+    // Always clean up the DOM element
+    if (textarea.parentNode) {
+      document.body.removeChild(textarea);
+    }
   }
 }
 

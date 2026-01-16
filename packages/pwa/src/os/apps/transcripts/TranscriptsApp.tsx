@@ -20,8 +20,11 @@ export const TranscriptsApp: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'paste' | 'upload'>('paste');
-  const [uploading, setUploading] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedTranscript, setSelectedTranscript] = useState<Transcript | null>(null);
+  const [activeTab, setActiveTab] = useState<'paste' | 'upload' | 'audio'>('paste');
+  const [processingState, setProcessingState] = useState<'idle' | 'uploading' | 'transcribing' | 'saving'>('idle');
+  const [transcriptionProgress, setTranscriptionProgress] = useState<string>('');
 
   // Form state
   const [postcode, setPostcode] = useState('');
@@ -29,8 +32,10 @@ export const TranscriptsApp: React.FC = () => {
   const [text, setText] = useState('');
   const [notes, setNotes] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchTranscripts();
@@ -72,24 +77,30 @@ export const TranscriptsApp: React.FC = () => {
     setText('');
     setNotes('');
     setSelectedFile(null);
+    setSelectedAudioFile(null);
     setActiveTab('paste');
+    setTranscriptionProgress('');
+    setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+    if (audioInputRef.current) {
+      audioInputRef.current.value = '';
     }
   };
 
   const handlePasteSubmit = async () => {
     if (!postcode.trim()) {
-      alert('Postcode is required');
+      setError('Postcode is required');
       return;
     }
 
     if (!text.trim()) {
-      alert('Transcript text is required');
+      setError('Transcript text is required');
       return;
     }
 
-    setUploading(true);
+    setProcessingState('saving');
     setError(null);
 
     try {
@@ -119,22 +130,22 @@ export const TranscriptsApp: React.FC = () => {
       console.error('Error creating transcript:', err);
       setError('Failed to create transcript');
     } finally {
-      setUploading(false);
+      setProcessingState('idle');
     }
   };
 
   const handleFileUpload = async () => {
     if (!postcode.trim()) {
-      alert('Postcode is required');
+      setError('Postcode is required');
       return;
     }
 
     if (!selectedFile) {
-      alert('Please select a file to upload');
+      setError('Please select a file to upload');
       return;
     }
 
-    setUploading(true);
+    setProcessingState('uploading');
     setError(null);
 
     try {
@@ -165,7 +176,7 @@ export const TranscriptsApp: React.FC = () => {
       console.error('Error uploading transcript:', err);
       setError('Failed to upload transcript');
     } finally {
-      setUploading(false);
+      setProcessingState('idle');
     }
   };
 
@@ -173,6 +184,86 @@ export const TranscriptsApp: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+    }
+  };
+
+  const handleAudioFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedAudioFile(file);
+    }
+  };
+
+  const handleAudioUpload = async () => {
+    if (!postcode.trim()) {
+      setError('Postcode is required');
+      return;
+    }
+
+    if (!selectedAudioFile) {
+      setError('Please select an audio file to upload');
+      return;
+    }
+
+    setProcessingState('uploading');
+    setError(null);
+    setTranscriptionProgress('Uploading audio file...');
+
+    try {
+      // Step 1: Transcribe audio using Whisper
+      const formData = new FormData();
+      formData.append('audio', selectedAudioFile);
+      formData.append('language', 'en-GB');
+
+      setProcessingState('transcribing');
+      setTranscriptionProgress('Transcribing audio with AI...');
+      const transcribeResponse = await fetch('/api/transcription/whisper-transcribe', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const transcribeData = await transcribeResponse.json();
+      if (!transcribeData.success || !transcribeData.data?.text) {
+        throw new Error(transcribeData.error || 'Failed to transcribe audio');
+      }
+
+      const transcribedText = transcribeData.data.text;
+      
+      setProcessingState('saving');
+      setTranscriptionProgress('Transcription complete! Saving...');
+
+      // Step 2: Save the transcript
+      const response = await fetch('/api/transcripts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postcode: postcode.trim(),
+          title: title.trim() || `Audio transcription - ${selectedAudioFile.name}`,
+          text: transcribedText,
+          source: 'audio',
+          notes: notes.trim() || `Transcribed from: ${selectedAudioFile.name}`,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setTranscriptionProgress('Saved successfully!');
+        await fetchTranscripts();
+        handleCloseModal();
+      } else {
+        setError(data.error || 'Failed to save transcript');
+        setTranscriptionProgress('');
+      }
+    } catch (err) {
+      console.error('Error processing audio:', err);
+      setError(err instanceof Error ? err.message : 'Failed to process audio');
+      setTranscriptionProgress('');
+    } finally {
+      setProcessingState('idle');
     }
   };
 
@@ -187,6 +278,33 @@ export const TranscriptsApp: React.FC = () => {
 
     const statusInfo = statusMap[status] || { label: status, className: 'status-default' };
     return <span className={`status-badge ${statusInfo.className}`}>{statusInfo.label}</span>;
+  };
+
+  const handleViewTranscript = (transcript: Transcript) => {
+    setSelectedTranscript(transcript);
+    setShowDetailModal(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedTranscript(null);
+  };
+
+  const handleDownloadTranscript = (transcript: Transcript) => {
+    if (!transcript.rawText) {
+      console.warn('Cannot download transcript: no text available');
+      return;
+    }
+
+    const blob = new Blob([transcript.rawText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${transcript.title || `transcript-${transcript.id}`}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -246,6 +364,21 @@ export const TranscriptsApp: React.FC = () => {
               {transcript.error && (
                 <div className="transcript-error">Error: {transcript.error}</div>
               )}
+              <div className="transcript-actions">
+                <button
+                  className="btn-secondary btn-small"
+                  onClick={() => handleViewTranscript(transcript)}
+                >
+                  View Full Text
+                </button>
+                <button
+                  className="btn-secondary btn-small"
+                  onClick={() => handleDownloadTranscript(transcript)}
+                  disabled={!transcript.rawText}
+                >
+                  Download
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -274,6 +407,12 @@ export const TranscriptsApp: React.FC = () => {
               >
                 Upload File
               </button>
+              <button
+                className={`tab ${activeTab === 'audio' ? 'active' : ''}`}
+                onClick={() => setActiveTab('audio')}
+              >
+                Audio File
+              </button>
             </div>
 
             <div className="modal-body">
@@ -294,7 +433,7 @@ export const TranscriptsApp: React.FC = () => {
                   value={postcode}
                   onChange={(e) => setPostcode(e.target.value.toUpperCase())}
                   placeholder="e.g. SW1A 1AA"
-                  disabled={uploading}
+                  disabled={processingState !== 'idle'}
                 />
               </div>
 
@@ -306,7 +445,7 @@ export const TranscriptsApp: React.FC = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Auto-generated if left empty"
-                  disabled={uploading}
+                  disabled={processingState !== 'idle'}
                 />
               </div>
 
@@ -321,7 +460,7 @@ export const TranscriptsApp: React.FC = () => {
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Paste or type your transcript here..."
                     rows={12}
-                    disabled={uploading}
+                    disabled={processingState !== 'idle'}
                   />
                 </div>
               )}
@@ -337,11 +476,39 @@ export const TranscriptsApp: React.FC = () => {
                     type="file"
                     accept=".txt,.md,.json"
                     onChange={handleFileSelect}
-                    disabled={uploading}
+                    disabled={processingState !== 'idle'}
                   />
                   {selectedFile && (
                     <div className="file-selected">Selected: {selectedFile.name}</div>
                   )}
+                </div>
+              )}
+
+              {activeTab === 'audio' && (
+                <div className="form-group">
+                  <label htmlFor="audioFile">
+                    Audio File (.mp3, .wav, .m4a, .webm, .ogg) <span className="required">*</span>
+                  </label>
+                  <input
+                    ref={audioInputRef}
+                    id="audioFile"
+                    type="file"
+                    accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg"
+                    onChange={handleAudioFileSelect}
+                    disabled={processingState !== 'idle'}
+                  />
+                  {selectedAudioFile && (
+                    <div className="file-selected">Selected: {selectedAudioFile.name}</div>
+                  )}
+                  {processingState !== 'idle' && transcriptionProgress && (
+                    <div className="transcription-progress">
+                      <div className="progress-spinner"></div>
+                      <span>{transcriptionProgress}</span>
+                    </div>
+                  )}
+                  <div className="audio-help-text">
+                    Audio will be automatically transcribed using AI before being saved.
+                  </div>
                 </div>
               )}
 
@@ -353,25 +520,100 @@ export const TranscriptsApp: React.FC = () => {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Additional notes..."
                   rows={3}
-                  disabled={uploading}
+                  disabled={processingState !== 'idle'}
                 />
               </div>
             </div>
 
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={handleCloseModal} disabled={uploading}>
+              <button className="btn-secondary" onClick={handleCloseModal} disabled={processingState !== 'idle'}>
                 Cancel
               </button>
               {activeTab === 'paste' && (
-                <button className="btn-primary" onClick={handlePasteSubmit} disabled={uploading}>
-                  {uploading ? 'Saving...' : 'Save Transcript'}
+                <button className="btn-primary" onClick={handlePasteSubmit} disabled={processingState !== 'idle'}>
+                  {processingState === 'saving' ? 'Saving...' : 'Save Transcript'}
                 </button>
               )}
               {activeTab === 'upload' && (
-                <button className="btn-primary" onClick={handleFileUpload} disabled={uploading}>
-                  {uploading ? 'Uploading...' : 'Upload Transcript'}
+                <button className="btn-primary" onClick={handleFileUpload} disabled={processingState !== 'idle'}>
+                  {processingState === 'uploading' ? 'Uploading...' : 'Upload Transcript'}
                 </button>
               )}
+              {activeTab === 'audio' && (
+                <button className="btn-primary" onClick={handleAudioUpload} disabled={processingState !== 'idle'}>
+                  {processingState === 'transcribing' ? 'Transcribing...' : processingState === 'saving' ? 'Saving...' : 'Transcribe & Save'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDetailModal && selectedTranscript && (
+        <div className="modal-overlay" onClick={handleCloseDetailModal}>
+          <div className="modal-content modal-detail" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{selectedTranscript.title || `Transcript #${selectedTranscript.id}`}</h3>
+              <button className="modal-close" onClick={handleCloseDetailModal}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="detail-meta">
+                <div className="meta-item">
+                  <span className="meta-label">Status:</span>
+                  <span className="meta-value">{getStatusBadge(selectedTranscript.status)}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Postcode:</span>
+                  <span className="meta-value">{selectedTranscript.postcode || 'N/A'}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Source:</span>
+                  <span className="meta-value">{selectedTranscript.source || 'unknown'}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Created:</span>
+                  <span className="meta-value">
+                    {new Date(selectedTranscript.createdAt).toLocaleString('en-GB')}
+                  </span>
+                </div>
+              </div>
+
+              {selectedTranscript.notes && (
+                <div className="detail-section">
+                  <h4>Notes</h4>
+                  <p>{selectedTranscript.notes}</p>
+                </div>
+              )}
+
+              <div className="detail-section">
+                <h4>Full Transcript</h4>
+                <div className="transcript-full-text">
+                  {selectedTranscript.rawText || 'No transcript text available'}
+                </div>
+              </div>
+
+              {selectedTranscript.error && (
+                <div className="detail-section">
+                  <h4>Error</h4>
+                  <div className="transcript-error">{selectedTranscript.error}</div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={() => handleDownloadTranscript(selectedTranscript)}
+                disabled={!selectedTranscript.rawText}
+              >
+                Download
+              </button>
+              <button className="btn-primary" onClick={handleCloseDetailModal}>
+                Close
+              </button>
             </div>
           </div>
         </div>

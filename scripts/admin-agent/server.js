@@ -5,6 +5,16 @@ const PORT = 4010;
 const ADMIN_TOKEN = process.env.ADMIN_AGENT_TOKEN;
 const COMPOSE_FILE = '/workspace/docker-compose.yml';
 
+// Services with pullable images (GHCR or public registries)
+// Excludes local-only builds like hailmary-admin-agent
+const PULLABLE_SERVICES = [
+  'hailmary-api',
+  'hailmary-assistant',
+  'hailmary-pwa',
+  'hailmary-migrator',
+  'hailmary-postgres'
+];
+
 if (!ADMIN_TOKEN) {
   console.error('ADMIN_AGENT_TOKEN is required');
   process.exit(1);
@@ -87,9 +97,22 @@ async function handleUpdateStream(req, res) {
   try {
     sendSSE(res, { type: 'log', text: '==> Starting update process\n' });
 
-    // Step 1: Pull latest images
-    sendSSE(res, { type: 'log', text: '==> Pulling latest images\n' });
-    await executeCommand('docker', ['compose', '-f', COMPOSE_FILE, 'pull'], res);
+    // Step 1: Pull latest images (only GHCR services, excluding local builds)
+    // Services to pull:
+    // - hailmary-api (GHCR)
+    // - hailmary-assistant (GHCR)
+    // - hailmary-pwa (GHCR)
+    // - hailmary-migrator (GHCR, reuses hail-mary-api image)
+    // - postgres (public registry)
+    // Excluded: hailmary-admin-agent (local build)
+    sendSSE(res, { type: 'log', text: '==> Pulling latest images from registries\n' });
+    await executeCommand('docker', [
+      'compose',
+      '-f',
+      COMPOSE_FILE,
+      'pull',
+      ...PULLABLE_SERVICES
+    ], res);
 
     sendSSE(res, { type: 'log', text: '\n==> Updating services\n' });
 
@@ -298,6 +321,9 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (req.method === 'GET' && url.pathname === '/update/stream') {
+    handleUpdateStream(req, res);
+  } else if (req.method === 'GET' && url.pathname === '/update') {
+    // Alias: /update -> /update/stream for compatibility
     handleUpdateStream(req, res);
   } else if (req.method === 'GET' && url.pathname === '/version') {
     handleVersion(req, res);

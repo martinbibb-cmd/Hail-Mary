@@ -5,6 +5,7 @@
  * - GET /api/admin/system/status - Get system status (DB, migrations, config)
  * - POST /api/admin/system/migrate - Run database migrations
  * - GET /api/admin/system/update/stream - Stream system update logs via SSE
+ * - GET /api/admin/system/update - Alias for /update/stream
  * - GET /api/admin/system/version - Check for available updates
  * - GET /api/admin/system/health - Check service health after update
  */
@@ -296,6 +297,19 @@ async function proxyToAdminAgent(
 router.get('/update/stream', async (_req: Request, res: Response) => {
   try {
     await proxyToAdminAgent('/update/stream', res, true);
+  } catch (error) {
+    console.error('Error proxying update stream:', error);
+    // Error already sent by proxy function
+  }
+});
+
+/**
+ * GET /api/admin/system/update
+ * Alias for /update/stream - Proxy SSE stream from admin agent for system updates
+ */
+router.get('/update', async (_req: Request, res: Response) => {
+  try {
+    await proxyToAdminAgent('/update', res, true);
   } catch (error) {
     console.error('Error proxying update stream:', error);
     // Error already sent by proxy function

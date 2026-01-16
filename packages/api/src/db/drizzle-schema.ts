@@ -1860,7 +1860,7 @@ export const mainsTestSteps = pgTable("mains_test_steps", {
 export const mainsTestObservations = pgTable("mains_test_observations", {
   id: uuid("id").defaultRandom().primaryKey(),
   testId: uuid("test_id")
-    .references(() => mainsPerformanceTests.id)
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
     .notNull(),
   stepId: uuid("step_id")
     .references(() => mainsTestSteps.id, { onDelete: "cascade" })
@@ -1888,7 +1888,7 @@ export const mainsTestObservations = pgTable("mains_test_observations", {
 export const mainsTestAnalyses = pgTable("mains_test_analyses", {
   id: uuid("id").defaultRandom().primaryKey(),
   testId: uuid("test_id")
-    .references(() => mainsPerformanceTests.id)
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
     .notNull()
     .unique(),
   analysisVersion: text("analysis_version").notNull(), // "1.0"

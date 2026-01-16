@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS "mains_test_steps" (
 -- Individual observations/measurements
 CREATE TABLE IF NOT EXISTS "mains_test_observations" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-  "test_id" uuid NOT NULL REFERENCES "mains_performance_tests"("id"),
+  "test_id" uuid NOT NULL REFERENCES "mains_performance_tests"("id") ON DELETE CASCADE,
   "step_id" uuid NOT NULL REFERENCES "mains_test_steps"("id") ON DELETE CASCADE,
   "device_id" uuid NOT NULL REFERENCES "mains_test_devices"("id") ON DELETE CASCADE,
   "timestamp" timestamp with time zone DEFAULT now() NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS "mains_test_observations" (
 -- Computed analysis results
 CREATE TABLE IF NOT EXISTS "mains_test_analyses" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-  "test_id" uuid NOT NULL UNIQUE REFERENCES "mains_performance_tests"("id"),
+  "test_id" uuid NOT NULL UNIQUE REFERENCES "mains_performance_tests"("id") ON DELETE CASCADE,
   "analysis_version" text NOT NULL,
   "computed_at" timestamp with time zone DEFAULT now() NOT NULL,
   "static_pressure_bar" numeric(10, 3),

@@ -153,8 +153,8 @@ services:
     networks:
       - hailmary-network
     # Internal only - not exposed externally
-    expose:
-      - "4010"
+    ports:
+      - "4010:4010"
 
   # Hail-Mary PWA (Frontend + Nginx Reverse Proxy)
   hailmary-pwa:

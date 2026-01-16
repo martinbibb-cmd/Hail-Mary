@@ -5,6 +5,16 @@ const PORT = 4010;
 const ADMIN_TOKEN = process.env.ADMIN_AGENT_TOKEN;
 const COMPOSE_FILE = '/workspace/docker-compose.yml';
 
+// Services with pullable images (GHCR or public registries)
+// Excludes local-only builds like hailmary-admin-agent
+const PULLABLE_SERVICES = [
+  'hailmary-api',
+  'hailmary-assistant',
+  'hailmary-pwa',
+  'hailmary-migrator',
+  'hailmary-postgres'
+];
+
 if (!ADMIN_TOKEN) {
   console.error('ADMIN_AGENT_TOKEN is required');
   process.exit(1);
@@ -92,7 +102,7 @@ async function handleUpdateStream(req, res) {
     // - hailmary-api (GHCR)
     // - hailmary-assistant (GHCR)
     // - hailmary-pwa (GHCR)
-    // - hailmary-migrator (GHCR, uses same image as api)
+    // - hailmary-migrator (GHCR, reuses hail-mary-api image)
     // - postgres (public registry)
     // Excluded: hailmary-admin-agent (local build)
     sendSSE(res, { type: 'log', text: '==> Pulling latest images from GHCR\n' });
@@ -101,11 +111,7 @@ async function handleUpdateStream(req, res) {
       '-f',
       COMPOSE_FILE,
       'pull',
-      'hailmary-api',
-      'hailmary-assistant',
-      'hailmary-pwa',
-      'hailmary-migrator',
-      'hailmary-postgres'
+      ...PULLABLE_SERVICES
     ], res);
 
     sendSSE(res, { type: 'log', text: '\n==> Updating services\n' });

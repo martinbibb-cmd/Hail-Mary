@@ -1785,3 +1785,102 @@ export const heatingPipeNetworks = pgTable("heating_pipe_networks", {
 }, (t) => ({
   projectIdIdx: index("heating_pipe_networks_project_id_idx").on(t.projectId),
 }));
+
+// ============================================
+// Mains Performance Test Module
+// ============================================
+
+// Mains performance tests - controlled load testing of water supply
+export const mainsPerformanceTests = pgTable("mains_performance_tests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  propertyId: integer("property_id")
+    .references(() => leads.id, { onDelete: "cascade" }),
+  surveyId: integer("survey_id")
+    .references(() => surveyInstances.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  accountId: integer("account_id")
+    .references(() => accounts.id)
+    .notNull(),
+  sourcePoint: varchar("source_point", { length: 255 }).notNull(), // outside_tap|kitchen|bath_cold|etc
+  ambientTempC: numeric("ambient_temp_c", { precision: 5, scale: 2 }), // nullable
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  createdBy: integer("created_by")
+    .references(() => users.id)
+    .notNull(),
+}, (t) => ({
+  propertyIdIdx: index("mains_performance_tests_property_id_idx").on(t.propertyId),
+  surveyIdIdx: index("mains_performance_tests_survey_id_idx").on(t.surveyId),
+  userIdIdx: index("mains_performance_tests_user_id_idx").on(t.userId),
+}));
+
+// Mains test devices - A/B/C measurement devices in the test
+export const mainsTestDevices = pgTable("mains_test_devices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id")
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
+    .notNull(),
+  label: varchar("label", { length: 10 }).notNull(), // A|B|C
+  location: varchar("location", { length: 255 }).notNull(), // outside_tap|kitchen_cold|shower_cold_feed|etc
+  sensorType: varchar("sensor_type", { length: 50 }).default("manual").notNull(), // manual|bluetooth|wifi|etc
+  calibrationProfileId: uuid("calibration_profile_id"), // future use
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  testIdIdx: index("mains_test_devices_test_id_idx").on(t.testId),
+}));
+
+// Mains test steps - controlled load phases (0-1-2-3 outlets, etc)
+export const mainsTestSteps = pgTable("mains_test_steps", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id")
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
+    .notNull(),
+  index: integer("index").notNull(), // 0..N
+  label: varchar("label", { length: 255 }).notNull(), // "All closed"|"Outlet 1 open"|etc
+  outletCount: integer("outlet_count").default(0).notNull(), // 0..3
+  valveState: text("valve_state"), // free text for now; later: % open
+  durationSeconds: integer("duration_seconds"), // optional
+  targetFlowLpm: numeric("target_flow_lpm", { precision: 10, scale: 2 }), // optional, for "hold at X L/min"
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  testIdIdx: index("mains_test_steps_test_id_idx").on(t.testId),
+  testIdIndexIdx: index("mains_test_steps_test_id_index_idx").on(t.testId, t.index),
+}));
+
+// Mains test observations - manual entry now; streaming later
+export const mainsTestObservations = pgTable("mains_test_observations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id")
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
+    .notNull(),
+  stepId: uuid("step_id")
+    .references(() => mainsTestSteps.id, { onDelete: "cascade" })
+    .notNull(),
+  deviceId: uuid("device_id")
+    .references(() => mainsTestDevices.id, { onDelete: "cascade" })
+    .notNull(),
+  timestamp: timestamp("timestamp", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  pressureBar: numeric("pressure_bar", { precision: 5, scale: 2 }), // nullable - device might not measure pressure
+  flowLpm: numeric("flow_lpm", { precision: 10, scale: 2 }), // nullable - device might not measure flow
+  waterTempC: numeric("water_temp_c", { precision: 5, scale: 2 }), // nullable - device might not measure temp
+  qualityFlags: jsonb("quality_flags").default([]).notNull(), // ["estimated"|"unstable"|"sensor_swapped"|"air_in_line"]
+  method: varchar("method", { length: 50 }).default("manual").notNull(), // manual|automatic
+  enteredBy: integer("entered_by")
+    .references(() => users.id),
+}, (t) => ({
+  testIdIdx: index("mains_test_observations_test_id_idx").on(t.testId),
+  stepIdIdx: index("mains_test_observations_step_id_idx").on(t.stepId),
+  deviceIdIdx: index("mains_test_observations_device_id_idx").on(t.deviceId),
+}));

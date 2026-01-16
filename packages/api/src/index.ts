@@ -64,6 +64,7 @@ import metaRouter from './routes/meta';
 import jobGraphRouter from './routes/job-graph';
 import heatingDesignRouter from './routes/heating-design';
 import diagnosticsRouter from './routes/diagnostics';
+import mainsTestRouter from './routes/mainsTest';
 
 import path from 'path';
 
@@ -407,6 +408,7 @@ app.use('/api/bug-reports', bugReportsRouter); // Bug Reports: User-submitted bu
 app.use('/api/meta', metaRouter); // Meta: Build fingerprinting and system metadata
 app.use('/api/job-graph', jobGraphRouter); // Job Graph: Orchestration spine for turning captured data into defensible outputs
 app.use('/api/heating-design', heatingDesignRouter); // Heating Design: Floor plan import, heat loss calculations, radiator selection, pipe routing
+app.use('/api/mains-test', mainsTestRouter); // Mains Performance Test: Water supply testing with pressure/flow/temperature monitoring
 app.use('/api/diagnostics', wrapLimiter('diagnostics', diagnosticsLimiter), diagnosticsRouter); // Diagnostics: Backend health, schema, and data presence monitoring (admin-only)
 
 // 404 handler

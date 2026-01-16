@@ -5,6 +5,7 @@ const { spawn } = require('child_process');
 const PORT = 4010;
 const ADMIN_TOKEN = process.env.ADMIN_AGENT_TOKEN;
 const COMPOSE_FILE = '/workspace/docker-compose.yml';
+const PULLABLE_SERVICES = ['hailmary-api', 'hailmary-assistant', 'hailmary-pwa', 'hailmary-migrator', 'hailmary-postgres'];
 
 if (!ADMIN_TOKEN) {
   console.error('ADMIN_AGENT_TOKEN is required');
@@ -32,78 +33,24 @@ function sendSSE(res, data) {
 }
 
 /**
- * Run a command and capture stdout (no streaming)
- * @param {string} command - The command to execute
- * @param {string[]} args - Array of command arguments
- * @param {Object} opts - Options object
- * @param {string} [opts.cwd] - Working directory (defaults to /workspace)
- * @param {Object} [opts.env] - Environment variables (defaults to process.env)
- * @returns {Promise<{out: string, err: string}>} - Promise resolving to stdout and stderr
+ * Pull only services that are safe to pull.
+ * (Local-only images like hailmary-admin-agent must NOT be pulled.)
+ *
+ * This intentionally trades "generic" for "reliable": the agent controls
+ * the update flow for *this* stack, and these services are known-pullable.
  */
-function execCapture(command, args, opts = {}) {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
-      cwd: opts.cwd || '/workspace',
-      env: opts.env || process.env,
-    });
-
-    let out = '';
-    let err = '';
-
-    proc.stdout.on('data', (d) => (out += d.toString()));
-    proc.stderr.on('data', (d) => (err += d.toString()));
-
-    proc.on('error', (e) => reject(e));
-    proc.on('close', (code) => {
-      if (code === 0) return resolve({ out, err });
-      const msg = err.trim() || out.trim() || `Command exited with code ${code}`;
-      reject(new Error(msg));
-    });
+async function pullLatestImages(res) {
+  sendSSE(res, {
+    type: 'log',
+    text: `==> Pulling latest images (registry services only): ${PULLABLE_SERVICES.join(', ')}\n`
   });
-}
 
-/**
- * Determine which services are safe to pull.
- *
- * We MUST avoid pulling services that are built locally (e.g. hailmary-admin-agent),
- * otherwise `docker compose pull` will fail with:
- *   pull access denied for hailmary-admin-agent
- *
- * Strategy:
- * - ask docker compose for normalized config in JSON
- * - include services that:
- *    - have an `image` field AND
- *    - DO NOT have a `build` field
- * @returns {Promise<string[]>} - Promise resolving to array of pullable service names
- */
-async function getPullableServices() {
-  const { out } = await execCapture('docker', [
-    'compose',
-    '-f',
-    COMPOSE_FILE,
-    'config',
-    '--format',
-    'json'
-  ]);
-
-  let cfg;
-  try {
-    cfg = JSON.parse(out);
-  } catch (e) {
-    throw new Error(`Failed to parse docker compose config JSON: ${e.message}`);
-  }
-
-  const services = cfg?.services || {};
-  const pullable = [];
-
-  for (const [name, svc] of Object.entries(services)) {
-    const hasImage = typeof svc?.image === 'string' && svc.image.length > 0;
-    const hasBuild = !!svc?.build;
-    if (hasImage && !hasBuild) pullable.push(name);
-  }
-
-  pullable.sort();
-  return pullable;
+  // docker compose pull <svc...>
+  await executeCommand(
+    'docker',
+    ['compose', '-f', COMPOSE_FILE, 'pull', ...PULLABLE_SERVICES],
+    res
+  );
 }
 
 /**
@@ -163,24 +110,8 @@ async function handleUpdateStream(req, res) {
   try {
     sendSSE(res, { type: 'log', text: '==> Starting update process\n' });
 
-    // Discover which services are safe to pull (skip local build-only services)
-    let pullable = [];
-    try {
-      pullable = await getPullableServices();
-      sendSSE(res, { type: 'log', text: `==> Pullable services: ${pullable.join(', ') || '(none)'}\n` });
-    } catch (e) {
-      sendSSE(res, { type: 'error', message: `Failed to determine pullable services: ${e.message}` });
-      sendSSE(res, { type: 'complete', success: false });
-      return res.end();
-    }
-
-    // Step 1: Pull latest images
-    sendSSE(res, { type: 'log', text: '==> Pulling latest images\n' });
-    if (pullable.length > 0) {
-      await executeCommand('docker', ['compose', '-f', COMPOSE_FILE, 'pull', ...pullable], res);
-    } else {
-      sendSSE(res, { type: 'log', text: 'No pullable services found; skipping pull step.\n' });
-    }
+    // Step 1: Pull latest images (skip local-only images)
+    await pullLatestImages(res);
 
     sendSSE(res, { type: 'log', text: '\n==> Updating services\n' });
 
@@ -388,19 +319,21 @@ async function handleHealth(req, res) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
-  if (req.method === 'GET' && url.pathname === '/update/stream') {
-    handleUpdateStream(req, res);
-  } else if (req.method === 'GET' && url.pathname === '/update') {
-    // Alias: /update -> /update/stream for compatibility
-    handleUpdateStream(req, res);
-  } else if (req.method === 'GET' && url.pathname === '/version') {
-    handleVersion(req, res);
-  } else if (req.method === 'GET' && url.pathname === '/health') {
-    handleHealth(req, res);
-  } else {
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not found' }));
+  // Friendly alias: /update behaves like /update/stream
+  if (req.method === 'GET' && url.pathname === '/update') {
+    return handleUpdateStream(req, res);
   }
+
+  if (req.method === 'GET' && url.pathname === '/update/stream') {
+    return handleUpdateStream(req, res);
+  } else if (req.method === 'GET' && url.pathname === '/version') {
+    return handleVersion(req, res);
+  } else if (req.method === 'GET' && url.pathname === '/health') {
+    return handleHealth(req, res);
+  }
+
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Not found' }));
 });
 
 server.listen(PORT, () => {

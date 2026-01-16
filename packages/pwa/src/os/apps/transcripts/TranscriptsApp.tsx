@@ -292,7 +292,7 @@ export const TranscriptsApp: React.FC = () => {
 
   const handleDownloadTranscript = (transcript: Transcript) => {
     if (!transcript.rawText) {
-      setError('No transcript text available to download');
+      console.warn('Cannot download transcript: no text available');
       return;
     }
 

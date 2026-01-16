@@ -51,7 +51,7 @@ router.get("/", async (req: Request, res: Response) => {
     const sessions: VisitSession[] = rows.map((row) => ({
       id: row.id,
       accountId: row.accountId,
-      leadId: row.leadId,
+      leadId: row.leadId ?? undefined,
       startedAt: row.startedAt,
       endedAt: row.endedAt ?? undefined,
       status: row.status as VisitSession["status"],
@@ -101,7 +101,7 @@ router.get("/:id", async (req: Request, res: Response) => {
     const session: VisitSession = {
       id: row.id,
       accountId: row.accountId,
-      leadId: row.leadId,
+      leadId: row.leadId ?? undefined,
       startedAt: row.startedAt,
       endedAt: row.endedAt ?? undefined,
       status: row.status as VisitSession["status"],
@@ -229,7 +229,7 @@ router.put("/:id", async (req: Request, res: Response) => {
     const session: VisitSession = {
       id: updated.id,
       accountId: updated.accountId,
-      leadId: updated.leadId,
+      leadId: updated.leadId ?? undefined,
       startedAt: updated.startedAt,
       endedAt: updated.endedAt ?? undefined,
       status: updated.status as VisitSession["status"],
@@ -315,12 +315,14 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
       .orderBy(visitObservations.createdAt);
     
     // Get transcript segments if available
-    const transcriptRows = await db
-      .select()
-      .from(transcriptSessions)
-      .where(eq(transcriptSessions.leadId, visitSession.leadId))
-      .orderBy(desc(transcriptSessions.createdAt))
-      .limit(1);
+    const transcriptRows = visitSession.leadId
+      ? await db
+          .select()
+          .from(transcriptSessions)
+          .where(eq(transcriptSessions.leadId, visitSession.leadId))
+          .orderBy(desc(transcriptSessions.createdAt))
+          .limit(1)
+      : [];
     
     let transcriptText = '';
     let segmentsWithRole: Array<{ text: string; role?: 'expert' | 'customer' }> = [];
@@ -362,7 +364,7 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
     const session: VisitSession = {
       id: updated.id,
       accountId: updated.accountId,
-      leadId: updated.leadId,
+      leadId: updated.leadId ?? undefined,
       startedAt: updated.startedAt,
       endedAt: updated.endedAt ?? undefined,
       status: updated.status as VisitSession["status"],

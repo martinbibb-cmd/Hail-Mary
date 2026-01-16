@@ -245,7 +245,7 @@ export type VisitSessionStatus = 'in_progress' | 'completed' | 'cancelled';
 export interface VisitSession {
   id: number;
   accountId: number;
-  leadId: number;
+  leadId?: number; // MADE OPTIONAL - legacy compatibility only, new workflows use spine_visits
   lead?: Lead;
   startedAt: Date;
   endedAt?: Date;

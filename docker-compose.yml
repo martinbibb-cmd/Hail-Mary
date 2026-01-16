@@ -152,7 +152,6 @@ services:
     command: node server.js
     networks:
       - hailmary-network
-    # Internal only - not exposed externally
     ports:
       - "4010:4010"
 

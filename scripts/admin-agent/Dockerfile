@@ -13,6 +13,8 @@ WORKDIR /app
 # Copy admin agent files
 COPY package.json server.js ./
 
+# No npm install needed - package has no dependencies (pure Node.js)
+
 # Expose port
 EXPOSE 4010
 

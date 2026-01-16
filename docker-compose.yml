@@ -133,6 +133,7 @@ services:
       # Docker socket access for managing containers
       - /var/run/docker.sock:/var/run/docker.sock
       # Mount repository root for docker-compose.yml access
+      # Write access required: docker compose may create lock files and state
       - ./:/workspace
     working_dir: /app
     command: node server.js

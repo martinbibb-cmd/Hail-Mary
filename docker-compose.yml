@@ -116,7 +116,12 @@ services:
     expose:
       - "3002"
 
-  # Admin Agent Service - Manages system updates with Docker socket access
+  # Admin agent is LOCAL-BUILD ONLY.
+  # It must NOT be pulled from a registry during "System Update",
+  # otherwise updates will fail with:
+  #   pull access denied for hailmary-admin-agent
+  #
+  # The admin agent update endpoint now pulls only GHCR-backed services.
   hailmary-admin-agent:
     build:
       context: ./scripts/admin-agent

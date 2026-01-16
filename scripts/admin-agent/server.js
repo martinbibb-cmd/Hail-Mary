@@ -5,6 +5,15 @@ const { spawn } = require('child_process');
 const PORT = 4010;
 const ADMIN_TOKEN = process.env.ADMIN_AGENT_TOKEN;
 const COMPOSE_FILE = '/workspace/docker-compose.yml';
+
+/**
+ * Services that are safe to "pull" from a registry.
+ * (Exclude build-from-source/local-only images like hailmary-admin-agent.)
+ *
+ * IMPORTANT:
+ * - Keep this list aligned with docker-compose.yml service names.
+ * - If you add a new GHCR-backed service, add it here too.
+ */
 const PULLABLE_SERVICES = ['hailmary-api', 'hailmary-assistant', 'hailmary-pwa', 'hailmary-migrator', 'hailmary-postgres'];
 
 if (!ADMIN_TOKEN) {

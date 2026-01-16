@@ -6,6 +6,17 @@ const PORT = 4010;
 const ADMIN_TOKEN = process.env.ADMIN_AGENT_TOKEN;
 const COMPOSE_FILE = '/workspace/docker-compose.yml';
 
+// IMPORTANT:
+// Inside the container our working dir is /workspace, so docker compose otherwise
+// defaults the project name to "workspace" which does NOT match the host stack.
+// That mismatch triggers network/volume warnings and can cause container name collisions
+// (especially because we use explicit container_name in docker-compose.yml).
+const COMPOSE_PROJECT_NAME =
+  process.env.COMPOSE_PROJECT_NAME ||
+  process.env.COMPOSE_PROJECT ||
+  process.env.PROJECT_NAME ||
+  'hail-mary';
+
 /**
  * Services that are safe to "pull" from a registry.
  * (Exclude build-from-source/local-only images like hailmary-admin-agent.)
@@ -15,6 +26,17 @@ const COMPOSE_FILE = '/workspace/docker-compose.yml';
  * - If you add a new GHCR-backed service, add it here too.
  */
 const PULLABLE_SERVICES = ['hailmary-api', 'hailmary-assistant', 'hailmary-pwa', 'hailmary-migrator', 'hailmary-postgres'];
+
+// Only these services should be recreated during update.
+// DO NOT include hailmary-admin-agent (self) or any local-build services.
+const UPDATABLE_SERVICES = [...PULLABLE_SERVICES];
+
+/**
+ * Build docker compose command arguments with project name
+ */
+function dockerComposeArgs(extraArgs) {
+  return ['compose', '-p', COMPOSE_PROJECT_NAME, '-f', COMPOSE_FILE, ...extraArgs];
+}
 
 if (!ADMIN_TOKEN) {
   console.error('ADMIN_AGENT_TOKEN is required');
@@ -57,7 +79,7 @@ async function pullLatestImages(res) {
   // docker compose pull <svc...>
   await executeCommand(
     'docker',
-    ['compose', '-f', COMPOSE_FILE, 'pull', ...PULLABLE_SERVICES],
+    dockerComposeArgs(['pull', ...PULLABLE_SERVICES]),
     res
   );
 }
@@ -124,15 +146,13 @@ async function handleUpdateStream(req, res) {
 
     sendSSE(res, { type: 'log', text: '\n==> Updating services\n' });
 
-    // Step 2: Update services
-    await executeCommand('docker', [
-      'compose',
-      '-f',
-      COMPOSE_FILE,
+    // Step 2: Update services (IMPORTANT: only recreate registry services; never recreate admin-agent itself)
+    await executeCommand('docker', dockerComposeArgs([
       'up',
       '-d',
-      '--remove-orphans'
-    ], res);
+      '--force-recreate',
+      ...UPDATABLE_SERVICES
+    ]), res);
 
     sendSSE(res, { type: 'log', text: '\n==> Update completed successfully\n' });
     sendSSE(res, { type: 'complete', success: true });
@@ -269,14 +289,11 @@ async function handleHealth(req, res) {
 
     // Get service status
     const getStatus = () => new Promise((resolve, reject) => {
-      const proc = spawn('docker', [
-        'compose',
-        '-f',
-        COMPOSE_FILE,
+      const proc = spawn('docker', dockerComposeArgs([
         'ps',
         '--format',
         'json'
-      ]);
+      ]));
 
       let output = '';
       proc.stdout.on('data', (data) => { output += data.toString(); });

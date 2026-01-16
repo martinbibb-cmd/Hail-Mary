@@ -35,3 +35,6 @@ export { OtherTradesApp } from './other';
 // Tools
 export { RockyTool } from './rocky';
 export { SarahTool } from './sarah';
+
+// Testing & Analysis Modules
+export { MainsTestApp } from './mains-test';

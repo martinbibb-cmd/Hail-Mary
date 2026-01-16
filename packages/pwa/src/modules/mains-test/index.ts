@@ -1,0 +1,1 @@
+export { MainsTestApp } from './MainsTestApp';

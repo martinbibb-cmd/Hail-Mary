@@ -91,12 +91,12 @@ export const TranscriptsApp: React.FC = () => {
 
   const handlePasteSubmit = async () => {
     if (!postcode.trim()) {
-      alert('Postcode is required');
+      setError('Postcode is required');
       return;
     }
 
     if (!text.trim()) {
-      alert('Transcript text is required');
+      setError('Transcript text is required');
       return;
     }
 
@@ -136,12 +136,12 @@ export const TranscriptsApp: React.FC = () => {
 
   const handleFileUpload = async () => {
     if (!postcode.trim()) {
-      alert('Postcode is required');
+      setError('Postcode is required');
       return;
     }
 
     if (!selectedFile) {
-      alert('Please select a file to upload');
+      setError('Please select a file to upload');
       return;
     }
 
@@ -196,12 +196,12 @@ export const TranscriptsApp: React.FC = () => {
 
   const handleAudioUpload = async () => {
     if (!postcode.trim()) {
-      alert('Postcode is required');
+      setError('Postcode is required');
       return;
     }
 
     if (!selectedAudioFile) {
-      alert('Please select an audio file to upload');
+      setError('Please select an audio file to upload');
       return;
     }
 
@@ -291,7 +291,7 @@ export const TranscriptsApp: React.FC = () => {
 
   const handleDownloadTranscript = (transcript: Transcript) => {
     if (!transcript.rawText) {
-      alert('No transcript text available to download');
+      setError('No transcript text available to download');
       return;
     }
 

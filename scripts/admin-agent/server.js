@@ -33,6 +33,12 @@ function sendSSE(res, data) {
 
 /**
  * Run a command and capture stdout (no streaming)
+ * @param {string} command - The command to execute
+ * @param {string[]} args - Array of command arguments
+ * @param {Object} opts - Options object
+ * @param {string} [opts.cwd] - Working directory (defaults to /workspace)
+ * @param {Object} [opts.env] - Environment variables (defaults to process.env)
+ * @returns {Promise<{out: string, err: string}>} - Promise resolving to stdout and stderr
  */
 function execCapture(command, args, opts = {}) {
   return new Promise((resolve, reject) => {
@@ -68,6 +74,7 @@ function execCapture(command, args, opts = {}) {
  * - include services that:
  *    - have an `image` field AND
  *    - DO NOT have a `build` field
+ * @returns {Promise<string[]>} - Promise resolving to array of pullable service names
  */
 async function getPullableServices() {
   const { out } = await execCapture('docker', [

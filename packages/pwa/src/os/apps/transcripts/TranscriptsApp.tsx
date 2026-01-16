@@ -562,7 +562,7 @@ export const TranscriptsApp: React.FC = () => {
               <div className="detail-meta">
                 <div className="meta-item">
                   <span className="meta-label">Status:</span>
-                  {getStatusBadge(selectedTranscript.status)}
+                  <span className="meta-value">{getStatusBadge(selectedTranscript.status)}</span>
                 </div>
                 <div className="meta-item">
                   <span className="meta-label">Postcode:</span>

@@ -23,8 +23,7 @@ export const TranscriptsApp: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedTranscript, setSelectedTranscript] = useState<Transcript | null>(null);
   const [activeTab, setActiveTab] = useState<'paste' | 'upload' | 'audio'>('paste');
-  const [uploading, setUploading] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
+  const [processingState, setProcessingState] = useState<'idle' | 'uploading' | 'transcribing' | 'saving'>('idle');
   const [transcriptionProgress, setTranscriptionProgress] = useState<string>('');
 
   // Form state
@@ -100,7 +99,7 @@ export const TranscriptsApp: React.FC = () => {
       return;
     }
 
-    setUploading(true);
+    setProcessingState('saving');
     setError(null);
 
     try {
@@ -130,7 +129,7 @@ export const TranscriptsApp: React.FC = () => {
       console.error('Error creating transcript:', err);
       setError('Failed to create transcript');
     } finally {
-      setUploading(false);
+      setProcessingState('idle');
     }
   };
 
@@ -145,7 +144,7 @@ export const TranscriptsApp: React.FC = () => {
       return;
     }
 
-    setUploading(true);
+    setProcessingState('uploading');
     setError(null);
 
     try {
@@ -176,7 +175,7 @@ export const TranscriptsApp: React.FC = () => {
       console.error('Error uploading transcript:', err);
       setError('Failed to upload transcript');
     } finally {
-      setUploading(false);
+      setProcessingState('idle');
     }
   };
 
@@ -205,8 +204,7 @@ export const TranscriptsApp: React.FC = () => {
       return;
     }
 
-    setUploading(true);
-    setTranscribing(true);
+    setProcessingState('uploading');
     setError(null);
     setTranscriptionProgress('Uploading audio file...');
 
@@ -216,6 +214,7 @@ export const TranscriptsApp: React.FC = () => {
       formData.append('audio', selectedAudioFile);
       formData.append('language', 'en-GB');
 
+      setProcessingState('transcribing');
       setTranscriptionProgress('Transcribing audio with AI...');
       const transcribeResponse = await fetch('/api/transcription/whisper-transcribe', {
         method: 'POST',
@@ -229,6 +228,8 @@ export const TranscriptsApp: React.FC = () => {
       }
 
       const transcribedText = transcribeData.data.text;
+      
+      setProcessingState('saving');
       setTranscriptionProgress('Transcription complete! Saving...');
 
       // Step 2: Save the transcript
@@ -251,6 +252,7 @@ export const TranscriptsApp: React.FC = () => {
       if (data.success) {
         setTranscriptionProgress('Saved successfully!');
         await fetchTranscripts();
+        // Close modal after showing success message briefly
         setTimeout(() => {
           handleCloseModal();
         }, 1000);
@@ -261,8 +263,7 @@ export const TranscriptsApp: React.FC = () => {
       console.error('Error processing audio:', err);
       setError(err instanceof Error ? err.message : 'Failed to process audio');
     } finally {
-      setUploading(false);
-      setTranscribing(false);
+      setProcessingState('idle');
     }
   };
 
@@ -432,7 +433,7 @@ export const TranscriptsApp: React.FC = () => {
                   value={postcode}
                   onChange={(e) => setPostcode(e.target.value.toUpperCase())}
                   placeholder="e.g. SW1A 1AA"
-                  disabled={uploading}
+                  disabled={processingState !== 'idle'}
                 />
               </div>
 
@@ -444,7 +445,7 @@ export const TranscriptsApp: React.FC = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Auto-generated if left empty"
-                  disabled={uploading}
+                  disabled={processingState !== 'idle'}
                 />
               </div>
 
@@ -459,7 +460,7 @@ export const TranscriptsApp: React.FC = () => {
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Paste or type your transcript here..."
                     rows={12}
-                    disabled={uploading}
+                    disabled={processingState !== 'idle'}
                   />
                 </div>
               )}
@@ -475,7 +476,7 @@ export const TranscriptsApp: React.FC = () => {
                     type="file"
                     accept=".txt,.md,.json"
                     onChange={handleFileSelect}
-                    disabled={uploading}
+                    disabled={processingState !== 'idle'}
                   />
                   {selectedFile && (
                     <div className="file-selected">Selected: {selectedFile.name}</div>
@@ -494,12 +495,12 @@ export const TranscriptsApp: React.FC = () => {
                     type="file"
                     accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg"
                     onChange={handleAudioFileSelect}
-                    disabled={uploading}
+                    disabled={processingState !== 'idle'}
                   />
                   {selectedAudioFile && (
                     <div className="file-selected">Selected: {selectedAudioFile.name}</div>
                   )}
-                  {transcribing && transcriptionProgress && (
+                  {processingState !== 'idle' && transcriptionProgress && (
                     <div className="transcription-progress">
                       <div className="progress-spinner"></div>
                       <span>{transcriptionProgress}</span>
@@ -519,28 +520,28 @@ export const TranscriptsApp: React.FC = () => {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Additional notes..."
                   rows={3}
-                  disabled={uploading}
+                  disabled={processingState !== 'idle'}
                 />
               </div>
             </div>
 
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={handleCloseModal} disabled={uploading}>
+              <button className="btn-secondary" onClick={handleCloseModal} disabled={processingState !== 'idle'}>
                 Cancel
               </button>
               {activeTab === 'paste' && (
-                <button className="btn-primary" onClick={handlePasteSubmit} disabled={uploading}>
-                  {uploading ? 'Saving...' : 'Save Transcript'}
+                <button className="btn-primary" onClick={handlePasteSubmit} disabled={processingState !== 'idle'}>
+                  {processingState === 'saving' ? 'Saving...' : 'Save Transcript'}
                 </button>
               )}
               {activeTab === 'upload' && (
-                <button className="btn-primary" onClick={handleFileUpload} disabled={uploading}>
-                  {uploading ? 'Uploading...' : 'Upload Transcript'}
+                <button className="btn-primary" onClick={handleFileUpload} disabled={processingState !== 'idle'}>
+                  {processingState === 'uploading' ? 'Uploading...' : 'Upload Transcript'}
                 </button>
               )}
               {activeTab === 'audio' && (
-                <button className="btn-primary" onClick={handleAudioUpload} disabled={uploading || transcribing}>
-                  {transcribing ? 'Transcribing...' : uploading ? 'Saving...' : 'Transcribe & Save'}
+                <button className="btn-primary" onClick={handleAudioUpload} disabled={processingState !== 'idle'}>
+                  {processingState === 'transcribing' ? 'Transcribing...' : processingState === 'saving' ? 'Saving...' : 'Transcribe & Save'}
                 </button>
               )}
             </div>

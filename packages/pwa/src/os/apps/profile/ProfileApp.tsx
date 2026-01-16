@@ -182,11 +182,11 @@ export const ProfileApp: React.FC = () => {
                 👥 Manage Users
               </a>
               <a
-                href="/admin/nas"
+                href="/admin/server"
                 className="btn-primary admin-action-link"
-                onClick={navigateToAdmin('/admin/nas')}
+                onClick={navigateToAdmin('/admin/server')}
               >
-                🖥️ NAS Management
+                🖥️ Server Management
               </a>
               <a
                 href="/admin/knowledge"

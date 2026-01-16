@@ -139,11 +139,11 @@ export const MoreDrawer: React.FC<MoreDrawerProps> = ({ isOpen, onClose }) => {
           action: { kind: 'route', target: '/admin/users' } as const,
         },
         {
-          id: 'admin-nas',
-          label: 'NAS',
+          id: 'admin-server',
+          label: 'Server',
           icon: '🖥️',
-          description: 'System health & migrations',
-          action: { kind: 'route', target: '/admin/nas' } as const,
+          description: 'System health & updates',
+          action: { kind: 'route', target: '/admin/server' } as const,
         },
         {
           id: 'admin-knowledge',

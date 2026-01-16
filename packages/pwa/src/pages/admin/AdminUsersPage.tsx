@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { AuthUser } from '@hail-mary/shared';
+import { safeCopyToClipboard } from '../../utils/clipboard';
 import './AdminUsersPage.css';
 
 export const AdminUsersPage: React.FC = () => {
@@ -83,13 +84,14 @@ export const AdminUsersPage: React.FC = () => {
     }
   };
 
-  const handleCopyResetLink = () => {
+  const handleCopyResetLink = async () => {
     if (resetLink) {
-      navigator.clipboard.writeText(resetLink).then(() => {
+      const result = await safeCopyToClipboard(resetLink);
+      if (result.ok) {
         setSuccess('Reset link copied to clipboard!');
-      }).catch(() => {
-        setError('Failed to copy link to clipboard');
-      });
+      } else {
+        setError(`Failed to copy link to clipboard: ${result.error}`);
+      }
     }
   };
 

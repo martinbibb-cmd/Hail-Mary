@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import type { RockyProcessResult } from '@hail-mary/shared'
 import { aiService } from '../../services/ai.service'
 import { useAuth } from '../../auth'
+import { safeCopyToClipboard } from '../../utils/clipboard'
 
 interface DebugInfo {
   requestUrl: string
@@ -204,12 +205,12 @@ Actions:
 ${basics.actions.map(a => `- ${a}`).join('\n')}
     `.trim()
 
-    try {
-      await navigator.clipboard.writeText(text)
+    const copyResult = await safeCopyToClipboard(text)
+    if (copyResult.ok) {
       alert('Engineer basics copied to clipboard!')
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err)
-      alert('Failed to copy to clipboard. Please try again.')
+    } else {
+      console.error('Failed to copy to clipboard:', copyResult.error)
+      alert(`Failed to copy to clipboard: ${copyResult.error}`)
     }
   }
 

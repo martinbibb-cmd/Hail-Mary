@@ -1,9 +1,9 @@
 /**
- * Admin NAS Page
- * 
- * Provides NAS management interface for admin users:
+ * Admin Server Page
+ *
+ * Provides system management interface for admin users:
  * - System status overview
- * - Host-side deployment playbooks for Unraid
+ * - Image-based updates via admin agent
  * - Manual database migration fallback
  */
 
@@ -17,13 +17,13 @@ import type {
   AdminVersionResponse,
   AdminHealthResponse 
 } from '../../types/admin';
-import './AdminNasPage.css';
+import './AdminServerPage.css';
 
 // Constants
 const HEALTH_CHECK_DELAY_MS = 2000;
 const REFRESH_DELAY_MS = 1000;
 
-export const AdminNasPage: React.FC = () => {
+export const AdminServerPage: React.FC = () => {
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -437,34 +437,35 @@ export const AdminNasPage: React.FC = () => {
               </div>
             </>
           ) : (
-            // Admin agent not available - show host-first deployment message
+            // Admin agent not available - show manual update instructions
             <>
               <div className="alert alert-warning">
-                <strong>Host-first deployment</strong>
-                <div>Updates now run on the NAS itself using the safe update/auto-update scripts. The web UI stays read-only to avoid docker-in-docker failures.</div>
+                <strong>Admin Agent Not Available</strong>
+                <div>The admin-agent service is not running. To enable UI-based updates, ensure the admin-agent container is running and ADMIN_AGENT_TOKEN is configured.</div>
               </div>
 
-              <h2>Deployment Playbooks</h2>
+              <h2>Manual Update Instructions</h2>
               <div className="playbooks-grid">
                 <div className="playbook-card">
-                  <h3>⭐ Safe update (Unraid)</h3>
-                  <p className="playbook-copy">Run the end-to-end updater that pulls images, runs migrations, restarts services, and performs health checks.</p>
+                  <h3>⭐ Manual Update (Ubuntu Server)</h3>
+                  <p className="playbook-copy">Pull latest images and restart services. This is a one-time manual step until admin-agent is running.</p>
                   <ol className="playbook-steps">
-                    <li>Open an Unraid terminal or SSH into your NAS</li>
-                    <li>cd /mnt/user/appdata/hailmary</li>
-                    <li>bash ./scripts/unraid-safe-update.sh</li>
+                    <li>SSH into your Ubuntu server</li>
+                    <li>cd ~/Hail-Mary (or your installation directory)</li>
+                    <li>docker compose pull && docker compose up -d --remove-orphans</li>
                   </ol>
-                  <p className="playbook-note">Use after pushing new images or when you need a manual refresh.</p>
+                  <p className="playbook-note">After this update, the admin-agent will be running and future updates can be done via this UI.</p>
                 </div>
 
                 <div className="playbook-card">
-                  <h3>♻️ Enable scheduled auto-updates</h3>
-                  <p className="playbook-copy">Keep the NAS aligned with the roadmap by checking for fresh images on a schedule.</p>
+                  <h3>♻️ Enable Automatic Updates</h3>
+                  <p className="playbook-copy">Once admin-agent is running, use the "Check for Updates" button above to enable UI-based updates.</p>
                   <ol className="playbook-steps">
-                    <li>cd /mnt/user/appdata/hailmary</li>
-                    <li>bash ./scripts/setup-unraid-autoupdate.sh --interval "0 * * * *"</li>
+                    <li>Ensure ADMIN_AGENT_TOKEN is set in your .env file</li>
+                    <li>Restart the stack: docker compose up -d</li>
+                    <li>Return to this page and click "Check for Updates"</li>
                   </ol>
-                  <p className="playbook-note">Installs the cron-backed updater that applies images and migrations hourly.</p>
+                  <p className="playbook-note">The admin-agent handles all update operations securely via Docker socket access.</p>
                 </div>
               </div>
             </>
@@ -572,4 +573,4 @@ export const AdminNasPage: React.FC = () => {
   );
 };
 
-export default AdminNasPage;
+export default AdminServerPage;

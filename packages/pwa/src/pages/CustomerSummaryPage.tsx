@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useSpineStore } from '../stores/spineStore'
+import { safeCopyToClipboard } from '../utils/clipboard'
 import './CustomerSummaryPage.css'
 
 type ApiResponse<T> = { success: boolean; data?: T; error?: string; code?: string }
@@ -104,17 +105,35 @@ export function CustomerSummaryPage() {
       // Prefer writing both markdown + plain when supported.
       // ClipboardItem isn't available everywhere (esp. some iOS webviews).
       const ClipboardItemAny = (window as any).ClipboardItem as any
-      if (ClipboardItemAny && navigator.clipboard && (navigator.clipboard as any).write) {
-        const item = new ClipboardItemAny({
-          'text/plain': new Blob([plain], { type: 'text/plain' }),
-          'text/markdown': new Blob([markdown], { type: 'text/markdown' }),
-        })
-        await (navigator.clipboard as any).write([item])
-      } else {
-        await navigator.clipboard.writeText(plain)
+      const hasClipboardWrite = typeof navigator !== 'undefined' &&
+                               navigator.clipboard &&
+                               (navigator.clipboard as any).write &&
+                               window.isSecureContext
+
+      if (ClipboardItemAny && hasClipboardWrite) {
+        try {
+          const item = new ClipboardItemAny({
+            'text/plain': new Blob([plain], { type: 'text/plain' }),
+            'text/markdown': new Blob([markdown], { type: 'text/markdown' }),
+          })
+          await (navigator.clipboard as any).write([item])
+          setCopyStatus('Copied.')
+          setTimeout(() => setCopyStatus(null), 1500)
+          return
+        } catch {
+          // Fall through to safe clipboard method
+        }
       }
-      setCopyStatus('Copied.')
-      setTimeout(() => setCopyStatus(null), 1500)
+
+      // Use safe clipboard method as fallback
+      const result = await safeCopyToClipboard(plain)
+      if (result.ok) {
+        setCopyStatus('Copied.')
+        setTimeout(() => setCopyStatus(null), 1500)
+      } else {
+        setCopyStatus(result.error)
+        setTimeout(() => setCopyStatus(null), 2500)
+      }
     } catch (e) {
       setCopyStatus(e instanceof Error ? e.message : 'Copy failed')
       setTimeout(() => setCopyStatus(null), 2500)

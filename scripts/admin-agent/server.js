@@ -87,9 +87,26 @@ async function handleUpdateStream(req, res) {
   try {
     sendSSE(res, { type: 'log', text: '==> Starting update process\n' });
 
-    // Step 1: Pull latest images
-    sendSSE(res, { type: 'log', text: '==> Pulling latest images\n' });
-    await executeCommand('docker', ['compose', '-f', COMPOSE_FILE, 'pull'], res);
+    // Step 1: Pull latest images (only GHCR services, excluding local builds)
+    // Services to pull:
+    // - hailmary-api (GHCR)
+    // - hailmary-assistant (GHCR)
+    // - hailmary-pwa (GHCR)
+    // - hailmary-migrator (GHCR, uses same image as api)
+    // - postgres (public registry)
+    // Excluded: hailmary-admin-agent (local build)
+    sendSSE(res, { type: 'log', text: '==> Pulling latest images from GHCR\n' });
+    await executeCommand('docker', [
+      'compose',
+      '-f',
+      COMPOSE_FILE,
+      'pull',
+      'hailmary-api',
+      'hailmary-assistant',
+      'hailmary-pwa',
+      'hailmary-migrator',
+      'hailmary-postgres'
+    ], res);
 
     sendSSE(res, { type: 'log', text: '\n==> Updating services\n' });
 
@@ -298,6 +315,9 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (req.method === 'GET' && url.pathname === '/update/stream') {
+    handleUpdateStream(req, res);
+  } else if (req.method === 'GET' && url.pathname === '/update') {
+    // Alias: /update -> /update/stream for compatibility
     handleUpdateStream(req, res);
   } else if (req.method === 'GET' && url.pathname === '/version') {
     handleVersion(req, res);

@@ -247,8 +247,7 @@ export const surveyInstances = pgTable("survey_instances", {
     .references(() => visitSessions.id)
     .notNull(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(),
+    .references(() => leads.id), // MADE OPTIONAL - legacy compatibility only
   status: varchar("status", { length: 50 }).default("in_progress").notNull(), // in_progress, complete
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -280,8 +279,7 @@ export const visitObservations = pgTable("visit_observations", {
     .references(() => visitSessions.id)
     .notNull(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(),
+    .references(() => leads.id), // MADE OPTIONAL - legacy compatibility only
   text: text("text").notNull(), // raw observation from STT
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

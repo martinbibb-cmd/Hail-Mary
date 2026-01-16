@@ -266,7 +266,7 @@ router.get("/:id/observations", async (req: Request, res: Response) => {
     const observations: VisitObservation[] = rows.map((row) => ({
       id: row.id,
       visitSessionId: row.visitSessionId,
-      leadId: row.leadId,
+      leadId: row.leadId ?? undefined,
       text: row.text,
       createdAt: row.createdAt,
     }));

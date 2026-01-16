@@ -329,7 +329,7 @@ export interface SurveyAnswer {
 export interface VisitObservation {
   id: number;
   visitSessionId: number;
-  leadId: number;
+  leadId?: number; // MADE OPTIONAL - legacy compatibility only
   text: string;
   createdAt: Date;
 }
@@ -340,7 +340,7 @@ export interface VisitObservation {
 
 export interface CreateVisitSessionDto {
   accountId: number;
-  leadId: number;
+  leadId?: number; // MADE OPTIONAL - legacy compatibility only, new workflows use spine_visits
 }
 
 export interface UpdateVisitSessionDto {

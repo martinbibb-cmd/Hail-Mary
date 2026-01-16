@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import type { AuditTrailEntry } from '@hail-mary/shared';
 import { getSourceBadgeLabel } from './confidence';
+import { safeCopyToClipboard } from '../../utils/clipboard';
 import './bottomSheet.css';
 
 interface AuditDrawerProps {
@@ -52,7 +53,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
     }
   };
 
-  const copyAuditSnippet = (entry: AuditTrailEntry, index: number) => {
+  const copyAuditSnippet = async (entry: AuditTrailEntry, index: number) => {
     const snippet = [
       `Field: ${entry.field_name}`,
       `Value: ${typeof entry.value === 'number' ? entry.value.toFixed(2) : entry.value}`,
@@ -64,10 +65,11 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
       .filter(Boolean)
       .join('\n');
 
-    navigator.clipboard.writeText(snippet).then(() => {
+    const result = await safeCopyToClipboard(snippet);
+    if (result.ok) {
       setCopiedIndex(index);
       setTimeout(() => setCopiedIndex(null), 2000);
-    });
+    }
   };
 
   return (

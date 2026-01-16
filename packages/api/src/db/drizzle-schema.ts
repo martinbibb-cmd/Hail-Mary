@@ -692,6 +692,9 @@ export const presentationDrafts = pgTable("presentation_drafts", {
 
 export const spineProperties = pgTable("spine_properties", {
   id: uuid("id").defaultRandom().primaryKey(),
+  // Link to canonical addresses table (unified system)
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "set null" }),
   addressLine1: text("address_line_1").notNull(),
   addressLine2: text("address_line_2"),
   town: text("town"),
@@ -701,6 +704,7 @@ export const spineProperties = pgTable("spine_properties", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   postcodeIdx: index("spine_properties_postcode_idx").on(t.postcode),
+  addressIdIdx: index("spine_properties_address_id_idx").on(t.addressId),
 }));
 
 export const spineVisits = pgTable("spine_visits", {

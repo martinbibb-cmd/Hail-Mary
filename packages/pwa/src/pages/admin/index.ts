@@ -3,7 +3,7 @@
  */
 
 export { AdminUsersPage } from './AdminUsersPage';
-export { AdminNasPage } from './AdminNasPage';
+export { AdminServerPage } from './AdminServerPage';
 export { AdminKnowledgePage } from './AdminKnowledgePage';
 export { AdminSystemRecommendationPage } from './AdminSystemRecommendationPage';
 export { AdminLeadAssignmentsPage } from './AdminLeadAssignmentsPage';

@@ -18,7 +18,7 @@ import { useUiMode } from './ui/UiModeContext'
 import { apiFetch } from './services/apiClient'
 import { LeadWorkspace } from './modules/leadWorkspace/LeadWorkspace'
 import { JobGraphView } from './modules/job-graph'
-import { AdminUsersPage, AdminNasPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage, AdminBugDashboardPage, AdminBugListPage, AdminBugDetailPage, AdminBugAnalyticsPage, ControlDeckPage } from './pages/admin'
+import { AdminUsersPage, AdminServerPage, AdminKnowledgePage, AdminSystemRecommendationPage, AdminLeadAssignmentsPage, AdminBugDashboardPage, AdminBugListPage, AdminBugDetailPage, AdminBugAnalyticsPage, ControlDeckPage } from './pages/admin'
 import { ModuleLauncher } from './pages/ModuleLauncher'
 import { ProfileApp } from './os/apps/profile/ProfileApp'
 import { FilesApp } from './os/apps/files/FilesApp'
@@ -744,7 +744,7 @@ function App() {
           <Route path="/files" element={<FilesApp />} />
           <Route path="/transcripts" element={<TranscriptsApp />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/nas" element={<AdminNasPage />} />
+          <Route path="/admin/server" element={<AdminServerPage />} />
           <Route path="/admin/lead-assignments" element={<AdminLeadAssignmentsPage />} />
           <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
           <Route path="/admin/system-recommendation" element={<AdminSystemRecommendationPage />} />

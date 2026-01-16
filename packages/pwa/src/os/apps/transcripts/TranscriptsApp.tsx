@@ -80,6 +80,7 @@ export const TranscriptsApp: React.FC = () => {
     setSelectedAudioFile(null);
     setActiveTab('paste');
     setTranscriptionProgress('');
+    setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -252,16 +253,15 @@ export const TranscriptsApp: React.FC = () => {
       if (data.success) {
         setTranscriptionProgress('Saved successfully!');
         await fetchTranscripts();
-        // Close modal after showing success message briefly
-        setTimeout(() => {
-          handleCloseModal();
-        }, 1000);
+        handleCloseModal();
       } else {
         setError(data.error || 'Failed to save transcript');
+        setTranscriptionProgress('');
       }
     } catch (err) {
       console.error('Error processing audio:', err);
       setError(err instanceof Error ? err.message : 'Failed to process audio');
+      setTranscriptionProgress('');
     } finally {
       setProcessingState('idle');
     }

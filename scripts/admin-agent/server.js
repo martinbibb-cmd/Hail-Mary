@@ -3,7 +3,7 @@ const { spawn } = require('child_process');
 
 const PORT = 4010;
 const ADMIN_TOKEN = process.env.ADMIN_AGENT_TOKEN;
-const COMPOSE_FILE = '/repo/docker-compose.yml';
+const COMPOSE_FILE = '/workspace/docker-compose.yml';
 
 if (!ADMIN_TOKEN) {
   console.error('ADMIN_AGENT_TOKEN is required');
@@ -36,7 +36,7 @@ function sendSSE(res, data) {
 function executeCommand(command, args, res) {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
-      cwd: '/repo',
+      cwd: '/workspace',
       env: process.env
     });
 

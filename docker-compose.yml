@@ -124,6 +124,7 @@ services:
     env_file: .env
     environment:
       ADMIN_AGENT_TOKEN: ${ADMIN_AGENT_TOKEN:?ADMIN_AGENT_TOKEN must be set in .env file}
+      COMPOSE_PROJECT_DIR: /workspace
       NODE_ENV: production
     volumes:
       # Docker socket access for managing containers
@@ -131,7 +132,7 @@ services:
       # Mount admin agent script
       - ./scripts/admin-agent:/app
       # Mount repository root for docker-compose.yml access
-      - ./:/repo:ro
+      - ./:/workspace
     working_dir: /app
     command: node server.js
     networks:

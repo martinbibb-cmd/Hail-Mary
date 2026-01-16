@@ -1,19 +1,10 @@
 const http = require('http');
 const { spawn } = require('child_process');
 
+// NOTE: this process runs *inside* the admin-agent container
 const PORT = 4010;
 const ADMIN_TOKEN = process.env.ADMIN_AGENT_TOKEN;
 const COMPOSE_FILE = '/workspace/docker-compose.yml';
-
-// Services with pullable images (GHCR or public registries)
-// Excludes local-only builds like hailmary-admin-agent
-const PULLABLE_SERVICES = [
-  'hailmary-api',
-  'hailmary-assistant',
-  'hailmary-pwa',
-  'hailmary-migrator',
-  'hailmary-postgres'
-];
 
 if (!ADMIN_TOKEN) {
   console.error('ADMIN_AGENT_TOKEN is required');
@@ -38,6 +29,81 @@ function verifyToken(req, res) {
  */
 function sendSSE(res, data) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+/**
+ * Run a command and capture stdout (no streaming)
+ * @param {string} command - The command to execute
+ * @param {string[]} args - Array of command arguments
+ * @param {Object} opts - Options object
+ * @param {string} [opts.cwd] - Working directory (defaults to /workspace)
+ * @param {Object} [opts.env] - Environment variables (defaults to process.env)
+ * @returns {Promise<{out: string, err: string}>} - Promise resolving to stdout and stderr
+ */
+function execCapture(command, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, {
+      cwd: opts.cwd || '/workspace',
+      env: opts.env || process.env,
+    });
+
+    let out = '';
+    let err = '';
+
+    proc.stdout.on('data', (d) => (out += d.toString()));
+    proc.stderr.on('data', (d) => (err += d.toString()));
+
+    proc.on('error', (e) => reject(e));
+    proc.on('close', (code) => {
+      if (code === 0) return resolve({ out, err });
+      const msg = err.trim() || out.trim() || `Command exited with code ${code}`;
+      reject(new Error(msg));
+    });
+  });
+}
+
+/**
+ * Determine which services are safe to pull.
+ *
+ * We MUST avoid pulling services that are built locally (e.g. hailmary-admin-agent),
+ * otherwise `docker compose pull` will fail with:
+ *   pull access denied for hailmary-admin-agent
+ *
+ * Strategy:
+ * - ask docker compose for normalized config in JSON
+ * - include services that:
+ *    - have an `image` field AND
+ *    - DO NOT have a `build` field
+ * @returns {Promise<string[]>} - Promise resolving to array of pullable service names
+ */
+async function getPullableServices() {
+  const { out } = await execCapture('docker', [
+    'compose',
+    '-f',
+    COMPOSE_FILE,
+    'config',
+    '--format',
+    'json'
+  ]);
+
+  let cfg;
+  try {
+    cfg = JSON.parse(out);
+  } catch (e) {
+    throw new Error(`Failed to parse docker compose config JSON: ${e.message}`);
+  }
+
+  const services = cfg?.services || {};
+  const pullable = [];
+
+  for (const [name, svc] of Object.entries(services)) {
+    const hasImage = typeof svc?.image === 'string' && svc.image.length > 0;
+    const hasBuild = !!svc?.build;
+    if (hasImage && !hasBuild) pullable.push(name);
+  }
+
+  pullable.sort();
+  return pullable;
 }
 
 /**
@@ -97,22 +163,24 @@ async function handleUpdateStream(req, res) {
   try {
     sendSSE(res, { type: 'log', text: '==> Starting update process\n' });
 
-    // Step 1: Pull latest images (only GHCR services, excluding local builds)
-    // Services to pull:
-    // - hailmary-api (GHCR)
-    // - hailmary-assistant (GHCR)
-    // - hailmary-pwa (GHCR)
-    // - hailmary-migrator (GHCR, reuses hail-mary-api image)
-    // - postgres (public registry)
-    // Excluded: hailmary-admin-agent (local build)
-    sendSSE(res, { type: 'log', text: '==> Pulling latest images from registries\n' });
-    await executeCommand('docker', [
-      'compose',
-      '-f',
-      COMPOSE_FILE,
-      'pull',
-      ...PULLABLE_SERVICES
-    ], res);
+    // Discover which services are safe to pull (skip local build-only services)
+    let pullable = [];
+    try {
+      pullable = await getPullableServices();
+      sendSSE(res, { type: 'log', text: `==> Pullable services: ${pullable.join(', ') || '(none)'}\n` });
+    } catch (e) {
+      sendSSE(res, { type: 'error', message: `Failed to determine pullable services: ${e.message}` });
+      sendSSE(res, { type: 'complete', success: false });
+      return res.end();
+    }
+
+    // Step 1: Pull latest images
+    sendSSE(res, { type: 'log', text: '==> Pulling latest images\n' });
+    if (pullable.length > 0) {
+      await executeCommand('docker', ['compose', '-f', COMPOSE_FILE, 'pull', ...pullable], res);
+    } else {
+      sendSSE(res, { type: 'log', text: 'No pullable services found; skipping pull step.\n' });
+    }
 
     sendSSE(res, { type: 'log', text: '\n==> Updating services\n' });
 

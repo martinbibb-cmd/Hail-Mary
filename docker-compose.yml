@@ -1,3 +1,7 @@
+# Stable project name ensures docker compose inside admin-agent container
+# uses the same project name as the host, avoiding container name conflicts
+name: hail-mary
+
 services:
   # PostgreSQL Database
   hailmary-postgres:

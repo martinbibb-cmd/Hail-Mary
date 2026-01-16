@@ -1,12 +1,12 @@
 /**
  * Visit Session Routes - CRUD operations for visit sessions
+ * Note: This is legacy - new code should use /api/spine/visits
  */
 
 import { Router, Request, Response } from "express";
 import { db } from "../db/drizzle-client";
 import { visitSessions, visitObservations, transcriptSessions, transcriptSegments } from "../db/drizzle-schema";
 import { eq, desc, count } from "drizzle-orm";
-import { requireLeadId } from "../middleware/leadId.middleware";
 import type {
   ApiResponse,
   VisitSession,
@@ -124,17 +124,19 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 // POST /visit-sessions - Create visit session (Start a visit)
-// Requires leadId to ensure visits are always linked to a customer
-router.post("/", requireLeadId, async (req: Request, res: Response) => {
+// Note: leadId is now OPTIONAL (legacy compatibility)
+// New code should use /api/spine/visits instead
+router.post("/", async (req: Request, res: Response) => {
   try {
     const dto: CreateVisitSessionDto = req.body;
 
-    // leadId is required and validated by middleware
+    // leadId is optional for backwards compatibility
+    // Allow creation without leadId for new address/property-first workflow
     const [inserted] = await db
       .insert(visitSessions)
       .values({
         accountId: dto.accountId,
-        leadId: dto.leadId!,
+        leadId: dto.leadId ?? null,
         status: "in_progress",
       })
       .returning();
@@ -142,7 +144,7 @@ router.post("/", requireLeadId, async (req: Request, res: Response) => {
     const session: VisitSession = {
       id: inserted.id,
       accountId: inserted.accountId,
-      leadId: inserted.leadId,
+      leadId: inserted.leadId ?? undefined,
       startedAt: inserted.startedAt,
       endedAt: inserted.endedAt ?? undefined,
       status: inserted.status as VisitSession["status"],

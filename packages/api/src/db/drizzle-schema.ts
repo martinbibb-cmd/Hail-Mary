@@ -191,8 +191,7 @@ export const visitSessions = pgTable("visit_sessions", {
     .references(() => accounts.id)
     .notNull(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(), // kept for backward compat
+    .references(() => leads.id), // MADE OPTIONAL - legacy compatibility only
   addressId: uuid("address_id")
     .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
   startedAt: timestamp("started_at", { withTimezone: true })
@@ -210,8 +209,7 @@ export const mediaAttachments = pgTable("media_attachments", {
     .references(() => visitSessions.id)
     .notNull(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(), // kept for backward compat
+    .references(() => leads.id), // MADE OPTIONAL - legacy compatibility only
   addressId: uuid("address_id")
     .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
   type: varchar("type", { length: 50 }).notNull(), // photo, video, measurement, other

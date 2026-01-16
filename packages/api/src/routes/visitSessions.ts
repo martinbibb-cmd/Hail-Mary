@@ -314,8 +314,8 @@ router.post("/:id/generate-summary", async (req: Request, res: Response) => {
       .where(eq(visitObservations.visitSessionId, visitSessionId))
       .orderBy(visitObservations.createdAt);
     
-    // Get transcript segments if available
-    const transcriptRows = visitSession.leadId
+    // Get transcript segments if available (only if leadId exists)
+    const transcriptRows = visitSession.leadId != null
       ? await db
           .select()
           .from(transcriptSessions)

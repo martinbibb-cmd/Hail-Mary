@@ -14,7 +14,7 @@ ALTER TABLE visit_observations ALTER COLUMN lead_id DROP NOT NULL;
 ALTER TABLE survey_instances ALTER COLUMN lead_id DROP NOT NULL;
 
 -- Add comments to document the change
-COMMENT ON COLUMN visit_sessions.lead_id IS 'LEGACY ONLY - Optional for backwards compatibility. New workflows use spine_visits instead.';
-COMMENT ON COLUMN media_attachments.lead_id IS 'LEGACY ONLY - Optional for backwards compatibility. Link via visitSessionId or use spine_timeline_events instead.';
-COMMENT ON COLUMN visit_observations.lead_id IS 'LEGACY ONLY - Optional for backwards compatibility. Link via visitSessionId instead.';
-COMMENT ON COLUMN survey_instances.lead_id IS 'LEGACY ONLY - Optional for backwards compatibility. Link via visitSessionId instead.';
+COMMENT ON COLUMN visit_sessions.lead_id IS 'LEGACY ONLY - Optional for backward compatibility. New workflows use spine_visits instead.';
+COMMENT ON COLUMN media_attachments.lead_id IS 'LEGACY ONLY - Optional for backward compatibility. Link via visitSessionId or use spine_timeline_events instead.';
+COMMENT ON COLUMN visit_observations.lead_id IS 'LEGACY ONLY - Optional for backward compatibility. Link via visitSessionId instead.';
+COMMENT ON COLUMN survey_instances.lead_id IS 'LEGACY ONLY - Optional for backward compatibility. Link via visitSessionId instead.';

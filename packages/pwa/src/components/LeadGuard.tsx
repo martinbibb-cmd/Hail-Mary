@@ -32,10 +32,10 @@ export const LeadGuard: React.FC<LeadGuardProps> = ({
   const currentLeadId = useLeadStore((state) => state.currentLeadId);
   const currentSpineVisitId = useVisitStore((state) => state.currentSpineVisitId);
 
-  // Determine if we have sufficient context
+  // Determine if we have sufficient context (check for both null and undefined)
   const hasContext = requireBoth 
-    ? (currentLeadId !== null && currentSpineVisitId !== null) // Both required
-    : (currentLeadId !== null || currentSpineVisitId !== null); // Either is fine
+    ? (currentLeadId != null && currentSpineVisitId != null) // Both required
+    : (currentLeadId != null || currentSpineVisitId != null); // Either is fine
 
   if (!hasContext) {
     return (

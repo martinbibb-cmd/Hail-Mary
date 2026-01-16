@@ -153,10 +153,11 @@ async function handleUpdateStream(req, res) {
     sendSSE(res, { type: 'log', text: '\n==> Updating services\n' });
 
     // Step 2: Update services (IMPORTANT: only recreate registry services; never recreate admin-agent itself)
+    // Use --no-deps to avoid restarting dependencies (postgres, admin-agent)
     await executeCommand('docker', dockerComposeArgs([
       'up',
       '-d',
-      '--force-recreate',
+      '--no-deps',
       ...UPDATABLE_SERVICES
     ]), res);
 

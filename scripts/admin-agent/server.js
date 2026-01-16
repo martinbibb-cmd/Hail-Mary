@@ -105,7 +105,7 @@ async function handleUpdateStream(req, res) {
     // - hailmary-migrator (GHCR, reuses hail-mary-api image)
     // - postgres (public registry)
     // Excluded: hailmary-admin-agent (local build)
-    sendSSE(res, { type: 'log', text: '==> Pulling latest images from GHCR\n' });
+    sendSSE(res, { type: 'log', text: '==> Pulling latest images from registries\n' });
     await executeCommand('docker', [
       'compose',
       '-f',

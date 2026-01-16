@@ -118,7 +118,10 @@ services:
 
   # Admin Agent Service - Manages system updates with Docker socket access
   hailmary-admin-agent:
-    image: node:20-alpine
+    build:
+      context: ./scripts/admin-agent
+      dockerfile: Dockerfile
+    image: hailmary-admin-agent:local
     container_name: hailmary-admin-agent
     restart: unless-stopped
     env_file: .env
@@ -129,8 +132,6 @@ services:
     volumes:
       # Docker socket access for managing containers
       - /var/run/docker.sock:/var/run/docker.sock
-      # Mount admin agent script
-      - ./scripts/admin-agent:/app
       # Mount repository root for docker-compose.yml access
       - ./:/workspace
     working_dir: /app

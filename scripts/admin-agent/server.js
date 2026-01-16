@@ -27,9 +27,15 @@ const COMPOSE_PROJECT_NAME =
  */
 const PULLABLE_SERVICES = ['hailmary-api', 'hailmary-assistant', 'hailmary-pwa', 'hailmary-migrator', 'hailmary-postgres'];
 
-// Only these services should be recreated during update.
-// DO NOT include hailmary-admin-agent (self) or any local-build services.
-const UPDATABLE_SERVICES = [...PULLABLE_SERVICES];
+// Services we actually recreate during an update.
+// IMPORTANT: do NOT include hailmary-admin-agent (self) or hailmary-postgres (database).
+// Only recreate application services that can safely restart without data loss.
+const UPDATABLE_SERVICES = [
+  'hailmary-migrator',
+  'hailmary-api',
+  'hailmary-assistant',
+  'hailmary-pwa',
+];
 
 /**
  * Build docker compose command arguments with project name

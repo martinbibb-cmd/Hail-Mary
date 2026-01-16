@@ -1785,3 +1785,122 @@ export const heatingPipeNetworks = pgTable("heating_pipe_networks", {
 }, (t) => ({
   projectIdIdx: index("heating_pipe_networks_project_id_idx").on(t.projectId),
 }));
+
+// ============================================
+// Mains Performance Test Module (Atlas)
+// ============================================
+
+// Mains performance tests - main test entity capturing static/dynamic pressure,
+// flow rate, and temperature under controlled load conditions during property surveys
+export const mainsPerformanceTests = pgTable("mains_performance_tests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  propertyId: integer("property_id")
+    .references(() => properties.id)
+    .notNull(),
+  surveyId: integer("survey_id")
+    .references(() => surveyInstances.id),
+  sourcePoint: text("source_point"), // "outside tap", "kitchen cold", etc.
+  ambientTempC: numeric("ambient_temp_c", { precision: 5, scale: 2 }),
+  weatherConditions: text("weather_conditions"),
+  timeOfDay: varchar("time_of_day", { length: 20 }), // morning, afternoon, evening
+  waterUtilityCompany: text("water_utility_company"),
+  postcode: text("postcode"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  createdBy: integer("created_by")
+    .references(() => users.id)
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (t) => ({
+  propertyIdIdx: index("mains_performance_tests_property_id_idx").on(t.propertyId),
+  surveyIdIdx: index("mains_performance_tests_survey_id_idx").on(t.surveyId),
+  createdByIdx: index("mains_performance_tests_created_by_idx").on(t.createdBy),
+}));
+
+// Mains test devices - equipment/sensors used during the test
+export const mainsTestDevices = pgTable("mains_test_devices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id")
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
+    .notNull(),
+  label: text("label").notNull(), // "A", "B", "C"
+  location: text("location"), // "outside tap", "kitchen tap", etc.
+  sensorType: text("sensor_type").default("manual").notNull(),
+  calibrationProfileId: uuid("calibration_profile_id"), // nullable, future use
+  notes: text("notes"),
+}, (t) => ({
+  testIdIdx: index("mains_test_devices_test_id_idx").on(t.testId),
+}));
+
+// Mains test steps - sequence of test steps with different valve states
+export const mainsTestSteps = pgTable("mains_test_steps", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id")
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
+    .notNull(),
+  index: integer("index").notNull(), // 0, 1, 2, 3...
+  label: text("label"), // "All closed", "Outlet 1 open", etc.
+  outletCount: integer("outlet_count"), // 0, 1, 2, 3
+  valveState: text("valve_state"),
+  durationSeconds: integer("duration_seconds"),
+  targetFlowLpm: numeric("target_flow_lpm", { precision: 10, scale: 2 }),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  stabilizedAt: timestamp("stabilized_at", { withTimezone: true }),
+  notes: text("notes"),
+}, (t) => ({
+  testIdIdx: index("mains_test_steps_test_id_idx").on(t.testId),
+  testIdIndexIdx: index("mains_test_steps_test_id_index_idx").on(t.testId, t.index),
+}));
+
+// Mains test observations - individual measurements at each step/device combination
+export const mainsTestObservations = pgTable("mains_test_observations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id")
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
+    .notNull(),
+  stepId: uuid("step_id")
+    .references(() => mainsTestSteps.id, { onDelete: "cascade" })
+    .notNull(),
+  deviceId: uuid("device_id")
+    .references(() => mainsTestDevices.id, { onDelete: "cascade" })
+    .notNull(),
+  timestamp: timestamp("timestamp", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  pressureBar: numeric("pressure_bar", { precision: 10, scale: 3 }),
+  flowLpm: numeric("flow_lpm", { precision: 10, scale: 2 }),
+  waterTempC: numeric("water_temp_c", { precision: 5, scale: 2 }),
+  qualityFlags: jsonb("quality_flags").default(sql`'[]'::jsonb`), // ["estimated", "unstable", "air_in_line"]
+  method: text("method").default("manual").notNull(),
+  enteredBy: integer("entered_by")
+    .references(() => users.id),
+}, (t) => ({
+  testIdIdx: index("mains_test_observations_test_id_idx").on(t.testId),
+  stepIdIdx: index("mains_test_observations_step_id_idx").on(t.stepId),
+  deviceIdIdx: index("mains_test_observations_device_id_idx").on(t.deviceId),
+}));
+
+// Mains test analyses - computed results and cached analysis
+export const mainsTestAnalyses = pgTable("mains_test_analyses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id")
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  analysisVersion: text("analysis_version").notNull(), // "1.0"
+  computedAt: timestamp("computed_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  staticPressureBar: numeric("static_pressure_bar", { precision: 10, scale: 3 }),
+  dynamicPressureAtSteps: jsonb("dynamic_pressure_at_steps"), // [{stepIndex: 0, pressureBar: 3.2}, ...]
+  maxFlowObservedLpm: numeric("max_flow_observed_lpm", { precision: 10, scale: 2 }),
+  pressureDropPerOutlet: numeric("pressure_drop_per_outlet", { precision: 10, scale: 3 }),
+  supplyCurvePoints: jsonb("supply_curve_points"), // [{flowLpm: 10, pressureBar: 2.8, tempC: 12, stepIndex: 1}, ...]
+  riskFlags: jsonb("risk_flags"), // warnings/validation results
+}, (t) => ({
+  testIdIdx: index("mains_test_analyses_test_id_idx").on(t.testId),
+}));

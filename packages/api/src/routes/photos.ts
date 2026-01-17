@@ -63,6 +63,7 @@ function parseId(raw: unknown): number | null {
 /**
  * POST /api/photos
  * Upload photo with metadata
+ * REQUIRES addressId to anchor the photo to a property
  */
 router.post("/", requireAuth, upload.single('photo'), async (req: Request, res: Response) => {
   try {
@@ -74,12 +75,16 @@ router.post("/", requireAuth, upload.single('photo'), async (req: Request, res: 
       return res.status(400).json(response);
     }
 
-    const { postcode, notes, tag, latitude, longitude } = req.body;
+    const { addressId, postcode, notes, tag, latitude, longitude } = req.body;
 
-    if (!postcode || typeof postcode !== 'string') {
+    // addressId is now REQUIRED to properly anchor photos
+    if (!addressId || typeof addressId !== 'string') {
       // Clean up uploaded file
       fs.unlinkSync(file.path);
-      const response: ApiResponse<null> = { success: false, error: "postcode is required" };
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "addressId is required - select a property first"
+      };
       return res.status(400).json(response);
     }
 
@@ -91,7 +96,8 @@ router.post("/", requireAuth, upload.single('photo'), async (req: Request, res: 
       .insert(photos)
       .values({
         userId,
-        postcode: postcode.trim().toUpperCase(),
+        addressId, // REQUIRED: anchor to property
+        postcode: postcode?.trim().toUpperCase() || null, // Keep for backward compat, but optional
         filename: file.originalname,
         mimeType: file.mimetype,
         size: file.size,

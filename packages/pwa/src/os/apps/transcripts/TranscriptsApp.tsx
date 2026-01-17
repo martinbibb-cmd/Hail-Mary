@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSpineStore } from '../../../stores/spineStore';
 import './TranscriptsApp.css';
 
 interface Transcript {
@@ -16,6 +17,9 @@ interface Transcript {
 }
 
 export const TranscriptsApp: React.FC = () => {
+  // Get active address from spineStore - REQUIRED for proper anchoring
+  const activeAddress = useSpineStore((s) => s.activeAddress);
+
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,8 +94,9 @@ export const TranscriptsApp: React.FC = () => {
   };
 
   const handlePasteSubmit = async () => {
-    if (!postcode.trim()) {
-      setError('Postcode is required');
+    // REQUIRED: addressId must be present to anchor transcript
+    if (!activeAddress?.id) {
+      setError('Please select a property first');
       return;
     }
 
@@ -111,7 +116,8 @@ export const TranscriptsApp: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          postcode: postcode.trim(),
+          addressId: activeAddress.id, // REQUIRED: anchor to property
+          postcode: postcode.trim() || activeAddress.postcode || undefined,
           title: title.trim() || undefined,
           text: text.trim(),
           source: 'manual',
@@ -135,8 +141,9 @@ export const TranscriptsApp: React.FC = () => {
   };
 
   const handleFileUpload = async () => {
-    if (!postcode.trim()) {
-      setError('Postcode is required');
+    // REQUIRED: addressId must be present to anchor transcript
+    if (!activeAddress?.id) {
+      setError('Please select a property first');
       return;
     }
 
@@ -151,7 +158,8 @@ export const TranscriptsApp: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('postcode', postcode.trim());
+      formData.append('addressId', activeAddress.id); // REQUIRED: anchor to property
+      formData.append('postcode', postcode.trim() || activeAddress.postcode || '');
       if (title.trim()) {
         formData.append('title', title.trim());
       }
@@ -195,8 +203,9 @@ export const TranscriptsApp: React.FC = () => {
   };
 
   const handleAudioUpload = async () => {
-    if (!postcode.trim()) {
-      setError('Postcode is required');
+    // REQUIRED: addressId must be present to anchor transcript
+    if (!activeAddress?.id) {
+      setError('Please select a property first');
       return;
     }
 
@@ -229,7 +238,7 @@ export const TranscriptsApp: React.FC = () => {
       }
 
       const transcribedText = transcribeData.data.text;
-      
+
       setProcessingState('saving');
       setTranscriptionProgress('Transcription complete! Saving...');
 
@@ -241,7 +250,8 @@ export const TranscriptsApp: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          postcode: postcode.trim(),
+          addressId: activeAddress.id, // REQUIRED: anchor to property
+          postcode: postcode.trim() || activeAddress.postcode || undefined,
           title: title.trim() || `Audio transcription - ${selectedAudioFile.name}`,
           text: transcribedText,
           source: 'audio',
@@ -416,6 +426,16 @@ export const TranscriptsApp: React.FC = () => {
             </div>
 
             <div className="modal-body">
+              {!activeAddress && (
+                <div className="error-message" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}>
+                  ⚠️ No property selected. Please select a property from the Spine system first.
+                </div>
+              )}
+              {activeAddress && (
+                <div style={{ padding: '8px 12px', background: '#e0f2fe', border: '1px solid #0284c7', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
+                  📍 Selected property: <strong>{activeAddress.line1}, {activeAddress.postcode}</strong>
+                </div>
+              )}
               {error && (
                 <div className="error-message">
                   {error}
@@ -425,14 +445,14 @@ export const TranscriptsApp: React.FC = () => {
 
               <div className="form-group">
                 <label htmlFor="postcode">
-                  Postcode <span className="required">*</span>
+                  Postcode (optional - auto-filled from selected property)
                 </label>
                 <input
                   id="postcode"
                   type="text"
-                  value={postcode}
+                  value={postcode || activeAddress?.postcode || ''}
                   onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-                  placeholder="e.g. SW1A 1AA"
+                  placeholder={activeAddress?.postcode || 'e.g. SW1A 1AA'}
                   disabled={processingState !== 'idle'}
                 />
               </div>
@@ -530,17 +550,17 @@ export const TranscriptsApp: React.FC = () => {
                 Cancel
               </button>
               {activeTab === 'paste' && (
-                <button className="btn-primary" onClick={handlePasteSubmit} disabled={processingState !== 'idle'}>
+                <button className="btn-primary" onClick={handlePasteSubmit} disabled={processingState !== 'idle' || !activeAddress}>
                   {processingState === 'saving' ? 'Saving...' : 'Save Transcript'}
                 </button>
               )}
               {activeTab === 'upload' && (
-                <button className="btn-primary" onClick={handleFileUpload} disabled={processingState !== 'idle'}>
+                <button className="btn-primary" onClick={handleFileUpload} disabled={processingState !== 'idle' || !activeAddress}>
                   {processingState === 'uploading' ? 'Uploading...' : 'Upload Transcript'}
                 </button>
               )}
               {activeTab === 'audio' && (
-                <button className="btn-primary" onClick={handleAudioUpload} disabled={processingState !== 'idle'}>
+                <button className="btn-primary" onClick={handleAudioUpload} disabled={processingState !== 'idle' || !activeAddress}>
                   {processingState === 'transcribing' ? 'Transcribing...' : processingState === 'saving' ? 'Saving...' : 'Transcribe & Save'}
                 </button>
               )}

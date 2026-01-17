@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useLeadStore } from '../../../stores/leadStore'
+import { useSpineStore } from '../../../stores/spineStore'
 import './PhotosApp.css'
 
 interface PhotoLocation {
@@ -99,7 +100,9 @@ export const PhotosApp: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesText, setNotesText] = useState('')
-  
+
+  // Get active address from spineStore - REQUIRED for proper anchoring
+  const activeAddress = useSpineStore((s) => s.activeAddress)
   const currentLeadId = useLeadStore((state: LeadStoreState) => state.currentLeadId)
 
   // Calculate distance from previous photo (per visit/lead)
@@ -356,8 +359,9 @@ export const PhotosApp: React.FC = () => {
   }, [selectedPhoto, notesText])
 
   const uploadPhotoToBackend = useCallback(async (photo: CapturedPhoto) => {
-    if (!photo.leadId) {
-      const errorMsg = 'Cannot upload photo without an active lead. Please select a lead first.'
+    // REQUIRED: addressId must be present to anchor photo
+    if (!activeAddress?.id) {
+      const errorMsg = 'Cannot upload photo without an active property. Please select a property first.'
       console.warn(errorMsg)
       setError(errorMsg)
       return
@@ -367,62 +371,50 @@ export const PhotosApp: React.FC = () => {
       // Convert dataUrl to blob
       const response = await fetch(photo.dataUrl)
       const blob = await response.blob()
-      
+
       // Create FormData for file upload
       const formData = new FormData()
-      formData.append('file', blob, `photo-${photo.id}.jpg`)
-      formData.append('category', photo.category || 'property')
-      
-      // Upload to files API
-      const uploadResponse = await fetch('/api/files', {
+      formData.append('photo', blob, `photo-${photo.id}.jpg`)
+      formData.append('addressId', activeAddress.id) // REQUIRED: anchor to property
+      formData.append('postcode', activeAddress.postcode || '')
+      formData.append('notes', photo.notes || photo.description || '')
+      formData.append('tag', photo.category || 'property')
+
+      // Add location if available
+      if (photo.metadata?.location) {
+        formData.append('latitude', String(photo.metadata.location.latitude))
+        formData.append('longitude', String(photo.metadata.location.longitude))
+      }
+
+      // Upload to photos API (new anchored route)
+      const uploadResponse = await fetch('/api/photos', {
         method: 'POST',
         credentials: 'include',
         body: formData,
       })
-      
+
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json().catch(() => ({}))
-        throw new Error(`File upload failed (${uploadResponse.status}): ${errorData.error || uploadResponse.statusText}`)
+        throw new Error(`Photo upload failed (${uploadResponse.status}): ${errorData.error || uploadResponse.statusText}`)
       }
-      
+
       const uploadResult = await uploadResponse.json()
-      const fileId = uploadResult.data.id
-      
-      // Create photo record in leadPhotos
-      const photoResponse = await fetch(`/api/leads/${photo.leadId}/photos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          fileId,
-          category: photo.category || 'property',
-          caption: photo.notes || photo.description,
-          takenAt: photo.timestamp.toISOString(),
-        }),
-      })
-      
-      if (!photoResponse.ok) {
-        const errorData = await photoResponse.json().catch(() => ({}))
-        throw new Error(`Photo record creation failed (${photoResponse.status}): ${errorData.error || photoResponse.statusText}`)
-      }
-      
-      const photoResult = await photoResponse.json()
-      
-      // Update local photo with backend IDs
-      setPhotos((prev: CapturedPhoto[]) => prev.map((p: CapturedPhoto) => 
-        p.id === photo.id 
-          ? { ...p, fileId: photoResult.data.id }
+
+      // Update local photo with backend ID
+      setPhotos((prev: CapturedPhoto[]) => prev.map((p: CapturedPhoto) =>
+        p.id === photo.id
+          ? { ...p, fileId: uploadResult.data.photo.id }
           : p
       ))
-      
-      return photoResult.data
+
+      return uploadResult.data.photo
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       console.error('Error uploading photo:', errorMessage)
       setError(errorMessage)
       throw error
     }
-  }, [])
+  }, [activeAddress])
 
   // Restart camera when facing mode changes
   // Note: We only want to restart when facingMode changes, not when startCamera reference changes
@@ -569,13 +561,14 @@ export const PhotosApp: React.FC = () => {
           </div>
 
           <div className="photo-detail-actions">
-            {!selectedPhoto.fileId && selectedPhoto.leadId && (
-              <button 
-                className="btn-primary" 
+            {!selectedPhoto.fileId && (
+              <button
+                className="btn-primary"
                 onClick={() => uploadPhotoToBackend(selectedPhoto)}
-                disabled={isSaving}
+                disabled={isSaving || !activeAddress}
+                title={!activeAddress ? 'Select a property first' : 'Upload photo to property'}
               >
-                ☁️ Upload to Lead
+                {!activeAddress ? '⚠️ No Property' : '☁️ Upload to Property'}
               </button>
             )}
             <button className="btn-danger" onClick={() => deletePhoto(selectedPhoto.id)}>
@@ -592,8 +585,13 @@ export const PhotosApp: React.FC = () => {
       {!isFullScreen && (
         <div className="photos-app-header">
           <h2>📸 Photos</h2>
-          {!currentLeadId && (
-            <span className="photos-warning">⚠️ No lead selected</span>
+          {!activeAddress && (
+            <span className="photos-warning">⚠️ No property selected - select a property first</span>
+          )}
+          {activeAddress && (
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+              📍 {activeAddress.line1}, {activeAddress.postcode}
+            </div>
           )}
         </div>
       )}

@@ -159,13 +159,16 @@ async function handleUpdateStream(req, res) {
     await executeCommand('docker', dockerComposeArgs([
       'up',
       '-d',
+      '--no-recreate',
       'hailmary-postgres'
     ]), res);
 
     // Step 3: Run migrator as a one-shot job (clean + repeatable)
+    // Use --no-deps to avoid starting postgres again (already running from step 2)
     await executeCommand('docker', dockerComposeArgs([
       'run',
       '--rm',
+      '--no-deps',
       'hailmary-migrator'
     ]), res);
 

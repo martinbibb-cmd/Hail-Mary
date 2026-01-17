@@ -326,14 +326,19 @@ const upload = multer({
 /**
  * POST /api/transcripts
  * Create a transcript from pasted/typed text
+ * REQUIRES addressId to anchor the transcript to a property
  */
 router.post("/", requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
-    const { postcode, title, text, source, notes } = req.body;
+    const { addressId, postcode, title, text, source, notes } = req.body;
 
-    if (!postcode || typeof postcode !== 'string') {
-      const response: ApiResponse<null> = { success: false, error: "postcode is required" };
+    // addressId is now REQUIRED to properly anchor transcripts
+    if (!addressId || typeof addressId !== 'string') {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "addressId is required - select a property first"
+      };
       return res.status(400).json(response);
     }
 
@@ -350,7 +355,8 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
       .insert(transcriptSessions)
       .values({
         userId,
-        postcode: postcode.trim().toUpperCase(),
+        addressId, // REQUIRED: anchor to property
+        postcode: postcode?.trim().toUpperCase() || null, // Keep for backward compat, but optional
         title: autoTitle,
         rawText: text,
         source: source || 'manual',
@@ -379,6 +385,7 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
 /**
  * POST /api/transcripts/upload
  * Upload a transcript file (.txt, .md, .json)
+ * REQUIRES addressId to anchor the transcript to a property
  */
 router.post("/upload", requireAuth, upload.single('file'), async (req: Request, res: Response) => {
   try {
@@ -390,12 +397,16 @@ router.post("/upload", requireAuth, upload.single('file'), async (req: Request, 
       return res.status(400).json(response);
     }
 
-    const { postcode, title, notes } = req.body;
+    const { addressId, postcode, title, notes } = req.body;
 
-    if (!postcode || typeof postcode !== 'string') {
+    // addressId is now REQUIRED to properly anchor transcripts
+    if (!addressId || typeof addressId !== 'string') {
       // Clean up uploaded file
       fs.unlinkSync(file.path);
-      const response: ApiResponse<null> = { success: false, error: "postcode is required" };
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "addressId is required - select a property first"
+      };
       return res.status(400).json(response);
     }
 
@@ -410,7 +421,8 @@ router.post("/upload", requireAuth, upload.single('file'), async (req: Request, 
       .insert(transcriptSessions)
       .values({
         userId,
-        postcode: postcode.trim().toUpperCase(),
+        addressId, // REQUIRED: anchor to property
+        postcode: postcode?.trim().toUpperCase() || null, // Keep for backward compat, but optional
         title: autoTitle,
         rawText: fileContents,
         source: 'upload',

@@ -3,6 +3,8 @@
  * 
  * Handles creating transcript sessions, uploading audio chunks,
  * and retrieving transcription results.
+ * 
+ * Note: This is legacy - new code should use spine_timeline_events for transcripts
  */
 
 import { Router, Request, Response } from 'express';
@@ -25,7 +27,6 @@ import type {
   TranscriptSessionWithDetails,
 } from '@hail-mary/shared';
 import { enqueueSttJob, getSttProvider } from '../services/stt.service';
-import { requireLeadId } from '../middleware/leadId.middleware';
 
 const router = Router();
 
@@ -143,16 +144,17 @@ function mapRowToSegment(row: typeof transcriptSegments.$inferSelect): Transcrip
 }
 
 // POST /sessions - Create a new transcript session
-// Requires leadId to ensure transcripts are always linked to a customer
-router.post('/sessions', requireLeadId, async (req: Request, res: Response) => {
+// Note: leadId is now OPTIONAL (legacy compatibility)
+// New code should link transcripts via spine_timeline_events
+router.post('/sessions', async (req: Request, res: Response) => {
   try {
     const dto: CreateTranscriptSessionDto = req.body;
 
-    // leadId is required and validated by middleware
+    // leadId is optional for backwards compatibility
     const [inserted] = await db
       .insert(transcriptSessions)
       .values({
-        leadId: dto.leadId!,
+        leadId: dto.leadId ?? null,
         status: 'recording',
         language: dto.language || 'en-GB',
         notes: dto.notes || null,

@@ -27,11 +27,14 @@ const COMPOSE_PROJECT_NAME =
  */
 const PULLABLE_SERVICES = ['hailmary-api', 'hailmary-assistant', 'hailmary-pwa', 'hailmary-migrator', 'hailmary-postgres'];
 
-// Services we actually recreate during an update.
-// IMPORTANT: do NOT include hailmary-admin-agent (self) or hailmary-postgres (database).
-// Only recreate application services that can safely restart without data loss.
-const UPDATABLE_SERVICES = [
-  'hailmary-migrator',
+/**
+ * Runtime services we recreate during an update.
+ * IMPORTANT: do NOT include:
+ * - hailmary-admin-agent (self, would kill the update stream)
+ * - hailmary-postgres (database, causes needless disruption)
+ * - hailmary-migrator (run as one-shot job instead)
+ */
+const RUNTIME_SERVICES = [
   'hailmary-api',
   'hailmary-assistant',
   'hailmary-pwa',
@@ -147,18 +150,36 @@ async function handleUpdateStream(req, res) {
   try {
     sendSSE(res, { type: 'log', text: '==> Starting update process\n' });
 
-    // Step 1: Pull latest images (skip local-only images)
+    // Step 1: Pull latest images (registry services only, skip local builds)
     await pullLatestImages(res);
 
-    sendSSE(res, { type: 'log', text: '\n==> Updating services\n' });
+    sendSSE(res, { type: 'log', text: '\n==> Running database migrations\n' });
 
-    // Step 2: Update services (IMPORTANT: only recreate registry services; never recreate admin-agent itself)
-    // Use --no-deps to avoid restarting dependencies (postgres, admin-agent)
+    // Step 2: Ensure postgres is up (DON'T recreate it, just ensure it's running)
+    await executeCommand('docker', dockerComposeArgs([
+      'up',
+      '-d',
+      'hailmary-postgres'
+    ]), res);
+
+    // Step 3: Run migrator as a one-shot job (clean + repeatable)
+    await executeCommand('docker', dockerComposeArgs([
+      'run',
+      '--rm',
+      'hailmary-migrator'
+    ]), res);
+
+    sendSSE(res, { type: 'log', text: '\n==> Updating runtime services\n' });
+
+    // Step 4: Recreate only runtime services (api/assistant/pwa)
+    // Use --no-deps to avoid restarting postgres or admin-agent
+    // Use --force-recreate to ensure fresh containers even if config unchanged
     await executeCommand('docker', dockerComposeArgs([
       'up',
       '-d',
       '--no-deps',
-      ...UPDATABLE_SERVICES
+      '--force-recreate',
+      ...RUNTIME_SERVICES
     ]), res);
 
     sendSSE(res, { type: 'log', text: '\n==> Update completed successfully\n' });

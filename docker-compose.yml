@@ -131,6 +131,7 @@ services:
       context: ./scripts/admin-agent
       dockerfile: Dockerfile
     image: hailmary-admin-agent:local
+    pull_policy: never
     container_name: hailmary-admin-agent
     restart: unless-stopped
     env_file: .env

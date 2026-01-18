@@ -147,7 +147,7 @@ check_prerequisites() {
         
         if [[ ! -f "$COMPOSE_FILE" ]]; then
             error "No valid docker-compose file found in $DEPLOY_DIR"
-            error "Expected files: docker-compose.prod.yml or docker-compose.yml"
+            error "Checked: docker-compose.prod.yml and docker-compose.yml"
             exit 1
         fi
     fi

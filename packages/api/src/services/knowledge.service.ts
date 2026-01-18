@@ -12,10 +12,7 @@ import * as path from 'path';
 
 // Storage path for knowledge documents (should be in appdata or persistent volume)
 // Default to /var/lib/atlas-knowledge for all deployments
-const DEFAULT_STORAGE_PATH = process.env.IS_DOCKER === 'true' 
-  ? '/var/lib/atlas-knowledge'
-  : '/var/lib/atlas-knowledge';
-const KNOWLEDGE_STORAGE_PATH = process.env.KNOWLEDGE_STORAGE_PATH || DEFAULT_STORAGE_PATH;
+const KNOWLEDGE_STORAGE_PATH = process.env.KNOWLEDGE_STORAGE_PATH || '/var/lib/atlas-knowledge';
 
 export interface DocumentMetadata {
   title: string;

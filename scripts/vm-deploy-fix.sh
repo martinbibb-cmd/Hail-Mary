@@ -82,18 +82,19 @@ fi
 
 # Check for any other containers that might conflict with port 3001
 # Using docker ps with port inspection to find actual port conflicts
-CONFLICTING_CONTAINERS=$(docker ps -a --format '{{.Names}}' | while read -r container; do
+CONFLICTING_CONTAINERS=()
+while IFS= read -r container; do
     if docker port "$container" 2>/dev/null | grep -q "3001"; then
         if [[ "$container" != "hailmary-api" ]]; then
-            echo "$container"
+            CONFLICTING_CONTAINERS+=("$container")
         fi
     fi
-done)
+done < <(docker ps -a --format '{{.Names}}')
 
-if [[ -n "$CONFLICTING_CONTAINERS" ]]; then
+if [[ ${#CONFLICTING_CONTAINERS[@]} -gt 0 ]]; then
     warn "Found containers using port 3001 (API port):"
-    # Use for loop to properly track errors
-    for container in $CONFLICTING_CONTAINERS; do
+    # Use for loop with array to properly track errors
+    for container in "${CONFLICTING_CONTAINERS[@]}"; do
         warn "  - $container"
         info "  Removing $container..."
         docker rm -f "$container" || warn "  Failed to remove $container"

@@ -4,16 +4,16 @@
  * Exports all validators for regulatory compliance checking
  */
 
-export * from './bs5440';
-export * from './bs7671';
-export * from './hsg264';
-export * from './manufacturerInstructions';
+export * from './bs5440.js';
+export * from './bs7671.js';
+export * from './hsg264.js';
+export * from './manufacturerInstructions.js';
 
-import { BS5440Validator } from './bs5440';
-import { BS7671Validator } from './bs7671';
-import { HSG264Validator } from './hsg264';
-import { ManufacturerInstructionsValidator } from './manufacturerInstructions';
-import { Validator } from '../types';
+import { BS5440Validator } from './bs5440.js';
+import { BS7671Validator } from './bs7671.js';
+import { HSG264Validator } from './hsg264.js';
+import { ManufacturerInstructionsValidator } from './manufacturerInstructions.js';
+import { Validator } from '../types.js';
 
 /**
  * Get all validators

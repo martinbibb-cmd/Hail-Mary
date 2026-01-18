@@ -3,7 +3,7 @@
  * Based on BR 443 (Conventions for U-value calculations) and typical UK construction
  */
 
-import { UValueData, WallConstruction, RoofConstruction, FloorConstruction } from './types';
+import { UValueData, WallConstruction, RoofConstruction, FloorConstruction } from './types.js';
 
 // Define our own GlazingType for heating design U-values
 type HeatingGlazingType = 'single' | 'double' | 'double_low_e' | 'triple';

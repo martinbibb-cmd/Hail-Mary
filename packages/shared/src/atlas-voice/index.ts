@@ -18,10 +18,10 @@
  */
 
 // Entity and Event types
-export * from './entities-events-schema';
+export * from './entities-events-schema.js';
 
 // Domain knowledge catalogs (base)
-export * from './domain-knowledge-catalog';
+export * from './domain-knowledge-catalog.js';
 
 // Domain knowledge catalogs (expanded)
-export * from './domain-knowledge-catalog-expanded';
+export * from './domain-knowledge-catalog-expanded.js';

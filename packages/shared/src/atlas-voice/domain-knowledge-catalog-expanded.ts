@@ -12,7 +12,7 @@
  * Eventually this will integrate with the full GC product catalog.
  */
 
-import type { BoilerModel, FaultCode, DiagnosticPattern } from './domain-knowledge-catalog';
+import type { BoilerModel, FaultCode, DiagnosticPattern } from './domain-knowledge-catalog.js';
 
 // ============================================
 // Expanded Boiler Models

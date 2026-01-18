@@ -18,4 +18,4 @@
  * - Generate facts from transcripts (that's Rocky's job)
  */
 
-export * from './types';
+export * from './types.js';

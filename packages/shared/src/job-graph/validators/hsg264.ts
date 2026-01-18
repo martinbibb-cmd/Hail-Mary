@@ -13,7 +13,7 @@ import {
   Fact,
   Decision,
   Conflict,
-} from '../types';
+} from '../types.js';
 
 /**
  * HSG264 Validator

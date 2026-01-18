@@ -10,7 +10,7 @@
  * This is what transforms Atlas from "clever software" to "professional instrument"
  */
 
-import type { ConfidenceLevel } from '../core/systemRecommendation';
+import type { ConfidenceLevel } from '../core/systemRecommendation.js';
 
 // ============================================================================
 // Core Provenance Type

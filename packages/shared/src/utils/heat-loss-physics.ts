@@ -13,7 +13,7 @@ import {
   RadiatorOutputInput,
   RadiatorOutputResult,
   RadiatorPanelType,
-} from '../types/heat-loss-survey.types';
+} from '../types/heat-loss-survey.types.js';
 
 // ============================================
 // Physical Constants

@@ -17,7 +17,7 @@ import {
   Decision,
   Fact,
   RuleReference,
-} from './types';
+} from './types.js';
 
 /**
  * Conflict Detection Result

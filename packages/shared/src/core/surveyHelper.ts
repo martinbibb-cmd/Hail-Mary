@@ -11,7 +11,7 @@ import type {
   TopicTag, 
   SystemSpecDraft,
   ModuleCompleteness,
-} from '../types';
+} from '../types.js';
 
 /**
  * Context for determining the next helper question

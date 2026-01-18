@@ -5,8 +5,8 @@
  * Given HomeProfile + SpecFinal → returns 0-2 / 2-5 / 5-15 year roadmap items.
  */
 
-import type { SystemSpecDraft, ModuleName } from '../types';
-import type { HomeProfile } from './specStore';
+import type { SystemSpecDraft, ModuleName } from '../types.js';
+import type { HomeProfile } from './specStore.js';
 
 /**
  * Time horizon for upgrade recommendations

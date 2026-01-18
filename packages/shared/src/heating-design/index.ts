@@ -3,6 +3,6 @@
  * Export all heating design types and data
  */
 
-export * from './types';
-export * from './uvalues';
-export * from './provenance';
+export * from './types.js';
+export * from './uvalues.js';
+export * from './provenance.js';

@@ -4,10 +4,10 @@
  * Standard milestones for heating system surveys and their requirements
  */
 
-import { MilestoneDefinition, StandardMilestone } from './types';
+import { MilestoneDefinition, StandardMilestone } from './types.js';
 
 // Re-export StandardMilestone for convenience
-export { StandardMilestone } from './types';
+export { StandardMilestone } from './types.js';
 
 /**
  * Standard Milestone Definitions

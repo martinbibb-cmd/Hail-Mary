@@ -13,7 +13,7 @@ import {
   Fact,
   Decision,
   Conflict,
-} from '../types';
+} from '../types.js';
 
 /**
  * Manufacturer Instructions Validator

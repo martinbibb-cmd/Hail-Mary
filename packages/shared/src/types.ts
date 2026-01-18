@@ -342,6 +342,7 @@ export interface VisitObservation {
 export interface CreateVisitSessionDto {
   accountId: number;
   leadId?: number; // MADE OPTIONAL - legacy compatibility only, new workflows use spine_visits
+  addressId?: string; // UUID link to addresses table - REQUIRED for proper property anchoring
 }
 
 export interface UpdateVisitSessionDto {

@@ -139,6 +139,7 @@ router.post("/", async (req: Request, res: Response) => {
       .values({
         accountId: dto.accountId,
         leadId: dto.leadId ?? null,
+        addressId: dto.addressId ?? null,
         status: "in_progress",
       })
       .returning();

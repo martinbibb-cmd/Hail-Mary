@@ -276,6 +276,9 @@ router.post('/:testId/observations', async (req: Request, res: Response) => {
     const { testId } = req.params;
     const data: AddObservationRequest = req.body;
 
+    // Get userId from request
+    const userId = (req as any).user?.id || 1;
+
     // Verify test exists
     const test = await db.select().from(mainsPerformanceTests).where(eq(mainsPerformanceTests.id, testId)).limit(1);
 
@@ -285,6 +288,15 @@ router.post('/:testId/observations', async (req: Request, res: Response) => {
         error: 'Test not found',
       };
       return res.status(404).json(response);
+    }
+
+    // Verify ownership - user must own the test to add observations
+    if (test[0].createdBy !== userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Unauthorized to add observations to this test',
+      };
+      return res.status(403).json(response);
     }
 
     // Verify step exists
@@ -308,9 +320,6 @@ router.post('/:testId/observations', async (req: Request, res: Response) => {
       };
       return res.status(404).json(response);
     }
-
-    // Get userId from request
-    const userId = (req as any).user?.id || 1;
 
     // Create observation
     const [observation] = await db

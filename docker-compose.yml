@@ -86,7 +86,7 @@ services:
       # HAILMARY_CORE_PATH: /app/config/core
     # Optional: Mount custom config volume (requires HAILMARY_CORE_PATH above)
     # volumes:
-    #   - /mnt/user/appdata/hailmary/shared-core:/app/config/core:ro
+    #   - /path/to/hailmary/shared-core:/app/config/core:ro
     command: npm run start -w packages/api
     depends_on:
       hailmary-migrator:

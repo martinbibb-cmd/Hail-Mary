@@ -246,6 +246,7 @@ export interface VisitSession {
   id: number;
   accountId: number;
   leadId?: number; // MADE OPTIONAL - legacy compatibility only, new workflows use spine_visits
+  addressId?: string; // UUID link to addresses table - REQUIRED for proper property anchoring
   lead?: Lead;
   startedAt: Date;
   endedAt?: Date;

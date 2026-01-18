@@ -175,8 +175,14 @@ export const PhotoLibraryApp: React.FC = () => {
   };
 
   const handleUploadAll = async () => {
-    if (!activeAddress || !postcode.trim()) {
+    // REQUIRED: addressId must be present to anchor photos
+    if (!activeAddress?.id) {
       alert('Please select an address first from the Addresses app');
+      return;
+    }
+
+    if (!postcode.trim()) {
+      alert('Postcode is required');
       return;
     }
 
@@ -193,6 +199,7 @@ export const PhotoLibraryApp: React.FC = () => {
       for (const photoMeta of selectedPhotos) {
         const formData = new FormData();
         formData.append('photo', photoMeta.file);
+        formData.append('addressId', activeAddress.id); // REQUIRED: anchor to property
         formData.append('postcode', postcode.trim());
         if (photoMeta.notes) {
           formData.append('notes', photoMeta.notes);

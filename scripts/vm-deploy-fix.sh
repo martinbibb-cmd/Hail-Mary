@@ -35,7 +35,8 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --help)
-            head -n 17 "$0" | tail -n 15
+            # Extract help text from header comment block (lines 3-14)
+            sed -n '3,14s/^# \?//p' "$0"
             exit 0
             ;;
         *)
@@ -79,14 +80,23 @@ else
     info "No stray container 'jovial_banzai' found (already clean)"
 fi
 
-# Check for any other containers that might conflict
-CONFLICTING_CONTAINERS=$(docker ps -a --filter "publish=3001" --format '{{.Names}}' | grep -v 'hailmary-api' || true)
+# Check for any other containers that might conflict with port 3001
+# Using docker ps with port inspection to find actual port conflicts
+CONFLICTING_CONTAINERS=$(docker ps -a --format '{{.Names}}' | while read -r container; do
+    if docker port "$container" 2>/dev/null | grep -q "3001"; then
+        if [[ "$container" != "hailmary-api" ]]; then
+            echo "$container"
+        fi
+    fi
+done)
+
 if [[ -n "$CONFLICTING_CONTAINERS" ]]; then
     warn "Found containers using port 3001 (API port):"
-    echo "$CONFLICTING_CONTAINERS" | while read -r container; do
+    # Use for loop to properly track errors
+    for container in $CONFLICTING_CONTAINERS; do
         warn "  - $container"
         info "  Removing $container..."
-        docker rm -f "$container" || true
+        docker rm -f "$container" || warn "  Failed to remove $container"
     done
     success "Cleaned up conflicting containers"
 fi

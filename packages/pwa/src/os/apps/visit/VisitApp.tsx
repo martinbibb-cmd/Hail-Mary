@@ -345,7 +345,7 @@ export const VisitApp: React.FC = () => {
               source: 'atlas-pwa',
               deviceId,
               language: 'en-GB',
-              addressId: activeSession?.addressId, // IMPORTANT: anchor to property
+              addressId: sessionToUse.addressId ?? activeAddress?.id, // IMPORTANT: anchor to property
             }
           )
 

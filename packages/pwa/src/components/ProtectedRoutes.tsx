@@ -20,7 +20,7 @@ export const RockyToolWithGuard: React.FC = () => {
     <>
       <LeadGuard 
         onRequestLead={() => setShowLeadDrawer(true)}
-        message="Rocky requires an active lead to process and save notes."
+        message="Rocky requires an active context (customer or property address) to process and save notes."
       >
         <RockyTool />
       </LeadGuard>
@@ -36,7 +36,7 @@ export const SarahToolWithGuard: React.FC = () => {
     <>
       <LeadGuard 
         onRequestLead={() => setShowLeadDrawer(true)}
-        message="Sarah requires an active lead to provide context-aware assistance."
+        message="Sarah requires an active context (customer or property address) to provide context-aware assistance."
       >
         <SarahTool />
       </LeadGuard>
@@ -52,7 +52,7 @@ export const PhotosAppWithGuard: React.FC = () => {
     <>
       <LeadGuard 
         onRequestLead={() => setShowLeadDrawer(true)}
-        message="Photos must be attached to an active lead."
+        message="Photos require a property address to be anchored correctly. Select a customer or address first."
       >
         {MEDIA_RECEIVER_ONLY ? (
           <div style={{ padding: 16 }}>
@@ -78,7 +78,7 @@ export const VisitAppWithGuard: React.FC = () => {
     <>
       <LeadGuard
         onRequestLead={() => setShowLeadDrawer(true)}
-        message="Visit Notes require an active lead so recordings, notes, and transcripts can be saved correctly."
+        message="Visit Notes require an active context (customer or property address) so recordings, notes, and transcripts can be saved correctly."
       >
         <VisitApp />
       </LeadGuard>

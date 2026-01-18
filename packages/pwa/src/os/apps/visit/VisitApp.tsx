@@ -307,7 +307,7 @@ export const VisitApp: React.FC = () => {
         : (await api.post<ApiResponse<VisitSession>>('/api/visit-sessions', {
             accountId: user?.accountId ?? 1,
             leadId: Number(lead.id),
-            addressId: activeAddress?.id || undefined, // Include addressId to anchor to property
+            addressId: activeAddress?.id, // Include addressId to anchor to property
           })).data || null
       
       if (sessionToUse) {
@@ -345,7 +345,7 @@ export const VisitApp: React.FC = () => {
               source: 'atlas-pwa',
               deviceId,
               language: 'en-GB',
-              addressId: activeSession?.addressId || undefined, // IMPORTANT: anchor to property
+              addressId: activeSession?.addressId, // IMPORTANT: anchor to property
             }
           )
 

@@ -309,6 +309,19 @@ router.post('/:testId/observations', async (req: Request, res: Response) => {
       return res.status(404).json(response);
     }
 
+    // Validate that at least one measurement is provided
+    if (
+      data.pressureBar === undefined &&
+      data.flowLpm === undefined &&
+      data.waterTempC === undefined
+    ) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'At least one measurement (pressureBar, flowLpm, or waterTempC) must be provided',
+      };
+      return res.status(400).json(response);
+    }
+
     // Get userId from request
     const userId = (req as any).user?.id || 1;
 

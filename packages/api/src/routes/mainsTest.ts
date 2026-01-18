@@ -21,7 +21,7 @@ import {
   mainsTestSteps,
   mainsTestObservations,
 } from '../db/drizzle-schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type {
   ApiResponse,
   MainsPerformanceTest,
@@ -111,6 +111,36 @@ router.post('/', async (req: Request, res: Response) => {
     const response: ApiResponse<null> = {
       success: false,
       error: 'Failed to create mains test',
+    };
+    return res.status(500).json(response);
+  }
+});
+
+// GET /property/:propertyId - Get all tests for property
+router.get('/property/:propertyId', async (req: Request, res: Response) => {
+  try {
+    const { propertyId } = req.params;
+
+    const tests = await db
+      .select()
+      .from(mainsPerformanceTests)
+      .where(eq(mainsPerformanceTests.propertyId, parseInt(propertyId)));
+
+    const response: ApiResponse<MainsPerformanceTest[]> = {
+      success: true,
+      data: tests.map((t) => ({
+        ...t,
+        createdAt: t.createdAt,
+        ambientTempC: t.ambientTempC ? parseFloat(t.ambientTempC) : undefined,
+      })) as MainsPerformanceTest[],
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error('Error getting tests for property:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      error: 'Failed to get tests',
     };
     return res.status(500).json(response);
   }
@@ -423,36 +453,6 @@ router.delete('/:testId', async (req: Request, res: Response) => {
     const response: ApiResponse<null> = {
       success: false,
       error: 'Failed to delete test',
-    };
-    return res.status(500).json(response);
-  }
-});
-
-// GET /property/:propertyId - Get all tests for property
-router.get('/property/:propertyId', async (req: Request, res: Response) => {
-  try {
-    const { propertyId } = req.params;
-
-    const tests = await db
-      .select()
-      .from(mainsPerformanceTests)
-      .where(eq(mainsPerformanceTests.propertyId, parseInt(propertyId)));
-
-    const response: ApiResponse<MainsPerformanceTest[]> = {
-      success: true,
-      data: tests.map((t) => ({
-        ...t,
-        createdAt: t.createdAt,
-        ambientTempC: t.ambientTempC ? parseFloat(t.ambientTempC) : undefined,
-      })) as MainsPerformanceTest[],
-    };
-
-    return res.json(response);
-  } catch (error) {
-    console.error('Error getting tests for property:', error);
-    const response: ApiResponse<null> = {
-      success: false,
-      error: 'Failed to get tests',
     };
     return res.status(500).json(response);
   }

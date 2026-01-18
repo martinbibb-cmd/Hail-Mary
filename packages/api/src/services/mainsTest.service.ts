@@ -19,7 +19,6 @@ import {
   DynamicPressurePoint,
   SupplyCurvePoint,
   UK_MAINS_PLAUSIBILITY_BOUNDS,
-  QualityFlag,
 } from '@hail-mary/shared';
 
 // ============================================
@@ -84,7 +83,7 @@ export function validateObservation(
   if (observation.flowLpm !== undefined && observation.flowLpm !== null) {
     if (observation.flowLpm < bounds.flow.min) {
       warnings.push({
-        code: MainsTestWarningCodes.FLOW_TOO_HIGH,
+        code: MainsTestWarningCodes.FLOW_TOO_LOW,
         severity: 'error',
         category: 'plausibility',
         message: `Flow ${observation.flowLpm} L/min is negative. Check measurement.`,

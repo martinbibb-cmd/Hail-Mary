@@ -8,7 +8,7 @@
  * 4. Results - Computed analysis with warnings and risk flags
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   MainsPerformanceTest,
   MainsTestDevice,
@@ -294,6 +294,7 @@ export const MainsTestApp: React.FC<MainsTestAppProps> = ({
                   className="btn-icon"
                   onClick={() => setDeviceDrafts(deviceDrafts.filter((_, i) => i !== idx))}
                   disabled={readOnly || loading}
+                  aria-label={`Remove device ${device.label}`}
                 >
                   ✕
                 </button>

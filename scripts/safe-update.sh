@@ -20,6 +20,19 @@
 
 set -e  # Exit on any error
 
+# Services that can be safely pulled from a registry
+# IMPORTANT: Keep this aligned with PULLABLE_SERVICES in scripts/admin-agent/server.js
+PULLABLE_SERVICES=(
+  "hailmary-api"
+  "hailmary-pwa"
+  "hailmary-assistant"
+  "hailmary-migrator"
+  "hailmary-postgres"
+)
+
+# Default PWA port (can be overridden by PWA_PORT env var in .env)
+DEFAULT_PWA_PORT=3000
+
 echo "🔒 Safe Update for Hail-Mary"
 echo ""
 echo "This script safely updates your stack by:"
@@ -38,14 +51,14 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🐳 Step 2: Pulling registry-backed images"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Pulling: hailmary-api, hailmary-pwa, hailmary-assistant, hailmary-migrator, hailmary-postgres"
+echo "Pulling: ${PULLABLE_SERVICES[*]}"
 echo "(Skipping: hailmary-admin-agent - local build only)"
 echo ""
 
 # Pull ONLY services that are in a registry
 # Do NOT include hailmary-admin-agent as it's a local build
 # Note: hailmary-migrator uses the same image as hailmary-api, but we pull it explicitly for clarity
-docker compose pull hailmary-api hailmary-pwa hailmary-assistant hailmary-migrator hailmary-postgres
+docker compose pull "${PULLABLE_SERVICES[@]}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -80,7 +93,7 @@ echo "✅ Safe update complete!"
 echo ""
 echo "📝 Next steps:"
 echo "  - Check logs: docker compose logs -f"
-echo "  - Verify UI: http://localhost:${PWA_PORT:-3000}"
+echo "  - Verify UI: http://localhost:${PWA_PORT:-$DEFAULT_PWA_PORT}"
 echo "  - Run migrations if needed: docker exec hailmary-api npm run db:migrate -w packages/api"
 echo ""
 echo "💡 Troubleshooting:"

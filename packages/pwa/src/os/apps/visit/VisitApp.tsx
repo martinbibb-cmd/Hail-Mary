@@ -18,6 +18,7 @@ import {
 import { getRockyStatus as getLocalRockyStatus } from './rockyExtractor'
 import { useLeadStore } from '../../../stores/leadStore'
 import { useVisitStore } from '../../../stores/visitStore'
+import { useSpineStore } from '../../../stores/spineStore'
 import { clearAutoFilledField } from '../../../services/visitCaptureOrchestrator'
 import { formatSaveTime, exportLeadAsJsonFile } from '../../../utils/saveHelpers'
 import { useTranscriptionStore } from '../../../stores/transcriptionStore'
@@ -88,6 +89,9 @@ export const VisitApp: React.FC = () => {
   const dirtyByLeadId = useLeadStore((state) => state.dirtyByLeadId)
   const lastSavedAtByLeadId = useLeadStore((state) => state.lastSavedAtByLeadId)
   const exportLeadAsJson = useLeadStore((state) => state.exportLeadAsJson)
+  
+  // Spine store for address context
+  const activeAddress = useSpineStore((state) => state.activeAddress)
   
   // Visit store for session/recording state
   const setActiveSessionInStore = useVisitStore((state) => state.setActiveSession)
@@ -303,6 +307,7 @@ export const VisitApp: React.FC = () => {
         : (await api.post<ApiResponse<VisitSession>>('/api/visit-sessions', {
             accountId: user?.accountId ?? 1,
             leadId: Number(lead.id),
+            addressId: activeAddress?.id, // Include addressId to anchor to property
           })).data || null
       
       if (sessionToUse) {
@@ -340,7 +345,7 @@ export const VisitApp: React.FC = () => {
               source: 'atlas-pwa',
               deviceId,
               language: 'en-GB',
-              addressId: activeSession?.addressId || undefined, // IMPORTANT: anchor to property
+              addressId: activeSession?.addressId, // IMPORTANT: anchor to property
             }
           )
 

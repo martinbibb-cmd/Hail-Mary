@@ -7,7 +7,7 @@
  * Modules: core, central_heating, heat_pump, pv, ev, hazards
  */
 
-import type { SurveySlot } from './types';
+import type { SurveySlot } from './types.js';
 
 // ============================================
 // Core / Fabric / Lifestyle Slots

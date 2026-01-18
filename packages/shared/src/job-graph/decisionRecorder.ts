@@ -12,7 +12,7 @@ import {
   RuleReference,
   Confidence,
   EvidenceTrail,
-} from './types';
+} from './types.js';
 
 /**
  * Decision Builder - Fluent API for creating decisions

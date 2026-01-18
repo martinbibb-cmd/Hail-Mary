@@ -13,7 +13,7 @@ import {
   Fact,
   Decision,
   Conflict,
-} from '../types';
+} from '../types.js';
 
 /**
  * BS 5440 Validator

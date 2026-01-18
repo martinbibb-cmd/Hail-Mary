@@ -14,32 +14,32 @@
  */
 
 // Core Types
-export * from './types';
+export * from './types.js';
 
 // Milestone Management
-export * from './milestones';
-export { MilestoneTracker } from './milestoneTracker';
+export * from './milestones.js';
+export { MilestoneTracker } from './milestoneTracker.js';
 
 // Conflict Detection
-export { ConflictEngine, RuleComparator } from './conflictEngine';
+export { ConflictEngine, RuleComparator } from './conflictEngine.js';
 
 // Decision Recording
 export {
   DecisionRecorder,
   DecisionBuilder,
   CommonDecisionPatterns,
-} from './decisionRecorder';
+} from './decisionRecorder.js';
 
 // Validators
-export * from './validators';
+export * from './validators/index.js';
 
 // Main Orchestrator
 export {
   JobGraphOrchestrator,
   createJobGraph,
-} from './jobGraph';
+} from './jobGraph.js';
 
-export type { JobGraphState } from './jobGraph';
+export type { JobGraphState } from './jobGraph.js';
 
 // Re-export commonly used types for convenience
 export type {
@@ -54,4 +54,4 @@ export type {
   JobGraphSummary,
   EvidenceTrail,
   RuleSource,
-} from './types';
+} from './types.js';

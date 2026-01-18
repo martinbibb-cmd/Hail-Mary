@@ -10,7 +10,7 @@
  * Architectural Rule: Rocky decides. Sarah explains.
  */
 
-import type { RockyFacts } from '../rocky/types';
+import type { RockyFacts } from '../rocky/types.js';
 
 // ============================================
 // Sarah Input/Output Types

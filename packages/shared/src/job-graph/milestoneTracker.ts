@@ -13,8 +13,8 @@ import {
   Decision,
   Conflict,
   FactCategory,
-} from './types';
-import { MILESTONE_DEFINITIONS, canStartMilestone } from './milestones';
+} from './types.js';
+import { MILESTONE_DEFINITIONS, canStartMilestone } from './milestones.js';
 
 /**
  * Milestone Progress

@@ -12,7 +12,7 @@ import {
   Fact,
   Decision,
   Conflict,
-} from '../types';
+} from '../types.js';
 
 /**
  * BS 7671 Validator

@@ -5,7 +5,7 @@
  * Central store for all survey data across modules.
  */
 
-import type { SystemSpecDraft, ModuleName } from '../types';
+import type { SystemSpecDraft, ModuleName } from '../types.js';
 
 /**
  * HomeProfile - static/slow-changing property information

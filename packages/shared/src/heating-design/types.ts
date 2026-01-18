@@ -9,7 +9,7 @@ import type {
   Orientation,
   GlazingType as SurveyGlazingType,
   ValveType as SurveyValveType,
-} from '../types/heat-loss-survey.types';
+} from '../types/heat-loss-survey.types.js';
 
 // Type aliases for internal use (prevents export conflicts)
 type GlazingType = SurveyGlazingType;

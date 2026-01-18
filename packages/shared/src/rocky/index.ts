@@ -18,4 +18,4 @@
  * - Generate explanations (that's Sarah's job)
  */
 
-export * from './types';
+export * from './types.js';

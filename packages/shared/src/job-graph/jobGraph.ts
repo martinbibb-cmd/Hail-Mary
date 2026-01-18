@@ -19,12 +19,12 @@ import {
   Confidence,
   CompletenessAssessment,
   FactCategory,
-} from './types';
-import { MilestoneTracker } from './milestoneTracker';
-import { ConflictEngine } from './conflictEngine';
-import { DecisionRecorder } from './decisionRecorder';
-import { StandardMilestone } from './milestones';
-import { getAllValidators } from './validators';
+} from './types.js';
+import { MilestoneTracker } from './milestoneTracker.js';
+import { ConflictEngine } from './conflictEngine.js';
+import { DecisionRecorder } from './decisionRecorder.js';
+import { StandardMilestone } from './milestones.js';
+import { getAllValidators } from './validators/index.js';
 
 /**
  * Job Graph State - Complete state of a job

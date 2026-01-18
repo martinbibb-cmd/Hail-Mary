@@ -31,7 +31,7 @@ import {
   ConfidenceScore,
   DataSourceType,
   UnheatedAdjacentConfig,
-} from '../types/heat-loss-survey.types';
+} from '../types/heat-loss-survey.types.js';
 
 import {
   calculateHeatLoss,
@@ -41,7 +41,7 @@ import {
   DESIGN_INTERNAL_TEMP_C,
   TYPICAL_U_VALUES,
   TYPICAL_AIR_CHANGE_RATES,
-} from './heat-loss-physics';
+} from './heat-loss-physics.js';
 
 // ============================================
 // Atlas Configuration Defaults

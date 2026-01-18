@@ -18,7 +18,32 @@ make migrate       # Run database migrations
 
 ## Update Scripts
 
-### 1️⃣ VM Deployment Fix
+### 1️⃣ Safe Update (Recommended for Production/VM) 🔒
+**Use when:** Running on production VM or need reliable updates that avoid registry pull failures
+
+```bash
+./scripts/safe-update.sh
+```
+
+**Why use this:**
+- ✅ Prevents "pull access denied" errors for local-build services
+- ✅ Only pulls registry-backed images (hailmary-api, hailmary-pwa, hailmary-assistant, hailmary-migrator, hailmary-postgres)
+- ✅ Rebuilds admin-agent locally (never pulled from registry)
+- ✅ Safe for production deployments
+- ⚡ Fast and predictable (30-60 seconds)
+
+**What it does:**
+1. Pulls latest code from git
+2. Pulls ONLY GHCR-backed services: hailmary-api, hailmary-assistant, hailmary-pwa, hailmary-migrator, hailmary-postgres
+3. Rebuilds hailmary-admin-agent locally
+4. Brings everything up with --remove-orphans
+
+**Common issues this solves:**
+- ❌ "pull access denied for hailmary-admin-agent" → This script never pulls admin-agent
+- ❌ UI update button failures → Admin-agent is built locally, not pulled
+- ❌ Missing update screen → Ensures all services start correctly
+
+### 2️⃣ VM Deployment Fix
 **Use when:** Need to clean up deployment on VM, remove stray containers, and verify health
 
 ```bash
@@ -35,7 +60,7 @@ What it does:
 Options:
 - `--skip-verify` - Skip health check verification after deployment
 
-### 2️⃣ Quick Update (No Rebuild)
+### 3️⃣ Quick Update (No Rebuild)
 **Use when:** Only code changed, no new dependencies
 
 ```bash
@@ -47,7 +72,7 @@ What it does:
 - ✅ Restarts services
 - ⚡ Fast (2-5 seconds)
 
-### 3️⃣ Full Update (With Rebuild)
+### 4️⃣ Full Update (With Rebuild)
 **Use when:** Dependencies changed, Dockerfile modified, or you see errors
 
 ```bash
@@ -61,7 +86,7 @@ What it does:
 - ✅ Restarts stack
 - 🐢 Slower (2-5 minutes)
 
-### 4️⃣ Standard Update (Original)
+### 5️⃣ Standard Update (Original)
 ```bash
 ./scripts/update-and-restart.sh
 ```
@@ -70,29 +95,52 @@ What it does:
 
 If you prefer manual control:
 
+### Safe Update (Recommended)
 ```bash
-# Pull latest code
+# Step 1: Pull latest code
+cd ~/Hail-Mary
 git pull
 
-# Install dependencies
-npm install
+# Step 2: Pull ONLY registry-backed images
+docker compose pull hailmary-api hailmary-pwa hailmary-assistant hailmary-migrator hailmary-postgres
 
+# Step 3: Rebuild local-only admin agent (no pulling)
+docker compose build hailmary-admin-agent
+
+# Step 4: Bring everything up
+docker compose up -d --remove-orphans
+```
+
+### Quick Commands
+```bash
 # Restart stack (quick)
-docker-compose restart
-
-# Rebuild and restart (full)
-docker-compose down
-docker-compose build
-docker-compose up -d
+docker compose restart
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Check status
-docker-compose ps
+docker compose ps
+```
+
+### Full Rebuild (when needed)
+```bash
+# Install dependencies (if needed)
+npm install
+
+# Rebuild and restart (full)
+docker compose down
+docker compose build
+docker compose up -d
 ```
 
 ## Common Workflows
+
+### Production/VM Updates (Recommended)
+```bash
+./scripts/safe-update.sh  # Safe, reliable, prevents registry pull failures
+docker compose logs -f    # Check for errors
+```
 
 ### After Merging a PR
 ```bash
@@ -151,6 +199,48 @@ The API uses embedded fallback configs when custom configs aren't found. These w
 
 To use custom configs, set `HAILMARY_CORE_PATH` in `.env` and mount the config volume.
 
+#### Missing Update UI / Update Button
+If the update screen or button is missing in the admin panel:
+
+**Common causes:**
+1. **PWA not running** - The frontend container might be down
+   ```bash
+   docker compose up -d hailmary-pwa
+   docker compose logs hailmary-pwa
+   ```
+
+2. **ADMIN_AGENT_TOKEN not set** - Required for admin agent features
+   ```bash
+   # Check if token is set in .env
+   grep ADMIN_AGENT_TOKEN .env
+   
+   # Generate a secure token if missing
+   echo "ADMIN_AGENT_TOKEN=$(openssl rand -hex 32)" >> .env
+   
+   # Restart affected services
+   docker compose up -d --force-recreate hailmary-admin-agent hailmary-api hailmary-pwa
+   ```
+
+**Required .env variables:**
+```bash
+ADMIN_AGENT_TOKEN=your-secure-64-character-hex-token-here
+ADMIN_AGENT_URL=http://hailmary-admin-agent:4010
+COMPOSE_PROJECT_NAME=hail-mary
+```
+
+#### "Pull Access Denied" Errors During Update
+If you see errors like `pull access denied for hailmary-admin-agent:local`:
+
+**Solution:** Use the safe update script which never attempts to pull local-build services
+```bash
+./scripts/safe-update.sh
+```
+
+**Why this happens:**
+- `hailmary-admin-agent` is built locally (not in a registry)
+- Running `docker compose pull` without service names tries to pull ALL services
+- The safe update script pulls only registry-backed services
+
 ## Service URLs
 
 After running `make up`:
@@ -172,6 +262,8 @@ After running `make up`:
 - This deletes ALL database data
 
 🎯 **Best practices:**
-- Use `quick-update.sh` for code-only changes
-- Use `full-update.sh` when dependencies change
+- Use `safe-update.sh` for production/VM deployments (prevents registry pull failures)
+- Use `quick-update.sh` for code-only changes (fastest)
+- Use `full-update.sh` when dependencies change (most thorough)
 - Always run `make migrate` after pulling database changes
+- Ensure `.env` contains `ADMIN_AGENT_TOKEN` and `COMPOSE_PROJECT_NAME=hail-mary`

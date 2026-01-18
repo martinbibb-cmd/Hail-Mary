@@ -34,7 +34,7 @@ make migrate       # Run database migrations
 
 **What it does:**
 1. Pulls latest code from git
-2. Pulls ONLY GHCR-backed services and postgres (skips hailmary-admin-agent)
+2. Pulls ONLY GHCR-backed services: hailmary-api, hailmary-assistant, hailmary-pwa, hailmary-migrator, hailmary-postgres
 3. Rebuilds hailmary-admin-agent locally
 4. Brings everything up with --remove-orphans
 

@@ -9,7 +9,7 @@
 #
 # What it does:
 # 1. Pulls latest code from git
-# 2. Pulls ONLY registry-backed images (hailmary-api, hailmary-pwa, hailmary-assistant, postgres)
+# 2. Pulls ONLY registry-backed images (hailmary-api, hailmary-assistant, hailmary-pwa, hailmary-migrator, hailmary-postgres)
 # 3. Rebuilds admin-agent locally (never pulled from registry)
 # 4. Brings everything up with --remove-orphans flag
 #
@@ -34,7 +34,7 @@ PULLABLE_SERVICES=(
 # Default PWA port (can be overridden by PWA_PORT env var in .env)
 DEFAULT_PWA_PORT=3000
 
-echo "🔒 Safe Update for Hail-Mary"
+echo "🔒 Safe Update for hail-mary"
 echo ""
 echo "This script safely updates your stack by:"
 echo "  ✓ Pulling only registry-backed images"
@@ -58,7 +58,7 @@ echo ""
 
 # Pull ONLY services that are in a registry
 # Do NOT include hailmary-admin-agent as it's a local build
-# Note: hailmary-migrator uses the same image as hailmary-api, but we pull it explicitly for clarity
+# Note: hailmary-migrator is a separate service but uses the same ghcr.io/martinbibb-cmd/hail-mary-api:latest image
 docker compose pull "${PULLABLE_SERVICES[@]}"
 
 echo ""

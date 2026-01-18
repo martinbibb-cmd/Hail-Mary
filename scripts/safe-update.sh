@@ -22,10 +22,11 @@ set -e  # Exit on any error
 
 # Services that can be safely pulled from a registry
 # IMPORTANT: Keep this aligned with PULLABLE_SERVICES in scripts/admin-agent/server.js
+# Order matches server.js for consistency
 PULLABLE_SERVICES=(
   "hailmary-api"
-  "hailmary-pwa"
   "hailmary-assistant"
+  "hailmary-pwa"
   "hailmary-migrator"
   "hailmary-postgres"
 )

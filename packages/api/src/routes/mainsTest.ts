@@ -21,7 +21,7 @@ import {
   mainsTestSteps,
   mainsTestObservations,
 } from '../db/drizzle-schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type {
   ApiResponse,
   MainsPerformanceTest,
@@ -151,7 +151,25 @@ router.get('/:testId', async (req: Request, res: Response) => {
   try {
     const { testId } = req.params;
 
-    const test = await db.select().from(mainsPerformanceTests).where(eq(mainsPerformanceTests.id, testId)).limit(1);
+    // Get userId from request for authorization
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Unauthorized',
+      };
+      return res.status(401).json(response);
+    }
+
+    // Fetch test with authorization check - user can only access their own tests
+    const test = await db
+      .select()
+      .from(mainsPerformanceTests)
+      .where(and(
+        eq(mainsPerformanceTests.id, testId),
+        eq(mainsPerformanceTests.userId, userId)
+      ))
+      .limit(1);
 
     if (!test || test.length === 0) {
       const response: ApiResponse<null> = {

@@ -53,17 +53,12 @@ ADMIN_EMAIL="admin@hailmary.local"
 ADMIN_PASSWORD=""
 FORCE_BUILD=false
 SKIP_HEALTH_CHECK=false
-INSTALL_DIR="/mnt/user/appdata/hailmary"
+INSTALL_DIR="$(pwd)"
 REPO_URL="https://github.com/martinbibb-cmd/Hail-Mary.git"
 
-# Auto-detect environment
-if [[ ! -d "/mnt/user" ]]; then
-    # Not unRAID, use current directory
-    INSTALL_DIR="$(pwd)"
-    if [[ ! -f "$INSTALL_DIR/package.json" ]]; then
-        # Not in the repo, need to clone
-        INSTALL_DIR="./hailmary"
-    fi
+# If not in the repo, need to clone
+if [[ ! -f "$INSTALL_DIR/package.json" ]]; then
+    INSTALL_DIR="./hailmary"
 fi
 
 # ============================================================================

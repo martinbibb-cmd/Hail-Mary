@@ -215,10 +215,7 @@ echo ""
 
 # Check 8: Data persistence
 echo "💾 Checking data persistence..."
-if [[ -d "/mnt/user/appdata/hailmary" ]]; then
-    # unRAID
-    APPDATA_PATH="/mnt/user/appdata/hailmary"
-elif [[ -d "./hailmary-data" ]]; then
+if [[ -d "./hailmary-data" ]]; then
     # Local development
     APPDATA_PATH="./hailmary-data"
 else

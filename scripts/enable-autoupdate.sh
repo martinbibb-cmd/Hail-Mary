@@ -31,11 +31,6 @@ CHECK_INTERVAL="${1:-5}"
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
 REPO_URL="https://github.com/martinbibb-cmd/Hail-Mary.git"
 
-# Auto-detect unRAID
-if [[ -d "/mnt/user" ]]; then
-    DEPLOY_DIR="/mnt/user/appdata/hailmary"
-fi
-
 echo -e "${BLUE}╔════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║  Hail-Mary Auto-Update Setup                      ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════╝${NC}"

@@ -79,13 +79,13 @@ docker-compose logs -f
 http://localhost:3000
 ```
 
-#### Option B: NAS/unRAID Deployment
+#### Option B: Production Deployment
 ```bash
-# Start with unRAID config
-docker-compose -f docker-compose.unraid.yml up -d
+# Start with production config
+docker-compose -f docker-compose.prod.yml up -d
 
 # View logs
-docker-compose -f docker-compose.unraid.yml logs -f
+docker-compose -f docker-compose.prod.yml logs -f
 
 # Access the app
 http://localhost:8080
@@ -100,7 +100,7 @@ http://localhost:8080
    - Creates sample lead
    - Creates sample boiler products
    - **Creates admin user** from `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD`
-4. **PWA/Frontend** starts on port 3000 (or 8080 for unRAID)
+4. **PWA/Frontend** starts on port 3000 (or 8080 for production)
 
 ## Default Login Credentials
 
@@ -150,8 +150,8 @@ SELECT id, email, name, role FROM users;
 
 ### Access the Application
 Open your browser to:
-- **Standard**: http://localhost:3000
-- **unRAID/NAS**: http://localhost:8080
+- **Development**: http://localhost:3000
+- **Production**: http://localhost:8080
 
 You should see the Hail-Mary login screen.
 

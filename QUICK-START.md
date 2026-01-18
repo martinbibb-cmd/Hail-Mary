@@ -39,11 +39,6 @@ The quick setup script checks these automatically:
 - ✅ **Docker Compose** (v2 or later recommended)
 - ✅ **Git** (for cloning the repo)
 
-### Installing Prerequisites on unRAID
-
-1. **Docker & Docker Compose**: Already included with unRAID!
-2. **Git**: Install via **Nerd Tools** plugin from Community Applications
-
 ## 🎛️ Customization Options
 
 Customize your installation with flags:
@@ -95,7 +90,7 @@ After installation, you'll have:
 - Backup/restore utilities
 
 ### ✅ Optimized for NAS
-- unRAID-friendly paths (`/mnt/user/appdata/hailmary`)
+- Flexible deployment paths
 - Automatic startup ordering
 - Volume persistence
 - WebUI integration
@@ -147,7 +142,7 @@ docker compose stop
 ### Update Application
 
 ```bash
-cd /mnt/user/appdata/hailmary  # or your install directory
+cd /path/to/hailmary  # your install directory
 git pull
 docker compose pull  # if using pre-built images
 docker compose up -d --build  # if building locally
@@ -161,7 +156,7 @@ Your admin credentials are saved in two places:
 2. **`.credentials.txt`** file in your install directory
 
 ```bash
-cat /mnt/user/appdata/hailmary/.credentials.txt
+cat /path/to/hailmary/.credentials.txt
 ```
 
 **Important:** Save these credentials securely and delete the `.credentials.txt` file afterward!
@@ -200,10 +195,8 @@ Add to cron (Linux/macOS) or Windows Task Scheduler:
 
 ```bash
 # Daily backup at 2 AM
-0 2 * * * /mnt/user/appdata/hailmary/scripts/backup-database.sh
+0 2 * * * /path/to/hailmary/scripts/backup-database.sh
 ```
-
-For unRAID, use the **User Scripts** plugin.
 
 ## 🐛 Troubleshooting
 

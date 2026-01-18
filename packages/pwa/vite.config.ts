@@ -172,6 +172,9 @@ export default defineConfig({
       }
     })
   ],
+  optimizeDeps: {
+    include: ['@hail-mary/shared']
+  },
   build: {
     // Disable source maps in production (speeds up build significantly)
     sourcemap: false,

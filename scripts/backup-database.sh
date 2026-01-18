@@ -12,7 +12,7 @@
 #
 # Examples:
 #   ./scripts/backup-database.sh
-#   ./scripts/backup-database.sh /mnt/user/appdata/hailmary/backups
+#   ./scripts/backup-database.sh /path/to/backups
 # ==============================================================================
 
 set -e
@@ -29,11 +29,6 @@ BACKUP_DIR="${1:-./backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="hailmary_backup_${TIMESTAMP}.sql.gz"
 CONTAINER_NAME="hailmary-hailmary"
-
-# Auto-detect if running on unRAID
-if [[ -d "/mnt/user/appdata/hailmary" ]]; then
-    BACKUP_DIR="${BACKUP_DIR:-/mnt/user/appdata/hailmary/backups}"
-fi
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║     Hail-Mary Database Backup             ║${NC}"

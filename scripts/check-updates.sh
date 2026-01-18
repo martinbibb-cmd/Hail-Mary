@@ -17,14 +17,9 @@
 #   ./scripts/enable-autoupdate.sh
 # ==============================================================================
 
-# Auto-detect unRAID
-if [[ -d "/mnt/user" ]]; then
-    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
-    COMPOSE_FILE="${COMPOSE_FILE:-${DEPLOY_DIR}/docker-compose.unraid.yml}"
-else
-    DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
-    COMPOSE_FILE="${COMPOSE_FILE:-${DEPLOY_DIR}/docker-compose.prod.yml}"
-fi
+# Auto-detect deployment directory
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
+COMPOSE_FILE="${COMPOSE_FILE:-${DEPLOY_DIR}/docker-compose.prod.yml}"
 
 LOG_FILE="${LOG_FILE:-/var/log/hail-mary-updates.log}"
 

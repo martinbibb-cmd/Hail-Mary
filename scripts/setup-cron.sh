@@ -20,12 +20,7 @@
 set -e
 
 # Configuration
-# Auto-detect unRAID
-if [[ -d "/mnt/user" ]]; then
-    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
-else
-    DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
-fi
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/hail-mary}"
 CRON_USER="${CRON_USER:-root}"
 CHECK_INTERVAL="${1:-5}"
 

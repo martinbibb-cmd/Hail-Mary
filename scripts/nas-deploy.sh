@@ -116,18 +116,9 @@ if [[ -n "$SPECIFIC_SERVICE" ]]; then
     esac
 fi
 
-# Auto-detect unRAID and set appropriate compose file (after parsing args)
-if [[ -d "/mnt/user" ]] && [[ -z "$COMPOSE_FILE" ]]; then
-    # Running on unRAID
-    DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/hailmary}"
-    # Use build compose file if building locally, otherwise use pull-based compose
-    if [[ "$BUILD_LOCALLY" == "true" ]]; then
-        COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.unraid-build.yml"
-    else
-        COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.unraid.yml"
-    fi
-else
-    COMPOSE_FILE="${COMPOSE_FILE:-${DEPLOY_DIR}/docker-compose.prod.yml}"
+# Set compose file if not already set
+if [[ -z "$COMPOSE_FILE" ]]; then
+    COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.prod.yml"
 fi
 
 # Check prerequisites
@@ -156,7 +147,7 @@ check_prerequisites() {
         
         if [[ ! -f "$COMPOSE_FILE" ]]; then
             error "No valid docker-compose file found in $DEPLOY_DIR"
-            error "Expected files: docker-compose.unraid.yml or docker-compose.prod.yml or docker-compose.yml"
+            error "Checked: docker-compose.prod.yml and docker-compose.yml"
             exit 1
         fi
     fi
@@ -207,15 +198,7 @@ validate_environment() {
             has_errors=true
         fi
         
-        # Validate unRAID-specific paths if on unRAID
-        if [[ -d "/mnt/user" ]]; then
-            if [[ ! -f "${DEPLOY_DIR}/docker-compose.unraid.yml" ]]; then
-                echo -e "${YELLOW}WARN${NC}: Running on unRAID but docker-compose.unraid.yml not found" >&2
-                echo -e "${YELLOW}WARN${NC}: Expected at: ${DEPLOY_DIR}/docker-compose.unraid.yml" >&2
-            fi
-        fi
-        
-        # Return error status from subshell
+        # Exit with error if has_errors is true
         if [[ "$has_errors" == "true" ]]; then
             exit 1
         fi

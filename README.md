@@ -76,22 +76,11 @@ This architecture ensures "nuke and pave" readiness - you can delete everything 
 
 | Platform | Best For | Database | Setup Time | Guide |
 |----------|----------|----------|------------|-------|
-| **Unraid NAS** | Self-hosted, complete control | PostgreSQL on NAS storage | 5 min | [Guide](docs/DEPLOYMENT-unRAID.md) |
 | **Railway** | Fastest cloud deployment | Managed PostgreSQL | 10 min | [Guide](docs/DEPLOYMENT-RAILWAY.md) |
 | **Google Cloud** | Enterprise production | Cloud SQL PostgreSQL | 30 min | [Guide](docs/DEPLOYMENT-GCP.md) |
 | **Fly.io** | Global edge deployment | Managed PostgreSQL | 15 min | [Guide](docs/DEPLOYMENT-FLY.md) |
 
 **📖 [Complete Deployment Guide & Platform Comparison →](docs/DEPLOYMENT.md)**
-
-### Quick Install: Unraid NAS
-
-One-line installation with auto-updates:
-
-```bash
-wget -O - https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash
-```
-
-Database persists to `/mnt/user/appdata/hailmary/postgres` on your NAS.
 
 **Enable automatic updates** (pulls new versions when you push to GitHub):
 

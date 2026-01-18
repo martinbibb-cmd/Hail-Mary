@@ -6,46 +6,10 @@ This guide helps you choose the best deployment platform for your needs and prov
 
 | Platform | Best For | Database | Cost | Complexity | Setup Time |
 |----------|----------|----------|------|------------|------------|
-| **[Unraid NAS](#unraid-nas)** | Home/office use, complete control | PostgreSQL on NAS storage | Hardware only | Low | 5 minutes |
 | **[Railway](#railway)** | Fastest deployment, low traffic | Managed PostgreSQL | ~$15/month | Very Low | 10 minutes |
 | **[Google Cloud](#google-cloud)** | Production, high availability | Cloud SQL PostgreSQL | ~$30/month | Medium | 30 minutes |
 
 ## Platform Details
-
-### Unraid NAS
-
-**✅ Best for:** Self-hosted deployment on your own hardware
-
-**Advantages:**
-- Complete data ownership and control
-- No recurring cloud costs
-- Database stored on your NAS (persistent, backed up with your NAS)
-- Low latency on local network
-- Optional NAS authentication mode (password-free local access)
-
-**Requirements:**
-- Unraid server with Docker support
-- 2GB RAM, 5GB storage
-- Static IP or dynamic DNS (for remote access)
-
-**Database:**
-- PostgreSQL 17 running in Docker container
-- Data persisted to `/mnt/user/appdata/hailmary/postgres` on NAS array
-- Automatic backups via Unraid backup solutions
-
-**Estimated Costs:**
-- $0/month (after initial hardware investment)
-- Optional: Dynamic DNS service (~$5/year)
-
-**Quick Start:**
-```bash
-# One-line installation
-curl -fsSL https://raw.githubusercontent.com/martinbibb-cmd/Hail-Mary/main/scripts/install-unraid.sh | bash
-```
-
-**📖 [Full Unraid Deployment Guide →](./DEPLOYMENT-unRAID.md)**
-
----
 
 ### Railway
 
@@ -157,30 +121,21 @@ gcloud builds submit --config cloudbuild.yaml
 
 ## Feature Comparison Matrix
 
-| Feature | Unraid NAS | Railway | Google Cloud |
-|---------|------------|---------|--------------|
-| **Database Persistence** | ✅ NAS storage | ✅ Managed | ✅ Cloud SQL |
-| **Automatic Backups** | ⚠️ Manual (NAS tools) | ✅ Daily | ✅ Automated |
-| **Auto-scaling** | ❌ | ✅ | ✅ |
-| **Custom Domain** | ⚠️ Manual DNS | ✅ Built-in | ✅ Built-in |
-| **SSL/HTTPS** | ⚠️ Manual (Let's Encrypt) | ✅ Automatic | ✅ Automatic |
-| **Monitoring** | ⚠️ Manual | ✅ Built-in | ✅ Advanced |
-| **CI/CD Integration** | ⚠️ Manual | ✅ Git-based | ✅ Cloud Build |
-| **VPN/Private Network** | ✅ Built-in | ❌ | ✅ VPC |
-| **Data Sovereignty** | ✅ Full control | ❌ | ⚠️ Region-based |
-| **Offline Access** | ✅ On LAN | ❌ | ❌ |
-| **Setup Complexity** | 🟢 Low | 🟢 Very Low | 🟡 Medium |
-| **Maintenance** | 🟡 Manual updates | 🟢 Automatic | 🟢 Managed |
+| Feature | Railway | Google Cloud |
+|---------|---------|--------------|
+| **Database Persistence** | ✅ Managed | ✅ Cloud SQL |
+| **Automatic Backups** | ✅ Daily | ✅ Automated |
+| **Auto-scaling** | ✅ | ✅ |
+| **Custom Domain** | ✅ Built-in | ✅ Built-in |
+| **SSL/HTTPS** | ✅ Automatic | ✅ Automatic |
+| **Monitoring** | ✅ Built-in | ✅ Advanced |
+| **CI/CD Integration** | ✅ Git-based | ✅ Cloud Build |
+| **VPN/Private Network** | ❌ | ✅ VPC |
+| **Data Sovereignty** | ❌ | ⚠️ Region-based |
+| **Setup Complexity** | 🟢 Very Low | 🟡 Medium |
+| **Maintenance** | 🟢 Automatic | 🟢 Managed |
 
 ## Decision Guide
-
-### Choose **Unraid NAS** if:
-- ✅ You already have an Unraid server
-- ✅ You want complete control over your data
-- ✅ You prefer one-time hardware costs over recurring cloud bills
-- ✅ Primary usage is on your local network
-- ✅ You're comfortable with basic Docker management
-- ✅ You want to avoid cloud vendor lock-in
 
 ### Choose **Railway** if:
 - ✅ You want the fastest deployment (production in 10 minutes)
@@ -206,10 +161,6 @@ You can also combine platforms for different purposes:
 ### Development + Production Split
 - **Development:** Railway (fast iterations, low cost)
 - **Production:** Google Cloud (reliability, scaling)
-
-### Local + Cloud Backup
-- **Primary:** Unraid NAS (local performance)
-- **Backup/DR:** Google Cloud (disaster recovery)
 
 ### Multi-Region
 - **Primary:** Google Cloud US region
@@ -244,7 +195,7 @@ gcloud sql import sql INSTANCE_NAME gs://BUCKET/backup.sql --database=hailmary
 
 ### Pattern 1: All-in-One (Development)
 ```
-Single Platform: Railway or Unraid
+Single Platform: Railway
 ├── PostgreSQL
 ├── API
 ├── Assistant
@@ -259,15 +210,6 @@ Google Cloud Platform
 ├── Cloud Run: Assistant (auto-scaling)
 ├── Cloud Run: PWA (auto-scaling)
 └── Cloud CDN (static asset caching)
-```
-
-### Pattern 3: Hybrid (Cost-optimized)
-```
-Primary: Unraid NAS (local network)
-└── PostgreSQL, API, Assistant, PWA
-
-Public Access: Railway or Google Cloud
-└── Read-only replica or API proxy
 ```
 
 ## Environment Variables
@@ -286,11 +228,6 @@ All platforms require these environment variables:
 | `INITIAL_ADMIN_PASSWORD` | No | First admin password | `SecurePass123!` |
 
 ### Platform-specific variables:
-
-**Unraid NAS only:**
-- `APPDATA_PATH`: Path to appdata folder (default: `/mnt/user/appdata/hailmary`)
-- `NAS_AUTH_MODE`: Enable password-free local auth (default: `false`)
-- `NAS_ALLOWED_IPS`: Comma-separated IPs for NAS auth
 
 **Railway only:**
 - Automatically provides: `RAILWAY_PUBLIC_DOMAIN`, `RAILWAY_PRIVATE_DOMAIN`
@@ -315,7 +252,6 @@ Regardless of platform, after deployment:
    - Create your first customer/lead
 
 3. ✅ **Configure Backups**
-   - Unraid: Set up appdata backup
    - Railway: Verify daily snapshots enabled
    - GCP: Configure Cloud SQL backup schedule
 
@@ -337,7 +273,6 @@ Regardless of platform, after deployment:
 **Symptoms:** API container can't connect to database
 
 **Solutions:**
-- **Unraid:** Check PostgreSQL container is running (`docker ps`)
 - **Railway:** Verify PostgreSQL plugin is added and `DATABASE_URL` is set
 - **GCP:** Check Cloud SQL instance is running and secrets are configured
 
@@ -347,7 +282,6 @@ Regardless of platform, after deployment:
 
 **Solutions:**
 1. Check logs:
-   - Unraid: `docker logs hailmary-api`
    - Railway: View logs in dashboard
    - GCP: `gcloud run services logs read hail-mary-api`
 
@@ -368,7 +302,6 @@ Regardless of platform, after deployment:
 - **Documentation:** [GitHub Repository](https://github.com/martinbibb-cmd/Hail-Mary)
 - **Issues:** [GitHub Issues](https://github.com/martinbibb-cmd/Hail-Mary/issues)
 - **Platform-specific guides:**
-  - [Unraid Deployment](./DEPLOYMENT-unRAID.md)
   - [Railway Deployment](./DEPLOYMENT-RAILWAY.md)
   - [Google Cloud Deployment](./DEPLOYMENT-GCP.md)
   - [Fly.io Deployment](./DEPLOYMENT-FLY.md) (legacy)

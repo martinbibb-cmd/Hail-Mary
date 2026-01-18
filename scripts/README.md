@@ -27,14 +27,14 @@ make migrate       # Run database migrations
 
 **Why use this:**
 - ✅ Prevents "pull access denied" errors for local-build services
-- ✅ Only pulls registry-backed images (hailmary-api, hailmary-pwa, hailmary-assistant, postgres)
+- ✅ Only pulls registry-backed images (hailmary-api, hailmary-pwa, hailmary-assistant, hailmary-migrator, hailmary-postgres)
 - ✅ Rebuilds admin-agent locally (never pulled from registry)
 - ✅ Safe for production deployments
 - ⚡ Fast and predictable (30-60 seconds)
 
 **What it does:**
 1. Pulls latest code from git
-2. Pulls ONLY GHCR-backed services (skips hailmary-admin-agent)
+2. Pulls ONLY GHCR-backed services and postgres (skips hailmary-admin-agent)
 3. Rebuilds hailmary-admin-agent locally
 4. Brings everything up with --remove-orphans
 
@@ -102,7 +102,7 @@ cd ~/Hail-Mary
 git pull
 
 # Step 2: Pull ONLY registry-backed images
-docker compose pull hailmary-api hailmary-pwa hailmary-assistant postgres
+docker compose pull hailmary-api hailmary-pwa hailmary-assistant hailmary-migrator hailmary-postgres
 
 # Step 3: Rebuild local-only admin agent (no pulling)
 docker compose build hailmary-admin-agent

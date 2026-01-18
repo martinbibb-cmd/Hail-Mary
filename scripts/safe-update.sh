@@ -38,13 +38,14 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🐳 Step 2: Pulling registry-backed images"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Pulling: hailmary-api, hailmary-pwa, hailmary-assistant, postgres"
+echo "Pulling: hailmary-api, hailmary-pwa, hailmary-assistant, hailmary-migrator, hailmary-postgres"
 echo "(Skipping: hailmary-admin-agent - local build only)"
 echo ""
 
 # Pull ONLY services that are in a registry
 # Do NOT include hailmary-admin-agent as it's a local build
-docker compose pull hailmary-api hailmary-pwa hailmary-assistant postgres
+# Note: hailmary-migrator uses the same image as hailmary-api, but we pull it explicitly for clarity
+docker compose pull hailmary-api hailmary-pwa hailmary-assistant hailmary-migrator hailmary-postgres
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

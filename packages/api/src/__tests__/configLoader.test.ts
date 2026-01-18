@@ -119,6 +119,29 @@ describe('Config Loader', () => {
     });
   });
 
+  describe('Path Resolution', () => {
+    it('should not create double /packages/packages/ paths', () => {
+      // Capture console.warn calls to check attempted paths
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      
+      try {
+        // Load a non-existent file to trigger path attempts logging
+        loadJsonConfig('nonexistent-test-file.json', testFallback);
+        
+        // Get the warning messages
+        const warnCalls = warnSpy.mock.calls.map(call => call.join(' '));
+        const attemptedPathsMessage = warnCalls.find(msg => msg.includes('Attempted paths:'));
+        
+        if (attemptedPathsMessage) {
+          // Verify no double /packages/packages/ in attempted paths
+          expect(attemptedPathsMessage).not.toMatch(/\/packages\/packages\//);
+        }
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+  });
+
   describe('Fallback Behavior', () => {
     it('should never throw on missing files', () => {
       expect(() => {

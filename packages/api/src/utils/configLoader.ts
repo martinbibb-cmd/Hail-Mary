@@ -61,12 +61,12 @@ export function loadJsonConfig<T>(fileName: string, fallback: T): ConfigLoadResu
   
   // 2. Published dist path (preferred for production)
   // Resolve relative to this module's location, not process.cwd()
-  // This avoids path duplication when API runs from /app/packages/api
+  // This ensures correct path resolution when API runs from /app/packages/api
   const moduleDir = __dirname; // e.g., /app/packages/api/src/utils or /app/packages/api/dist/utils
 
-  // Go up to packages/api root, then to packages/shared
-  const apiRoot = path.join(moduleDir, '..', '..'); // Go up from src/utils or dist/utils to api root
-  const workspaceRoot = path.join(apiRoot, '..'); // Go up to workspace root
+  // Go up to packages/api root, then to workspace root
+  const apiRoot = path.join(moduleDir, '..', '..'); // Go up from src/utils or dist/utils to api root (/app/packages/api)
+  const workspaceRoot = path.join(apiRoot, '..', '..'); // Go up to workspace root (/app)
   const distPath = path.join(workspaceRoot, 'packages', 'shared', 'dist', 'core', fileName);
   pathsToTry.push(distPath);
 

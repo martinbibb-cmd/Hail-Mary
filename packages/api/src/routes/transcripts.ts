@@ -45,6 +45,8 @@ function parseId(raw: unknown): number | null {
 
 /**
  * POST /api/leads/:leadId/transcripts/sessions
+ * Creates a live transcript session (Option A flow) for a lead
+ * IMPORTANT: Should include addressId to properly anchor transcript to property
  */
 router.post("/leads/:leadId/transcripts/sessions", async (req: Request, res: Response) => {
   try {
@@ -54,13 +56,14 @@ router.post("/leads/:leadId/transcripts/sessions", async (req: Request, res: Res
       return res.status(400).json(response);
     }
 
-    const { source, deviceId, language, notes, startedAt } = req.body ?? {};
+    const { source, deviceId, language, notes, startedAt, addressId } = req.body ?? {};
 
     const startedAtDate = startedAt ? new Date(startedAt) : new Date();
     const [inserted] = await db
       .insert(transcriptSessions)
       .values({
         leadId,
+        addressId: addressId || null, // IMPORTANT: anchor to property if provided
         status: "recording",
         language: language || "en-GB",
         notes: notes || null,

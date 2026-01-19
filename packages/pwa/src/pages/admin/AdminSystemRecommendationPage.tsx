@@ -9,16 +9,21 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { adminAgentFetch } from '../../lib/adminAgentClient';
+import { safeJson, safeText } from '../../lib/http';
 import './AdminSystemRecommendationPage.css';
 
 // Note: Version is imported from the System Recommendation engine
 // Currently hardcoded to match RULESET_VERSION in @hail-mary/shared
 const ENGINE_VERSION = '1.0.0';
+const MANUAL_UPDATE_SNIPPET = 'Manual update (SSH into VM):\ncd ~/Hail-Mary && ./scripts/safe-update.sh\n';
 
 export const AdminSystemRecommendationPage: React.FC = () => {
   const [updating, setUpdating] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; output?: string } | null>(null);
+
+  const applyFailureOutput = (output?: string) => output || MANUAL_UPDATE_SNIPPET;
 
   const handleInitializeSubmodule = async () => {
     if (!confirm('This will initialize the System Recommendation submodule. Continue?')) {
@@ -29,34 +34,57 @@ export const AdminSystemRecommendationPage: React.FC = () => {
     setResult(null);
 
     try {
-      const res = await fetch('/api/admin/system-recommendation/initialize', {
+      const res = await adminAgentFetch('/api/admin/system-recommendation/initialize', {
         method: 'POST',
-        credentials: 'include',
       });
-      const data = await res.json();
-      
+      const data = await safeJson(res);
+
       if (res.status === 401 || res.status === 403) {
         setResult({
           success: false,
-          message: 'Access denied. Admin privileges required.',
+          message: 'Access denied (admin-agent auth). Set VITE_ADMIN_AGENT_TOKEN or enable proxy auth.',
+          output: applyFailureOutput(),
         });
-      } else if (data.success) {
-        setResult({
-          success: true,
-          message: data.message || 'Submodule initialized successfully',
-          output: data.output || '',
-        });
-      } else {
+        return;
+      }
+
+      if (!res.ok) {
+        const fallbackText = await safeText(res);
+        const errorOutput = (data as { output?: string; error?: string })?.output
+          || (data as { output?: string; error?: string })?.error
+          || fallbackText;
+
         setResult({
           success: false,
-          message: data.error || 'Failed to initialize submodule',
-          output: data.output || data.details || '',
+          message: (data as { message?: string })?.message || `Failed (${res.status})`,
+          output: applyFailureOutput(errorOutput),
+        });
+        return;
+      }
+
+      if (data && (data as { success?: boolean }).success) {
+        setResult({
+          success: true,
+          message: (data as { message?: string }).message || 'Submodule initialized successfully',
+          output: (data as { output?: string }).output || '',
+        });
+      } else {
+        const fallbackText = await safeText(res);
+        setResult({
+          success: false,
+          message: (data as { error?: string }).error || 'Failed to initialize submodule',
+          output: applyFailureOutput(
+            (data as { output?: string; details?: string }).output
+              || (data as { output?: string; details?: string }).details
+              || fallbackText,
+          ),
         });
       }
     } catch (err) {
       setResult({
         success: false,
         message: 'Failed to initialize submodule. Backend endpoint may not be available yet.',
+        output: applyFailureOutput(),
       });
       console.error('Error initializing submodule:', err);
     } finally {
@@ -73,34 +101,57 @@ export const AdminSystemRecommendationPage: React.FC = () => {
     setResult(null);
 
     try {
-      const res = await fetch('/api/admin/system-recommendation/update', {
+      const res = await adminAgentFetch('/api/admin/system-recommendation/update', {
         method: 'POST',
-        credentials: 'include',
       });
-      const data = await res.json();
-      
+      const data = await safeJson(res);
+
       if (res.status === 401 || res.status === 403) {
         setResult({
           success: false,
-          message: 'Access denied. Admin privileges required.',
+          message: 'Access denied (admin-agent auth). Set VITE_ADMIN_AGENT_TOKEN or enable proxy auth.',
+          output: applyFailureOutput(),
         });
-      } else if (data.success) {
-        setResult({
-          success: true,
-          message: data.message || 'Submodule updated successfully',
-          output: data.output || '',
-        });
-      } else {
+        return;
+      }
+
+      if (!res.ok) {
+        const fallbackText = await safeText(res);
+        const errorOutput = (data as { output?: string; error?: string })?.output
+          || (data as { output?: string; error?: string })?.error
+          || fallbackText;
+
         setResult({
           success: false,
-          message: data.error || 'Failed to update submodule',
-          output: data.output || data.details || '',
+          message: (data as { message?: string })?.message || `Failed (${res.status})`,
+          output: applyFailureOutput(errorOutput),
+        });
+        return;
+      }
+
+      if (data && (data as { success?: boolean }).success) {
+        setResult({
+          success: true,
+          message: (data as { message?: string }).message || 'Submodule updated successfully',
+          output: (data as { output?: string }).output || '',
+        });
+      } else {
+        const fallbackText = await safeText(res);
+        setResult({
+          success: false,
+          message: (data as { error?: string }).error || 'Failed to update submodule',
+          output: applyFailureOutput(
+            (data as { output?: string; details?: string }).output
+              || (data as { output?: string; details?: string }).details
+              || fallbackText,
+          ),
         });
       }
     } catch (err) {
       setResult({
         success: false,
         message: 'Failed to update submodule. Backend endpoint may not be available yet.',
+        output: applyFailureOutput(),
       });
       console.error('Error updating submodule:', err);
     } finally {

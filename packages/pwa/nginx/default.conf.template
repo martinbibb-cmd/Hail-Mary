@@ -1,6 +1,7 @@
-# Default server configuration for hailmary-pwa
-# This file is mounted from the host to persist configuration across container recreates
-# Path: /etc/nginx/conf.d/default.conf
+# Default server configuration template for hailmary-pwa
+# This template is mounted from the host and processed by nginx at startup via envsubst
+# Template path: /etc/nginx/templates/default.conf.template
+# Output path: /etc/nginx/conf.d/default.conf
 
 # Upstream definitions for backend services
 upstream api_backend {

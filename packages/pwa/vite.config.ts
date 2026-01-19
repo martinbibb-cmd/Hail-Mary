@@ -139,7 +139,7 @@ export default defineConfig({
             urlPattern: /\/(api\/trpc\/survey|survey|api\/atlas|heat-loss|heating-design)(\/|$)/i,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'atlas-survey-data-v1',
+              cacheName: 'atlas-survey-data-v2',
               networkTimeoutSeconds: 5, // Shorter timeout for survey data
               expiration: {
                 maxEntries: 30,
@@ -154,7 +154,7 @@ export default defineConfig({
             urlPattern: /\/api\/.*/i,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
+              cacheName: 'hailmary-api-v2',
               networkTimeoutSeconds: 10,
               expiration: {
                 maxEntries: 50,

@@ -6,10 +6,8 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { EventClickArg, DateSelectArg } from '@fullcalendar/core'
 import { format } from 'date-fns'
 import { useSpineStore } from '../../../stores/spineStore'
+import { API_BASE } from '../../../config/endpoints'
 import './DiaryApp.css'
-
-// Use relative URL to work in both dev and production
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export type AppointmentType = 'SURVEY' | 'REVISIT' | 'CALLBACK' | 'INSTALL' | 'SERVICE_REPAIR'
 export type AppointmentStatus = 'PLANNED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
@@ -78,7 +76,7 @@ export const DiaryApp: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      const url = `${API_BASE_URL}/api/address-appointments`
+      const url = `${API_BASE}/address-appointments`
       console.log('Fetching appointments from:', url)
 
       const response = await fetch(url, {
@@ -159,7 +157,7 @@ export const DiaryApp: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/addresses/${newEventData.addressId}/appointments`,
+        `${API_BASE}/addresses/${newEventData.addressId}/appointments`,
         {
           method: 'POST',
           headers: {
@@ -198,7 +196,7 @@ export const DiaryApp: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/address-appointments/${selectedEvent.id}`,
+        `${API_BASE}/address-appointments/${selectedEvent.id}`,
         {
           method: 'PATCH',
           headers: {

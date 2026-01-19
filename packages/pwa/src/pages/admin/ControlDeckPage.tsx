@@ -331,7 +331,7 @@ export const ControlDeckPage: React.FC = () => {
                 <button className="btn-small" onClick={() => window.open('https://dash.cloudflare.com/', '_blank')}>
                   Dashboard
                 </button>
-                <button className="btn-small" onClick={() => window.open('https://hail-mary.martinbibb.workers.dev/health', '_blank')}>
+                <button className="btn-small" onClick={() => window.open('/api/worker/health', '_blank')}>
                   Health
                 </button>
               </div>

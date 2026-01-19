@@ -1,11 +1,8 @@
-const ADMIN_AGENT_BASE = import.meta.env.VITE_ADMIN_AGENT_URL || '';
+import { ADMIN_AGENT_BASE } from '../config/endpoints';
+
 const ADMIN_AGENT_TOKEN = import.meta.env.VITE_ADMIN_AGENT_TOKEN || '';
 
 export const buildAdminAgentUrl = (path: string): string => {
-  if (!ADMIN_AGENT_BASE) {
-    return path;
-  }
-
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${ADMIN_AGENT_BASE}${normalizedPath}`;
 };
@@ -31,6 +28,7 @@ const withAuthHeaders = (init: RequestInit = {}): Headers => {
 export const adminAgentFetch = (path: string, init: RequestInit = {}): Promise<Response> => {
   const url = buildAdminAgentUrl(path);
   const headers = withAuthHeaders(init);
+  // Use 'include' for same-origin requests (relative URLs)
   const defaultCredentials = ADMIN_AGENT_BASE.startsWith('http') ? 'omit' : 'include';
 
   return fetch(url, {

@@ -26,6 +26,7 @@ import {
   GetMainsTestResultsResponse,
   QualityFlag,
 } from '@hail-mary/shared';
+import { API_BASE } from '../../config/endpoints';
 import './MainsTestApp.css';
 
 interface MainsTestAppProps {
@@ -65,9 +66,6 @@ export const MainsTestApp: React.FC<MainsTestAppProps> = ({
   const [waterTempC, setWaterTempC] = useState<string>('');
   const [qualityFlags, setQualityFlags] = useState<QualityFlag[]>([]);
 
-  // API base URL
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-
   // ============================================
   // API Functions
   // ============================================
@@ -91,7 +89,7 @@ export const MainsTestApp: React.FC<MainsTestAppProps> = ({
         })),
       };
 
-      const response = await fetch(`${API_BASE}/api/mains-test`, {
+      const response = await fetch(`${API_BASE}/mains-test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -126,7 +124,7 @@ export const MainsTestApp: React.FC<MainsTestAppProps> = ({
         steps: template.steps,
       };
 
-      const response = await fetch(`${API_BASE}/api/mains-test/${test.id}/steps`, {
+      const response = await fetch(`${API_BASE}/mains-test/${test.id}/steps`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -171,7 +169,7 @@ export const MainsTestApp: React.FC<MainsTestAppProps> = ({
         method: 'manual',
       };
 
-      const response = await fetch(`${API_BASE}/api/mains-test/${test.id}/observations`, {
+      const response = await fetch(`${API_BASE}/mains-test/${test.id}/observations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -205,7 +203,7 @@ export const MainsTestApp: React.FC<MainsTestAppProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/mains-test/${test.id}/results`, {
+      const response = await fetch(`${API_BASE}/mains-test/${test.id}/results`, {
         method: 'GET',
         credentials: 'include',
       });

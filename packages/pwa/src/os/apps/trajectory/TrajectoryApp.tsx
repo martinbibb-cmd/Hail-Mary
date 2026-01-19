@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../auth';
 import { useSpineStore } from '../../../stores/spineStore';
+import { API_BASE } from '../../../config/endpoints';
 import './TrajectoryApp.css';
 
 interface Scenario {
@@ -26,8 +27,6 @@ interface Journey {
   stages: any;
   createdAt: string;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const TrajectoryApp: React.FC = () => {
   const { user } = useAuth();
@@ -49,7 +48,7 @@ export const TrajectoryApp: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/trajectory/scenarios`, {
+      const response = await fetch(`${API_BASE}/trajectory/scenarios`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -73,7 +72,7 @@ export const TrajectoryApp: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/trajectory/scenarios/${scenarioId}/journeys`, {
+      const response = await fetch(`${API_BASE}/trajectory/scenarios/${scenarioId}/journeys`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },

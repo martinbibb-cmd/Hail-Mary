@@ -703,6 +703,11 @@ const server = http.createServer((req, res) => {
     return handleVersion(req, res);
   } else if (req.method === 'GET' && url.pathname === '/health') {
     return handleHealth(req, res);
+  } else if (req.method === 'GET' && url.pathname === '/ping') {
+    // Simple ping endpoint for Docker healthcheck (no auth required)
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+    return;
   }
 
   res.writeHead(404, { 'Content-Type': 'application/json' });

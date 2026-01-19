@@ -248,7 +248,6 @@ async function proxyToAdminAgent(
             headers: {
               'X-Admin-Token': ADMIN_AGENT_TOKEN,
             },
-            timeout: 5000, // 5 second timeout
           },
           (proxyRes) => {
             if (isSSE) {
@@ -293,13 +292,14 @@ async function proxyToAdminAgent(
           }
         );
 
-        request.on('error', (error) => {
-          reject(error);
-        });
-
-        request.on('timeout', () => {
+        // Set timeout on the request
+        request.setTimeout(5000, () => {
           request.destroy();
           reject(new Error('Request timeout'));
+        });
+
+        request.on('error', (error) => {
+          reject(error);
         });
 
         request.end();
@@ -316,9 +316,9 @@ async function proxyToAdminAgent(
 
       // Don't retry on the last attempt
       if (attempt < MAX_RETRIES - 1) {
-        // Calculate exponential backoff delay with jitter
+        // Calculate exponential backoff delay with proportional jitter
         const baseDelay = Math.min(INITIAL_DELAY * Math.pow(2, attempt), MAX_DELAY);
-        const jitter = Math.random() * 100;
+        const jitter = Math.random() * baseDelay * 0.1; // 10% jitter
         const delay = baseDelay + jitter;
 
         console.log(`Retrying in ${Math.round(delay)}ms...`);

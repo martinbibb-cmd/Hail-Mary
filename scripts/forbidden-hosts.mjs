@@ -14,11 +14,17 @@ const FORBIDDEN = [
   "localhost:3001",
 ];
 
+const FILE_EXT_PATTERN = /\.(ts|tsx|js|jsx|json|html|css|md)$/i;
+
 function walk(dir, out = []) {
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, ent.name);
-    if (ent.isDirectory()) walk(p, out);
-    else out.push(p);
+  try {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, ent.name);
+      if (ent.isDirectory()) walk(p, out);
+      else out.push(p);
+    }
+  } catch (err) {
+    console.warn(`Warning: Could not read directory ${dir}: ${err.message}`);
   }
   return out;
 }
@@ -27,7 +33,7 @@ let hits = [];
 for (const dir of TARGETS) {
   if (!fs.existsSync(dir)) continue;
   for (const file of walk(dir)) {
-    if (!/\.(ts|tsx|js|jsx|json|html|css|md)$/i.test(file)) continue;
+    if (!FILE_EXT_PATTERN.test(file)) continue;
     const txt = fs.readFileSync(file, "utf8");
     for (const f of FORBIDDEN) {
       if (txt.includes(f)) hits.push({ file, f });

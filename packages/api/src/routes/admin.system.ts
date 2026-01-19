@@ -237,6 +237,8 @@ async function proxyToAdminAgent(
 
   let lastError: Error | null = null;
 
+  // Retry loop - only retries connection failures, not streaming errors
+  // Once SSE stream starts, no retries occur (connection established successfully)
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const url = new URL(path, ADMIN_AGENT_URL);

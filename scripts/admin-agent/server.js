@@ -1,10 +1,19 @@
 const http = require('http');
 const { spawn } = require('child_process');
+const fs = require('fs');
+const { promises: fsPromises } = require('fs');
+const path = require('path');
+const { EventEmitter } = require('events');
+const crypto = require('crypto');
 
 // NOTE: this process runs *inside* the admin-agent container
 const PORT = 4010;
 const ADMIN_TOKEN = process.env.ADMIN_AGENT_TOKEN;
 const COMPOSE_FILE = '/workspace/docker-compose.yml';
+const UPDATE_LOCK_FILE = '/tmp/hailmary-update.lock';
+const LAST_GOOD_FILE = '/tmp/hailmary-last-good.json';
+const UPDATE_LOG_DIR = '/tmp';
+const UPDATE_RING_BUFFER_SIZE = 2000;
 
 // IMPORTANT:
 // Inside the container our working dir is /workspace, so docker compose otherwise
@@ -55,8 +64,22 @@ if (!ADMIN_TOKEN) {
 /**
  * Verify admin token from request headers
  */
-function verifyToken(req, res) {
-  const token = req.headers['x-admin-token'];
+function getAuthToken(req, url) {
+  const headerToken = req.headers['x-admin-token'];
+  if (headerToken) {
+    return headerToken;
+  }
+
+  const authHeader = req.headers.authorization || '';
+  if (authHeader.startsWith('Bearer ')) {
+    return authHeader.slice('Bearer '.length).trim();
+  }
+
+  return url.searchParams.get('token') || '';
+}
+
+function verifyToken(req, res, url) {
+  const token = getAuthToken(req, url);
   if (!token || token !== ADMIN_TOKEN) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Unauthorized' }));
@@ -68,7 +91,10 @@ function verifyToken(req, res) {
 /**
  * Send SSE event
  */
-function sendSSE(res, data) {
+function sendSSE(res, data, event) {
+  if (event) {
+    res.write(`event: ${event}\n`);
+  }
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
@@ -91,6 +117,277 @@ async function pullLatestImages(res) {
     dockerComposeArgs(['pull', ...PULLABLE_SERVICES]),
     res
   );
+}
+
+function createRingBuffer(maxSize) {
+  const buffer = [];
+  return {
+    push(item) {
+      buffer.push(item);
+      if (buffer.length > maxSize) {
+        buffer.splice(0, buffer.length - maxSize);
+      }
+    },
+    getAll() {
+      return [...buffer];
+    },
+  };
+}
+
+const updates = new Map();
+
+function appendUpdateLine(update, text) {
+  const ts = new Date().toISOString();
+  const line = { ts, text };
+  update.buffer.push(line);
+  update.emitter.emit('line', line);
+  if (update.logStream) {
+    update.logStream.write(`${ts} ${text}\n`);
+  }
+}
+
+function buildUpdateStatus(update) {
+  return {
+    updateId: update.updateId,
+    state: update.state,
+    exitCode: update.exitCode,
+    startedAt: update.startedAt,
+    finishedAt: update.finishedAt,
+    lines: update.buffer.getAll(),
+  };
+}
+
+async function recordLastGood(updateId) {
+  try {
+    const proc = spawn('bash', ['-lc', 'cd ~/Hail-Mary && git rev-parse HEAD'], {
+      env: process.env,
+    });
+
+    let output = '';
+    proc.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    await new Promise((resolve, reject) => {
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error('Failed to read git revision'));
+        }
+      });
+      proc.on('error', reject);
+    });
+
+    const payload = {
+      updateId,
+      gitSha: output.trim(),
+      recordedAt: new Date().toISOString(),
+    };
+    await fsPromises.writeFile(LAST_GOOD_FILE, JSON.stringify(payload, null, 2));
+  } catch (error) {
+    console.warn('Failed to record last-known-good metadata:', error.message);
+  }
+}
+
+async function startSafeUpdate() {
+  const updateId = crypto.randomUUID();
+  const startedAt = new Date().toISOString();
+  const logPath = path.join(UPDATE_LOG_DIR, `hailmary-update-${updateId}.log`);
+
+  const update = {
+    updateId,
+    startedAt,
+    finishedAt: null,
+    state: 'running',
+    exitCode: null,
+    emitter: new EventEmitter(),
+    buffer: createRingBuffer(UPDATE_RING_BUFFER_SIZE),
+    logStream: fs.createWriteStream(logPath, { flags: 'a' }),
+  };
+
+  updates.set(updateId, update);
+  await fsPromises.writeFile(UPDATE_LOCK_FILE, updateId);
+  await recordLastGood(updateId);
+
+  const proc = spawn('bash', ['-lc', 'cd ~/Hail-Mary && ./scripts/safe-update.sh'], {
+    env: process.env,
+  });
+  update.pid = proc.pid;
+
+  const createLineHandler = () => {
+    let buffer = '';
+    return {
+      onData(data) {
+        buffer += data.toString();
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          appendUpdateLine(update, line);
+        }
+      },
+      flush() {
+        if (buffer) {
+          appendUpdateLine(update, buffer);
+          buffer = '';
+        }
+      },
+    };
+  };
+
+  const stdoutHandler = createLineHandler();
+  const stderrHandler = createLineHandler();
+
+  proc.stdout.on('data', stdoutHandler.onData);
+  proc.stderr.on('data', stderrHandler.onData);
+
+  proc.on('close', async (code) => {
+    stdoutHandler.flush();
+    stderrHandler.flush();
+    update.exitCode = code;
+    update.finishedAt = new Date().toISOString();
+    update.state = code === 0 ? 'success' : 'failed';
+    update.emitter.emit('status', {
+      state: update.state,
+      exitCode: update.exitCode,
+    });
+    update.logStream.end();
+    try {
+      await fsPromises.unlink(UPDATE_LOCK_FILE);
+    } catch (error) {
+      console.warn('Failed to remove update lock file:', error.message);
+    }
+  });
+
+  proc.on('error', async (error) => {
+    appendUpdateLine(update, `ERROR: ${error.message}`);
+    update.exitCode = 1;
+    update.finishedAt = new Date().toISOString();
+    update.state = 'failed';
+    update.emitter.emit('status', {
+      state: update.state,
+      exitCode: update.exitCode,
+    });
+    update.logStream.end();
+    try {
+      await fsPromises.unlink(UPDATE_LOCK_FILE);
+    } catch (err) {
+      console.warn('Failed to remove update lock file:', err.message);
+    }
+  });
+
+  return update;
+}
+
+async function handleUpdateStart(req, res, url) {
+  if (!verifyToken(req, res, url)) return;
+
+  try {
+    const existingLock = await fsPromises.readFile(UPDATE_LOCK_FILE, 'utf8').catch(() => null);
+    if (existingLock) {
+      res.writeHead(409, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: 'Update already running',
+        updateId: existingLock.trim(),
+      }));
+      return;
+    }
+
+    const update = await startSafeUpdate();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: true,
+      updateId: update.updateId,
+      startedAt: update.startedAt,
+    }));
+  } catch (error) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: error.message }));
+  }
+}
+
+async function handleUpdateStream(req, res, url) {
+  if (!verifyToken(req, res, url)) return;
+
+  const updateId = url.searchParams.get('updateId');
+  if (!updateId || !updates.has(updateId)) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Update not found' }));
+    return;
+  }
+
+  const update = updates.get(updateId);
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'X-Accel-Buffering': 'no',
+  });
+
+  sendSSE(res, {
+    updateId: update.updateId,
+    startedAt: update.startedAt,
+    pid: update.pid,
+  }, 'meta');
+
+  sendSSE(res, {
+    state: update.state,
+    exitCode: update.exitCode,
+  }, 'status');
+
+  update.buffer.getAll().forEach((line) => {
+    sendSSE(res, line, 'line');
+  });
+
+  const onLine = (line) => sendSSE(res, line, 'line');
+  const onStatus = (status) => sendSSE(res, status, 'status');
+
+  update.emitter.on('line', onLine);
+  update.emitter.on('status', onStatus);
+
+  req.on('close', () => {
+    update.emitter.off('line', onLine);
+    update.emitter.off('status', onStatus);
+  });
+}
+
+async function handleUpdateStatus(req, res, url) {
+  if (!verifyToken(req, res, url)) return;
+
+  const updateId = url.searchParams.get('updateId');
+  const update = updateId ? updates.get(updateId) : null;
+  if (!update) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Update not found' }));
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(buildUpdateStatus(update)));
+}
+
+async function handleUpdateLog(req, res, url) {
+  if (!verifyToken(req, res, url)) return;
+
+  const updateId = url.searchParams.get('updateId');
+  if (!updateId) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'updateId is required' }));
+    return;
+  }
+
+  const logPath = path.join(UPDATE_LOG_DIR, `hailmary-update-${updateId}.log`);
+  try {
+    await fsPromises.access(logPath);
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    fs.createReadStream(logPath).pipe(res);
+  } catch {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Log not found' }));
+  }
 }
 
 /**
@@ -136,8 +433,9 @@ function executeCommand(command, args, res) {
 /**
  * GET /update/stream - Stream update process via SSE
  */
-async function handleUpdateStream(req, res) {
-  if (!verifyToken(req, res)) return;
+async function handleLegacyUpdateStream(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (!verifyToken(req, res, url)) return;
 
   // Set SSE headers
   res.writeHead(200, {
@@ -199,7 +497,8 @@ async function handleUpdateStream(req, res) {
  * GET /version - Check for available updates
  */
 async function handleVersion(req, res) {
-  if (!verifyToken(req, res)) return;
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (!verifyToken(req, res, url)) return;
 
   try {
     const services = ['hailmary-api', 'hailmary-assistant', 'hailmary-pwa'];
@@ -312,7 +611,8 @@ async function handleVersion(req, res) {
  * GET /health - Check service health after update
  */
 async function handleHealth(req, res) {
-  if (!verifyToken(req, res)) return;
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (!verifyToken(req, res, url)) return;
 
   try {
     // Wait a few seconds for services to stabilize
@@ -376,13 +676,29 @@ async function handleHealth(req, res) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
+  if (req.method === 'POST' && url.pathname === '/ops/update') {
+    return handleUpdateStart(req, res, url);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/ops/update/stream') {
+    return handleUpdateStream(req, res, url);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/ops/update/status') {
+    return handleUpdateStatus(req, res, url);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/ops/update/log') {
+    return handleUpdateLog(req, res, url);
+  }
+
   // Friendly alias: /update behaves like /update/stream
   if (req.method === 'GET' && url.pathname === '/update') {
-    return handleUpdateStream(req, res);
+    return handleLegacyUpdateStream(req, res);
   }
 
   if (req.method === 'GET' && url.pathname === '/update/stream') {
-    return handleUpdateStream(req, res);
+    return handleLegacyUpdateStream(req, res);
   } else if (req.method === 'GET' && url.pathname === '/version') {
     return handleVersion(req, res);
   } else if (req.method === 'GET' && url.pathname === '/health') {

@@ -297,6 +297,33 @@
   font-family: monospace;
   font-size: 0.85rem;
   white-space: pre-wrap;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.admin-update-log pre {
+  margin: 0;
+}
+
+.admin-update-log-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.admin-update-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.admin-update-log-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .admin-update-status {

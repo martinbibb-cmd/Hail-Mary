@@ -18,7 +18,9 @@ const withAuthHeaders = (init: RequestInit = {}): Headers => {
   }
 
   const body = init.body;
-  if (body && typeof body === 'string' && !headers.has('Content-Type')) {
+  const trimmedBody = typeof body === 'string' ? body.trim() : '';
+  const looksJson = trimmedBody.startsWith('{') || trimmedBody.startsWith('[');
+  if (looksJson && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -28,10 +30,11 @@ const withAuthHeaders = (init: RequestInit = {}): Headers => {
 export const adminAgentFetch = (path: string, init: RequestInit = {}): Promise<Response> => {
   const url = buildAdminAgentUrl(path);
   const headers = withAuthHeaders(init);
+  const defaultCredentials = ADMIN_AGENT_BASE ? 'omit' : 'include';
 
   return fetch(url, {
     ...init,
     headers,
-    credentials: init.credentials ?? 'include',
+    credentials: init.credentials ?? defaultCredentials,
   });
 };

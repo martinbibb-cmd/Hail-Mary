@@ -93,7 +93,7 @@ fi
 echo ""
 echo "Checking BASE_URL..."
 # Check what the default is from the backend code (see packages/api/src/routes/auth.ts)
-DEFAULT_BASE_URL="https://hail_mary.cloudbibb.uk"
+DEFAULT_BASE_URL="https://atlas.cloudbibb.uk"
 if [ -n "$BASE_URL" ]; then
     echo "✅ BASE_URL is set: $BASE_URL"
     echo ""

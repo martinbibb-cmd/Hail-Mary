@@ -13,6 +13,7 @@
     "build": "node scripts/build.mjs",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
+    "check:forbidden-hosts": "node scripts/forbidden-hosts.mjs",
     "api:dev": "npm run dev -w packages/api",
     "pwa:dev": "npm run dev -w packages/pwa",
     "assistant:dev": "npm run dev -w packages/assistant",

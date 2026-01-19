@@ -26,7 +26,7 @@ function normaliseUrl(raw: string): string {
 const presetLinks = [
   { label: 'GitHub', url: 'https://github.com/martinbibb-cmd' },
   { label: 'GitHub Pages', url: 'https://martinbibb-cmd.github.io' },
-  { label: 'Cloudbibb', url: 'https://main.cloudbibb.uk' },
+  { label: 'Atlas', url: '/' },
 ];
 
 export const BrowserApp: React.FC = () => {

@@ -209,7 +209,14 @@ router.post('/migrate', async (_req: Request, res: Response) => {
 });
 
 /**
- * Helper function to proxy request to admin agent
+ * Helper function to implement exponential backoff retry
+ */
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Helper function to proxy request to admin agent with retry logic
  */
 async function proxyToAdminAgent(
   path: string,
@@ -224,69 +231,111 @@ async function proxyToAdminAgent(
     return;
   }
 
-  const url = new URL(path, ADMIN_AGENT_URL);
+  const MAX_RETRIES = 5;
+  const INITIAL_DELAY = 200; // ms
+  const MAX_DELAY = 2000; // ms
 
-  return new Promise((resolve, reject) => {
-    const request = http.get(
-      url.toString(),
-      {
-        headers: {
-          'X-Admin-Token': ADMIN_AGENT_TOKEN,
-        },
-      },
-      (proxyRes) => {
-        if (isSSE) {
-          // For SSE, proxy all headers and stream the response
-          res.writeHead(proxyRes.statusCode || 200, {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'X-Accel-Buffering': 'no', // Disable nginx buffering
-          });
+  let lastError: Error | null = null;
 
-          proxyRes.pipe(res);
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const url = new URL(path, ADMIN_AGENT_URL);
 
-          proxyRes.on('end', () => {
-            resolve();
-          });
+      await new Promise<void>((resolve, reject) => {
+        const request = http.get(
+          url.toString(),
+          {
+            headers: {
+              'X-Admin-Token': ADMIN_AGENT_TOKEN,
+            },
+            timeout: 5000, // 5 second timeout
+          },
+          (proxyRes) => {
+            if (isSSE) {
+              // For SSE, proxy all headers and stream the response
+              res.writeHead(proxyRes.statusCode || 200, {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no', // Disable nginx buffering
+              });
 
-          proxyRes.on('error', (error) => {
-            console.error('Admin agent SSE error:', error);
-            reject(error);
-          });
-        } else {
-          // For JSON, buffer the response
-          let data = '';
-          proxyRes.on('data', (chunk) => {
-            data += chunk;
-          });
+              proxyRes.pipe(res);
 
-          proxyRes.on('end', () => {
-            res.writeHead(proxyRes.statusCode || 200, {
-              'Content-Type': 'application/json',
-            });
-            res.end(data);
-            resolve();
-          });
+              proxyRes.on('end', () => {
+                resolve();
+              });
 
-          proxyRes.on('error', (error) => {
-            console.error('Admin agent error:', error);
-            reject(error);
-          });
-        }
-      }
-    );
+              proxyRes.on('error', (error) => {
+                console.error('Admin agent SSE error:', error);
+                reject(error);
+              });
+            } else {
+              // For JSON, buffer the response
+              let data = '';
+              proxyRes.on('data', (chunk) => {
+                data += chunk;
+              });
 
-    request.on('error', (error) => {
-      console.error('Admin agent connection error:', error);
-      res.status(503).json({
-        success: false,
-        error: 'Failed to connect to admin agent',
+              proxyRes.on('end', () => {
+                res.writeHead(proxyRes.statusCode || 200, {
+                  'Content-Type': 'application/json',
+                });
+                res.end(data);
+                resolve();
+              });
+
+              proxyRes.on('error', (error) => {
+                console.error('Admin agent error:', error);
+                reject(error);
+              });
+            }
+          }
+        );
+
+        request.on('error', (error) => {
+          reject(error);
+        });
+
+        request.on('timeout', () => {
+          request.destroy();
+          reject(new Error('Request timeout'));
+        });
+
+        request.end();
       });
-      reject(error);
-    });
 
-    request.end();
+      // Success - no need to retry
+      return;
+    } catch (error) {
+      lastError = error as Error;
+      console.error(
+        `Admin agent connection attempt ${attempt + 1}/${MAX_RETRIES} failed:`,
+        error
+      );
+
+      // Don't retry on the last attempt
+      if (attempt < MAX_RETRIES - 1) {
+        // Calculate exponential backoff delay with jitter
+        const baseDelay = Math.min(INITIAL_DELAY * Math.pow(2, attempt), MAX_DELAY);
+        const jitter = Math.random() * 100;
+        const delay = baseDelay + jitter;
+
+        console.log(`Retrying in ${Math.round(delay)}ms...`);
+        await sleep(delay);
+      }
+    }
+  }
+
+  // All retries exhausted
+  console.error(
+    `Admin agent connection failed after ${MAX_RETRIES} attempts:`,
+    lastError
+  );
+  res.status(503).json({
+    success: false,
+    error: 'Failed to connect to admin agent - service may be restarting',
+    details: lastError?.message,
   });
 }
 

@@ -1,6 +1,9 @@
 FROM docker:28-cli AS docker-cli
 FROM node:20-alpine
 
+# Install wget for healthcheck
+RUN apk add --no-cache wget
+
 # Create directory for docker CLI plugins first
 RUN mkdir -p /usr/local/libexec/docker/cli-plugins
 

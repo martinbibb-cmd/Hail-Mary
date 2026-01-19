@@ -91,6 +91,8 @@ services:
     depends_on:
       hailmary-migrator:
         condition: service_completed_successfully
+      hailmary-admin-agent:
+        condition: service_healthy
     networks:
       - hailmary-network
     # Exposed for Cloudflare tunnel direct access
@@ -155,6 +157,12 @@ services:
       - hailmary-network
     ports:
       - "4010:4010"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4010/ping >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
 
   # Hail-Mary PWA (Frontend + Nginx Reverse Proxy)
   hailmary-pwa:

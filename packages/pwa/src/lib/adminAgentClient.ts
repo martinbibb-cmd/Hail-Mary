@@ -1,7 +1,7 @@
 const ADMIN_AGENT_BASE = import.meta.env.VITE_ADMIN_AGENT_URL || '';
 const ADMIN_AGENT_TOKEN = import.meta.env.VITE_ADMIN_AGENT_TOKEN || '';
 
-const buildAdminAgentUrl = (path: string): string => {
+export const buildAdminAgentUrl = (path: string): string => {
   if (!ADMIN_AGENT_BASE) {
     return path;
   }
@@ -15,6 +15,7 @@ const withAuthHeaders = (init: RequestInit = {}): Headers => {
 
   if (ADMIN_AGENT_TOKEN) {
     headers.set('Authorization', `Bearer ${ADMIN_AGENT_TOKEN}`);
+    headers.set('X-Admin-Token', ADMIN_AGENT_TOKEN);
   }
 
   const body = init.body;
@@ -30,7 +31,7 @@ const withAuthHeaders = (init: RequestInit = {}): Headers => {
 export const adminAgentFetch = (path: string, init: RequestInit = {}): Promise<Response> => {
   const url = buildAdminAgentUrl(path);
   const headers = withAuthHeaders(init);
-  const defaultCredentials = ADMIN_AGENT_BASE ? 'omit' : 'include';
+  const defaultCredentials = ADMIN_AGENT_BASE.startsWith('http') ? 'omit' : 'include';
 
   return fetch(url, {
     ...init,
@@ -38,3 +39,5 @@ export const adminAgentFetch = (path: string, init: RequestInit = {}): Promise<R
     credentials: init.credentials ?? defaultCredentials,
   });
 };
+
+export const getAdminAgentToken = (): string => ADMIN_AGENT_TOKEN;

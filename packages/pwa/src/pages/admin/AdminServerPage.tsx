@@ -7,10 +7,12 @@
  * - Manual database migration fallback
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { APP_VERSION } from '../../constants';
 import { AdminApiStatus } from '../../components/AdminApiStatus';
+import { adminAgentFetch, buildAdminAgentUrl, getAdminAgentToken } from '../../lib/adminAgentClient';
+import { safeJson, safeText } from '../../lib/http';
 import type { 
   AdminSystemStatus, 
   AdminSystemStatusResponse,
@@ -22,6 +24,8 @@ import './AdminServerPage.css';
 // Constants
 const HEALTH_CHECK_DELAY_MS = 2000;
 const REFRESH_DELAY_MS = 1000;
+const LOG_LINE_LIMIT = 200;
+const MANUAL_UPDATE_SNIPPET = 'cd ~/Hail-Mary && ./scripts/safe-update.sh';
 
 export const AdminServerPage: React.FC = () => {
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
@@ -38,15 +42,26 @@ export const AdminServerPage: React.FC = () => {
   const [checkingVersion, setCheckingVersion] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateLogs, setUpdateLogs] = useState<string[]>([]);
+  const [updateId, setUpdateId] = useState<string | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateComplete, setUpdateComplete] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [healthInfo, setHealthInfo] = useState<AdminHealthResponse | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [autoScrollLogs, setAutoScrollLogs] = useState(true);
+  const logContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadSystemStatus();
     checkAdminAgentAvailability();
   }, []);
+
+  useEffect(() => {
+    if (!autoScrollLogs || !logContainerRef.current) {
+      return;
+    }
+    logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+  }, [autoScrollLogs, updateLogs]);
 
   const loadSystemStatus = async () => {
     setLoading(true);
@@ -55,14 +70,14 @@ export const AdminServerPage: React.FC = () => {
       const res = await fetch('/api/admin/system/status', {
         credentials: 'include',
       });
-      const data: AdminSystemStatusResponse = await res.json();
+      const data = await safeJson(res) as AdminSystemStatusResponse | null;
       
       if (res.status === 401 || res.status === 403) {
         setError('Access denied. Admin privileges required.');
-      } else if (data.success) {
+      } else if (data?.success) {
         setStatus(data.data || null);
       } else {
-        setError(data.error || 'Failed to get system status');
+        setError(data?.error || 'Failed to get system status');
       }
     } catch (err) {
       setError('Failed to get system status');
@@ -74,15 +89,15 @@ export const AdminServerPage: React.FC = () => {
 
   const checkAdminAgentAvailability = async () => {
     try {
-      const res = await fetch('/api/admin/system/version', {
-        credentials: 'include',
-      });
+      const res = await adminAgentFetch('/admin-agent/version');
       
       // If we get a 200 response, admin-agent is available
       if (res.ok) {
         setAgentAvailable(true);
-        const data: AdminVersionResponse = await res.json();
-        setVersionInfo(data);
+        const data = await safeJson(res) as AdminVersionResponse | null;
+        if (data) {
+          setVersionInfo(data);
+        }
       } else if (res.status === 503 || res.status === 502 || res.status === 404) {
         // Admin agent not configured or not reachable
         setAgentAvailable(false);
@@ -98,22 +113,102 @@ export const AdminServerPage: React.FC = () => {
 
   const checkVersion = async () => {
     setCheckingVersion(true);
+    setUpdateError(null);
     try {
-      const res = await fetch('/api/admin/system/version', {
-        credentials: 'include',
-      });
+      const res = await adminAgentFetch('/admin-agent/version');
       
       if (res.ok) {
-        const data: AdminVersionResponse = await res.json();
-        setVersionInfo(data);
+        const data = await safeJson(res) as AdminVersionResponse | null;
+        if (data) {
+          setVersionInfo(data);
+        } else {
+          setUpdateError('Failed to read update metadata. Please retry.');
+        }
       } else {
-        console.error('Failed to check version: HTTP', res.status);
+        const message = await safeText(res);
+        setUpdateError(message || `Failed to check version (HTTP ${res.status})`);
       }
     } catch (err) {
       console.error('Failed to check version:', err);
+      setUpdateError('Failed to check version. Verify admin-agent connectivity.');
     } finally {
       setCheckingVersion(false);
     }
+  };
+
+  const appendUpdateLog = (line: string) => {
+    setUpdateLogs((prev) => {
+      const next = [...prev, line];
+      if (next.length > LOG_LINE_LIMIT) {
+        return next.slice(next.length - LOG_LINE_LIMIT);
+      }
+      return next;
+    });
+  };
+
+  const buildStreamUrl = (id: string) => {
+    const baseUrl = buildAdminAgentUrl(`/admin-agent/ops/update/stream?updateId=${encodeURIComponent(id)}`);
+    const token = getAdminAgentToken();
+    if (!token) {
+      return baseUrl;
+    }
+    const joiner = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${joiner}token=${encodeURIComponent(token)}`;
+  };
+
+  const startUpdateStream = (id: string) => {
+    const eventSource = new EventSource(buildStreamUrl(id), {
+      withCredentials: true,
+    });
+
+    eventSource.addEventListener('line', (event) => {
+      try {
+        const data = JSON.parse(event.data) as { text?: string };
+        if (data?.text !== undefined) {
+          appendUpdateLog(data.text);
+        }
+      } catch (err) {
+        console.error('Failed to parse log line:', err);
+      }
+    });
+
+    eventSource.addEventListener('status', (event) => {
+      try {
+        const data = JSON.parse(event.data) as { state?: string };
+        if (data?.state && data.state !== 'running') {
+          setUpdateComplete(true);
+          setUpdateSuccess(data.state === 'success');
+          setUpdating(false);
+          eventSource.close();
+
+          if (data.state === 'success') {
+            setTimeout(checkHealth, HEALTH_CHECK_DELAY_MS);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to parse status update:', err);
+      }
+    });
+
+    eventSource.addEventListener('meta', (event) => {
+      try {
+        const data = JSON.parse(event.data) as { startedAt?: string };
+        if (data?.startedAt) {
+          appendUpdateLog(`==> Update started at ${data.startedAt}`);
+        }
+      } catch (err) {
+        console.error('Failed to parse meta event:', err);
+      }
+    });
+
+    eventSource.onerror = (err) => {
+      console.error('SSE error:', err);
+      appendUpdateLog('❌ Connection error while streaming updates.');
+      setUpdateComplete(true);
+      setUpdateSuccess(false);
+      setUpdating(false);
+      eventSource.close();
+    };
   };
 
   const handleUpdate = async () => {
@@ -122,48 +217,38 @@ export const AdminServerPage: React.FC = () => {
     setUpdateComplete(false);
     setUpdateSuccess(false);
     setHealthInfo(null);
+    setUpdateError(null);
+    setUpdateId(null);
     setShowUpdateModal(true);
 
     try {
-      const eventSource = new EventSource('/api/admin/system/update/stream', {
-        withCredentials: true,
-      });
+      const res = await adminAgentFetch('/admin-agent/ops/update', { method: 'POST' });
+      const data = await safeJson(res) as { success?: boolean; updateId?: string; error?: string } | null;
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+      if (res.status === 409 && data?.updateId) {
+        setUpdateId(data.updateId);
+        appendUpdateLog('⚠️ Update already running. Attaching to live logs.');
+        startUpdateStream(data.updateId);
+        return;
+      }
 
-          if (data.type === 'log') {
-            setUpdateLogs(prev => [...prev, data.text]);
-          } else if (data.type === 'error') {
-            setUpdateLogs(prev => [...prev, `❌ ERROR: ${data.message}\n`]);
-          } else if (data.type === 'complete') {
-            setUpdateComplete(true);
-            setUpdateSuccess(data.success);
-            setUpdating(false);
-            eventSource.close();
-
-            // Check health after update
-            if (data.success) {
-              setTimeout(checkHealth, HEALTH_CHECK_DELAY_MS);
-            }
-          }
-        } catch (err) {
-          console.error('Failed to parse SSE data:', err);
-        }
-      };
-
-      eventSource.onerror = (err) => {
-        console.error('SSE error:', err);
-        setUpdateLogs(prev => [...prev, '❌ Connection error\n']);
+      if (!res.ok || !data?.updateId) {
+        const message = data?.error || await safeText(res);
+        setUpdateError(message || `Failed to start update (HTTP ${res.status}).`);
+        appendUpdateLog(`❌ Failed to start update. Run manually: ${MANUAL_UPDATE_SNIPPET}`);
         setUpdateComplete(true);
         setUpdateSuccess(false);
         setUpdating(false);
-        eventSource.close();
-      };
+        return;
+      }
+
+      setUpdateId(data.updateId);
+      startUpdateStream(data.updateId);
     } catch (err) {
       console.error('Update error:', err);
-      setUpdateLogs(prev => [...prev, `❌ Failed to start update: ${err}\n`]);
+      appendUpdateLog(`❌ Failed to start update: ${err}`);
+      appendUpdateLog(`Manual fallback: ${MANUAL_UPDATE_SNIPPET}`);
+      setUpdateError('Failed to start update. Check admin-agent connectivity.');
       setUpdateComplete(true);
       setUpdateSuccess(false);
       setUpdating(false);
@@ -172,13 +257,13 @@ export const AdminServerPage: React.FC = () => {
 
   const checkHealth = async () => {
     try {
-      const res = await fetch('/api/admin/system/health', {
-        credentials: 'include',
-      });
+      const res = await adminAgentFetch('/admin-agent/health');
       
       if (res.ok) {
-        const data: AdminHealthResponse = await res.json();
-        setHealthInfo(data);
+        const data = await safeJson(res) as AdminHealthResponse | null;
+        if (data) {
+          setHealthInfo(data);
+        }
       } else {
         console.error('Failed to check health: HTTP', res.status);
       }
@@ -189,6 +274,7 @@ export const AdminServerPage: React.FC = () => {
 
   const closeUpdateModal = () => {
     setShowUpdateModal(false);
+    setUpdateError(null);
     // Refresh status and version after closing modal
     setTimeout(() => {
       loadSystemStatus();
@@ -235,21 +321,21 @@ export const AdminServerPage: React.FC = () => {
         method: 'POST',
         credentials: 'include',
       });
-      const data = await res.json();
+      const data = await safeJson(res) as { success?: boolean; message?: string; output?: string; error?: string; details?: string } | null;
       
       if (res.status === 401 || res.status === 403) {
         setError('Access denied. Admin privileges required.');
-      } else if (data.success) {
+      } else if (data?.success) {
         setMigrationResult({
           success: true,
-          message: data.message,
+          message: data.message || 'Database migrations completed successfully',
           output: data.output || '',
         });
       } else {
         setMigrationResult({
           success: false,
-          message: data.error || 'Failed to run migrations',
-          output: data.output || data.details || '',
+          message: data?.error || 'Failed to run migrations',
+          output: data?.output || data?.details || '',
         });
       }
     } catch (err) {
@@ -282,6 +368,14 @@ export const AdminServerPage: React.FC = () => {
 
         {error && (
           <div className="alert alert-error">{error}</div>
+        )}
+
+        {updateError && (
+          <div className="alert alert-warning">
+            <strong>Update Issue</strong>
+            <div>{updateError}</div>
+            <div className="playbook-note">Manual fallback: <code>{MANUAL_UPDATE_SNIPPET}</code></div>
+          </div>
         )}
 
         <AdminApiStatus
@@ -511,12 +605,37 @@ export const AdminServerPage: React.FC = () => {
           >
             <h4>🚀 System Update</h4>
 
-            <div className="admin-update-log">
-              {updateLogs.map((log, idx) => (
-                <div key={idx} className="admin-update-log-line">
-                  {log}
-                </div>
-              ))}
+            <div className="admin-update-log-toolbar">
+              <label className="admin-update-toggle">
+                <input
+                  type="checkbox"
+                  checked={autoScrollLogs}
+                  onChange={(event) => setAutoScrollLogs(event.target.checked)}
+                />
+                Auto-scroll
+              </label>
+              <div className="admin-update-log-actions">
+                <button
+                  className="btn-secondary"
+                  onClick={() => navigator.clipboard.writeText(updateLogs.join('\n'))}
+                  disabled={updateLogs.length === 0}
+                >
+                  📋 Copy logs
+                </button>
+                {updateId && (
+                  <a
+                    className="btn-secondary"
+                    href={buildAdminAgentUrl(`/admin-agent/ops/update/log?updateId=${encodeURIComponent(updateId)}${getAdminAgentToken() ? `&token=${encodeURIComponent(getAdminAgentToken())}` : ''}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ⬇️ Download log
+                  </a>
+                )}
+              </div>
+            </div>
+            <div className="admin-update-log" ref={logContainerRef}>
+              <pre>{updateLogs.join('\n')}</pre>
             </div>
 
             {updateComplete && (

@@ -257,7 +257,7 @@ The API maintains backward compatibility:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PWA_PORT` | `3000` | External port for web interface |
-| `BASE_URL` | `https://hail_mary.cloudbibb.uk` | Base URL for links |
+| `BASE_URL` | `https://atlas.cloudbibb.uk` | Base URL for links |
 | `GEMINI_API_KEY` | - | Google AI API key for assistant |
 | `GEMINI_MODEL` | `gemini-1.5-flash` | AI model to use |
 | `NAS_AUTH_MODE` | `false` | Enable NAS passwordless login |

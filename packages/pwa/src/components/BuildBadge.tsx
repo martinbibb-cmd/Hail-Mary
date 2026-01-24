@@ -8,14 +8,17 @@
  * FIX 5: Only visible in dev mode or when ?dev=1 query parameter is present
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 export function BuildBadge() {
   const [expanded, setExpanded] = useState(false)
 
   // FIX 5: Only show in dev mode or with ?dev=1 query parameter
-  const isDev = __BUILD_ENV__ === 'development' || 
-                new URLSearchParams(window.location.search).get('dev') === '1'
+  // Memoize to avoid parsing URL on every render
+  const isDev = useMemo(() => {
+    return __BUILD_ENV__ === 'development' || 
+           new URLSearchParams(window.location.search).get('dev') === '1'
+  }, [])
   
   if (!isDev) {
     return null

@@ -587,6 +587,10 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
       console.warn(`[Engineer] Successfully generated output for property ${addressId} but cannot save to timeline (no visit)`);
     }
 
+    // Return comprehensive response including output
+    // Note: Including full output in response is intentional - allows frontend to display
+    // engineer analysis even when timeline persistence fails (visit creation issues).
+    // This is a critical path for address-based operations.
     return res.status(201).json({ 
       success: true, 
       data: { 

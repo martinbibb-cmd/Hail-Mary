@@ -4,12 +4,22 @@
  * Displays build metadata in a small fixed badge at bottom-right of the screen.
  * Shows Git SHA (short), build time, and environment.
  * Helps identify exactly what code is running on each device.
+ * 
+ * FIX 5: Only visible in dev mode or when ?dev=1 query parameter is present
  */
 
 import { useState } from 'react'
 
 export function BuildBadge() {
   const [expanded, setExpanded] = useState(false)
+
+  // FIX 5: Only show in dev mode or with ?dev=1 query parameter
+  const isDev = __BUILD_ENV__ === 'development' || 
+                new URLSearchParams(window.location.search).get('dev') === '1'
+  
+  if (!isDev) {
+    return null
+  }
 
   // Format build time as relative time (e.g., "2 hours ago")
   const formatBuildTime = (isoString: string) => {

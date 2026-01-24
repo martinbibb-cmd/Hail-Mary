@@ -339,53 +339,100 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(401).json({ success: false, error: "User account not properly configured" });
 
-    // GOLDEN PATH: If no visitId provided, create a system visit silently
+    // GOLDEN PATH: If no visitId provided, try to create a system visit silently
+    // FIX 1: Best-effort visit creation - continue even if it fails
     if (!visitId) {
-      const visitCreated = await db
-        .insert(spineVisits)
-        .values({
-          propertyId: addressId,
-          startedAt: new Date(),
-        })
-        .returning({ id: spineVisits.id });
-      visitId = visitCreated[0]?.id;
-      if (!visitId) throw new Error("Failed to create system visit");
+      try {
+        const visitCreated = await db
+          .insert(spineVisits)
+          .values({
+            propertyId: addressId,
+            startedAt: new Date(),
+          })
+          .returning({ id: spineVisits.id });
+        visitId = visitCreated[0]?.id ?? null;
+        if (visitId) {
+          console.log(`[Engineer] Created system visit ${visitId} for property ${addressId}`);
+        } else {
+          console.warn(`[Engineer] Visit creation returned no ID for property ${addressId}, continuing without visit`);
+        }
+      } catch (error) {
+        console.warn(`[Engineer] Failed to create system visit for property ${addressId}, continuing without visit:`, error);
+        visitId = null;
+      }
     }
 
-    // 0) Load previous Engineer output for this visit (if any) for diffing.
-    const prevEngineerRows = await db
-      .select({ payload: spineTimelineEvents.payload })
-      .from(spineTimelineEvents)
-      .where(and(eq(spineTimelineEvents.visitId, visitId), eq(spineTimelineEvents.type, "engineer_output")))
-      .orderBy(desc(spineTimelineEvents.ts))
-      .limit(1);
-    const prevForDiff = prevEngineerRows[0] ? toEngineerOutputForDiff(prevEngineerRows[0].payload) : null;
+    // FIX 2: Load data using property as primary anchor, visit as optional metadata
+    let prevForDiff: EngineerOutputForDiff | null = null;
+    let startedAt = new Date();
+    let addressLine1 = "";
+    let postcode = "";
+    let events: Array<{ type: string; ts: Date; payload: unknown }> = [];
 
-    // 1) Validate visit exists + load property basics
-    const visitRows = await db
+    // Load previous Engineer output (if visitId exists)
+    if (visitId) {
+      try {
+        const prevEngineerRows = await db
+          .select({ payload: spineTimelineEvents.payload })
+          .from(spineTimelineEvents)
+          .where(and(eq(spineTimelineEvents.visitId, visitId), eq(spineTimelineEvents.type, "engineer_output")))
+          .orderBy(desc(spineTimelineEvents.ts))
+          .limit(1);
+        prevForDiff = prevEngineerRows[0] ? toEngineerOutputForDiff(prevEngineerRows[0].payload) : null;
+      } catch (error) {
+        console.warn(`[Engineer] Failed to load previous output for visit ${visitId}:`, error);
+      }
+    }
+
+    // 1) Load property basics (using addressId as primary key)
+    const propertyRows = await db
       .select({
-        visitId: spineVisits.id,
-        startedAt: spineVisits.startedAt,
         addressLine1: spineProperties.addressLine1,
         postcode: spineProperties.postcode,
       })
-      .from(spineVisits)
-      .innerJoin(spineProperties, eq(spineVisits.propertyId, spineProperties.id))
-      .where(eq(spineVisits.id, visitId))
+      .from(spineProperties)
+      .where(eq(spineProperties.id, addressId))
       .limit(1);
 
-    if (!visitRows[0]) return res.status(404).json({ success: false, error: "Visit not found" });
+    if (!propertyRows[0]) {
+      return res.status(404).json({ success: false, error: "Property not found" });
+    }
 
-    // 2) Load timeline events for this visit (transcripts + notes)
-    const events = await db
-      .select({
-        type: spineTimelineEvents.type,
-        ts: spineTimelineEvents.ts,
-        payload: spineTimelineEvents.payload,
-      })
-      .from(spineTimelineEvents)
-      .where(and(eq(spineTimelineEvents.visitId, visitId), inArray(spineTimelineEvents.type, ["transcript", "note"])))
-      .orderBy(asc(spineTimelineEvents.ts));
+    addressLine1 = propertyRows[0].addressLine1;
+    postcode = propertyRows[0].postcode;
+
+    // 2) If visitId exists, validate and load timeline events
+    if (visitId) {
+      try {
+        // Validate visit exists
+        const visitRows = await db
+          .select({
+            startedAt: spineVisits.startedAt,
+          })
+          .from(spineVisits)
+          .where(eq(spineVisits.id, visitId))
+          .limit(1);
+
+        if (visitRows[0]) {
+          startedAt = visitRows[0].startedAt;
+          
+          // Load timeline events for this visit
+          events = await db
+            .select({
+              type: spineTimelineEvents.type,
+              ts: spineTimelineEvents.ts,
+              payload: spineTimelineEvents.payload,
+            })
+            .from(spineTimelineEvents)
+            .where(and(eq(spineTimelineEvents.visitId, visitId), inArray(spineTimelineEvents.type, ["transcript", "note"])))
+            .orderBy(asc(spineTimelineEvents.ts));
+        } else {
+          console.warn(`[Engineer] Visit ${visitId} not found, continuing with property data only`);
+        }
+      } catch (error) {
+        console.warn(`[Engineer] Failed to load visit/timeline data for visit ${visitId}:`, error);
+      }
+    }
 
     // 3) Build single context payload
     const transcripts = events
@@ -403,11 +450,11 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
 
     const context: EngineerContext = {
       property: {
-        address: visitRows[0].addressLine1,
-        postcode: visitRows[0].postcode,
+        address: addressLine1,
+        postcode: postcode,
       },
       visit: {
-        startedAt: visitRows[0].startedAt.toISOString(),
+        startedAt: startedAt.toISOString(),
       },
       transcripts,
       notes,
@@ -489,43 +536,67 @@ router.post("/run", requireAuth, async (req: Request, res: Response) => {
       engineerOutput = buildEngineerFallbackOutput(context, mode);
     }
 
-    // 6) Compute + save TimelineEvent(type="engineer_diff") (if previous exists), then save new output.
+    // 6) Save Engineer output (only to timeline if visitId exists)
     const now = new Date();
     let diffEventId: string | null = null;
+    let eventId: string | null = null;
 
-    if (prevForDiff) {
-      const nextForDiff: EngineerOutputForDiff = {
-        facts: engineerOutput.facts.map((f) => normalizeWhitespace(f.text)).filter(Boolean),
-        questions: engineerOutput.questions.map((q) => normalizeWhitespace(q)).filter(Boolean),
-        concerns: engineerOutput.concerns.map((c) => normalizeWhitespace(c)).filter(Boolean),
-      };
+    if (visitId) {
+      // We have a visit - save diff and output to timeline
+      try {
+        if (prevForDiff) {
+          const nextForDiff: EngineerOutputForDiff = {
+            facts: engineerOutput.facts.map((f) => normalizeWhitespace(f.text)).filter(Boolean),
+            questions: engineerOutput.questions.map((q) => normalizeWhitespace(q)).filter(Boolean),
+            concerns: engineerOutput.concerns.map((c) => normalizeWhitespace(c)).filter(Boolean),
+          };
 
-      const diffPayload = computeEngineerDiff(prevForDiff, nextForDiff);
-      const diffTs = new Date(now.getTime() + 1); // ensure diff appears above output in feed ordering
+          const diffPayload = computeEngineerDiff(prevForDiff, nextForDiff);
+          const diffTs = new Date(now.getTime() + 1); // ensure diff appears above output in feed ordering
 
-      const diffInserted = await db
-        .insert(spineTimelineEvents)
-        .values({
-          visitId,
-          type: "engineer_diff",
-          ts: diffTs,
-          payload: diffPayload,
-        })
-        .returning({ eventId: spineTimelineEvents.id });
-      diffEventId = diffInserted[0]?.eventId ?? null;
+          const diffInserted = await db
+            .insert(spineTimelineEvents)
+            .values({
+              visitId,
+              type: "engineer_diff",
+              ts: diffTs,
+              payload: diffPayload,
+            })
+            .returning({ eventId: spineTimelineEvents.id });
+          diffEventId = diffInserted[0]?.eventId ?? null;
+        }
+
+        const inserted = await db
+          .insert(spineTimelineEvents)
+          .values({
+            visitId,
+            type: "engineer_output",
+            ts: now,
+            payload: engineerOutput,
+          })
+          .returning({ eventId: spineTimelineEvents.id });
+
+        eventId = inserted[0]?.eventId ?? null;
+        console.log(`[Engineer] Saved output to timeline event ${eventId} for visit ${visitId}`);
+      } catch (error) {
+        console.error(`[Engineer] Failed to save timeline events for visit ${visitId}:`, error);
+        // Continue - don't fail the whole request just because timeline save failed
+      }
+    } else {
+      // No visit - Engineer ran successfully but we can't persist to timeline
+      console.warn(`[Engineer] Successfully generated output for property ${addressId} but cannot save to timeline (no visit)`);
     }
 
-    const inserted = await db
-      .insert(spineTimelineEvents)
-      .values({
-        visitId,
-        type: "engineer_output",
-        ts: now,
-        payload: engineerOutput,
-      })
-      .returning({ eventId: spineTimelineEvents.id });
-
-    return res.status(201).json({ success: true, data: { eventId: inserted[0].eventId, diffEventId } });
+    return res.status(201).json({ 
+      success: true, 
+      data: { 
+        eventId, 
+        diffEventId,
+        output: engineerOutput, // Return output directly so frontend can use it even without timeline persistence
+        propertyId: addressId,
+        visitId: visitId || null
+      } 
+    });
   } catch (error) {
     const statusCode = typeof (error as any)?.statusCode === "number" ? (error as any).statusCode : 500;
     if (statusCode >= 500) console.error("Error running engineer:", error);

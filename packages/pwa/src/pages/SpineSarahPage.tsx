@@ -89,7 +89,8 @@ export function SpineSarahPage() {
   }, [messages, sending])
 
   useEffect(() => {
-    if (!activeVisitId) return
+    // GOLDEN PATH: Load feed for any address, filter by visitId later if needed
+    if (!activeAddress) return
     let cancelled = false
 
     const run = async () => {
@@ -112,20 +113,22 @@ export function SpineSarahPage() {
     return () => {
       cancelled = true
     }
-  }, [activeVisitId])
+  }, [activeAddress])
 
   const latestEngineerEvent = useMemo(() => {
-    if (!activeVisitId) return null
-    const candidates = feed.filter((e) => e.visit?.id === activeVisitId && e.type === 'engineer_output')
+    // GOLDEN PATH: Show engineer output if available, regardless of visit
+    // If visitId present, filter by it; otherwise show latest for this address
+    const candidates = feed.filter((e) => e.type === 'engineer_output' && (!activeVisitId || e.visit?.id === activeVisitId))
     if (candidates.length === 0) return null
     // feed is newest->oldest; first match is latest
     return candidates[0]
   }, [activeVisitId, feed])
 
   const disabledReason = useMemo(() => {
-    if (!activeVisitId) return 'Select/Create property to start a visit'
+    // GOLDEN PATH: Only check for address, not visit
+    if (!activeAddress) return 'Please select an address to continue'
     return null
-  }, [activeVisitId])
+  }, [activeAddress])
 
   const engineerPayload = latestEngineerEvent?.payload && typeof latestEngineerEvent.payload === 'object' ? (latestEngineerEvent.payload as any) : null
   const engineerSummary = safeSummary(engineerPayload)
@@ -134,7 +137,8 @@ export function SpineSarahPage() {
   const engineerConcerns = engineerPayload ? toStringArray(engineerPayload.concerns) : []
 
   const send = useCallback(async () => {
-    if (!activeVisitId) return
+    // GOLDEN PATH: Only require address, visitId is optional
+    if (!activeAddress?.id) return
     const text = input.trim()
     if (!text) return
 
@@ -149,7 +153,7 @@ export function SpineSarahPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ visitId: activeVisitId, message: text, useKnowledgeBase }),
+        body: JSON.stringify({ addressId: activeAddress.id, visitId: activeVisitId || undefined, message: text, useKnowledgeBase }),
       })
       const json = (await res.json()) as {
         reply?: string
@@ -173,7 +177,7 @@ export function SpineSarahPage() {
       const assistantMsg: ChatMessage = {
         id: `a-err-${Date.now()}`,
         role: 'assistant',
-        content: `I couldn’t respond right now. ${msg}`,
+        content: `I couldn't respond right now. ${msg}`,
         citations: [],
         kbEnabled: useKnowledgeBase,
         ts: Date.now(),
@@ -182,7 +186,7 @@ export function SpineSarahPage() {
     } finally {
       setSending(false)
     }
-  }, [activeVisitId, input, useKnowledgeBase])
+  }, [activeAddress, activeVisitId, input, useKnowledgeBase])
 
   return (
     <div className="detail-page">
@@ -198,7 +202,6 @@ export function SpineSarahPage() {
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
             Active property: {activeAddress ? `${activeAddress.line1} • ${activeAddress.postcode}` : 'None'}
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Active visit: {activeVisitId ?? 'None'}</div>
         </div>
       </div>
 

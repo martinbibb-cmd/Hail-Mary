@@ -265,10 +265,14 @@ router.post('/explain', async (req: Request, res: Response) => {
  */
 router.post('/chat', requireAuth, async (req: Request, res: Response) => {
   try {
-    const visitId = asNonEmptyString(req.body?.visitId);
+    const addressId = asNonEmptyString(req.body?.addressId);
+    let visitId = asNonEmptyString(req.body?.visitId);
     const message = asNonEmptyString(req.body?.message);
-    if (!visitId) return res.status(400).json({ error: 'visitId is required' });
+
+    // GOLDEN PATH: addressId is required, visitId is optional
+    if (!addressId) return res.status(400).json({ error: 'addressId is required' });
     if (!message) return res.status(400).json({ error: 'message is required' });
+
     const modeRaw = asNonEmptyString(req.body?.mode);
     const mode = (modeRaw === 'visit_kb' || modeRaw === 'engineer_explain' ? modeRaw : null) ?? 'engineer_explain';
     const useKnowledgeBase = asBoolean(req.body?.useKnowledgeBase) ?? true; // only used for explicit visit_kb mode
@@ -276,6 +280,19 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(401).json({ error: 'User account not properly configured' });
     const accountIdStrict = accountId;
+
+    // GOLDEN PATH: If no visitId provided, create a system visit silently
+    if (!visitId) {
+      const visitCreated = await db
+        .insert(spineVisits)
+        .values({
+          propertyId: addressId,
+          startedAt: new Date(),
+        })
+        .returning({ id: spineVisits.id });
+      visitId = visitCreated[0]?.id;
+      if (!visitId) throw new Error('Failed to create system visit');
+    }
 
     // 1) Load property summary + visit basics
     const visitRows = await db

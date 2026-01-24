@@ -34,11 +34,18 @@ function markdownToPlainText(md: string): string {
 export function CustomerSummaryPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const activeAddress = useSpineStore((s) => s.activeAddress)
   const activeVisitId = useSpineStore((s) => s.activeVisitId)
+
+  // GOLDEN PATH: Use addressId from URL or active address
+  const addressId = useMemo(() => {
+    const q = new URLSearchParams(location.search)
+    return q.get('addressId') || activeAddress?.id || ''
+  }, [activeAddress?.id, location.search])
 
   const visitId = useMemo(() => {
     const q = new URLSearchParams(location.search)
-    return q.get('visitId') || activeVisitId || ''
+    return q.get('visitId') || activeVisitId || undefined
   }, [activeVisitId, location.search])
 
   const [loading, setLoading] = useState(false)
@@ -49,8 +56,9 @@ export function CustomerSummaryPage() {
   const [copyStatus, setCopyStatus] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!visitId) {
-      setError('No active visit. Start a visit first.')
+    // GOLDEN PATH: Only require address
+    if (!addressId) {
+      setError('Please select an address to continue.')
       return
     }
 
@@ -64,7 +72,7 @@ export function CustomerSummaryPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ visitId, tone: 'calm' }),
+          body: JSON.stringify({ addressId, visitId, tone: 'calm' }),
         })
         const json = (await res.json()) as ApiResponse<CustomerSummaryResponse>
         if (cancelled) return
@@ -94,7 +102,7 @@ export function CustomerSummaryPage() {
     return () => {
       cancelled = true
     }
-  }, [visitId])
+  }, [addressId, visitId])
 
   const copy = useCallback(async () => {
     if (!markdown) return

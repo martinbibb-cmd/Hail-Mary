@@ -10,7 +10,7 @@
  */
 
 import { Router, type Request, type Response } from "express";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/drizzle-client";
 import { presentationDrafts, spineVisits } from "../db/drizzle-schema";
 import { optionalAuth } from "../middleware/auth.middleware";
@@ -66,6 +66,7 @@ function asJsonValue(input: unknown): unknown {
 }
 
 type CreateDraftBody = {
+  addressId?: unknown;
   visitId?: unknown;
   title?: unknown;
   sections?: unknown;
@@ -77,12 +78,28 @@ type CreateDraftBody = {
 router.post("/drafts", async (req: Request, res: Response) => {
   try {
     const body = (req.body ?? {}) as CreateDraftBody;
-    const visitId = asUuid(body.visitId);
-    if (!visitId) return res.status(400).json({ success: false, error: "visitId is required" });
+    const addressId = asUuid(body.addressId);
+    let visitId = asUuid(body.visitId);
 
-    // Ensure visit exists
-    const visitRows = await db.select({ id: spineVisits.id }).from(spineVisits).where(eq(spineVisits.id, visitId)).limit(1);
-    if (!visitRows[0]) return res.status(404).json({ success: false, error: "Visit not found" });
+    // GOLDEN PATH: addressId is required, visitId is optional
+    if (!addressId) return res.status(400).json({ success: false, error: "addressId is required" });
+
+    // GOLDEN PATH: If no visitId provided, create a system visit silently
+    if (!visitId) {
+      const visitCreated = await db
+        .insert(spineVisits)
+        .values({
+          propertyId: addressId,
+          startedAt: new Date(),
+        })
+        .returning({ id: spineVisits.id });
+      visitId = visitCreated[0]?.id;
+      if (!visitId) throw new Error("Failed to create system visit");
+    } else {
+      // Ensure visit exists if provided
+      const visitRows = await db.select({ id: spineVisits.id }).from(spineVisits).where(eq(spineVisits.id, visitId)).limit(1);
+      if (!visitRows[0]) return res.status(404).json({ success: false, error: "Visit not found" });
+    }
 
     const title = asOptionalString(body.title) ?? "Customer Pack";
     const sections = asJsonValue(body.sections) ?? [];
@@ -107,16 +124,26 @@ router.post("/drafts", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/presentation/drafts?visitId=...
+// GET /api/presentation/drafts?addressId=...
 router.get("/drafts", async (req: Request, res: Response) => {
   try {
-    const visitId = asUuid(req.query.visitId);
-    if (!visitId) return res.status(400).json({ success: false, error: "visitId is required" });
+    const addressId = asUuid(req.query.addressId);
+    if (!addressId) return res.status(400).json({ success: false, error: "addressId is required" });
+
+    // GOLDEN PATH: Get all drafts for all visits at this address
+    const visitIds = await db
+      .select({ id: spineVisits.id })
+      .from(spineVisits)
+      .where(eq(spineVisits.propertyId, addressId));
+
+    if (visitIds.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
 
     const rows = await db
       .select()
       .from(presentationDrafts)
-      .where(eq(presentationDrafts.visitId, visitId))
+      .where(inArray(presentationDrafts.visitId, visitIds.map(v => v.id)))
       .orderBy(desc(presentationDrafts.createdAt))
       .limit(50);
 

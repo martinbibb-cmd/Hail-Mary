@@ -146,6 +146,7 @@ function safeText(s: unknown): string {
 
 export function PresentationPage() {
   const navigate = useNavigate()
+  const activeAddress = useSpineStore((s) => s.activeAddress)
   const activeVisitId = useSpineStore((s) => s.activeVisitId)
 
   const [timeline, setTimeline] = useState<VisitTimelineResponse | null>(null)
@@ -200,11 +201,12 @@ export function PresentationPage() {
     return ids.map((id) => mediaCacheRef.current.get(id)).filter(Boolean) as MediaAsset[]
   }, [activeDraft?.selectedAssetIds, mediaResults])
 
-  const canBuild = !!activeVisitId
+  // GOLDEN PATH: Only require address, not visit
+  const canBuild = !!activeAddress
 
-  // Load visit timeline (photos + engineer_output) for active visit
+  // GOLDEN PATH: Load timeline for active address (visitId optional)
   useEffect(() => {
-    if (!activeVisitId) {
+    if (!activeAddress?.id) {
       setTimeline(null)
       setTimelineError(null)
       return
@@ -212,15 +214,21 @@ export function PresentationPage() {
     let cancelled = false
     setTimelineLoading(true)
     setTimelineError(null)
-    fetch(`/api/visits/${encodeURIComponent(activeVisitId)}/timeline?types=photo,engineer_output`, { credentials: 'include' })
+
+    // Use visitId if present, otherwise will create system visit
+    const endpoint = activeVisitId
+      ? `/api/visits/${encodeURIComponent(activeVisitId)}/timeline?types=photo,engineer_output`
+      : `/api/addresses/${encodeURIComponent(activeAddress.id)}/timeline?types=photo,engineer_output`
+
+    fetch(endpoint, { credentials: 'include' })
       .then((r) => r.json())
       .then((json: ApiResponse<VisitTimelineResponse>) => {
         if (cancelled) return
         if (json.success && json.data) setTimeline(json.data)
-        else setTimelineError(json.error || 'Failed to load visit timeline')
+        else setTimelineError(json.error || 'Failed to load timeline')
       })
       .catch((e) => {
-        if (!cancelled) setTimelineError(e instanceof Error ? e.message : 'Failed to load visit timeline')
+        if (!cancelled) setTimelineError(e instanceof Error ? e.message : 'Failed to load timeline')
       })
       .finally(() => {
         if (!cancelled) setTimelineLoading(false)
@@ -228,11 +236,11 @@ export function PresentationPage() {
     return () => {
       cancelled = true
     }
-  }, [activeVisitId])
+  }, [activeAddress?.id, activeVisitId])
 
-  // Load drafts for active visit
+  // GOLDEN PATH: Load drafts for active address
   useEffect(() => {
-    if (!activeVisitId) {
+    if (!activeAddress?.id) {
       setDrafts([])
       setActiveDraftId(null)
       setDraftError(null)
@@ -241,7 +249,7 @@ export function PresentationPage() {
     let cancelled = false
     setDraftLoading(true)
     setDraftError(null)
-    fetch(`/api/presentation/drafts?visitId=${encodeURIComponent(activeVisitId)}`, { credentials: 'include' })
+    fetch(`/api/presentation/drafts?addressId=${encodeURIComponent(activeAddress.id)}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((json: ApiResponse<PresentationDraft[]>) => {
         if (cancelled) return
@@ -261,7 +269,7 @@ export function PresentationPage() {
     return () => {
       cancelled = true
     }
-  }, [activeVisitId])
+  }, [activeAddress?.id])
 
   // Sync sections state from active draft
   useEffect(() => {
@@ -329,7 +337,8 @@ export function PresentationPage() {
   }
 
   const createDraft = async () => {
-    if (!activeVisitId) return
+    // GOLDEN PATH: Only require address
+    if (!activeAddress?.id) return
     setDraftError(null)
     try {
       const res = await fetch('/api/presentation/drafts', {
@@ -337,7 +346,8 @@ export function PresentationPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          visitId: activeVisitId,
+          addressId: activeAddress.id,
+          visitId: activeVisitId || undefined,
           title: 'Customer Pack',
           sections: defaultSections(),
           selectedPhotoEventIds: [],
@@ -617,12 +627,10 @@ export function PresentationPage() {
         <div>
           <h1 className="presentation-title">Presentation</h1>
           <div className="presentation-sub">
-            {activeVisitId ? (
-              <span>
-                Visit: <span className="mono">{activeVisitId}</span>
-              </span>
+            {activeAddress ? (
+              <span>Property: {activeAddress.line1}, {activeAddress.postcode}</span>
             ) : (
-              <span>No active visit selected</span>
+              <span>No address selected</span>
             )}
           </div>
         </div>
@@ -630,8 +638,8 @@ export function PresentationPage() {
           <button className="btn-secondary" onClick={() => navigate('/')} type="button">
             Home
           </button>
-          <button className="btn-primary" onClick={() => window.print()} type="button" disabled={!activeDraft || !engineerOutput}>
-            Print / Save PDF
+          <button className="btn-primary" onClick={() => window.print()} type="button" disabled={!activeDraft}>
+            Print / Save PDF{!engineerOutput ? ' (basic)' : ''}
           </button>
         </div>
       </div>
@@ -639,8 +647,8 @@ export function PresentationPage() {
       {!canBuild ? (
         <div className="presentation-empty">
           <div className="presentation-empty__card">
-            <h2>Pick a property first</h2>
-            <p>Go to Home → select a property to create/select an active visit.</p>
+            <h2>Select an address to continue</h2>
+            <p>Go to Home → Addresses and select or create a property.</p>
             <button className="btn-primary" onClick={() => navigate('/')} type="button">
               Go to Home
             </button>
@@ -654,7 +662,7 @@ export function PresentationPage() {
             {draftError ? <div className="presentation-error">{draftError}</div> : null}
 
             <div className="presentation-row">
-              <button className="btn-primary" onClick={createDraft} type="button" disabled={!activeVisitId}>
+              <button className="btn-primary" onClick={createDraft} type="button" disabled={!activeAddress}>
                 Create new draft
               </button>
             </div>

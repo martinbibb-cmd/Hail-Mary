@@ -18,6 +18,7 @@ import { workerClient } from "../services/workerClient.service";
 const router = Router();
 
 type EngineerRunBody = {
+  addressId?: unknown;
   visitId?: unknown;
   mode?: unknown;
 };
@@ -328,12 +329,28 @@ function buildEngineerFallbackOutput(context: EngineerContext, mode: string): En
 router.post("/run", requireAuth, async (req: Request, res: Response) => {
   try {
     const body = (req.body ?? {}) as EngineerRunBody;
-    const visitId = asNonEmptyString(body.visitId);
-    if (!visitId) return res.status(400).json({ success: false, error: "visitId is required" });
+    const addressId = asNonEmptyString(body.addressId);
+    let visitId = asNonEmptyString(body.visitId);
+
+    // GOLDEN PATH: addressId is required, visitId is optional
+    if (!addressId) return res.status(400).json({ success: false, error: "addressId is required" });
 
     const mode = asNonEmptyString(body.mode) ?? "survey";
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(401).json({ success: false, error: "User account not properly configured" });
+
+    // GOLDEN PATH: If no visitId provided, create a system visit silently
+    if (!visitId) {
+      const visitCreated = await db
+        .insert(spineVisits)
+        .values({
+          propertyId: addressId,
+          startedAt: new Date(),
+        })
+        .returning({ id: spineVisits.id });
+      visitId = visitCreated[0]?.id;
+      if (!visitId) throw new Error("Failed to create system visit");
+    }
 
     // 0) Load previous Engineer output for this visit (if any) for diffing.
     const prevEngineerRows = await db

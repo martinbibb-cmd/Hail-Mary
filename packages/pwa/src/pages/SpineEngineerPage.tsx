@@ -17,12 +17,12 @@ export function SpineEngineerPage() {
   const [error, setError] = useState<string | null>(null)
 
   const disabledReason = useMemo(() => {
-    if (!activeVisitId) return 'No active visit. Start a visit first (Property → Start visit, or take a photo to auto-create).'
+    if (!activeAddress) return 'Please select an address to continue.'
     return null
-  }, [activeVisitId])
+  }, [activeAddress])
 
   const runEngineer = useCallback(async () => {
-    if (!activeVisitId) return
+    if (!activeAddress?.id) return
 
     setRunning(true)
     setError(null)
@@ -31,7 +31,7 @@ export function SpineEngineerPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ visitId: activeVisitId, mode: 'survey' }),
+        body: JSON.stringify({ addressId: activeAddress.id, visitId: activeVisitId || undefined, mode: 'survey' }),
       })
 
       const json = (await res.json()) as ApiResponse<{ eventId: string }>
@@ -48,12 +48,12 @@ export function SpineEngineerPage() {
     } finally {
       setRunning(false)
     }
-  }, [activeVisitId, navigate])
+  }, [activeAddress, activeVisitId, navigate])
 
   const openCustomerSummary = useCallback(() => {
-    if (!activeVisitId) return
-    navigate(`/customer-summary?visitId=${encodeURIComponent(activeVisitId)}`)
-  }, [activeVisitId, navigate])
+    if (!activeAddress?.id) return
+    navigate(`/customer-summary?addressId=${encodeURIComponent(activeAddress.id)}${activeVisitId ? `&visitId=${encodeURIComponent(activeVisitId)}` : ''}`)
+  }, [activeAddress, activeVisitId, navigate])
 
   return (
     <div className="detail-page">
@@ -68,9 +68,6 @@ export function SpineEngineerPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
             Active property: {activeAddress ? `${activeAddress.line1} • ${activeAddress.postcode}` : 'None'}
-          </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-            Active visit: {activeVisitId ?? 'None'}
           </div>
 
           <button className="btn-primary" onClick={runEngineer} disabled={running || !!disabledReason}>

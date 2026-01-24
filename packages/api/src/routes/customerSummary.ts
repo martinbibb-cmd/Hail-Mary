@@ -21,6 +21,7 @@ import { workerClient } from '../services/workerClient.service';
 const router = Router();
 
 type CustomerSummaryBody = {
+  addressId?: unknown;
   visitId?: unknown;
   tone?: unknown;
 };
@@ -145,13 +146,29 @@ function markdownTemplate(args: {
 router.post('/summary', requireAuth, async (req: Request, res: Response) => {
   try {
     const body = (req.body ?? {}) as CustomerSummaryBody;
-    const visitId = asNonEmptyString(body.visitId);
-    if (!visitId) return res.status(400).json({ success: false, error: 'visitId is required' });
+    const addressId = asNonEmptyString(body.addressId);
+    let visitId = asNonEmptyString(body.visitId);
+
+    // GOLDEN PATH: addressId is required, visitId is optional
+    if (!addressId) return res.status(400).json({ success: false, error: 'addressId is required' });
 
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(401).json({ success: false, error: 'User account not properly configured' });
 
     const tone = asNonEmptyString(body.tone) ?? 'calm';
+
+    // GOLDEN PATH: If no visitId provided, create a system visit silently
+    if (!visitId) {
+      const visitCreated = await db
+        .insert(spineVisits)
+        .values({
+          propertyId: addressId,
+          startedAt: new Date(),
+        })
+        .returning({ id: spineVisits.id });
+      visitId = visitCreated[0]?.id;
+      if (!visitId) throw new Error('Failed to create system visit');
+    }
 
     // 1) Load property summary + visit basics
     const visitRows = await db

@@ -209,8 +209,7 @@ export const mediaAttachments = pgTable("media_attachments", {
     .references(() => visitSessions.id)
     .notNull(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(), // kept for backward compat
+    .references(() => leads.id), // LEGACY ONLY - nullable per migration 0023
   addressId: uuid("address_id")
     .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
   type: varchar("type", { length: 50 }).notNull(), // photo, video, measurement, other
@@ -248,8 +247,7 @@ export const surveyInstances = pgTable("survey_instances", {
     .references(() => visitSessions.id)
     .notNull(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(),
+    .references(() => leads.id), // LEGACY ONLY - nullable per migration 0023
   status: varchar("status", { length: 50 }).default("in_progress").notNull(), // in_progress, complete
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -281,8 +279,7 @@ export const visitObservations = pgTable("visit_observations", {
     .references(() => visitSessions.id)
     .notNull(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(),
+    .references(() => leads.id), // LEGACY ONLY - nullable per migration 0023
   text: text("text").notNull(), // raw observation from STT
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -432,6 +429,8 @@ export const photos = pgTable("photos", {
     .notNull(),
   addressId: uuid("address_id")
     .references(() => addresses.id, { onDelete: "set null" }), // NEW: link to addresses
+  visitId: integer("visit_id")
+    .references(() => visitSessions.id, { onDelete: "set null" }), // nullable - optional link to visit
   postcode: varchar("postcode", { length: 20 }).notNull(), // postcode anchor for property (kept for backward compat)
   filename: varchar("filename", { length: 255 }).notNull(),
   mimeType: varchar("mime_type", { length: 100 }).notNull(),
@@ -439,6 +438,8 @@ export const photos = pgTable("photos", {
   width: integer("width"), // image width in pixels
   height: integer("height"), // image height in pixels
   storagePath: text("storage_path").notNull(), // path on disk or URL
+  thumbnailUrl: text("thumbnail_url"), // URL for thumbnail version of image
+  fullUrl: text("full_url"), // URL for full-size version of image
   notes: text("notes"), // user notes/description
   tag: varchar("tag", { length: 100 }), // e.g. boiler, flue, meter, rads, cylinder, consumer_unit
   latitude: numeric("latitude", { precision: 10, scale: 7 }), // GPS latitude
@@ -606,8 +607,9 @@ export const userSettings = pgTable("user_settings", {
 export const assets = pgTable("assets", {
   id: uuid("id").defaultRandom().primaryKey(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(),
+    .references(() => leads.id), // LEGACY ONLY - nullable per migration 0024
+  addressId: uuid("address_id")
+    .references(() => addresses.id, { onDelete: "set null" }), // NEW: address-based anchor
   visitId: integer("visit_id")
     .references(() => visitSessions.id)
     .notNull(),
@@ -631,13 +633,13 @@ export const assets = pgTable("assets", {
   leadVisitCreatedAtIdx: index("assets_lead_visit_created_at_idx").on(t.leadId, t.visitId, t.createdAt),
   visitCreatedAtIdx: index("assets_visit_created_at_idx").on(t.visitId, t.createdAt),
   sha256Idx: index("assets_sha256_idx").on(t.sha256),
+  addressIdIdx: index("assets_address_id_idx").on(t.addressId),
 }));
 
 export const visitEvents = pgTable("visit_events", {
   id: uuid("id").defaultRandom().primaryKey(),
   leadId: integer("lead_id")
-    .references(() => leads.id)
-    .notNull(),
+    .references(() => leads.id), // LEGACY ONLY - nullable per migration 0024
   visitId: integer("visit_id")
     .references(() => visitSessions.id)
     .notNull(),
@@ -1793,19 +1795,26 @@ export const heatingPipeNetworks = pgTable("heating_pipe_networks", {
 export const mainsPerformanceTests = pgTable("mains_performance_tests", {
   id: uuid("id").defaultRandom().primaryKey(),
   propertyId: integer("property_id")
-    .references(() => leads.id, { onDelete: "cascade" }),
+    .references(() => properties.id, { onDelete: "cascade" }), // references lead-workspace properties table
   surveyId: integer("survey_id")
-    .references(() => surveyInstances.id, { onDelete: "cascade" }),
+    .references(() => surveyInstances.id),
   userId: integer("user_id")
     .references(() => users.id)
     .notNull(),
   accountId: integer("account_id")
     .references(() => accounts.id)
     .notNull(),
-  sourcePoint: varchar("source_point", { length: 255 }).notNull(), // outside_tap|kitchen|bath_cold|etc
+  sourcePoint: text("source_point"), // outside_tap|kitchen|bath_cold|etc - nullable to match migration
   ambientTempC: numeric("ambient_temp_c", { precision: 5, scale: 2 }), // nullable
+  weatherConditions: text("weather_conditions"),
+  timeOfDay: varchar("time_of_day", { length: 20 }),
+  waterUtilityCompany: text("water_utility_company"),
+  postcode: text("postcode"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
   createdBy: integer("created_by")
@@ -1882,4 +1891,23 @@ export const mainsTestObservations = pgTable("mains_test_observations", {
   testIdIdx: index("mains_test_observations_test_id_idx").on(t.testId),
   stepIdIdx: index("mains_test_observations_step_id_idx").on(t.stepId),
   deviceIdIdx: index("mains_test_observations_device_id_idx").on(t.deviceId),
+}));
+
+// Mains test analyses - computed analysis results cached per test
+export const mainsTestAnalyses = pgTable("mains_test_analyses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id")
+    .references(() => mainsPerformanceTests.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  analysisVersion: text("analysis_version").notNull(),
+  computedAt: timestamp("computed_at", { withTimezone: true }).defaultNow().notNull(),
+  staticPressureBar: numeric("static_pressure_bar", { precision: 10, scale: 3 }),
+  dynamicPressureAtSteps: jsonb("dynamic_pressure_at_steps"),
+  maxFlowObservedLpm: numeric("max_flow_observed_lpm", { precision: 10, scale: 2 }),
+  pressureDropPerOutlet: numeric("pressure_drop_per_outlet", { precision: 10, scale: 3 }),
+  supplyCurvePoints: jsonb("supply_curve_points"),
+  riskFlags: jsonb("risk_flags"),
+}, (t) => ({
+  testIdIdx: index("mains_test_analyses_test_id_idx").on(t.testId),
 }));

@@ -15,10 +15,15 @@ export interface MainsPerformanceTest {
   surveyId?: number;
   userId: number;
   accountId: number;
-  sourcePoint: string; // outside_tap|kitchen|bath_cold|etc
+  sourcePoint?: string; // outside_tap|kitchen|bath_cold|etc - optional to match DB
   ambientTempC?: number;
+  weatherConditions?: string;
+  timeOfDay?: string;
+  waterUtilityCompany?: string;
+  postcode?: string;
   notes?: string;
   createdAt: Date;
+  updatedAt?: Date;
   createdBy: number;
 }
 
@@ -300,8 +305,12 @@ export const UK_MAINS_PLAUSIBILITY_BOUNDS: PlausibilityBounds = {
 export interface CreateMainsTestRequest {
   propertyId?: number;
   surveyId?: number;
-  sourcePoint: string;
+  sourcePoint?: string; // validated at route level; nullable in DB
   ambientTempC?: number;
+  weatherConditions?: string;
+  timeOfDay?: string;
+  waterUtilityCompany?: string;
+  postcode?: string;
   notes?: string;
   devices: Omit<MainsTestDevice, 'id' | 'testId' | 'createdAt'>[];
 }

@@ -214,7 +214,7 @@ router.get("/leads/:leadId/visits/:visitId/assets", async (req: Request, res: Re
     const response: ApiResponse<
       Array<{
         id: string;
-        leadId: number;
+        leadId: number | null;
         visitId: number;
         kind: string;
         mimeType: string;

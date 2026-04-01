@@ -74,6 +74,10 @@ router.post('/', async (req: Request, res: Response) => {
         accountId,
         sourcePoint: data.sourcePoint,
         ambientTempC: data.ambientTempC?.toString(),
+        weatherConditions: data.weatherConditions,
+        timeOfDay: data.timeOfDay,
+        waterUtilityCompany: data.waterUtilityCompany,
+        postcode: data.postcode,
         notes: data.notes,
         createdBy: userId,
       })
